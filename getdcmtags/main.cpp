@@ -63,7 +63,7 @@ void writeErrorInformation(OFString dcmFile, OFString errorString)
 
 #define INSERTTAG(A,B) fprintf(fp, "\"%s\": \"%s\",\n",A,B.c_str())
 
-bool writeTagsFile(OFString dcmFile)
+bool writeTagsFile(OFString dcmFile, OFString originalFile)
 {
     OFString filename=dcmFile+".tags";
     FILE* fp = fopen(filename.c_str(), "w+");
@@ -112,7 +112,7 @@ bool writeTagsFile(OFString dcmFile)
     INSERTTAG("ContrastBolusAgent",            tagContrastBolusAgent);
     INSERTTAG("ImageComments",                 tagImageComments);
 
-    fprintf(fp, "\"Filename\": \"%s\"\n",dcmFile.c_str());
+    fprintf(fp, "\"Filename\": \"%s\"\n",originalFile.c_str());
     fprintf(fp, "}\n");
 
     fclose(fp);
@@ -148,7 +148,7 @@ int main(int argc, char *argv[])
     size_t slashPos=origFilename.rfind("/");
     if (slashPos!=OFString_npos)
     {
-        path=origFilename.substr(0,slashPos);
+        path=origFilename.substr(0,slashPos+1);
         origFilename.erase(0,slashPos+1);
     }
 
@@ -211,7 +211,7 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    if (!writeTagsFile(path+newFilename))
+    if (!writeTagsFile(path+newFilename,origFilename))
     {
         OFString errorString="Unable to write tagsfile file for ";
         errorString.append(newFilename);
