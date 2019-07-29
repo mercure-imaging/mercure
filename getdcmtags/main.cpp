@@ -5,7 +5,7 @@
 #include "dcmtk/dcmdata/dctk.h"
 #include "dcmtk/ofstd/ofstd.h"
 
-#define VERSION "0.1a"
+#define VERSION "0.1b"
 
 static OFString tagPatientName="";
 static OFString tagSeriesInstanceUID="";
@@ -202,7 +202,7 @@ int main(int argc, char *argv[])
 
     OFString newFilename=tagSeriesInstanceUID+"#"+origFilename;
 
-    if (rename((path+origFilename).c_str(), (path+newFilename).c_str())!=0)
+    if (rename((path+origFilename).c_str(), (path+newFilename+".dcm").c_str())!=0)
     {
         OFString errorString="Unable to rename DICOM file to ";
         errorString.append(newFilename);
