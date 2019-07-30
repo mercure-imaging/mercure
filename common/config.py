@@ -5,7 +5,7 @@ from pathlib import Path
 
 
 configuration_timestamp = 0
-configuration_filename  = ""
+configuration_filename  = "config.json"
 
 hermes_defaults = {
     'incoming_folder':         './incoming',
@@ -40,7 +40,7 @@ def read_config():
         # Check if the configuration file is newer than the version
         # loaded into memory. If not, return
         if timestamp <= configuration_timestamp:
-            return                
+            return hermes               
 
         print("Reading configuration from: ", configuration_filename)
 
@@ -57,6 +57,7 @@ def read_config():
             print(json.dumps(hermes, indent=4))
             print("")
             configuration_timestamp=timestamp
+            return hermes
     else:
         raise FileNotFoundError(f"Configuration file not fould: {configuration_file}")
    
