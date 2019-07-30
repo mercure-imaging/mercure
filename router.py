@@ -1,4 +1,5 @@
 #!/usr/bin/python
+hermes_router_version = "0.1a"
 
 # Standard python includes
 import time
@@ -6,43 +7,11 @@ import signal
 import os
 import sys
 import json
-import threading
+import graphyte
 
 # App-specific includes
-import config
-
- 
-# Global variable to broadcast when the process should terminate
-terminate=False
-
-
-# Helper class for running a continuous timer that is suspended
-# while the worker function is running
-class RepeatedTimer(object):
-    def __init__(self, interval, function, *args, **kwargs):
-        self._timer     = None
-        self.interval   = interval
-        self.function   = function
-        self.args       = args
-        self.kwargs     = kwargs
-        self.is_running = False
-
-    def _run(self):
-        self.is_running = False
-        self.function(*self.args, **self.kwargs)
-        global terminate
-        if not terminate:            
-            self.start()
-
-    def start(self):
-        if not self.is_running:
-            self._timer = threading.Timer(self.interval, self._run)
-            self._timer.start()
-            self.is_running = True
-
-    def stop(self):
-        self._timer.cancel()
-        self.is_running = False
+import common.helper as helper
+import common.config as config
 
 
 def receiveSignal(signalNumber, frame):
@@ -51,19 +20,23 @@ def receiveSignal(signalNumber, frame):
 
 
 def terminateProcess(signalNumber, frame):    
+    helper.triggerTerminate()
     print('Going down now')
-    global terminate
-    terminate=True
 
 
 def runRouter(args):
-    global terminate
-    if terminate:
+    if helper.isTerminated():
         return        
 
     print('')
-    print('Parsing folder...')
-    config.update_config()
+    print('Processing incoming folder...')
+    
+    try:
+        config.read_config()
+    except Exception as e: 
+        print(e)
+        print("Unable to update configuration. Skipping processing.")
+        return
 
     filecount=0
     series={}
@@ -95,6 +68,16 @@ def runRouter(args):
 
 
 if __name__ == '__main__':    
+    print("")
+    print("Hermes DICOM Router ver", hermes_router_version)
+    print("----------------------------")
+    print("")
+
+    if (len(sys.argv) != 2):
+        print("Usage: router.py [configuration file]")
+        print("")
+        sys.exit()
+
     # Register system signals to be caught
     signal.signal(signal.SIGINT,   terminateProcess)
     signal.signal(signal.SIGQUIT,  receiveSignal)
@@ -115,9 +98,21 @@ if __name__ == '__main__':
     print(sys.version)
     print('Router PID is:', os.getpid())
    
-    config.read_config()
-    print('Incoming folder', config.hermes['incoming_folder'])
+    config.configuration_filename=sys.argv[1]
+    try:
+        config.read_config()
+    except Exception as e: 
+        print(e)
+        print("Cannot start service. Going down.")
+        print("")
+        sys.exit(1)
 
-    mainLoop = RepeatedTimer(config.hermes['update_interval'], runRouter, {})
+    if len(config.hermes['graphite_ip']) > 0:
+        graphyte.init(config.hermes['graphite_ip'], config.hermes['graphite_port'], prefix='hermes.router')
+
+    helper.g_log('foo.bar', 42)
+
+    print('Incoming folder:', config.hermes['incoming_folder'])
+
+    mainLoop = helper.RepeatedTimer(config.hermes['router_update_interval'], runRouter, {})
     mainLoop.start()
-
