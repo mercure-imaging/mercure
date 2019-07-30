@@ -22,8 +22,9 @@ def receiveSignal(signalNumber, frame):
 
 
 def terminateProcess(signalNumber, frame):    
-    helper.triggerTerminate()
+    helper.g_log('events.shutdown', 1)
     print('Going down now')
+    helper.triggerTerminate()
 
 
 def runRouter(args):
@@ -125,11 +126,13 @@ if __name__ == '__main__':
     graphite_prefix='hermes.router.'+instance_name
     
     if len(config.hermes['graphite_ip']) > 0:
-        graphyte.init(config.hermes['graphite_ip'], config.hermes['graphite_port'], prefix=graphite_prefix)    
+        print('Sending events to graphite server: ',config.hermes['graphite_ip'])
+        graphyte.init(config.hermes['graphite_ip'], config.hermes['graphite_port'], prefix=graphite_prefix)   
 
     print('Incoming folder:', config.hermes['incoming_folder'])
+    print('Outgoing folder:', config.hermes['outgoing_folder'])    
 
-    mainLoop = helper.RepeatedTimer(config.hermes['router_update_interval'], runRouter, exitRouter, {})
+    mainLoop = helper.RepeatedTimer(config.hermes['router_scan_interval'], runRouter, exitRouter, {})
     mainLoop.start()
 
     helper.g_log('events.boot', 1)

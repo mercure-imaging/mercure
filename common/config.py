@@ -3,18 +3,17 @@ import os
 from pathlib import Path
 
 
-
 configuration_timestamp = 0
 configuration_filename  = "config.json"
 
 hermes_defaults = {
-    'incoming_folder':         './incoming',
-    'outgoing_folder':         './outgoing',
-    'router_update_interval'   :  1,
+    'incoming_folder'          : './incoming',
+    'outgoing_folder'          : './outgoing',
+    'router_scan_interval'     :  1,
     'dispatcher_scan_interval' :  1,
     'series_complete_trigger'  : 60,
-    'graphite_ip':             '',
-    'graphite_port':           2003
+    'graphite_ip'              : '',
+    'graphite_port'            : 2003
 }
 
 hermes = {}
