@@ -25,13 +25,14 @@ def g_log(*args, **kwargs):
 # Helper class for running a continuous timer that is suspended
 # while the worker function is running
 class RepeatedTimer(object):
-    def __init__(self, interval, function, *args, **kwargs):
-        self._timer     = None
-        self.interval   = interval
-        self.function   = function
-        self.args       = args
-        self.kwargs     = kwargs
-        self.is_running = False
+    def __init__(self, interval, function, exit_function, *args, **kwargs):
+        self._timer        = None
+        self.interval      = interval
+        self.function      = function
+        self.exit_function = exit_function
+        self.args          = args
+        self.kwargs        = kwargs
+        self.is_running    = False
 
     def _run(self):
         global terminate
@@ -39,6 +40,8 @@ class RepeatedTimer(object):
         self.function(*self.args, **self.kwargs)
         if not terminate:            
             self.start()
+        else:
+            self.exit_function(*self.args, **self.kwargs)
 
     def start(self):
         if not self.is_running:
@@ -49,3 +52,4 @@ class RepeatedTimer(object):
     def stop(self):
         self._timer.cancel()
         self.is_running = False
+        self.exit_function(*self.args, **self.kwargs)

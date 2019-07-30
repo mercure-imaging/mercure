@@ -8,10 +8,14 @@ import os
 import sys
 import json
 import graphyte
+import asyncio 
 
 # App-specific includes
 import common.helper as helper
 import common.config as config
+
+
+loop = asyncio.get_event_loop() 
 
 
 def receiveSignal(signalNumber, frame):
@@ -67,6 +71,11 @@ def runRouter(args):
         #print(completeSeries[entry])
 
 
+def exitRouter(args):
+    # Stop the asyncio event loop 
+    loop.call_soon_threadsafe(loop.stop)
+
+
 if __name__ == '__main__':    
     print("")
     print("Hermes DICOM Router ver", hermes_router_version)
@@ -110,9 +119,12 @@ if __name__ == '__main__':
     if len(config.hermes['graphite_ip']) > 0:
         graphyte.init(config.hermes['graphite_ip'], config.hermes['graphite_port'], prefix='hermes.router')
 
-    helper.g_log('foo.bar', 42)
+    #helper.g_log('foo.bar', 42)
 
     print('Incoming folder:', config.hermes['incoming_folder'])
 
-    mainLoop = helper.RepeatedTimer(config.hermes['router_update_interval'], runRouter, {})
+    mainLoop = helper.RepeatedTimer(config.hermes['router_update_interval'], runRouter, exitRouter, {})
     mainLoop.start()
+
+    # Start the asyncio event loop for asynchronous function calls
+    loop.run_forever()
