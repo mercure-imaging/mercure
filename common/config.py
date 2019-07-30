@@ -60,5 +60,3 @@ def read_config():
             return hermes
     else:
         raise FileNotFoundError(f"Configuration file not fould: {configuration_file}")
-   
-

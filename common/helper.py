@@ -1,11 +1,13 @@
 import graphyte
 import threading
 import sys
+import asyncio 
+import functools
 
 
 # Global variable to broadcast when the process should terminate
 terminate=False
-
+loop=asyncio.get_event_loop() 
 
 def triggerTerminate():
     global terminate
@@ -16,10 +18,15 @@ def isTerminated():
     return terminate
 
 
-def g_log(*args, **kwargs):
+# Wrapper for asynchronous graphite call to avoid wait time of main loop
+async def sendToGraphite(*args, **kwargs):
     if (graphyte.default_sender==None):
         return
     graphyte.default_sender.send(*args, **kwargs)
+
+
+def g_log(*args, **kwargs):
+    asyncio.run_coroutine_threadsafe(sendToGraphite(*args, **kwargs),loop)
 
 
 # Helper class for running a continuous timer that is suspended

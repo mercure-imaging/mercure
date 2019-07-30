@@ -8,14 +8,12 @@ import os
 import sys
 import json
 import graphyte
-import asyncio 
+import asyncio
+import threading
 
 # App-specific includes
 import common.helper as helper
 import common.config as config
-
-
-loop = asyncio.get_event_loop() 
 
 
 def receiveSignal(signalNumber, frame):
@@ -31,6 +29,8 @@ def terminateProcess(signalNumber, frame):
 def runRouter(args):
     if helper.isTerminated():
         return        
+
+    helper.g_log('events.run', 1)
 
     print('')
     print('Processing incoming folder...')
@@ -73,7 +73,7 @@ def runRouter(args):
 
 def exitRouter(args):
     # Stop the asyncio event loop 
-    loop.call_soon_threadsafe(loop.stop)
+    helper.loop.call_soon_threadsafe(helper.loop.stop)
 
 
 if __name__ == '__main__':    
@@ -82,8 +82,8 @@ if __name__ == '__main__':
     print("----------------------------")
     print("")
 
-    if (len(sys.argv) != 2):
-        print("Usage: router.py [configuration file]")
+    if len(sys.argv) < 2:
+        print("Usage: router.py [configuration file] [optional: instance name]")
         print("")
         sys.exit()
 
@@ -104,9 +104,15 @@ if __name__ == '__main__':
     #signal.signal(signal.SIGHUP,  readConfiguration)
     #signal.signal(signal.SIGKILL, receiveSignal)
 
+    instance_name="main"
+
+    if len(sys.argv)>2:
+        instance_name=sys.argv[2]
+
     print(sys.version)
-    print('Router PID is:', os.getpid())
-   
+    print('Instance name = ',instance_name)
+    print('Instance PID = ', os.getpid())
+
     config.configuration_filename=sys.argv[1]
     try:
         config.read_config()
@@ -116,15 +122,17 @@ if __name__ == '__main__':
         print("")
         sys.exit(1)
 
+    graphite_prefix='hermes.router.'+instance_name
+    
     if len(config.hermes['graphite_ip']) > 0:
-        graphyte.init(config.hermes['graphite_ip'], config.hermes['graphite_port'], prefix='hermes.router')
-
-    #helper.g_log('foo.bar', 42)
+        graphyte.init(config.hermes['graphite_ip'], config.hermes['graphite_port'], prefix=graphite_prefix)    
 
     print('Incoming folder:', config.hermes['incoming_folder'])
 
     mainLoop = helper.RepeatedTimer(config.hermes['router_update_interval'], runRouter, exitRouter, {})
     mainLoop.start()
 
+    helper.g_log('events.boot', 1)
+
     # Start the asyncio event loop for asynchronous function calls
-    loop.run_forever()
+    helper.loop.run_forever()
