@@ -9,13 +9,15 @@ configuration_filename  = "config.json"
 hermes_defaults = {
     'incoming_folder'          : './incoming',
     'outgoing_folder'          : './outgoing',
-    'sucessful_sent'           : './successful_sent',
-    'error_send'               : './error_send',
+    'sucess_folder '           : './success',
+    'error_folder'             : './error',
     'router_scan_interval'     :  1,
     'dispatcher_scan_interval' :  1,
     'series_complete_trigger'  : 60,
     'graphite_ip'              : '',
-    'graphite_port'            : 2003
+    'graphite_port'            : 2003,
+    "destinations"             : [ ],
+    "rules"                    : [ ]
 }
 
 hermes = {}
@@ -53,6 +55,8 @@ def read_config():
             hermes=hermes_defaults
             # Now merge with values loaded from configuration file
             hermes.update(loaded_config)
+
+            # TODO: Check configuration for errors (esp destinations and rules)
 
             print("")
             print("Active configuration: ")

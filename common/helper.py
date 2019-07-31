@@ -3,12 +3,13 @@ import functools
 import sys
 import threading
 from pathlib import Path
-
 import graphyte
+
 
 # Global variable to broadcast when the process should terminate
 terminate=False
 loop=asyncio.get_event_loop() 
+
 
 def is_ready_for_sending(folder):
     """ 

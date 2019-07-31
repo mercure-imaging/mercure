@@ -14,6 +14,7 @@ import threading
 # App-specific includes
 import common.helper as helper
 import common.config as config
+from router.process_series import process_series
 
 
 def receiveSignal(signalNumber, frame):
@@ -23,7 +24,7 @@ def receiveSignal(signalNumber, frame):
 
 def terminateProcess(signalNumber, frame):    
     helper.g_log('events.shutdown', 1)
-    print('Going down now')
+    print('Shutdown requested')
     helper.triggerTerminate()
 
 
@@ -48,7 +49,7 @@ def runRouter(args):
     completeSeries={}
 
     for entry in os.scandir(config.hermes['incoming_folder']):
-            if not entry.name.endswith(".tags") and not entry.is_dir():
+            if entry.name.endswith(".tags") and not entry.is_dir():
                 filecount += 1
                 seriesString=entry.name.split('#',1)[0]
                 modificationTime=entry.stat().st_mtime
@@ -68,9 +69,14 @@ def runRouter(args):
     print('Complete series = ',len(completeSeries))
     
     for entry in sorted(completeSeries):
-        pass
-        #print(completeSeries[entry])
-
+        try:
+            process_series(entry)
+        except Exception as e: 
+            print(e)
+            print('ERROR: Problems while processing series ', entry)
+        # If termination is requested, stop processing series after the active one has been completed
+        if helper.isTerminated():
+            break                 
 
 def exitRouter(args):
     # Stop the asyncio event loop 
@@ -139,3 +145,5 @@ if __name__ == '__main__':
 
     # Start the asyncio event loop for asynchronous function calls
     helper.loop.run_forever()
+    print('Going down now')
+    
