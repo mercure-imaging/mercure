@@ -48,7 +48,7 @@ def dispatch(args):
 
 def exit_dispatcher(args):
     # Stop the asyncio event loop 
-    loop.call_soon_threadsafe(loop.stop)
+    helper.loop.call_soon_threadsafe(helper.loop.stop)
 
 if __name__ == "__main__":
     print("")
