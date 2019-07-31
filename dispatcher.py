@@ -11,43 +11,45 @@ import daiquiri
 
 import common.config as config
 import common.helper as helper
-from common.helper import is_ready_for_sending
+from common.helper import is_ready_for_sending, has_been_send
 from dispatcher.send import execute
 
 daiquiri.setup(level=logging.INFO)
-logger = daiquiri.getLogger("scanner")
+logger = daiquiri.getLogger("dispatcher")
 
 
 def receiveSignal(signalNumber, frame):
-    print("Received:", signalNumber)
+    logger.info("Received:", signalNumber)
     return
 
 
 def terminateProcess(signalNumber, frame):
     helper.triggerTerminate()
-    print("Going down now")
+    logger.info("Going down now")
 
 
 def dispatch(args):
     if helper.isTerminated():
         return
-
-    print("")
-    print("Processing outgoing folder...")
-
     try:
         config.read_config()
     except Exception as e:
-        print(e)
-        print("Unable to update configuration. Skipping processing.")
+        logger.info(e)
+        logger.info("Unable to update configuration. Skipping processing.")
         return
 
-    print(f"Checking for outgoing data in {config.hermes['outgoing_folder']}")
+    logger.info(f"Checking for outgoing data in {config.hermes['outgoing_folder']}")
+    success_folder = config.hermes["success_folder"]
+    error_folder = config.hermes["error_folder"]
     with os.scandir(config.hermes["outgoing_folder"]) as it:
         for entry in it:
-            if entry.is_dir() and is_ready_for_sending(entry.path):
-                print(f"Sending folder {entry.path}")
-                execute(entry.path)
+            if (
+                entry.is_dir()
+                and not has_been_send(entry.path)
+                and is_ready_for_sending(entry.path)
+            ):
+                logger.info(f"Sending folder {entry.path}")
+                execute(entry.path, success_folder, error_folder)
 
 
 def exit_dispatcher(args):
@@ -56,14 +58,14 @@ def exit_dispatcher(args):
 
 
 if __name__ == "__main__":
-    print("")
-    print("Hermes DICOM Dispatcher ver", hermes_dispatcher_version)
-    print("----------------------------")
-    print("")
+    logger.info("")
+    logger.info(f"Hermes DICOM Dispatcher ver {hermes_dispatcher_version}")
+    logger.info("----------------------------")
+    logger.info("")
 
     if len(sys.argv) != 2:
-        print("Usage: dispatcher.py [configuration file]")
-        print("")
+        logger.info("Usage: dispatcher.py [configuration file]")
+        logger.info("")
         sys.exit()
 
     # Register system signals to be caught
@@ -83,19 +85,19 @@ if __name__ == "__main__":
     # signal.signal(signal.SIGHUP,  readConfiguration)
     # signal.signal(signal.SIGKILL, receiveSignal)
 
-    print(sys.version)
-    print("Router PID is:", os.getpid())
+    logger.info(sys.version)
+    logger.info("Router PID is:", os.getpid())
 
     config.configuration_filename = sys.argv[1]
     try:
         config.read_config()
     except Exception as e:
-        print(e)
-        print("Cannot start service. Going down.")
-        print("")
+        logger.info(e)
+        logger.info("Cannot start service. Going down.")
+        logger.info("")
         sys.exit(1)
 
-    print("Dispatching folder:", config.hermes["outgoing_folder"])
+    logger.info(f"Dispatching folder: {config.hermes['outgoing_folder']}")
 
     mainLoop = helper.RepeatedTimer(
         config.hermes["dispatcher_scan_interval"], dispatch, exit_dispatcher, {}
