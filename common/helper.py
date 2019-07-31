@@ -18,10 +18,16 @@ def is_ready_for_sending(folder):
     """
     path = Path(folder)
     return (
-        len(list(path.glob("*.lock"))) == 0
-        and len(list(path.glob("*.sending"))) == 0
+        not (path / ".lock").exists()
+        and not (path / ".sending").exists()
         and len(list(path.glob("*.dcm"))) > 0
     )
+    
+    
+def has_been_send(folder):
+    """ If this folder has been sent. """
+    path = Path(folder)
+    return len(list(path.glob("sent.txt"))) == 1
 
 
 def triggerTerminate():

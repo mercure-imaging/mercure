@@ -1,6 +1,7 @@
 import json
 import logging
 import shlex
+import shutil
 import sys
 from pathlib import Path
 from shlex import split
@@ -23,48 +24,41 @@ def _read_destination(folder):
         raise FileNotFoundError(f"File destination.json not found in folder {folder}")
 
 
-def _read_study_instance(folder):
-    dicoms = list(Path(folder).glob("*.dcm"))
-    if len(dicoms):
-        return dcmread(str(dicoms[0])).StudyInstanceUID
-    else:
-        raise FileNotFoundError(f"No *.dcm files could be found in folder {folder}")
-
-
 def _create_command(folder):
     destination = _read_destination(folder)
     destination_ip = destination["destination_ip"]
     destination_aetitle = destination["destination_aetitle"]
     destination_port = destination["destination_port"]
-    study_instance_uid = _read_study_instance(folder)
-    dcmsend_status_file = Path(folder) / (study_instance_uid + ".txt")
+    dcmsend_status_file = Path(folder) / "sent.txt"
     command = f"dcmsend {destination_ip} {destination_port} +sd {folder} \
             +sp '*.dcm' -to 60 +crf {dcmsend_status_file}"
     return command
 
 
-def execute(folder):
-    if is_ready_for_sending(folder):
-        logger.info(f"Folder {folder} is ready for sending")
+def execute(source_folder, success_folder, error_folder):
+    if is_ready_for_sending(source_folder):
+        logger.info(f"Folder {source_folder} is ready for sending")
         # Create a .sending file to indicate that this folder is being sent,
         # otherwise the dispatcher would pick it up again
-        lock_file = (Path(folder) / ".sending")
+        lock_file = Path(source_folder) / ".sending"
         lock_file.touch()
-        study_instance_uid = _read_study_instance(folder)
-        command = _create_command(folder)
+        command = _create_command(source_folder)
         logger.debug(f"Running command {command}")
         try:
             result = run(shlex.split(command))
             result.check_returncode()
             lock_file.unlink()
-            logger.info(f"Folder {folder} was sent successful")
+            logger.info(
+                f"Folder {source_folder} was sent successful, moving to {success_folder}"
+            )
+            shutil.move(source_folder, success_folder)
         except CalledProcessError:
-            send_error_file = Path(folder / "send.error")
+            send_error_file = Path(source_folder / "send.error")
             lock_file.unlink()
     else:
-        logger.warn(f"Folder {folder} is *not* ready for sending")
+        logger.warn(f"Folder {source_folder} is *not* ready for sending")
 
 
 if __name__ == "__main__":
-    result = execute(sys.argv[1])
+    result = execute(sys.argv[1], sys.argv[2], sys.argv[3])
     sys.exit(result)
