@@ -9,7 +9,7 @@ configuration_filename  = "config.json"
 hermes_defaults = {
     'incoming_folder'          : './incoming',
     'outgoing_folder'          : './outgoing',
-    'sucess_folder '           : './success',
+    'success_folder '          : './success',
     'error_folder'             : './error',
     'router_scan_interval'     :  1,
     'dispatcher_scan_interval' :  1,
