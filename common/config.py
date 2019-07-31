@@ -9,8 +9,9 @@ configuration_filename  = "config.json"
 hermes_defaults = {
     'incoming_folder'          : './incoming',
     'outgoing_folder'          : './outgoing',
-    'success_folder '          : './success',
+    'success_folder'           : './success',
     'error_folder'             : './error',
+    'discard_folder'           : './discard',
     'router_scan_interval'     :  1,
     'dispatcher_scan_interval' :  1,
     'series_complete_trigger'  : 60,
@@ -58,6 +59,10 @@ def read_config():
 
             # TODO: Check configuration for errors (esp destinations and rules)
 
+            # Check if directories exist
+            if not checkFolders():
+                raise FileNotFoundError("Configured folders missing")
+
             print("")
             print("Active configuration: ")
             print(json.dumps(hermes, indent=4))
@@ -66,3 +71,12 @@ def read_config():
             return hermes
     else:
         raise FileNotFoundError(f"Configuration file not fould: {configuration_file}")
+
+
+def checkFolders():
+    for entry in ['incoming_folder','outgoing_folder','success_folder','error_folder','discard_folder']:        
+        if not Path(hermes[entry]).exists():
+            print("ERROR: Folder not found ",hermes[entry])
+            return False
+    return True
+

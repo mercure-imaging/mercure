@@ -42,6 +42,7 @@ def runRouter(args):
     except Exception as e: 
         print(e)
         print("Unable to update configuration. Skipping processing.")
+        # TODO: Send error notification!
         return
 
     filecount=0
@@ -146,4 +147,3 @@ if __name__ == '__main__':
     # Start the asyncio event loop for asynchronous function calls
     helper.loop.run_forever()
     print('Going down now')
-    
