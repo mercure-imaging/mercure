@@ -5,11 +5,13 @@ import os
 import signal
 import sys
 import time
+from pathlib import Path
 
 import daiquiri
 
 import common.config as config
 import common.helper as helper
+from common.helper import is_ready_for_sending
 from dispatcher.send import execute
 
 daiquiri.setup(level=logging.INFO)
@@ -43,12 +45,15 @@ def dispatch(args):
     print(f"Checking for outgoing data in {config.hermes['outgoing_folder']}")
     with os.scandir(config.hermes["outgoing_folder"]) as it:
         for entry in it:
-            print(entry.name)
+            if entry.is_dir() and is_ready_for_sending(entry.path):
+                print(f"Sending folder {entry.path}")
+                execute(entry.path)
 
 
 def exit_dispatcher(args):
-    # Stop the asyncio event loop 
+    # Stop the asyncio event loop
     helper.loop.call_soon_threadsafe(helper.loop.stop)
+
 
 if __name__ == "__main__":
     print("")
@@ -93,6 +98,6 @@ if __name__ == "__main__":
     print("Dispatching folder:", config.hermes["outgoing_folder"])
 
     mainLoop = helper.RepeatedTimer(
-        config.hermes["dispatcher_scan_interval"], dispatch, exit_dispatcher,  {}
+        config.hermes["dispatcher_scan_interval"], dispatch, exit_dispatcher, {}
     )
     mainLoop.start()

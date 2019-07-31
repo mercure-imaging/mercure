@@ -1,13 +1,27 @@
-import graphyte
-import threading
-import sys
-import asyncio 
+import asyncio
 import functools
+import sys
+import threading
+from pathlib import Path
 
+import graphyte
 
 # Global variable to broadcast when the process should terminate
 terminate=False
 loop=asyncio.get_event_loop() 
+
+def is_ready_for_sending(folder):
+    """ 
+    No lock file should be in sending folder, if there is one copy/move is 
+    not done yet. Also at least some dicom files should be there for sending.
+    """
+    path = Path(folder)
+    return (
+        len(list(path.glob("*.lock"))) == 0
+        and len(list(path.glob("*.sending"))) == 0
+        and len(list(path.glob("*.dcm"))) > 0
+    )
+
 
 def triggerTerminate():
     global terminate
