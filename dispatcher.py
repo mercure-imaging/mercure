@@ -1,5 +1,8 @@
-hermes_dispatcher_version = "0.1a"
-
+"""
+dispatcher.py
+====================================
+The dispatching module of the proxy.
+"""
 import logging
 import os
 import signal
@@ -11,8 +14,11 @@ import daiquiri
 
 import common.config as config
 import common.helper as helper
-from common.helper import is_ready_for_sending, has_been_send
-from dispatcher.send import execute
+from common.helper import has_been_send, is_ready_for_sending
+from dispatch.send import execute
+
+# Dispatcher version
+hermes_dispatcher_version = "0.1a"
 
 daiquiri.setup(level=logging.INFO)
 logger = daiquiri.getLogger("dispatcher")
@@ -53,7 +59,7 @@ def dispatch(args):
 
 
 def exit_dispatcher(args):
-    # Stop the asyncio event loop
+    """ Stop the asyncio event loop. """
     helper.loop.call_soon_threadsafe(helper.loop.stop)
 
 

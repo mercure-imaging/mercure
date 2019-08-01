@@ -1,2 +1,4 @@
 daiquiri
 graphyte
+sphinx
+sphinx-rtd-theme

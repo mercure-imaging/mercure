@@ -1,3 +1,9 @@
+"""
+send.py
+====================================
+The file for sending the dicoms to
+target destination.
+"""
 import json
 import logging
 import shlex
@@ -36,6 +42,7 @@ def _create_command(folder):
 
 
 def execute(source_folder, success_folder, error_folder):
+    """ Execute the dcmsend command. """
     if is_ready_for_sending(source_folder):
         logger.info(f"Folder {source_folder} is ready for sending")
         # Create a .sending file to indicate that this folder is being sent,
