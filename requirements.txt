@@ -1,4 +1,5 @@
 daiquiri
+pydicom
 graphyte
 sphinx
 sphinx-rtd-theme
