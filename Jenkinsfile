@@ -43,7 +43,7 @@ pipeline {
         always {
             sh 'conda remove --yes -n ${BUILD_TAG} --all'
         }
-        filure {
+        failure {
             echo "Send e-mail, when failed"
         }
     }
