@@ -2,3 +2,4 @@ daiquiri
 graphyte
 sphinx
 sphinx-rtd-theme
+pytest
