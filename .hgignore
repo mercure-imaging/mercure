@@ -1,0 +1,4 @@
+.mypy_cache
+test_data_for_send
+__pycache__
+.vscode
