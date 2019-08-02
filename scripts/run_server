@@ -3,5 +3,5 @@ incoming=/home/blockk/testing/incoming
 binary=/home/blockk/hermes/build-getdcmtags-Desktop-Release/getdcmtags
 
 echo "Starting DICOM receiver..."
-storescp --fork -od "$incoming" +uf -xcr "$binary $incoming/#f" 4242
+storescp --fork --promiscuous -od "$incoming" +uf -xcr "$binary $incoming/#f" 4242
 
