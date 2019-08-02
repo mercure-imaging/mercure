@@ -45,8 +45,7 @@ def process_series(series_UID):
 
     print('Now processing series ',series_UID)
 
-    fileList = []
-    
+    fileList = []    
     seriesPrefix=series_UID+"#"
 
     for entry in os.scandir(config.hermes['incoming_folder']):
@@ -86,20 +85,24 @@ def process_series(series_UID):
 
 
 def get_routing_targets(tagList):
-    selected_targets = ['A','B','C']
+    selected_targets = {}
+
+    #selected_targets['aidoc']='RuleA'
+    #selected_targets['B']='RuleB'
 
     # TODO: Evaluate the routing rules
+
     return selected_targets
 
 
 def push_series_discard(fileList):
-    sourceFolder=config.hermes['incoming_folder'] + '/' 
-    targetFolder=config.hermes['discard_folder'] + '/' 
+    source_folder=config.hermes['incoming_folder'] + '/' 
+    target_folder=config.hermes['discard_folder'] + '/' 
 
     for entry in fileList:
         try:
-            shutil.move(sourceFolder+entry+'.dcm',targetFolder+entry+'.dcm')
-            shutil.move(sourceFolder+entry+'.tags',targetFolder+entry+'.tags')
+            shutil.move(source_folder+entry+'.dcm',target_folder+entry+'.dcm')
+            shutil.move(source_folder+entry+'.tags',target_folder+entry+'.tags')
         except Exception as e: 
             print(e)    
             print('ERROR: Problem during discarding file ',entry)    
@@ -107,16 +110,27 @@ def push_series_discard(fileList):
 
 
 def push_series_outgoing(fileList,transfer_targets):
-    sourceFolder=config.hermes['incoming_folder'] + '/'   
+    source_folder=config.hermes['incoming_folder'] + '/'   
+
+    total_targets=len(transfer_targets)
+    current_target=0
 
     for target in transfer_targets:      
+
+        current_target=current_target+1
+
+        if not target in config.hermes["destinations"]:
+            print("ERROR: Invalid target selected ",target)
+            continue                    
+
         # Determine if the files should be copied or moved. For the last
         # target, the files should be moved to reduce IO overhead
         move_operation=False
-        if target==transfer_targets[-1]:
+        if current_target==total_targets:
             move_operation=True
         
-        folder_name=config.hermes['outgoing_folder'] + '/' + uuid.uuid1()
+        folder_name=config.hermes['outgoing_folder'] + '/' + str(uuid.uuid1())
+        target_folder=folder_name+"/"
         
         try:
             os.mkdir(folder_name)
@@ -138,37 +152,37 @@ def push_series_outgoing(fileList,transfer_targets):
             # Can't create lock file, so something must be seriously wrong
             print('ERROR: Unable to create lock file ',lock_file)
             return         
-        
-        if move_operation:
-            operation=shutil.move
-        else:
-            operation=shutil.copy
 
-        targetFolder=folder_name+"/"
-        for entry in fileList:
-            try:
-                operation(sourceFolder+entry+'.dcm',targetFolder+entry+'.dcm')
-                operation(sourceFolder+entry+'.tags',targetFolder+entry+'.tags')
-            except Exception as e: 
-                print(e)    
-                print('ERROR: Problem during pusing file to outgoing ',entry)    
-                # TODO: Send alert
-
-        # TODO: Generate destination file destination.json
+        # Generate destination file destination.json
+        destination_filename = target_folder + "destination.json"
         destination_json = {}
-        destination_json["destination_ip"]        ="TODO"
-        destination_json["destination_port"]      ="TODO"                        
-        destination_json["destination_aet_target"]="TODO"
-        destination_json["destination_aec_source"]="TODO"
-        destination_json["destination_name"]      ="TODO"
-
-        destination_filename = targetFolder+"destination.json"
+        destination_json["destination_ip"]        =config.hermes["destinations"][target]["ip"]
+        destination_json["destination_port"]      =config.hermes["destinations"][target]["port"]                      
+        destination_json["destination_aet_target"]=config.hermes["destinations"][target]["aet_target"]
+        destination_json["destination_aec_source"]=config.hermes["destinations"][target]["aet_source"]
+        destination_json["destination_name"]      =target
+        destination_json["applied_rule"]          =transfer_targets[target]
 
         try:
             with open(destination_filename, 'w') as destination_file:
                 json.dump(destination_json, destination_file)            
         except:
-            pass
+            print("ERROR: Unable to create destination file " + destination_filename)
+            continue
+
+        if move_operation:
+            operation=shutil.move
+        else:
+            operation=shutil.copy
+
+        for entry in fileList:
+            try:
+                operation(source_folder+entry+'.dcm',target_folder+entry+'.dcm')
+                operation(source_folder+entry+'.tags',target_folder+entry+'.tags')
+            except Exception as e: 
+                print(e)    
+                print('ERROR: Problem during pusing file to outgoing ',entry)    
+                # TODO: Send alert
 
         try:
             lock.free()
@@ -178,3 +192,41 @@ def push_series_outgoing(fileList,transfer_targets):
             return 
 
 
+
+def parse_rule(rule,tags):
+    try:
+        while len(rule)>0:
+            opening=rule.find("@")
+            if opening<0:
+                break
+            closing=rule.find("@",opening+1)
+            if closing<0:
+                break
+            tagstring=rule[opening+1:closing]
+            if tagstring in tags:
+                tagvalue=tags[tagstring]    
+            else:
+                tagvalue="MissingTag"
+            rule=rule.replace("@"+tagstring+"@","'"+tagvalue+"'")
+            
+        return eval(rule,{"__builtins__": {}})
+    except:
+        print("WARNING: Invalid rule expression ",'"'+rule+'"')
+        return False
+
+    #print(opening,",",closing)
+    #print(tagstring)
+    #print(tagvalue)
+    #print(rule)
+
+    #print(eval(rule,{"__builtins__": {}}))
+    #print(eval(newrule))
+
+
+
+#if __name__ == "__main__":
+#    result=parse_rule(sys.argv[1],{ "ManufacturerModelName": "Trio" })
+#    print(result)
+#    sys.exit(result)
+
+# Example: "('Tr' in @ManufacturerModelName@) | (@ManufacturerModelName@ == 'Trio')"

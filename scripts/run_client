@@ -5,7 +5,7 @@ testdata=/home/blockk/testdata/
 echo "Sending DICOMs now..."
 
 start=`date +%s`
-dcmsend +sd +crf "list.txt" 127.0.0.1 4242 $testdata/*.dcm
+dcmsend +sd +crf "list.txt" 127.0.0.1 4242 $testdata/test2/*.dcm
 end=`date +%s`
 
 runtime=$((end-start))

@@ -17,8 +17,8 @@ hermes_defaults = {
     'series_complete_trigger'  : 60,
     'graphite_ip'              : '',
     'graphite_port'            : 2003,
-    "destinations"             : [ ],
-    "rules"                    : [ ]
+    "destinations"             : {},
+    "rules"                    : {}
 }
 
 hermes = {}
