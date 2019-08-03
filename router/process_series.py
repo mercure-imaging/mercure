@@ -87,10 +87,25 @@ def process_series(series_UID):
 def get_routing_targets(tagList):
     selected_targets = {}
 
+    for current_rule in config.hermes["rules"]:
+        try:
+            if config.hermes["rules"][current_rule].get("disabled","False")=="True":
+                continue
+            if current_rule in selected_targets:
+                continue
+            if parse_rule(config.hermes["rules"][current_rule].get("rule","False"),tagList):
+                target=config.hermes["rules"][current_rule].get("target","")
+                if target:
+                    selected_targets[target]=current_rule
+        except:
+            print("ERROR: Invalid rule found: ", current_rule) 
+            continue
+        
+    print("Selected routing:")
+    print(selected_targets)
+
     #selected_targets['aidoc']='RuleA'
     #selected_targets['B']='RuleB'
-
-    # TODO: Evaluate the routing rules
 
     return selected_targets
 
@@ -156,10 +171,11 @@ def push_series_outgoing(fileList,transfer_targets):
         # Generate destination file destination.json
         destination_filename = target_folder + "destination.json"
         destination_json = {}
+
         destination_json["destination_ip"]        =config.hermes["destinations"][target]["ip"]
         destination_json["destination_port"]      =config.hermes["destinations"][target]["port"]                      
-        destination_json["destination_aet_target"]=config.hermes["destinations"][target]["aet_target"]
-        destination_json["destination_aec_source"]=config.hermes["destinations"][target]["aet_source"]
+        destination_json["destination_aet_target"]=config.hermes["destinations"][target].get("aet_target","ANY-SCP")
+        destination_json["destination_aec_source"]=config.hermes["destinations"][target].get("aet_source","HERMES")
         destination_json["destination_name"]      =target
         destination_json["applied_rule"]          =transfer_targets[target]
 
@@ -192,9 +208,11 @@ def push_series_outgoing(fileList,transfer_targets):
             return 
 
 
+safe_eval_cmds={"float": float, "int": int, "str": str}
 
 def parse_rule(rule,tags):
     try:
+        print("Rule: ",rule)
         while len(rule)>0:
             opening=rule.find("@")
             if opening<0:
@@ -208,19 +226,14 @@ def parse_rule(rule,tags):
             else:
                 tagvalue="MissingTag"
             rule=rule.replace("@"+tagstring+"@","'"+tagvalue+"'")
-            
-        return eval(rule,{"__builtins__": {}})
+
+        print("Evaluated: ",rule)
+        result=eval(rule,{"__builtins__": {}},safe_eval_cmds)
+        print("Result: ",result)
+        return result
     except:
         print("WARNING: Invalid rule expression ",'"'+rule+'"')
         return False
-
-    #print(opening,",",closing)
-    #print(tagstring)
-    #print(tagvalue)
-    #print(rule)
-
-    #print(eval(rule,{"__builtins__": {}}))
-    #print(eval(newrule))
 
 
 
