@@ -1,6 +1,11 @@
 daiquiri
 pydicom
 graphyte
+
+# documentation
 sphinx
 sphinx-rtd-theme
+
+# testing
 pytest
+pyfakefs
