@@ -151,7 +151,7 @@ def push_series_outgoing(fileList,series_UID,transfer_targets):
 
         current_target=current_target+1
 
-        if not target in config.hermes["destinations"]:
+        if not target in config.hermes["targets"]:
             print("ERROR: Invalid target selected ",target)
             continue                    
 
@@ -185,22 +185,22 @@ def push_series_outgoing(fileList,series_UID,transfer_targets):
             print('ERROR: Unable to create lock file ',lock_file)
             return         
 
-        # Generate destination file destination.json
-        destination_filename = target_folder + "destination.json"
-        destination_json = {}
+        # Generate target file target.json
+        target_filename = target_folder + "target.json"
+        target_json = {}
 
-        destination_json["destination_ip"]        =config.hermes["destinations"][target]["ip"]
-        destination_json["destination_port"]      =config.hermes["destinations"][target]["port"]                      
-        destination_json["destination_aet_target"]=config.hermes["destinations"][target].get("aet_target","ANY-SCP")
-        destination_json["destination_aec_source"]=config.hermes["destinations"][target].get("aet_source","HERMES")
-        destination_json["destination_name"]      =target
-        destination_json["applied_rule"]          =transfer_targets[target]
+        target_json["target_ip"]        =config.hermes["targets"][target]["ip"]
+        target_json["target_port"]      =config.hermes["targets"][target]["port"]                      
+        target_json["target_aet_target"]=config.hermes["targets"][target].get("aet_target","ANY-SCP")
+        target_json["target_aec_source"]=config.hermes["targets"][target].get("aet_source","HERMES")
+        target_json["target_name"]      =target
+        target_json["applied_rule"]     =transfer_targets[target]
 
         try:
-            with open(destination_filename, 'w') as destination_file:
-                json.dump(destination_json, destination_file)            
+            with open(target_filename, 'w') as target_file:
+                json.dump(target_json, target_file)            
         except:
-            print("ERROR: Unable to create destination file " + destination_filename)
+            print("ERROR: Unable to create target file " + target_filename)
             continue
 
         if move_operation:

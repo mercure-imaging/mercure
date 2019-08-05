@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block content %}
+<main role="main">
+  <div class="container">
+    <h1 class="title">DICOM Targets</h1>
+    {% for x in targets %}
+    <div class="card rulecard">
+        <header class="card-header has-background-light" >
+            <p class="card-header-title card-toggle">
+                <span class="icon"><i class="fas fa-hdd fa-lg"></i></span>&nbsp;&nbsp;{{ x }}
+            </p>
+            <a class="card-header-icon card-toggle">
+                <i class="fa fa-angle-down"></i>
+            </a>          
+        </header>
+        <div class="card-content rulecard-content is-hidden">
+            <div class="content">
+                <table class="table is-narrow" style="margin-bottom: 8px;">
+                <tr><td>IP:</td><td>{{ targets[x]['ip'] }}</td></tr>
+                <tr><td>Port:</td><td>{{ targets[x]['port'] }}</td></tr>
+                <tr><td>AET Source:</td><td>{{ targets[x]['aet_source'] }}</td></tr>
+                <tr><td>AET Target:</td><td>{{ targets[x]['aet_target'] }}</td></tr>
+                <tr><td>Contact:</td><td>{{ targets[x]['contact'] }}</td></tr>
+                </table>
+                <div class="buttons is-right">                        
+                    <span class="button is-link"><i class="fas fa-satellite-dish"></i>&nbsp;Test</span>
+                    {% if is_admin %}
+                    <span class="button is-success"><i class="fas fa-pen"></i>&nbsp;Edit</span>
+                    <span class="button is-danger"><i class="fas fa-trash-alt"></i>&nbsp;Delete</span>
+                    {% endif %}
+                </div>                
+            </div>
+        </div>                                                            
+    </div>                                                
+    {% endfor %}            
+    {% if is_admin %}
+    <div class="buttons is-left" style="margin-top: 20px;">
+        <a class="button is-success" href="" ><i class="fas fa-plus"></i>&nbsp;Add New</a>
+    </div>        
+    {% endif %}
+  </div>
+</main>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+	let cardToggles = document.getElementsByClassName('card-toggle');
+	for (let i = 0; i < cardToggles.length; i++) {
+		cardToggles[i].addEventListener('click', e => {
+			e.currentTarget.parentElement.parentElement.childNodes[3].classList.toggle('is-hidden');
+		});
+	}
+});
+</script>
+
+{% endblock %}

@@ -5,29 +5,85 @@
   <div class="container">
     <h1 class="title">Routing Rules</h1>
     {% for x in rules %}
-    <div class="card">
-        <header class="card-header">
-            <p class="card-header-title">
-            {{ x }}
+    <div class="card rulecard">
+        <header class="card-header has-background-light" >
+            <p class="card-header-title card-toggle">
+                <span class="icon {% if rules[x]['disabled']!='True' %}has-text-success{% else %}has-text-grey-light{% endif %}"><i class="fas fa-share fa-lg"></i></span>&nbsp;&nbsp;{{ x }}
             </p>
             <a class="card-header-icon card-toggle">
                 <i class="fa fa-angle-down"></i>
             </a>          
         </header>
-        <div class="card-content  is-hidden">
+        <div class="card-content rulecard-content is-hidden">
             <div class="content">
-                <table class="table is-narrow">
+                <table class="table is-narrow" style="margin-bottom: 8px;">
+                <tr><td>Rule:</td><td>{{ rules[x]['rule'] }}</td></tr>
                 <tr><td>Target:</td><td>{{ rules[x]['target'] }}</td></tr>
                 <tr><td>Disabled:</td><td>{{ rules[x]['disabled'] }}</td></tr>
                 <tr><td>Contact:</td><td>{{ rules[x]['contact'] }}</td></tr>
                 <tr><td>Comment:</td><td>{{ rules[x]['comment'] }}</td></tr>
-                <tr><td>Rule:</td><td>{{ rules[x]['rule'] }}</td></tr>
                 </table>
+                <div class="buttons is-right">
+                    {% if is_admin %}
+                    <a class="button is-success" href="/rules/edit/{{x}}" ><i class="fas fa-pen"></i>&nbsp;Edit</a>
+                    <button class="button is-danger" id="confirm-me" value="{{x}}" onclick="confirmDelete(this.value)"><i class="fas fa-trash-alt"></i>&nbsp;Delete</button>
+                    {% endif %}
+                </div>                
             </div>
-        </div>                                                       
+        </div>                                                            
     </div>                                                
     {% endfor %}            
+    {% if is_admin %}
+    <div class="buttons is-left" style="margin-top: 20px;">
+        <button class="button is-success" onclick="showAddModal()"><i class="fas fa-plus"></i>&nbsp;Add New</button>
+    </div>        
+    {% endif %}
   </div>
+
+    <div class="modal" id="deletemodal">
+        <div class="modal-background"></div>
+        <div class="modal-card">
+            <header class="modal-card-head">
+                <p class="modal-card-title">Delete rule?</p>
+            </header>            
+            <section class="modal-card-body">
+                <div class="field">                
+                        Are you sure to delete the rule? This cannot be undone.
+                </div>
+                <div class="field" style="margin-top: 20px;">                
+                    <p class="control">
+                        <button id="confirmmodal" class="button is-danger">Delete</button>
+                        <button id="closemodal" class="button">Cancel</button>
+                    </p>
+                </div>
+            </section>
+        </div>
+    </div>
+    <div class="modal" id="addmodal">
+            <div class="modal-background"></div>
+            <div class="modal-card">
+                <header class="modal-card-head">
+                    <p class="modal-card-title">Add new rule</p>
+                </header>            
+                <section class="modal-card-body">
+
+                <form method="post">
+                    <div class="field">
+                        <p class="control">
+                        <input class="input" id="addnewname" type="text" required pattern="[A-Za-z0-9]+" placeholder="Name of rule" name="name" autofocus>
+                        </p>
+                    </div>
+                    <div class="field">
+                        <p class="control" style="margin-top: 20px;">
+                            <button id="confirmaddmodal" class="button is-success">Create</button>
+                            <a id="closeaddmodal" class="button">Cancel</a>
+                        </p>
+                    </div>
+                </form>
+                </section>
+            </div>
+        </div>
+    
 </main>
 
 <script>
@@ -38,6 +94,40 @@ document.addEventListener('DOMContentLoaded', function() {
 			e.currentTarget.parentElement.parentElement.childNodes[3].classList.toggle('is-hidden');
 		});
 	}
+});
+
+
+function showAddModal(val) { 
+    $("#addnewname").val("");
+    $("#addmodal").addClass("is-active");
+}
+
+
+var ruleToDelete = "";
+
+function confirmDelete(val) { 
+    $("#deletemodal").addClass("is-active");
+    ruleToDelete=val;
+}
+
+$(function () {
+
+    $('#closeaddmodal').click(function () { 
+        $("#addmodal").removeClass("is-active");  
+    })   
+
+    $('#closemodal').click(function () { 
+        $("#deletemodal").removeClass("is-active");  
+    })   
+
+    $('#confirmmodal').click(function () { 
+        $("#deletemodal").removeClass("is-active");
+
+        var url = '/rules/delete/'+ruleToDelete;
+        var form = $('<form action="' + url + '" method="post"></form>');
+        $('body').append(form);
+        form.submit();        
+    })           
 });
 </script>
 

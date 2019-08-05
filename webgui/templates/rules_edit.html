@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block content %}
+<main role="main">
+  <div class="container">
+    <h1 class="title">Edit Rule - {{rule}}</h1>
+
+    <form method="post">
+        <div class="field">
+            <label class="label">Routing Rule</label>
+            <div class="control">
+                <input name="rule" class="input" autocomplete='off' type="text" placeholder="Routing rule" value="{{rules[rule]['rule']}}">
+            </div>
+        </div>        
+        <div class="field">
+            <label class="label">Target</label>
+            <div class="select">
+                <div class="control">
+                    <select name="target">
+                        {% for t in targets %}
+                        <option value="{{t}}" {% if rules[rule]['target']==t %}selected{% endif%}>{{ t }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </div>                
+        <div class="field">
+            <label class="label">Disabled</label>
+            <div class="select">
+                <div class="control">
+                    <select name="disabled">
+                        <option value="False" {% if rules[rule]['disabled']!='True' %}selected{% endif%}>False</option>
+                        <option value="True" {% if rules[rule]['disabled']=='True' %}selected{% endif%}>True</option>
+                    </select>
+                </div>
+            </div>
+        </div>      
+        <div class="field">
+            <label class="label">Contact Email</label>
+            <div class="control">
+                <input name="contact" class="input" autocomplete='off' type="email" placeholder="Email address" value="{{rules[rule]['contact']}}">
+            </div>
+        </div>            
+        <div class="field">
+            <label class="label">Comment</label>
+            <div class="control">
+                <textarea name="comment" class="textarea" autocomplete='off' placeholder="Rule description">{{rules[rule]['comment']}}</textarea>
+            </div>
+        </div>
+        <div class="field">
+            <p class="control buttons" style="margin-top: 30px;">
+            <button type="submit" class="button is-success" value="default action">
+                <i class="fas fa-save"></i>&nbsp;Save
+            </button>
+            <a class="button" href="/rules" ><i class="fas fa-ban"></i>&nbsp;Cancel</a>
+            </p>
+        </div>
+    </form>
+  </div>
+</main>
+
+{% endblock %}

@@ -9,8 +9,10 @@
     <title>Hermes</title>
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.7.5/css/bulma.min.css">
-    <script defer src="https://use.fontawesome.com/releases/v5.3.1/js/all.js"></script>
+    <script defer src="https://use.fontawesome.com/releases/v5.9.0/js/all.js"></script>
     <link href="{{ url_for('static', path='/css/custom.css') }}" rel="stylesheet">
+    <script src="{{ url_for('static', path='/js/jquery-3.3.1.slim.min.js') }}"></script>    
+    <script src="{{ url_for('static', path='/js/intercooler-1.2.2.js') }}"></script>         
   </head>
 
   <body>
@@ -29,23 +31,23 @@
         <div id="navbarMainMenu" class="navbar-menu">
           <div class="navbar-start">
             {% if logged_in %}
-            <a class="navbar-item {% if request.path != "/" %}has-text-grey{% endif %}" href="/">
+            <a class="navbar-item {% if request.path != "/" %}has-text-grey-light{% endif %}" href="/">
               Overview
             </a>
-            <a class="navbar-item {% if request.path != "/logs" %}has-text-grey{% endif %}" href="/logs">
-              Logs
-            </a>
-            <a class="navbar-item {% if request.path != "/rules" %}has-text-grey{% endif %}" href="/rules">
+            <a class="navbar-item {% if request.path != "/rules" %}has-text-grey-light{% endif %}" href="/rules">
               Rules
             </a>
-            <a class="navbar-item {% if request.path != "/destinations" %}has-text-grey{% endif %}" href="/destinations">
-              Destinations
+            <a class="navbar-item {% if request.path != "/targets" %}has-text-grey-light{% endif %}" href="/targets">
+              Targets
+            </a>
+            <a class="navbar-item {% if request.path != "/logs" %}has-text-grey-light{% endif %}" href="/logs">
+              Logs
             </a>
             {% if is_admin %}
-            <a class="navbar-item {% if request.path != "/users" %}has-text-grey{% endif %}" href="/users">
+            <a class="navbar-item {% if request.path != "/users" %}has-text-grey-light{% endif %}" href="/users">
               Users
             </a>
-            <a class="navbar-item {% if request.path != "/configuration" %}has-text-grey{% endif %}" href="/configuration">
+            <a class="navbar-item {% if request.path != "/configuration" %}has-text-grey-light{% endif %}" href="/configuration">
               Configuration
             </a>
             {% endif %}            
@@ -78,10 +80,10 @@
     </section>
     <footer class="footer">
         <div class="content has-text-centered">
-          <p>Hermes DICOM Router &minus; Version 0.1a</p>
+          <p>Hermes DICOM Router &minus; Version 0.1a<br />
+         <a href="">https://hermes-router.github.io</a></p>
         </div>
       </footer>    
-      <script src="{{ url_for('static', path='/js/jquery-3.3.1.slim.min.js') }}"></script>    
 
       <script>
       $(document).ready(function() {

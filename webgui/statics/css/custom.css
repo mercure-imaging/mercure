@@ -1,0 +1,12 @@
+.rulecard {
+    margin-bottom: 10px;
+}
+
+.rulecard-content {
+    padding: 10px;
+}
+
+.modal-card-head {
+    border-top-left-radius: 0px;
+    border-top-right-radius: 0px;
+}

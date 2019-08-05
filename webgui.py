@@ -63,49 +63,105 @@ app.add_middleware(AuthenticationMiddleware, backend=SessionAuthBackend())
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 
 
+def get_user_information(request):
+    return { "logged_in": request.user.is_authenticated, "user": request.user.display_name, "is_admin": request.user.is_admin }
+
+
 @app.route('/logs')
 @requires('authenticated', redirect='login')
-async def configuration(request):
+async def logs(request):
     template = "generic.html"
-    context = {"request": request, "logged_in": request.user.is_authenticated, "user": request.user.display_name, "is_admin": request.user.is_admin }
+    context = {"request": request}
+    context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
 
 
 @app.route('/rules')
 @requires('authenticated', redirect='login')
-async def configuration(request):
+async def rules(request):
     try: 
         config.read_config()
     except:
         return PlainTextResponse('Configuration is being updated. Try again in a minute.')
 
     template = "rules.html"
-    context = {"request": request, "logged_in": request.user.is_authenticated, "user": request.user.display_name, "is_admin": request.user.is_admin,
-                "rules": config.hermes["rules"]}
+    context = {"request": request, "rules": config.hermes["rules"]}
+    context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
 
 
-@app.route('/destinations')
+@app.route('/rules/edit/{rule}', methods=["GET"])
+@requires(['authenticated','admin'], redirect='login')
+async def rules_edit(request):
+    try: 
+        config.read_config()
+    except:
+        return PlainTextResponse('Configuration is being updated. Try again in a minute.')
+
+    rule=request.path_params["rule"]
+    template = "rules_edit.html"
+    context = {"request": request, "rules": config.hermes["rules"], "targets": config.hermes["targets"], "rule": rule}
+    context.update(get_user_information(request))
+    return templates.TemplateResponse(template, context)    
+
+
+@app.route('/rules/edit/{rule}', methods=["POST"])
+@requires(['authenticated','admin'], redirect='login')
+async def rules_edit_post(request):
+    try: 
+        config.read_config()
+    except:
+        return PlainTextResponse('Configuration is being updated. Try again in a minute.')
+
+    rule=request.path_params["rule"]
+    form = dict(await request.form())
+
+    return JSONResponse(form)    
+
+
+@app.route('/rules/delete/{rule}', methods=["POST"])
+@requires(['authenticated','admin'], redirect='login')
+async def rules_delete_post(request):
+    try: 
+        config.read_config()
+    except:
+        return PlainTextResponse('Configuration is being updated. Try again in a minute.')
+    
+    rule=request.path_params["rule"]    
+    print("User wants to delete rule ",rule)
+
+    return RedirectResponse(url='/rules', status_code=303)   
+
+
+@app.route('/targets')
 @requires('authenticated', redirect='login')
-async def configuration(request):
-    template = "generic.html"
-    context = {"request": request, "logged_in": request.user.is_authenticated, "user": request.user.display_name, "is_admin": request.user.is_admin }
+async def targets(request):
+    try: 
+        config.read_config()
+    except:
+        return PlainTextResponse('Configuration is being updated. Try again in a minute.')
+
+    template = "targets.html"
+    context = {"request": request, "targets": config.hermes["targets"]}
+    context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
 
 
 @app.route('/users')
-@requires(['authenticated','admin'], redirect='login')
-async def configuration(request):
+@requires(['authenticated','admin'], redirect='homepage')
+async def users(request):
     template = "generic.html"
-    context = {"request": request, "logged_in": request.user.is_authenticated, "user": request.user.display_name, "is_admin": request.user.is_admin }
+    context = {"request": request}
+    context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
 
 
 @app.route('/configuration')
-@requires('authenticated', redirect='login')
+@requires(['authenticated','admin'], redirect='homepage')
 async def configuration(request):
     template = "generic.html"
-    context = {"request": request, "logged_in": request.user.is_authenticated, "user": request.user.display_name, "is_admin": request.user.is_admin }
+    context = {"request": request}
+    context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
 
 
@@ -143,7 +199,8 @@ async def logout(request):
 @requires('authenticated', redirect='login')
 async def homepage(request):
     template = "index.html"
-    context = {"request": request, "logged_in": request.user.is_authenticated, "user": request.user.display_name, "is_admin": request.user.is_admin }
+    context = {"request": request}
+    context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
 
 

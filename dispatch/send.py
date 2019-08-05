@@ -19,24 +19,24 @@ from common.helper import is_ready_for_sending
 logger = daiquiri.getLogger("send")
 
 
-def _read_destination(folder):
-    destination_file = Path(folder) / "destination.json"
-    if destination_file.exists():
-        with open(destination_file, "r") as f:
+def _read_target(folder):
+    target_file = Path(folder) / "target.json"
+    if target_file.exists():
+        with open(target_file, "r") as f:
             return json.load(f)
     else:
-        raise FileNotFoundError(f"File destination.json not found in folder {folder}")
+        raise FileNotFoundError(f"File target.json not found in folder {folder}")
 
 
 def _create_command(folder):
-    destination = _read_destination(folder)
-    destination_ip = destination["destination_ip"]
-    destination_aet_target = destination["destination_aet_target"]
-    destination_aet_source = destination["destination_aet_source"]    
-    destination_port = destination["destination_port"]
+    target = _read_target(folder)
+    target_ip = target["target_ip"]
+    target_aet_target = target["target_aet_target"]
+    target_aet_source = target["target_aet_source"]    
+    target_port = target["target_port"]
     dcmsend_status_file = Path(folder) / "sent.txt"
-    command = f"dcmsend {destination_ip} {destination_port} +sd {folder} \
-            -aet {destination_aet_source} -aec {destination_aet_target} -nuc \
+    command = f"dcmsend {target_ip} {target_port} +sd {folder} \
+            -aet {target_aet_source} -aec {target_aet_target} -nuc \
             +sp '*.dcm' -to 60 +crf {dcmsend_status_file}"
     return command
 

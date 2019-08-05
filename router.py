@@ -68,6 +68,8 @@ def runRouter(args):
     print('Files found     = ',filecount)
     print('Series found    = ',len(series))
     print('Complete series = ',len(completeSeries))
+    helper.g_log('incoming.files', filecount)
+    helper.g_log('incoming.series', len(series))
     
     for entry in sorted(completeSeries):
         try:

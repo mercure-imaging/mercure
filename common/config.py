@@ -18,7 +18,7 @@ hermes_defaults = {
     'series_complete_trigger'  : 60,
     'graphite_ip'              : '',
     'graphite_port'            : 2003,
-    "destinations"             : {},
+    "targets"                  : {},
     "rules"                    : {}
 }
 
@@ -59,7 +59,7 @@ def read_config():
             # Now merge with values loaded from configuration file
             hermes.update(loaded_config)
 
-            # TODO: Check configuration for errors (esp destinations and rules)
+            # TODO: Check configuration for errors (esp targets and rules)
 
             # Check if directories exist
             if not checkFolders():
