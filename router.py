@@ -90,11 +90,6 @@ if __name__ == '__main__':
     print("----------------------------")
     print("")
 
-    if len(sys.argv) < 2:
-        print("Usage: router.py [configuration file] [optional: instance name]")
-        print("")
-        sys.exit()
-
     # Register system signals to be caught
     signal.signal(signal.SIGINT,   terminateProcess)
     signal.signal(signal.SIGQUIT,  receiveSignal)
@@ -114,14 +109,13 @@ if __name__ == '__main__':
 
     instance_name="main"
 
-    if len(sys.argv)>2:
-        instance_name=sys.argv[2]
+    if len(sys.argv)>1:
+        instance_name=sys.argv[1]
 
     print(sys.version)
     print('Instance name = ',instance_name)
     print('Instance PID = ', os.getpid())
 
-    config.configuration_filename=sys.argv[1]
     try:
         config.read_config()
     except Exception as e: 

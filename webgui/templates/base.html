@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <title>Hermes</title>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.7.5/css/bulma.min.css">
+    <script defer src="https://use.fontawesome.com/releases/v5.3.1/js/all.js"></script>
+    <link href="{{ url_for('static', path='/css/custom.css') }}" rel="stylesheet">
+  </head>
+
+  <body>
+      <nav class="navbar is-dark" role="navigation" aria-label="main navigation">
+          <div class="container">
+        <div class="navbar-brand">
+          <a class="navbar-item has-text-success is-size-5" href="/">
+            <strong><i class="fas fa-paper-plane"></i> Hermes</strong>
+          </a>            
+          <a role="button" class="navbar-burger burger" aria-label="menu" aria-expanded="false" data-target="navbarMainMenu">
+            <span aria-hidden="true"></span>
+            <span aria-hidden="true"></span>
+            <span aria-hidden="true"></span>
+          </a>
+        </div>            
+        <div id="navbarMainMenu" class="navbar-menu">
+          <div class="navbar-start">
+            {% if logged_in %}
+            <a class="navbar-item {% if request.path != "/" %}has-text-grey{% endif %}" href="/">
+              Overview
+            </a>
+            <a class="navbar-item {% if request.path != "/logs" %}has-text-grey{% endif %}" href="/logs">
+              Logs
+            </a>
+            <a class="navbar-item {% if request.path != "/rules" %}has-text-grey{% endif %}" href="/rules">
+              Rules
+            </a>
+            <a class="navbar-item {% if request.path != "/destinations" %}has-text-grey{% endif %}" href="/destinations">
+              Destinations
+            </a>
+            {% if is_admin %}
+            <a class="navbar-item {% if request.path != "/users" %}has-text-grey{% endif %}" href="/users">
+              Users
+            </a>
+            <a class="navbar-item {% if request.path != "/configuration" %}has-text-grey{% endif %}" href="/configuration">
+              Configuration
+            </a>
+            {% endif %}            
+            {% endif %}
+          </div>
+          {% if logged_in %}
+          <div class="navbar-end">
+            <div class="navbar-item has-dropdown is-hoverable">
+              <a class="navbar-link">User: {{ user }}</a>
+              <div class="navbar-dropdown">
+                <a class="navbar-item">
+                  Preferences
+                </a>
+                <hr class="navbar-divider">
+                <a class="navbar-item" href="/logout">
+                  Logout
+                </a>
+              </div>
+            </div>
+          </div>            
+          {% endif %}
+        </div>
+      </div>
+    </nav>
+      
+    <section class="section">
+      <div class="container">
+        {% block content %}{% endblock %}
+      </div>
+    </section>
+    <footer class="footer">
+        <div class="content has-text-centered">
+          <p>Hermes DICOM Router &minus; Version 0.1a</p>
+        </div>
+      </footer>    
+      <script src="{{ url_for('static', path='/js/jquery-3.3.1.slim.min.js') }}"></script>    
+
+      <script>
+      $(document).ready(function() {
+        // Check for click events on the navbar burger icon
+        $(".navbar-burger").click(function() {
+            // Toggle the "is-active" class on both the "navbar-burger" and the "navbar-menu"
+            $(".navbar-burger").toggleClass("is-active");
+            $(".navbar-menu").toggleClass("is-active");
+        });
+      });        
+      </script>
+  </body>
+</html>

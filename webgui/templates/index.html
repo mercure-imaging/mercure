@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block content %}
+<main role="main">
+
+  <div class="container">
+
+    <h1 class="title">System Status</h1>
+
+    <div class="container">
+        <div class="columns">
+          <div class="column is-one-third">    
+            Receiver: <progress class="progress is-primary" max="100">15%</progress>
+            Router: <progress class="progress is-danger" max="100">30%</progress>
+            Dispatcher: <progress class="progress is-dark" max="100">45%</progress>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</main>
+{% endblock %}

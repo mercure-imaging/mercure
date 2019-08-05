@@ -9,6 +9,7 @@ import shutil
 # App-specific includes
 import common.helper as helper
 import common.config as config
+import common.rule_evaluation as rule_evaluation
 
 
 class FileLock:     
@@ -43,7 +44,7 @@ def process_series(series_UID):
         print('ERROR: Unable to create lock file ',lock_file)
         return 
 
-    print('Now processing series ',series_UID)
+    print('Processing series ',series_UID)
 
     fileList = []    
     seriesPrefix=series_UID+"#"
@@ -72,9 +73,9 @@ def process_series(series_UID):
     transfer_targets = get_routing_targets(tagsList)    
 
     if len(transfer_targets)==0:
-        push_series_discard(fileList)
+        push_series_discard(fileList,series_UID)
     else:
-        push_series_outgoing(fileList,transfer_targets)
+        push_series_outgoing(fileList,series_UID,transfer_targets)
 
     try:
         lock.free()
@@ -93,26 +94,36 @@ def get_routing_targets(tagList):
                 continue
             if current_rule in selected_targets:
                 continue
-            if parse_rule(config.hermes["rules"][current_rule].get("rule","False"),tagList):
+            if rule_evaluation.parse_rule(config.hermes["rules"][current_rule].get("rule","False"),tagList):
                 target=config.hermes["rules"][current_rule].get("target","")
                 if target:
                     selected_targets[target]=current_rule
-        except:
+        except Exception as e: 
+            print(e)  
             print("ERROR: Invalid rule found: ", current_rule) 
             continue
         
     print("Selected routing:")
     print(selected_targets)
-
-    #selected_targets['aidoc']='RuleA'
-    #selected_targets['B']='RuleB'
-
     return selected_targets
 
 
-def push_series_discard(fileList):
+def push_series_discard(fileList,series_UID):
     source_folder=config.hermes['incoming_folder'] + '/' 
     target_folder=config.hermes['discard_folder'] + '/' 
+
+    lock_file=Path(config.hermes['discard_folder'] + '/' + str(series_UID) + '.lock')
+    if lock_file.exists():
+        # Lock file exists in discard folder. This should normally not happen. Send alert.
+        print('ERROR: Stale lock file found in discard folder ',lock_file)
+        return
+
+    try:
+        lock=FileLock(lock_file)
+    except:
+        # Can't create lock file, so something must be seriously wrong
+        print('ERROR: Unable to create lock file ',lock_file)
+        return    
 
     for entry in fileList:
         try:
@@ -122,9 +133,15 @@ def push_series_discard(fileList):
             print(e)    
             print('ERROR: Problem during discarding file ',entry)    
             # TODO: Send alert
+    try:
+        lock.free()
+    except:
+        # Can't delete lock file, so something must be seriously wrong
+        print('ERROR: Unable to remove lock file ',lock_file)
+        return     
 
 
-def push_series_outgoing(fileList,transfer_targets):
+def push_series_outgoing(fileList,series_UID,transfer_targets):
     source_folder=config.hermes['incoming_folder'] + '/'   
 
     total_targets=len(transfer_targets)
@@ -206,44 +223,3 @@ def push_series_outgoing(fileList,transfer_targets):
             # Can't delete lock file, so something must be seriously wrong
             print('ERROR: Unable to remove lock file ',lock_file)
             return 
-
-
-safe_eval_cmds={"float": float, "int": int, "str": str}
-
-def parse_rule(rule,tags):
-    try:
-        print("Rule: ",rule)
-
-        # Run the substitue operation manually instead of using
-        # the standard string function to enforce that the values
-        # read from the tags are treated as strings by default
-        while len(rule)>0:
-            opening=rule.find("@")
-            if opening<0:
-                break
-            closing=rule.find("@",opening+1)
-            if closing<0:
-                break
-            tagstring=rule[opening+1:closing]
-            if tagstring in tags:
-                tagvalue=tags[tagstring]    
-            else:
-                tagvalue="MissingTag"
-            rule=rule.replace("@"+tagstring+"@","'"+tagvalue+"'")
-
-        print("Evaluated: ",rule)
-        result=eval(rule,{"__builtins__": {}},safe_eval_cmds)
-        print("Result: ",result)
-        return result
-    except Exception as e: 
-        print("ERROR: ",e)
-        print("WARNING: Invalid rule expression ",'"'+rule+'"')
-        return False
-
-
-#if __name__ == "__main__":
-#    result=parse_rule(sys.argv[1],{ "ManufacturerModelName": "Trio" })
-#    print(result)
-#    sys.exit(result)
-
-# Example: "('Tr' in @ManufacturerModelName@) | (@ManufacturerModelName@ == 'Trio')"

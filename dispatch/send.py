@@ -12,9 +12,7 @@ import sys
 from pathlib import Path
 from shlex import split
 from subprocess import CalledProcessError, run
-
 import daiquiri
-from pydicom import dcmread
 
 from common.helper import is_ready_for_sending
 
@@ -33,10 +31,12 @@ def _read_destination(folder):
 def _create_command(folder):
     destination = _read_destination(folder)
     destination_ip = destination["destination_ip"]
-    destination_aetitle = destination["destination_aetitle"]
+    destination_aet_target = destination["destination_aet_target"]
+    destination_aet_source = destination["destination_aet_source"]    
     destination_port = destination["destination_port"]
     dcmsend_status_file = Path(folder) / "sent.txt"
     command = f"dcmsend {destination_ip} {destination_port} +sd {folder} \
+            -aet {destination_aet_source} -aec {destination_aet_target} -nuc \
             +sp '*.dcm' -to 60 +crf {dcmsend_status_file}"
     return command
 
@@ -67,5 +67,6 @@ def execute(source_folder, success_folder, error_folder):
 
 
 if __name__ == "__main__":
-    result = execute(sys.argv[1], sys.argv[2], sys.argv[3])
+    result = 0
+    execute(sys.argv[1], sys.argv[2], sys.argv[3])
     sys.exit(result)

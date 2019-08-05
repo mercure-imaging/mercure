@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block content %}
+<main role="main">
+
+  <div class="container">
+    
+    <h1 class="title">Login</h1>
+
+    <div class="columns">
+      <div class="column"></div>
+      <div class="column is-two-thirds">
+        <form method="post">
+          <div class="field">
+            <p class="control has-icons-left has-icons-right">
+              <input class="input" type="text" placeholder="Username" name="username" autofocus>
+              <span class="icon is-small is-left">
+                <i class="fas fa-user"></i>
+              </span>
+            </p>
+          </div>
+          <div class="field">
+            <p class="control has-icons-left">
+              <input class="input" type="password" placeholder="Password" name="password">
+              <span class="icon is-small is-left">
+                <i class="fas fa-lock"></i>
+              </span>
+            </p>
+          </div>
+          <div class="field">
+            <p class="control">
+              <button type="submit" class="button is-success" value="default action">
+                Login
+              </button>
+            </p>
+          </div>
+        </form>
+      </div>
+      <div class="column"></div>
+    </div>
+
+    {% if invalid_password %}
+    <div class="container">
+      <div class="columns is-centered">
+        <div class="column  is-two-thirds">
+          <div class="notification is-danger">
+              Invalid username or password entered
+            </div>   
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+
+  </div> <!-- /container -->
+
+</main>
+{% endblock %}

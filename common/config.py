@@ -4,9 +4,10 @@ from pathlib import Path
 
 
 configuration_timestamp = 0
-configuration_filename  = "config.json"
+configuration_filename  = os.path.realpath(os.path.dirname(os.path.realpath(__file__))+'/../configuration/hermes.json')
 
 hermes_defaults = {
+    'appliance_name'           : 'Hermes Router',
     'incoming_folder'          : './incoming',
     'outgoing_folder'          : './outgoing',
     'success_folder'           : './success',
@@ -30,7 +31,8 @@ def read_config():
     configuration_file = Path(configuration_filename)
 
     # Check for existence of lock file
-    lock_file=Path(configuration_file.stem + '.lock')
+    lock_file=Path(configuration_file.parent/configuration_file.stem).with_suffix(".lock")
+
     if lock_file.exists():
         raise ResourceWarning(f"Configuration file locked: {lock_file}")
 

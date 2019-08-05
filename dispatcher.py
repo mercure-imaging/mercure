@@ -9,13 +9,14 @@ import signal
 import sys
 import time
 from pathlib import Path
-
 import daiquiri
+import graphyte
 
 import common.config as config
 import common.helper as helper
 from common.helper import has_been_send, is_ready_for_sending
 from dispatch.send import execute
+
 
 # Dispatcher version
 hermes_dispatcher_version = "0.1a"
@@ -30,8 +31,8 @@ def receiveSignal(signalNumber, frame):
 
 
 def terminateProcess(signalNumber, frame):
+    print('Shutdown requested')
     helper.triggerTerminate()
-    logger.info("Going down now")
 
 
 def dispatch(args):
@@ -69,11 +70,6 @@ if __name__ == "__main__":
     logger.info("----------------------------")
     logger.info("")
 
-    if len(sys.argv) != 2:
-        logger.info("Usage: dispatcher.py [configuration file]")
-        logger.info("")
-        sys.exit()
-
     # Register system signals to be caught
     signal.signal(signal.SIGINT, terminateProcess)
     signal.signal(signal.SIGQUIT, receiveSignal)
@@ -91,10 +87,14 @@ if __name__ == "__main__":
     # signal.signal(signal.SIGHUP,  readConfiguration)
     # signal.signal(signal.SIGKILL, receiveSignal)
 
+    instance_name="main"
+    if len(sys.argv)>1:
+        instance_name=sys.argv[1]
+
     logger.info(sys.version)
+    logger.info('Instance name = ',instance_name)
     logger.info("Router PID is:", os.getpid())
 
-    config.configuration_filename = sys.argv[1]
     try:
         config.read_config()
     except Exception as e:
@@ -103,9 +103,19 @@ if __name__ == "__main__":
         logger.info("")
         sys.exit(1)
 
+    graphite_prefix='hermes.dispatcher.'+instance_name
+
+    if len(config.hermes['graphite_ip']) > 0:
+        print('Sending events to graphite server: ',config.hermes['graphite_ip'])
+        graphyte.init(config.hermes['graphite_ip'], config.hermes['graphite_port'], prefix=graphite_prefix) 
+
     logger.info(f"Dispatching folder: {config.hermes['outgoing_folder']}")
 
     mainLoop = helper.RepeatedTimer(
         config.hermes["dispatcher_scan_interval"], dispatch, exit_dispatcher, {}
     )
     mainLoop.start()
+
+    # Start the asyncio event loop for asynchronous function calls
+    helper.loop.run_forever()
+    print('Going down now')

@@ -9,3 +9,12 @@ sphinx-rtd-theme
 # testing
 pytest
 pyfakefs
+
+# user interface
+aiofiles
+jinja2
+starlette
+uvicorn
+itsdangerous
+python-multipart
+
