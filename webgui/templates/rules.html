@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block content %}
+<main role="main">
+  <div class="container">
+    <h1 class="title">Routing Rules</h1>
+    {% for x in rules %}
+    <div class="card">
+        <header class="card-header">
+            <p class="card-header-title">
+            {{ x }}
+            </p>
+            <a class="card-header-icon card-toggle">
+                <i class="fa fa-angle-down"></i>
+            </a>          
+        </header>
+        <div class="card-content  is-hidden">
+            <div class="content">
+                <table class="table is-narrow">
+                <tr><td>Target:</td><td>{{ rules[x]['target'] }}</td></tr>
+                <tr><td>Disabled:</td><td>{{ rules[x]['disabled'] }}</td></tr>
+                <tr><td>Contact:</td><td>{{ rules[x]['contact'] }}</td></tr>
+                <tr><td>Comment:</td><td>{{ rules[x]['comment'] }}</td></tr>
+                <tr><td>Rule:</td><td>{{ rules[x]['rule'] }}</td></tr>
+                </table>
+            </div>
+        </div>                                                       
+    </div>                                                
+    {% endfor %}            
+  </div>
+</main>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+	let cardToggles = document.getElementsByClassName('card-toggle');
+	for (let i = 0; i < cardToggles.length; i++) {
+		cardToggles[i].addEventListener('click', e => {
+			e.currentTarget.parentElement.parentElement.childNodes[3].classList.toggle('is-hidden');
+		});
+	}
+});
+</script>
+
+{% endblock %}

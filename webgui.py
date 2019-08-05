@@ -52,7 +52,7 @@ class SessionAuthBackend(AuthenticationBackend):
 
 
 webgui_config = Config("webgui.env")
-SECRET_KEY = webgui_config('SECRET_KEY', cast=Secret)
+SECRET_KEY = webgui_config('SECRET_KEY', cast=Secret, default="NONE")
 WEBGUI_PORT = webgui_config('PORT', cast=int, default=8000)
 WEBGUI_HOST = webgui_config('HOST', default='0.0.0.0')
 templates = Jinja2Templates(directory='webgui/templates')
@@ -79,8 +79,9 @@ async def configuration(request):
     except:
         return PlainTextResponse('Configuration is being updated. Try again in a minute.')
 
-    template = "generic.html"
-    context = {"request": request, "logged_in": request.user.is_authenticated, "user": request.user.display_name, "is_admin": request.user.is_admin }
+    template = "rules.html"
+    context = {"request": request, "logged_in": request.user.is_authenticated, "user": request.user.display_name, "is_admin": request.user.is_admin,
+                "rules": config.hermes["rules"]}
     return templates.TemplateResponse(template, context)
 
 
@@ -181,6 +182,10 @@ if __name__ == "__main__":
         print(e)
         print("Cannot start service. Going down.")
         print("")
+        sys.exit(1)
+
+    if (SECRET_KEY=='NONE'):
+        print("ERROR: No secret key defined! Not starting service.")
         sys.exit(1)
 
     uvicorn.run(app, host=WEBGUI_HOST, port=WEBGUI_PORT)
