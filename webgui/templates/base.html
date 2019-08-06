@@ -31,23 +31,23 @@
         <div id="navbarMainMenu" class="navbar-menu">
           <div class="navbar-start">
             {% if logged_in %}
-            <a class="navbar-item {% if request.path != "/" %}has-text-grey-light{% endif %}" href="/">
+            <a class="navbar-item {% if page != "homepage" %}has-text-grey-light{% endif %}" href="/">
               Overview
             </a>
-            <a class="navbar-item {% if request.path != "/rules" %}has-text-grey-light{% endif %}" href="/rules">
+            <a class="navbar-item {% if page != "rules" %}has-text-grey-light{% endif %}" href="/rules">
               Rules
             </a>
-            <a class="navbar-item {% if request.path != "/targets" %}has-text-grey-light{% endif %}" href="/targets">
+            <a class="navbar-item {% if page != "targets" %}has-text-grey-light{% endif %}" href="/targets">
               Targets
             </a>
-            <a class="navbar-item {% if request.path != "/logs" %}has-text-grey-light{% endif %}" href="/logs">
+            <a class="navbar-item {% if page != "logs" %}has-text-grey-light{% endif %}" href="/logs">
               Logs
             </a>
             {% if is_admin %}
-            <a class="navbar-item {% if request.path != "/users" %}has-text-grey-light{% endif %}" href="/users">
+            <a class="navbar-item {% if page != "users" %}has-text-grey-light{% endif %}" href="/users">
               Users
             </a>
-            <a class="navbar-item {% if request.path != "/configuration" %}has-text-grey-light{% endif %}" href="/configuration">
+            <a class="navbar-item {% if page != "configuration" %}has-text-grey-light{% endif %}" href="/configuration">
               Configuration
             </a>
             {% endif %}            
@@ -58,8 +58,8 @@
             <div class="navbar-item has-dropdown is-hoverable">
               <a class="navbar-link">User: {{ user }}</a>
               <div class="navbar-dropdown">
-                <a class="navbar-item">
-                  Preferences
+                <a class="navbar-item" href="/settings">
+                  Settings
                 </a>
                 <hr class="navbar-divider">
                 <a class="navbar-item" href="/logout">
