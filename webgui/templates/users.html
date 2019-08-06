@@ -24,7 +24,7 @@
                 <div class="buttons is-right">                        
                     {% if is_admin %}
                     <a class="button is-success" href="/users/edit/{{x}}"><i class="fas fa-pen"></i>&nbsp;Edit</a>
-                    <button class="button is-danger" id="confirm-me" value="{{x}}" onclick="confirmDelete(this.value)" {% if user==x %}disabled{% endif %}><i class="fas fa-trash-alt"></i>&nbsp;Delete</button>
+                    <button class="button is-danger" id="confirm-me" value="{{x}}" onclick="confirmDelete(this.value)" {% if user==x %}disabled title="Cannot delete own account"{% endif %}><i class="fas fa-trash-alt"></i>&nbsp;Delete</button>
                     {% endif %}
                 </div>                
             </div>

@@ -2,6 +2,7 @@ import uvicorn
 import base64
 import binascii
 import sys
+import shutil
 from starlette.applications import Starlette
 from starlette.staticfiles import StaticFiles
 from starlette.responses import HTMLResponse
@@ -89,9 +90,9 @@ async def logs(request):
 ## Rules endpoints
 ###################################################################################
 
-@app.route('/rules')
+@app.route('/rules', methods=["GET"])
 @requires('authenticated', redirect='login')
-async def rules(request):
+async def show_rules(request):
     try: 
         config.read_config()
     except:
@@ -101,6 +102,26 @@ async def rules(request):
     context = {"request": request, "page": "rules", "rules": config.hermes["rules"]}
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
+
+
+@app.route('/rules', methods=["POST"])
+@requires(['authenticated','admin'], redirect='login')
+async def add_rule(request):
+    try: 
+        config.read_config()
+    except:
+        return PlainTextResponse('Configuration is being updated. Try again in a minute.')
+
+    form = dict(await request.form())
+    
+    newrule=form.get("name","")
+    if newrule in config.hermes["rules"]:
+        return PlainTextResponse('Rule already exists.')
+    
+    config.hermes["rules"][newrule]={ "rule": "False" }
+
+    print("Created rule ", newrule)
+    return RedirectResponse(url='/rules/edit/'+newrule, status_code=303)  
 
 
 @app.route('/rules/edit/{rule}', methods=["GET"])
@@ -126,10 +147,22 @@ async def rules_edit_post(request):
     except:
         return PlainTextResponse('Configuration is being updated. Try again in a minute.')
 
-    rule=request.path_params["rule"]
+    editrule=request.path_params["rule"]
     form = dict(await request.form())
 
-    return JSONResponse(form)    
+    if not editrule in config.hermes["rules"]:
+        return PlainTextResponse('Rule does not exist anymore.')
+
+    config.hermes["rules"][editrule]["rule"]=form["rule"]
+    config.hermes["rules"][editrule]["target"]=form["target"]
+    config.hermes["rules"][editrule]["disabled"]=form["disabled"]
+    config.hermes["rules"][editrule]["contact"]=form["contact"]
+    config.hermes["rules"][editrule]["comment"]=form["comment"]
+
+    # TODO: Save configuration
+
+    print("Edited rule ", editrule)
+    return RedirectResponse(url='/rules', status_code=303)   
 
 
 @app.route('/rules/delete/{rule}', methods=["POST"])
@@ -140,9 +173,12 @@ async def rules_delete_post(request):
     except:
         return PlainTextResponse('Configuration is being updated. Try again in a minute.')
     
-    rule=request.path_params["rule"]    
-    print("User wants to delete rule ",rule)
+    deleterule=request.path_params["rule"]    
+   
+    if deleterule in config.hermes["rules"]:
+        del config.hermes["rules"][deleterule]
 
+    print("Deleted rule ", deleterule)
     return RedirectResponse(url='/rules', status_code=303)   
 
 
@@ -150,18 +186,106 @@ async def rules_delete_post(request):
 ## Targets endpoints
 ###################################################################################
 
-@app.route('/targets')
+@app.route('/targets', methods=["GET"])
 @requires('authenticated', redirect='login')
-async def targets(request):
+async def show_targets(request):
     try: 
         config.read_config()
     except:
         return PlainTextResponse('Configuration is being updated. Try again in a minute.')
 
+    used_targets = {}
+    for rule in config.hermes["rules"]:
+        used_target=config.hermes["rules"][rule].get("target","NONE")
+        used_targets[used_target]=rule
+
     template = "targets.html"
-    context = {"request": request, "page": "targets", "targets": config.hermes["targets"]}
+    context = {"request": request, "page": "targets", "targets": config.hermes["targets"], "used_targets": used_targets}
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
+
+
+@app.route('/targets', methods=["POST"])
+@requires('authenticated', redirect='login')
+async def add_target(request):
+    try: 
+        config.read_config()
+    except:
+        return PlainTextResponse('Configuration is being updated. Try again in a minute.')
+
+    form = dict(await request.form())
+    
+    newtarget=form.get("name","")
+    if newtarget in config.hermes["targets"]:
+        return PlainTextResponse('Target already exists.')
+    
+    config.hermes["targets"][newtarget]={ "ip": "", "port": "" }
+
+    print("Created target ", newtarget)
+    return RedirectResponse(url='/targets/edit/'+newtarget, status_code=303)  
+
+
+@app.route('/targets/edit/{target}', methods=["GET"])
+@requires(['authenticated','admin'], redirect='login')
+async def targets_edit(request):
+    try: 
+        config.read_config()
+    except:
+        return PlainTextResponse('Configuration is being updated. Try again in a minute.')
+
+    edittarget=request.path_params["target"]
+
+    if not edittarget in config.hermes["targets"]:
+        return RedirectResponse(url='/targets', status_code=303) 
+
+    template = "targets_edit.html"
+    context = {"request": request, "page": "targets", "targets": config.hermes["targets"], "edittarget": edittarget}
+    context.update(get_user_information(request))
+    return templates.TemplateResponse(template, context)    
+
+
+@app.route('/targets/edit/{target}', methods=["POST"])
+@requires(['authenticated','admin'], redirect='login')
+async def targes_edit_post(request):
+    try: 
+        config.read_config()
+    except:
+        return PlainTextResponse('Configuration is being updated. Try again in a minute.')
+
+    edittarget=request.path_params["target"]
+    form = dict(await request.form())
+
+    if not edittarget in config.hermes["targets"]:
+        return PlainTextResponse('Target does not exist anymore.')
+
+    config.hermes["targets"][edittarget]["ip"]=form["ip"]
+    config.hermes["targets"][edittarget]["port"]=form["port"]
+    config.hermes["targets"][edittarget]["aet_target"]=form["aet_target"]
+    config.hermes["targets"][edittarget]["aet_source"]=form["aet_source"]
+    config.hermes["targets"][edittarget]["contact"]=form["contact"]
+
+    # TODO: Save configuration
+
+    print("Edited target ", edittarget)
+    return RedirectResponse(url='/targets', status_code=303)   
+
+
+@app.route('/targets/delete/{target}', methods=["POST"])
+@requires(['authenticated','admin'], redirect='login')
+async def targets_delete_post(request):
+    try: 
+        config.read_config()
+    except:
+        return PlainTextResponse('Configuration is being updated. Try again in a minute.')
+    
+    deletetarget=request.path_params["target"]
+
+    if deletetarget in config.hermes["targets"]:
+        del config.hermes["targets"][deletetarget]
+
+    print("Deleted target ", deletetarget)
+    return RedirectResponse(url='/targets', status_code=303)   
+
 
 
 ###################################################################################
@@ -358,8 +482,24 @@ async def logout(request):
 @app.route('/')
 @requires('authenticated', redirect='login')
 async def homepage(request):
+
+    used_space=0
+    free_space=0
+
+    try:
+        disk_total, disk_used, disk_free = shutil.disk_usage(config.hermes["incoming_folder"])
+
+        if (disk_total==0):
+            disk_total=1
+
+        used_space=100*disk_used/disk_total
+        free_space=(disk_free // (2**30))
+    except:
+        used_space=-1
+        free_space="N/A"    
+
     template = "index.html"
-    context = {"request": request, "page": "homepage"}
+    context = {"request": request, "page": "homepage", "used_space": used_space, "free_space": free_space }
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
 

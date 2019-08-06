@@ -4,15 +4,41 @@
 <main role="main">
 
   <div class="container">
-
     <h1 class="title">System Status</h1>
 
-    <div class="container">
-        <div class="columns">
+    <div class="columns">
+      <div class="column">    
+        <div class="field is-grouped is-grouped-multiline">
+          <div class="control">
+            <div class="tags has-addons">
+              <span class="tag is-dark">Receiver</span>
+              <span class="tag is-success">UP</span>
+            </div>
+          </div>
+          <div class="control">
+            <div class="tags has-addons">
+              <span class="tag is-dark">Router</span>
+              <span class="tag is-success">UP</span>
+            </div>
+          </div>
+          <div class="control">
+            <div class="tags has-addons">
+              <span class="tag is-dark">Dispatcher</span>
+              <span class="tag is-danger">DOWN</span>
+            </div>
+          </div>
+          <div class="control">
+            <div class="tags has-addons">
+              <span class="tag is-dark">Cleaner</span>
+              <span class="tag is-success">UP</span>
+            </div>
+          </div>  
+        </div>
+
+        <div class="columns" style="margin-top: 10px;">
           <div class="column is-one-third">    
-            Receiver: <progress class="progress is-primary" max="100">15%</progress>
-            Router: <progress class="progress is-danger" max="100">30%</progress>
-            Dispatcher: <progress class="progress is-dark" max="100">45%</progress>
+            <label class="label">Diskspace:</label>
+            <progress class="progress {% if used_space|int < 60 %}is-success{% else %}{% if used_space|int > 80 %} is-danger{% else %}is-warning{% endif %}{% endif %}" value="{{used_space}}" max="100"></progress>{{free_space}} GB available
           </div>
         </div>
       </div>
