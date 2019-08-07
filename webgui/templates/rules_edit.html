@@ -8,8 +8,20 @@
     <form method="post">
         <div class="field">
             <label class="label">Routing Rule</label>
+            <div class="field has-addons">
+                <div class="control is-expanded">
+                    <input name="rule" class="input" autocomplete='off' type="text" placeholder="Routing rule" value="{{rules[rule]['rule']}}">
+                </div>
+                <div class="control">
+                    <a class="button is-dark">
+                        <i class="fas fa-flask"></i>&nbsp;Test
+                    </a>
+                    <button class="button" type="button" onclick="showTagList()" style="border-top-left-radius: 4px; border-bottom-left-radius: 4px;">
+                        <i class="fab fa-sistrix"></i>&nbsp;Tags
+                    </button>
+                </div>            
+            </div>
             <div class="control">
-                <input name="rule" class="input" autocomplete='off' type="text" placeholder="Routing rule" value="{{rules[rule]['rule']}}">
             </div>
         </div>        
         <div class="field">
@@ -58,5 +70,59 @@
     </form>
   </div>
 </main>
+
+<div class="modal" id="taglist">
+    <div class="modal-background"></div>
+    <div class="modal-card">
+        <header class="modal-card-head">
+        <p class="modal-card-title">Information</p>
+        </header>
+        <section class="modal-card-body">
+                <div class="table-container">
+                    <label class="label">Examples:</label>
+                    <table class="table is-fullwidth is-hoverable is-bordered">
+                        <tr><td>(@Modality@ == 'MR') and ('GRASP' in @StudyDescription@)</td></tr>
+                        <tr><td>(float(@SeriesNumber@) > 100) or (@ScanningSequence@.lower()=='gr')</td></tr>
+                    </table>
+                </div>
+                <div class="table-container">
+                <label class="label">Available tags:</label>
+                <table class="table is-fullwidth is-hoverable is-bordered">
+                   <tr><td><button class="button is-small is-dark" value="@ModalityName@" onclick="copyTag(this.value)">Copy</button> &nbsp;&nbsp;@ModalityName@</td></tr>
+                   <tr><td><button class="button is-small is-dark" value="@SeriesName@" onclick="copyTag(this.value)">Copy</button> &nbsp;&nbsp;@SeriesName@</td></tr>
+                </table>
+            </div>
+            <input type="text" id="copyinput" value="test" style="display: none;">
+        </section>
+        <footer class="modal-card-foot buttons is-centered">
+            <button class="button" type="button" default autofocus id="closetaglist" onclick="closeTagList()">Close</button>
+        </footer>
+    </div>
+</div>
+
+<script>
+
+function showTagList() { 
+    $("#taglist").addClass("is-active");
+    $("#closetaglist").focus();
+}
+
+function closeTagList() { 
+    $("#taglist").removeClass("is-active");  
+}
+
+function copyTag(value) { 
+    $("#copyinput").val(value);
+    $("#copyinput").css("display","block");
+
+    var copyText = document.getElementById("copyinput");
+    copyText.select();
+    document.execCommand("copy");
+
+    $("#taglist").removeClass("is-active");  
+    $("#copyinput").css("display","none");
+}
+
+</script>
 
 {% endblock %}
