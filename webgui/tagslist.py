@@ -17,7 +17,7 @@ def read_tagslist():
             # Get the tag information and examplaric value from the INSERTTAG statements
             match = re.search(r'INSERTTAG\("([A-Z][a-zA-Z].*)"(.*)"(.*)"', l)
             if match:
-                alltags["@"+match.group(1)+"@"]=match.group(3)
+                alltags[match.group(1)]=match.group(3)
             # Stop the parsing when the next function is reached
             if "READTAG(TAG,VAR)" in l:
                 break

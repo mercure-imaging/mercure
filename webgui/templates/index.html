@@ -38,7 +38,7 @@
         <div class="columns" style="margin-top: 10px;">
           <div class="column is-one-third">    
             <label class="label">Diskspace:</label>
-            <progress class="progress {% if used_space|int < 60 %}is-success{% else %}{% if used_space|int > 80 %} is-danger{% else %}is-warning{% endif %}{% endif %}" value="{{used_space}}" max="100"></progress>{{free_space}} GB available
+            <progress class="progress {% if used_space|int < 60 %}is-success{% else %}{% if used_space|int > 80 %} is-danger{% else %}is-warning{% endif %}{% endif %}" value="{{used_space}}" max="100"></progress>{{free_space}} / {{total_space}} GB available
           </div>
         </div>
       </div>

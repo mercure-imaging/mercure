@@ -10,7 +10,7 @@
             <label class="label">Routing Rule</label>
             <div class="field has-addons">
                 <div class="control is-expanded">
-                    <input name="rule" class="input" autocomplete='off' type="text" placeholder="Routing rule" value="{{rules[rule]['rule']}}">
+                    <input name="rule" id="rule" pattern="[^{}\x22]+" class="input" autocomplete='off' type="text" placeholder="Routing rule" value="{{rules[rule]['rule']}}">
                 </div>
                 <div class="control">
                     <button class="button is-dark" type="button" onclick="showTestRule()">
@@ -75,7 +75,7 @@
     <div class="modal-background"></div>
     <div class="modal-card">
         <header class="modal-card-head">
-        <p class="modal-card-title">Information</p>
+        <p class="modal-card-title">Rule notation</p>
         </header>
         <section class="modal-card-body">
                 <div class="table-container">
@@ -89,7 +89,7 @@
                 <label class="label">Available tags:</label>
                 <table class="table is-fullwidth is-hoverable is-bordered">
                     {% for tag in sortedtags %}
-                   <tr><td><button class="button is-small is-dark" value="{{tag}}" onclick="copyTag(this.value)">Copy</button> &nbsp;&nbsp;{{tag}}</td></tr>
+                   <tr><td><button class="button is-small is-dark" value="@{{tag}}@" onclick="copyTag(this.value)">Copy</button> &nbsp;&nbsp;@{{tag}}@</td></tr>
                     {% endfor %}
                 </table>
             </div>
@@ -103,14 +103,26 @@
 
 <div class="modal" id="testrule">
     <div class="modal-background"></div>
-    <div class="modal-card">
+    <div class="modal-card" style="width: 960px;">
         <header class="modal-card-head">
         <p class="modal-card-title">Test routing rule</p>
         </header>
         <section class="modal-card-body">
+            <div class="container">
+                <div class="field">
+                    <label class="label">Values:</label>
+                    <div class="control">
+                        <textarea class="textarea has-fixed-size" rows="8" placeholder="Testing tags" id="testvalues" name="testvalues">{{alltags|tojson(indent=4)}}</textarea>
+                    </div>
+                </div>
+                <div class="field">
+                    <label class="label">Result:</label>
+                    <div id="testresult" style="height: 4em;"></div>
+                </div>    
+            </div>
         </section>
         <footer class="modal-card-foot buttons is-right">
-            <button class="button is-success" type="button" default autofocus id="evaltestrule" onclick=""><i class="fas fa-cogs"></i>&nbsp;Test</button>
+            <button class="button is-success" default autofocus id="evaltestrule" ic-post-to="/rules/test" ic-include="#testvalues" ic-global-include="#rule" ic-target="#testresult"><i class="fas fa-cogs"></i>&nbsp;Test</button>
             <button class="button" type="button" id="closetestrule" onclick="closeTestRule()">Close</button>
         </footer>
     </div>
@@ -118,7 +130,8 @@
     
 <script>
 
-function showTestRule() { 
+function showTestRule() {
+    $("#testresult").html("Rule not yet tested");
     $("#testrule").addClass("is-active");
     $("#evaltestrule").focus();
 }

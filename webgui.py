@@ -3,6 +3,7 @@ import base64
 import binascii
 import sys
 import shutil
+import json
 from starlette.applications import Starlette
 from starlette.staticfiles import StaticFiles
 from starlette.responses import HTMLResponse
@@ -23,6 +24,7 @@ from starlette.datastructures import URL, Secret
 # App-specific includes
 import common.helper as helper
 import common.config as config
+import common.rule_evaluation as rule_evaluation
 import webgui.users as users
 import webgui.tagslist as tagslist
 
@@ -183,6 +185,27 @@ async def rules_delete_post(request):
 
     print("Deleted rule ", deleterule)
     return RedirectResponse(url='/rules', status_code=303)   
+
+
+@app.route('/rules/test', methods=["POST"])
+@requires(['authenticated','admin'], redirect='login')
+async def rules_test(request):
+    try:
+        form = dict(await request.form())
+        testrule=form["rule"]
+        testvalues=json.loads(form["testvalues"])
+    except: 
+        return PlainTextResponse('<span class="tag is-warning is-medium ruleresult"><i class="fas fa-bug"></i>&nbsp;Error</span>&nbsp;&nbsp;Invalid test values')
+    
+    result=rule_evaluation.test_rule(testrule,testvalues)
+
+    if (result=="True"):
+        return PlainTextResponse('<span class="tag is-success is-medium ruleresult"><i class="fas fa-directions"></i>&nbsp;Route</span>')
+    else:
+        if (result=="False"):
+            return PlainTextResponse('<span class="tag is-info is-medium ruleresult"><i class="fas fa-trash"></i>&nbsp;Discard</span>')
+        else:
+            return PlainTextResponse('<span class="tag is-danger is-medium ruleresult"><i class="fas fa-bug"></i>&nbsp;Error</span>&nbsp;&nbsp;Invalid rule: '+result)
 
 
 ###################################################################################
@@ -488,6 +511,7 @@ async def homepage(request):
 
     used_space=0
     free_space=0
+    total_space=0
 
     try:
         disk_total, disk_used, disk_free = shutil.disk_usage(config.hermes["incoming_folder"])
@@ -497,12 +521,14 @@ async def homepage(request):
 
         used_space=100*disk_used/disk_total
         free_space=(disk_free // (2**30))
+        total_space=(disk_total // (2**30))
     except:
         used_space=-1
-        free_space="N/A"    
+        free_space="N/A"
+        disk_total="N/A"
 
     template = "index.html"
-    context = {"request": request, "page": "homepage", "used_space": used_space, "free_space": free_space }
+    context = {"request": request, "page": "homepage", "used_space": used_space, "free_space": free_space, "total_space": total_space }
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
 

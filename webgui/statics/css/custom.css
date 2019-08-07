@@ -15,3 +15,40 @@
     border-bottom-left-radius: 0px;
     border-bottom-right-radius: 0px;
 }
+
+.navbar.is-black .navbar-start>a.navbar-item:hover,
+.navbar.is-black .navbar-item.has-dropdown:hover .navbar-link
+{
+    background-color: hsl(141, 71%, 48%);
+    color: #FFF !important;
+}
+
+.brand {
+    color: hsl(141, 71%, 48%) !important;
+}
+
+.footer {
+    margin-top: 120px;
+    background-color: hsl(0, 0%, 21%);
+    border-top: 3px solid hsl(141, 71%, 48%);
+    color: hsl(0, 0%, 96%);
+}
+
+html {
+    background-color: hsl(0, 0%, 21%);
+}
+
+.footer a {
+    color: hsl(141, 71%, 48%);
+}
+
+body {
+    background-color: #FFF;
+}
+
+.ruleresult {
+    border-bottom-left-radius: 0px !important;
+    border-bottom-right-radius: 0px !important;
+    border-top-left-radius: 0px !important;
+    border-top-right-radius: 0px !important;
+}

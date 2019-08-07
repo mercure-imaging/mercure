@@ -5,7 +5,7 @@
 #include "dcmtk/dcmdata/dctk.h"
 #include "dcmtk/ofstd/ofstd.h"
 
-#define VERSION "0.1b"
+#define VERSION "0.1c"
 
 static OFString tagPatientName="";
 static OFString tagSeriesInstanceUID="";
@@ -18,9 +18,9 @@ static OFString tagStationAETitle="";
 static OFString tagManufacturer="";
 static OFString tagManufacturerModelName="";
 static OFString tagStudyDescription="";
-static OFString tagProcedureCodeSequence="";
+static OFString tagCodeValue="";
+static OFString tagCodeMeaning="";
 static OFString tagSeriesDescription="";
-static OFString tagSeriesDescriptionCodeSequence="";
 static OFString tagPatientID="";
 static OFString tagPatientBirthDate="";
 static OFString tagPatientSex="";
@@ -42,6 +42,7 @@ static OFString tagDeviceUID="";
 static OFString tagSoftwareVersions="";
 static OFString tagContrastBolusAgent="";
 static OFString tagImageComments="";
+static OFString tagSliceThickness="";
 
 
 void writeErrorInformation(OFString dcmFile, OFString errorString)
@@ -77,40 +78,41 @@ bool writeTagsFile(OFString dcmFile, OFString originalFile)
     fprintf(fp, "{\n");
 
     INSERTTAG("Modality",                      tagModality,                      "MR");
-    INSERTTAG("BodyPartExamined",              tagBodyPartExamined,              "Example");
-    INSERTTAG("ProtocolName",                  tagProtocolName,                  "Example");
-    INSERTTAG("RetrieveAETitle",               tagRetrieveAETitle,               "Example");
-    INSERTTAG("StationAETitle",                tagStationAETitle,                "Example");
-    INSERTTAG("Manufacturer",                  tagManufacturer,                  "Example");
-    INSERTTAG("ManufacturerModelName",         tagManufacturerModelName,         "Example");
-    INSERTTAG("StudyDescription",              tagStudyDescription,              "Example");
-    INSERTTAG("ProcedureCodeSequence",         tagProcedureCodeSequence,         "Example");
-    INSERTTAG("SeriesDescription",             tagSeriesDescription,             "Example");
-    INSERTTAG("SeriesDescriptionCodeSequence", tagSeriesDescriptionCodeSequence, "Example");
-    INSERTTAG("PatientName",                   tagPatientName,                   "Example");
-    INSERTTAG("PatientID",                     tagPatientID,                     "Example");
-    INSERTTAG("PatientBirthDate",              tagPatientBirthDate,              "Example");
+    INSERTTAG("BodyPartExamined",              tagBodyPartExamined,              "BRAIN");
+    INSERTTAG("ProtocolName",                  tagProtocolName,                  "COR T1 PIT(POST)");
+    INSERTTAG("RetrieveAETitle",               tagRetrieveAETitle,               "STORESCP");
+    INSERTTAG("StationAETitle",                tagStationAETitle,                "ANY-SCP");
+    INSERTTAG("Manufacturer",                  tagManufacturer,                  "HERMES");
+    INSERTTAG("ManufacturerModelName",         tagManufacturerModelName,         "Router");
+    INSERTTAG("StudyDescription",              tagStudyDescription,              "NEURO^HEAD");
+    INSERTTAG("CodeValue",                     tagCodeValue,                     "IMG11291");
+    INSERTTAG("CodeMeaning",                   tagCodeMeaning,                   "MRI BRAIN PITUITARY WITH AND WITHOUT IV CONTRAST");
+    INSERTTAG("SeriesDescription",             tagSeriesDescription,             "COR T1 POST");
+    INSERTTAG("PatientName",                   tagPatientName,                   "Knight^Michael");
+    INSERTTAG("PatientID",                     tagPatientID,                     "987654321");
+    INSERTTAG("PatientBirthDate",              tagPatientBirthDate,              "20100101");
     INSERTTAG("PatientSex",                    tagPatientSex,                    "M");
     INSERTTAG("AccessionNumber",               tagAccessionNumber,               "1234567");
-    INSERTTAG("ReferringPhysicianName",        tagReferringPhysicianName,        "Example");
-    INSERTTAG("StudyID",                       tagStudyID,                       "Example");
+    INSERTTAG("ReferringPhysicianName",        tagReferringPhysicianName,        "Tanner^Willie");
+    INSERTTAG("StudyID",                       tagStudyID,                       "243211348");
     INSERTTAG("SeriesNumber",                  tagSeriesNumber,                  "99");
-    INSERTTAG("SeriesInstanceUID",             tagSeriesInstanceUID,             "Example");
-    INSERTTAG("StudyInstanceUID",              tagStudyInstanceUID,              "Example");
-    INSERTTAG("SeriesDate",                    tagSeriesDate,                    "Example");
-    INSERTTAG("SeriesTime",                    tagSeriesTime,                    "Example");
-    INSERTTAG("AcquisitionDate",               tagAcquisitionDate,               "Example");
-    INSERTTAG("AcquisitionTime",               tagAcquisitionTime,               "Example");
-    INSERTTAG("SequenceName",                  tagSequenceName,                  "Example");
-    INSERTTAG("ScanningSequence",              tagScanningSequence,              "Example");
-    INSERTTAG("SequenceVariant",               tagSequenceVariant,               "Example");
+    INSERTTAG("SeriesInstanceUID",             tagSeriesInstanceUID,             "1.2.256.0.7230020.3.1.3.531431169.31.1254476944.91508");
+    INSERTTAG("StudyInstanceUID",              tagStudyInstanceUID,              "1.2.226.0.7231010.3.1.2.531431169.31.1554576944.99502");
+    INSERTTAG("SeriesDate",                    tagSeriesDate,                    "20190131");
+    INSERTTAG("SeriesTime",                    tagSeriesTime,                    "134112.100000");
+    INSERTTAG("AcquisitionDate",               tagAcquisitionDate,               "20190131");
+    INSERTTAG("AcquisitionTime",               tagAcquisitionTime,               "134112.100000");
+    INSERTTAG("SequenceName",                  tagSequenceName,                  "*se2d1");
+    INSERTTAG("ScanningSequence",              tagScanningSequence,              "SE");
+    INSERTTAG("SequenceVariant",               tagSequenceVariant,               "SP\OSP");
     INSERTTAG("MagneticFieldStrength",         tagMagneticFieldStrength,         "1.5");
-    INSERTTAG("StationName",                   tagStationName,                   "Example");
+    INSERTTAG("StationName",                   tagStationName,                   "MR20492");
     INSERTTAG("DeviceSerialNumber",            tagDeviceSerialNumber,            "12345");
-    INSERTTAG("DeviceUID",                     tagDeviceUID,                     "Example");
-    INSERTTAG("SoftwareVersions",              tagSoftwareVersions,              "Example");
-    INSERTTAG("ContrastBolusAgent",            tagContrastBolusAgent,            "");
-    INSERTTAG("ImageComments",                 tagImageComments,                 "Comment on Image");
+    INSERTTAG("DeviceUID",                     tagDeviceUID,                     "1.2.276.0.7230010.3.1.4.8323329.22517.1564764826.40200");
+    INSERTTAG("SoftwareVersions",              tagSoftwareVersions,              "hermes MR A10");
+    INSERTTAG("ContrastBolusAgent",            tagContrastBolusAgent,            "8.0 ML JUICE");
+    INSERTTAG("ImageComments",                 tagImageComments,                 "Comment on image");
+    INSERTTAG("SliceThickness",                tagSliceThickness,                "3");
 
     fprintf(fp, "\"Filename\": \"%s\"\n",originalFile.c_str());
     fprintf(fp, "}\n");
@@ -172,9 +174,9 @@ int main(int argc, char *argv[])
     READTAG(DCM_Manufacturer,                  tagManufacturer);
     READTAG(DCM_ManufacturerModelName,         tagManufacturerModelName);
     READTAG(DCM_StudyDescription,              tagStudyDescription);
-    READTAG(DCM_ProcedureCodeSequence,         tagProcedureCodeSequence);
+    READTAG(DCM_CodeValue,                     tagCodeValue);
+    READTAG(DCM_CodeMeaning,                   tagCodeMeaning);
     READTAG(DCM_SeriesDescription,             tagSeriesDescription);
-    READTAG(DCM_SeriesDescriptionCodeSequence, tagSeriesDescriptionCodeSequence);
     READTAG(DCM_PatientName,                   tagPatientName);
     READTAG(DCM_PatientID,                     tagPatientID);
     READTAG(DCM_PatientBirthDate,              tagPatientBirthDate);
@@ -199,6 +201,7 @@ int main(int argc, char *argv[])
     READTAG(DCM_SoftwareVersions,              tagSoftwareVersions);
     READTAG(DCM_ContrastBolusAgent,            tagContrastBolusAgent);
     READTAG(DCM_ImageComments,                 tagImageComments);
+    READTAG(DCM_SliceThickness,                tagSliceThickness);
 
     OFString newFilename=tagSeriesInstanceUID+"#"+origFilename;
 
