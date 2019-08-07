@@ -15,6 +15,7 @@ hermes_defaults = {
     'discard_folder'           : './discard',
     'router_scan_interval'     :  1,
     'dispatcher_scan_interval' :  1,
+    'cleaner_scan_interval'    : 10,
     'series_complete_trigger'  : 60,
     'graphite_ip'              : '',
     'graphite_port'            : 2003,
@@ -27,7 +28,7 @@ hermes = {}
 
 def read_config():
     global hermes
-    global configuration_timestamp    
+    global configuration_timestamp
     configuration_file = Path(configuration_filename)
 
     # Check for existence of lock file
@@ -47,7 +48,7 @@ def read_config():
         # Check if the configuration file is newer than the version
         # loaded into memory. If not, return
         if timestamp <= configuration_timestamp:
-            return hermes               
+            return hermes
 
         print("Reading configuration from: ", configuration_filename)
 
@@ -76,7 +77,7 @@ def read_config():
 
 
 def checkFolders():
-    for entry in ['incoming_folder','outgoing_folder','success_folder','error_folder','discard_folder']:        
+    for entry in ['incoming_folder','outgoing_folder','success_folder','error_folder','discard_folder']:
         if not Path(hermes[entry]).exists():
             print("ERROR: Folder not found ",hermes[entry])
             return False
