@@ -24,6 +24,7 @@ from starlette.datastructures import URL, Secret
 import common.helper as helper
 import common.config as config
 import webgui.users as users
+import webgui.tagslist as tagslist
 
 
 ###################################################################################
@@ -134,7 +135,9 @@ async def rules_edit(request):
 
     rule=request.path_params["rule"]
     template = "rules_edit.html"
-    context = {"request": request, "page": "rules", "rules": config.hermes["rules"], "targets": config.hermes["targets"], "rule": rule}
+    context = {"request": request, "page": "rules", "rules": config.hermes["rules"], 
+               "targets": config.hermes["targets"], "rule": rule, 
+               "alltags": tagslist.alltags, "sortedtags": tagslist.sortedtags}
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)    
 
@@ -549,6 +552,12 @@ if __name__ == "__main__":
         print("Cannot start service. Going down.")
         print("")
         sys.exit(1)
+
+    try:
+        tagslist.read_tagslist()
+    except Exception as e: 
+        print(e)
+        print("Unable to parse tag list. Rule evaluation will not be available.")
 
     if (SECRET_KEY=='NONE'):
         print("ERROR: No secret key defined! Not starting service.")

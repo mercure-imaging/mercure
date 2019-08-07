@@ -61,7 +61,7 @@ void writeErrorInformation(OFString dcmFile, OFString errorString)
 }
 
 
-#define INSERTTAG(A,B) fprintf(fp, "\"%s\": \"%s\",\n",A,B.c_str())
+#define INSERTTAG(A,B,C) fprintf(fp, "\"%s\": \"%s\",\n",A,B.c_str())
 
 bool writeTagsFile(OFString dcmFile, OFString originalFile)
 {
@@ -76,41 +76,41 @@ bool writeTagsFile(OFString dcmFile, OFString originalFile)
 
     fprintf(fp, "{\n");
 
-    INSERTTAG("Modality",                      tagModality);
-    INSERTTAG("BodyPartExamined",              tagBodyPartExamined);
-    INSERTTAG("ProtocolName",                  tagProtocolName);
-    INSERTTAG("RetrieveAETitle",               tagRetrieveAETitle);
-    INSERTTAG("StationAETitle",                tagStationAETitle);
-    INSERTTAG("Manufacturer",                  tagManufacturer);
-    INSERTTAG("ManufacturerModelName",         tagManufacturerModelName);
-    INSERTTAG("StudyDescription",              tagStudyDescription);
-    INSERTTAG("ProcedureCodeSequence",         tagProcedureCodeSequence);
-    INSERTTAG("SeriesDescription",             tagSeriesDescription);
-    INSERTTAG("SeriesDescriptionCodeSequence", tagSeriesDescriptionCodeSequence);
-    INSERTTAG("PatientName",                   tagPatientName);
-    INSERTTAG("PatientID",                     tagPatientID);
-    INSERTTAG("PatientBirthDate",              tagPatientBirthDate);
-    INSERTTAG("PatientSex",                    tagPatientSex);
-    INSERTTAG("AccessionNumber",               tagAccessionNumber);
-    INSERTTAG("ReferringPhysicianName",        tagReferringPhysicianName);
-    INSERTTAG("StudyID",                       tagStudyID);
-    INSERTTAG("SeriesNumber",                  tagSeriesNumber);
-    INSERTTAG("SeriesInstanceUID",             tagSeriesInstanceUID);
-    INSERTTAG("StudyInstanceUID",              tagStudyInstanceUID);
-    INSERTTAG("SeriesDate",                    tagSeriesDate);
-    INSERTTAG("SeriesTime",                    tagSeriesTime);
-    INSERTTAG("AcquisitionDate",               tagAcquisitionDate);
-    INSERTTAG("AcquisitionTime",               tagAcquisitionTime);
-    INSERTTAG("SequenceName",                  tagSequenceName);
-    INSERTTAG("ScanningSequence",              tagScanningSequence);
-    INSERTTAG("SequenceVariant",               tagSequenceVariant);
-    INSERTTAG("MagneticFieldStrength",         tagMagneticFieldStrength);
-    INSERTTAG("StationName",                   tagStationName);
-    INSERTTAG("DeviceSerialNumber",            tagDeviceSerialNumber);
-    INSERTTAG("DeviceUID",                     tagDeviceUID);
-    INSERTTAG("SoftwareVersions",              tagSoftwareVersions);
-    INSERTTAG("ContrastBolusAgent",            tagContrastBolusAgent);
-    INSERTTAG("ImageComments",                 tagImageComments);
+    INSERTTAG("Modality",                      tagModality,                      "MR");
+    INSERTTAG("BodyPartExamined",              tagBodyPartExamined,              "Example");
+    INSERTTAG("ProtocolName",                  tagProtocolName,                  "Example");
+    INSERTTAG("RetrieveAETitle",               tagRetrieveAETitle,               "Example");
+    INSERTTAG("StationAETitle",                tagStationAETitle,                "Example");
+    INSERTTAG("Manufacturer",                  tagManufacturer,                  "Example");
+    INSERTTAG("ManufacturerModelName",         tagManufacturerModelName,         "Example");
+    INSERTTAG("StudyDescription",              tagStudyDescription,              "Example");
+    INSERTTAG("ProcedureCodeSequence",         tagProcedureCodeSequence,         "Example");
+    INSERTTAG("SeriesDescription",             tagSeriesDescription,             "Example");
+    INSERTTAG("SeriesDescriptionCodeSequence", tagSeriesDescriptionCodeSequence, "Example");
+    INSERTTAG("PatientName",                   tagPatientName,                   "Example");
+    INSERTTAG("PatientID",                     tagPatientID,                     "Example");
+    INSERTTAG("PatientBirthDate",              tagPatientBirthDate,              "Example");
+    INSERTTAG("PatientSex",                    tagPatientSex,                    "M");
+    INSERTTAG("AccessionNumber",               tagAccessionNumber,               "1234567");
+    INSERTTAG("ReferringPhysicianName",        tagReferringPhysicianName,        "Example");
+    INSERTTAG("StudyID",                       tagStudyID,                       "Example");
+    INSERTTAG("SeriesNumber",                  tagSeriesNumber,                  "99");
+    INSERTTAG("SeriesInstanceUID",             tagSeriesInstanceUID,             "Example");
+    INSERTTAG("StudyInstanceUID",              tagStudyInstanceUID,              "Example");
+    INSERTTAG("SeriesDate",                    tagSeriesDate,                    "Example");
+    INSERTTAG("SeriesTime",                    tagSeriesTime,                    "Example");
+    INSERTTAG("AcquisitionDate",               tagAcquisitionDate,               "Example");
+    INSERTTAG("AcquisitionTime",               tagAcquisitionTime,               "Example");
+    INSERTTAG("SequenceName",                  tagSequenceName,                  "Example");
+    INSERTTAG("ScanningSequence",              tagScanningSequence,              "Example");
+    INSERTTAG("SequenceVariant",               tagSequenceVariant,               "Example");
+    INSERTTAG("MagneticFieldStrength",         tagMagneticFieldStrength,         "1.5");
+    INSERTTAG("StationName",                   tagStationName,                   "Example");
+    INSERTTAG("DeviceSerialNumber",            tagDeviceSerialNumber,            "12345");
+    INSERTTAG("DeviceUID",                     tagDeviceUID,                     "Example");
+    INSERTTAG("SoftwareVersions",              tagSoftwareVersions,              "Example");
+    INSERTTAG("ContrastBolusAgent",            tagContrastBolusAgent,            "");
+    INSERTTAG("ImageComments",                 tagImageComments,                 "Comment on Image");
 
     fprintf(fp, "\"Filename\": \"%s\"\n",originalFile.c_str());
     fprintf(fp, "}\n");

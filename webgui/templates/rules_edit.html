@@ -13,9 +13,9 @@
                     <input name="rule" class="input" autocomplete='off' type="text" placeholder="Routing rule" value="{{rules[rule]['rule']}}">
                 </div>
                 <div class="control">
-                    <a class="button is-dark">
+                    <button class="button is-dark" type="button" onclick="showTestRule()">
                         <i class="fas fa-flask"></i>&nbsp;Test
-                    </a>
+                    </button>
                     <button class="button" type="button" onclick="showTagList()" style="border-top-left-radius: 4px; border-bottom-left-radius: 4px;">
                         <i class="fab fa-sistrix"></i>&nbsp;Tags
                     </button>
@@ -88,8 +88,9 @@
                 <div class="table-container">
                 <label class="label">Available tags:</label>
                 <table class="table is-fullwidth is-hoverable is-bordered">
-                   <tr><td><button class="button is-small is-dark" value="@ModalityName@" onclick="copyTag(this.value)">Copy</button> &nbsp;&nbsp;@ModalityName@</td></tr>
-                   <tr><td><button class="button is-small is-dark" value="@SeriesName@" onclick="copyTag(this.value)">Copy</button> &nbsp;&nbsp;@SeriesName@</td></tr>
+                    {% for tag in sortedtags %}
+                   <tr><td><button class="button is-small is-dark" value="{{tag}}" onclick="copyTag(this.value)">Copy</button> &nbsp;&nbsp;{{tag}}</td></tr>
+                    {% endfor %}
                 </table>
             </div>
             <input type="text" id="copyinput" value="test" style="display: none;">
@@ -100,7 +101,31 @@
     </div>
 </div>
 
+<div class="modal" id="testrule">
+    <div class="modal-background"></div>
+    <div class="modal-card">
+        <header class="modal-card-head">
+        <p class="modal-card-title">Test routing rule</p>
+        </header>
+        <section class="modal-card-body">
+        </section>
+        <footer class="modal-card-foot buttons is-right">
+            <button class="button is-success" type="button" default autofocus id="evaltestrule" onclick=""><i class="fas fa-cogs"></i>&nbsp;Test</button>
+            <button class="button" type="button" id="closetestrule" onclick="closeTestRule()">Close</button>
+        </footer>
+    </div>
+</div>
+    
 <script>
+
+function showTestRule() { 
+    $("#testrule").addClass("is-active");
+    $("#evaltestrule").focus();
+}
+
+function closeTestRule() { 
+    $("#testrule").removeClass("is-active");  
+}
 
 function showTagList() { 
     $("#taglist").addClass("is-active");
