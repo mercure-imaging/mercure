@@ -83,7 +83,7 @@ def get_user_information(request):
 @app.route('/logs')
 @requires('authenticated', redirect='login')
 async def logs(request):
-    template = "generic.html"
+    template = "logs.html"
     context = {"request": request, "page": "logs"}
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
@@ -200,10 +200,10 @@ async def rules_test(request):
     result=rule_evaluation.test_rule(testrule,testvalues)
 
     if (result=="True"):
-        return PlainTextResponse('<span class="tag is-success is-medium ruleresult"><i class="fas fa-directions"></i>&nbsp;Route</span>')
+        return PlainTextResponse('<span class="tag is-success is-medium ruleresult"><i class="fas fa-thumbs-up"></i>&nbsp;Trigger</span>')
     else:
         if (result=="False"):
-            return PlainTextResponse('<span class="tag is-info is-medium ruleresult"><i class="fas fa-trash"></i>&nbsp;Discard</span>')
+            return PlainTextResponse('<span class="tag is-info is-medium ruleresult"><i class="fas fa-thumbs-down"></i>&nbsp;Pass</span>')
         else:
             return PlainTextResponse('<span class="tag is-danger is-medium ruleresult"><i class="fas fa-bug"></i>&nbsp;Error</span>&nbsp;&nbsp;Invalid rule: '+result)
 

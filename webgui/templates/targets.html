@@ -25,7 +25,7 @@
                 <tr><td>Contact:</td><td>{{ targets[x]['contact'] }}</td></tr>
                 </table>
                 <div class="buttons is-right">                        
-                    <span class="button is-link"><i class="fas fa-satellite-dish"></i>&nbsp;Test</span>
+                    <span class="button is-dark"><i class="fas fa-satellite-dish"></i>&nbsp;Test</span>
                     {% if is_admin %}
                     <a class="button is-success" href="/targets/edit/{{x}}"><i class="fas fa-pen"></i>&nbsp;Edit</a>                    
                     <button class="button is-danger" id="confirm-me" value="{{x}}" onclick="confirmDelete(this.value)" {% if x in used_targets%}disabled  title="Cannot delete because target is used by rule '{{ used_targets[x] }}'"{% endif %}><i class="fas fa-trash-alt"></i>&nbsp;Delete</button>
@@ -48,7 +48,7 @@
     </div>
     <div class="modal-card">
         <header class="modal-card-head">
-            <p class="modal-card-title">Delete target?</p>
+            <p class="modal-card-title">Delete Target?</p>
         </header>            
         <section class="modal-card-body">
             <div class="field">                
@@ -69,7 +69,7 @@
     </div>
     <div class="modal-card">
         <header class="modal-card-head">
-            <p class="modal-card-title">Add new target</p>
+            <p class="modal-card-title">Add New Target</p>
         </header>            
         <section class="modal-card-body">
         <form method="post">

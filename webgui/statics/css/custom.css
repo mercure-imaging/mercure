@@ -52,3 +52,23 @@ body {
     border-top-left-radius: 0px !important;
     border-top-right-radius: 0px !important;
 }
+
+.quickviewtitle {
+    background-color: hsl(141, 71%, 48%) !important;
+    color: #FFF !important;
+    font-weight: 900 !important;
+}
+
+.quickviewtitle p {
+    color: #FFF !important;
+    font-weight: 900 !important;
+}
+
+.quickview {
+    width: 420px;
+    right: -420px;
+} 
+
+.quickview-body {
+    border-left: 1px solid #dbdbdb !important;
+}

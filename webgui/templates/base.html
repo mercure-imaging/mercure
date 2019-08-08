@@ -10,9 +10,16 @@
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.7.5/css/bulma.min.css">
     <script defer src="https://use.fontawesome.com/releases/v5.9.0/js/all.js"></script>
-    <link href="{{ url_for('static', path='/css/custom.css') }}" rel="stylesheet">
     <script src="{{ url_for('static', path='/js/jquery-3.4.1.min.js') }}"></script>    
-    <script src="{{ url_for('static', path='/js/intercooler-1.2.2.js') }}"></script>
+    <script src="{{ url_for('static', path='/js/intercooler-1.2.2.js') }}"></script>     
+
+    {% if page == "rules" %}
+    <script type="text/javascript" src="{{ url_for('static', path='/js/bulma-quickview.min.js') }}"></script>
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/bulma-quickview.min.css') }}">
+    {% endif %}    
+
+    <link href="{{ url_for('static', path='/css/custom.css') }}" rel="stylesheet">
+
   </head>
 
   <body>

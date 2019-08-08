@@ -9,21 +9,16 @@
         <div class="field">
             <label class="label">Routing Rule</label>
             <div class="field has-addons">
+                <div class="control">
+                    <button class="button" type="button" onclick="showTestRule()" title="Test rule">
+                        <i class="fas fa-cogs "></i>
+                    </button>
+                </div>        
                 <div class="control is-expanded">
                     <input name="rule" id="rule" pattern="[^{}\x22]+" class="input" autocomplete='off' type="text" placeholder="Routing rule" value="{{rules[rule]['rule']}}">
                 </div>
-                <div class="control">
-                    <button class="button is-dark" type="button" onclick="showTestRule()">
-                        <i class="fas fa-flask"></i>&nbsp;Test
-                    </button>
-                    <button class="button" type="button" onclick="showTagList()" style="border-top-left-radius: 4px; border-bottom-left-radius: 4px;">
-                        <i class="fab fa-sistrix"></i>&nbsp;Tags
-                    </button>
-                </div>            
             </div>
-            <div class="control">
-            </div>
-        </div>        
+        </div>   
         <div class="field">
             <label class="label">Target</label>
             <div class="select">
@@ -60,57 +55,31 @@
             </div>
         </div>
         <div class="field">
-            <p class="control buttons" style="margin-top: 30px;">
-            <button type="submit" class="button is-success" value="default action">
-                <i class="fas fa-save"></i>&nbsp;Save
-            </button>
-            <a class="button" href="/rules" ><i class="fas fa-ban"></i>&nbsp;Cancel</a>
-            </p>
-        </div>
+            <div class="control buttons is-expanded" style="margin-top: 30px;">
+                <button type="submit" class="button is-success" value="default action">
+                    <i class="fas fa-save"></i>&nbsp;Save
+                </button>
+                <a class="button" href="/rules"><i class="fas fa-ban"></i>&nbsp;Cancel</a>
+                <div style="margin-left: auto; margin-right: auto;">&nbsp;</div>
+                <button class="button" type="button" data-show="quickview" data-target="quickviewDefault" style="margin: 0px;">
+                    <i class="fas fa-tags"></i>&nbsp;Show Tags
+                </button>
+            </div>
+        </div>        
     </form>
   </div>
 </main>
-
-<div class="modal" id="taglist">
-    <div class="modal-background"></div>
-    <div class="modal-card">
-        <header class="modal-card-head">
-        <p class="modal-card-title">Rule notation</p>
-        </header>
-        <section class="modal-card-body">
-                <div class="table-container">
-                    <label class="label">Examples:</label>
-                    <table class="table is-fullwidth is-hoverable is-bordered">
-                        <tr><td>(@Modality@ == 'MR') and ('GRASP' in @StudyDescription@)</td></tr>
-                        <tr><td>(float(@SeriesNumber@) > 100) or (@ScanningSequence@.lower()=='gr')</td></tr>
-                    </table>
-                </div>
-                <div class="table-container">
-                <label class="label">Available tags:</label>
-                <table class="table is-fullwidth is-hoverable is-bordered">
-                    {% for tag in sortedtags %}
-                   <tr><td><button class="button is-small is-dark" value="@{{tag}}@" onclick="copyTag(this.value)">Copy</button> &nbsp;&nbsp;@{{tag}}@</td></tr>
-                    {% endfor %}
-                </table>
-            </div>
-            <input type="text" id="copyinput" value="test" style="display: none;">
-        </section>
-        <footer class="modal-card-foot buttons is-centered">
-            <button class="button" type="button" default autofocus id="closetaglist" onclick="closeTagList()">Close</button>
-        </footer>
-    </div>
-</div>
 
 <div class="modal" id="testrule">
     <div class="modal-background"></div>
     <div class="modal-card" style="width: 960px;">
         <header class="modal-card-head">
-        <p class="modal-card-title">Test routing rule</p>
+        <p class="modal-card-title">Test Rule</p>
         </header>
         <section class="modal-card-body">
             <div class="container">
                 <div class="field">
-                    <label class="label">Values:</label>
+                    <label class="label">Test Values:</label>
                     <div class="control">
                         <textarea class="textarea has-fixed-size" rows="8" placeholder="Testing tags" id="testvalues" name="testvalues">{{alltags|tojson(indent=4)}}</textarea>
                     </div>
@@ -122,10 +91,40 @@
             </div>
         </section>
         <footer class="modal-card-foot buttons is-right">
-            <button class="button is-success" default autofocus id="evaltestrule" ic-post-to="/rules/test" ic-include="#testvalues" ic-global-include="#rule" ic-target="#testresult"><i class="fas fa-cogs"></i>&nbsp;Test</button>
+            <button class="button is-dark" default autofocus id="evaltestrule" ic-post-to="/rules/test" ic-include="#testvalues" ic-global-include="#rule" ic-target="#testresult"><i class="fas fa-cogs"></i>&nbsp;Test</button>
             <button class="button" type="button" id="closetestrule" onclick="closeTestRule()">Close</button>
         </footer>
     </div>
+</div>
+
+<div id="quickviewDefault" class="quickview">
+    <header class="quickview-header quickviewtitle">
+      <p class="title">Rule Notation</p>
+      <span class="delete" data-dismiss="quickview"></span>
+    </header>
+    <div class="quickview-body">
+      <div class="quickview-block" style="margin-left: 20px; margin-right: 20px; margin-top: 20px;">
+            <div class="table-container">
+            <label class="label">Examples:</label>
+            <table class="table is-fullwidth is-hoverable is-bordered">
+                <tr><td>(@Modality@ == 'MR') and ('GRASP' in @StudyDescription@)</td></tr>
+                <tr><td>(float(@SeriesNumber@) > 100) or (@ScanningSequence@.lower()=='gr')</td></tr>
+            </table>
+        </div>
+        <div class="table-container">
+        <label class="label">Available Tags:</label>
+        <table class="table is-fullwidth is-hoverable is-bordered">
+            {% for tag in sortedtags %}
+           <tr><td><button class="button is-small is-dark" value="@{{tag}}@" onclick="copyTag(this.value)">Copy</button> &nbsp;&nbsp;@{{tag}}@</td></tr>
+            {% endfor %}
+        </table>
+    </div>
+    <input type="text" id="copyinput" value="test" style="display: none;">
+</div>
+    </div>
+    <footer class="quickview-footer is-centered buttons">  
+        <button class="button" type="button" data-dismiss="quickview">Hide</button>
+    </footer>
 </div>
     
 <script>
@@ -134,19 +133,11 @@ function showTestRule() {
     $("#testresult").html("Rule not yet tested");
     $("#testrule").addClass("is-active");
     $("#evaltestrule").focus();
+    $("#evaltestrule").click();
 }
 
 function closeTestRule() { 
     $("#testrule").removeClass("is-active");  
-}
-
-function showTagList() { 
-    $("#taglist").addClass("is-active");
-    $("#closetaglist").focus();
-}
-
-function closeTagList() { 
-    $("#taglist").removeClass("is-active");  
 }
 
 function copyTag(value) { 
@@ -157,9 +148,21 @@ function copyTag(value) {
     copyText.select();
     document.execCommand("copy");
 
-    $("#taglist").removeClass("is-active");  
+    //$("#taglist").removeClass("is-active");  
     $("#copyinput").css("display","none");
 }
+
+$(function(){
+  $('#rule').keypress(function(e){
+    var chr = String.fromCharCode(e.which);
+    if ("{}\"".indexOf(chr) >= 0)
+        return false;
+  });
+});
+
+$(document).ready(function(){
+    var quickviews = bulmaQuickview.attach();
+});
 
 </script>
 
