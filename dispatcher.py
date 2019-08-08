@@ -31,7 +31,7 @@ def receiveSignal(signalNumber, frame):
 
 
 def terminateProcess(signalNumber, frame):
-    print('Shutdown requested')
+    logger.info('Shutdown requested')
     helper.triggerTerminate()
 
 
@@ -84,8 +84,6 @@ if __name__ == "__main__":
     signal.signal(signal.SIGPIPE, receiveSignal)
     signal.signal(signal.SIGALRM, receiveSignal)
     signal.signal(signal.SIGTERM, terminateProcess)
-    # signal.signal(signal.SIGHUP,  readConfiguration)
-    # signal.signal(signal.SIGKILL, receiveSignal)
 
     instance_name="main"
     if len(sys.argv)>1:
@@ -106,8 +104,8 @@ if __name__ == "__main__":
     graphite_prefix='hermes.dispatcher.'+instance_name
 
     if len(config.hermes['graphite_ip']) > 0:
-        print('Sending events to graphite server: ',config.hermes['graphite_ip'])
-        graphyte.init(config.hermes['graphite_ip'], config.hermes['graphite_port'], prefix=graphite_prefix) 
+        logging.info('Sending events to graphite server: ',config.hermes['graphite_ip'])
+        graphyte.init(config.hermes['graphite_ip'], config.hermes['graphite_port'], prefix=graphite_prefix)
 
     logger.info(f"Dispatching folder: {config.hermes['outgoing_folder']}")
 
@@ -118,4 +116,4 @@ if __name__ == "__main__":
 
     # Start the asyncio event loop for asynchronous function calls
     helper.loop.run_forever()
-    print('Going down now')
+    logging.info('Going down now')

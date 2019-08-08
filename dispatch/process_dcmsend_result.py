@@ -1,8 +1,13 @@
 import argparse
 import json
 import sys
+import logging
 from pathlib import Path
 
+import daiquiri
+
+daiquiri.setup(level=logging.INFO)
+logger = daiquiri.getLogger("proces_dcmsend_result")
 
 def _parse_header(header):
     result = {}
@@ -41,7 +46,7 @@ def parse(result_file):
             summary_start = index
 
     result["summary"] = _parse_summary(content[summary_start:])
-    # Just take the first 8 lines of the result file, 
+    # Just take the first 8 lines of the result file,
     # optimistic guessing length of the header
     result["header"] = _parse_header(content[:8])
     return result
@@ -61,5 +66,5 @@ if __name__ == "__main__":
     parsed_args = arg_parser.parse_args(sys.argv[1:])
     result_file = parsed_args.resultFile
     result = parse(Path(result_file))
-    print(json.dumps(result, indent=4, sort_keys=True))
+    logger.info(json.dumps(result, indent=4, sort_keys=True))
     sys.exit(0)

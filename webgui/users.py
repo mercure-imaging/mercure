@@ -1,7 +1,12 @@
 import json
 import os
+import logging
 from pathlib import Path
 
+import daiquiri
+
+daiquiri.setup(level=logging.INFO)
+logger = daiquiri.getLogger("users")
 
 users_timestamp = 0
 users_filename  = os.path.realpath(os.path.dirname(os.path.realpath(__file__))+'/../configuration/users.json')
@@ -11,7 +16,7 @@ users_list = {}
 
 def read_users():
     global users_list
-    global users_timestamp    
+    global users_timestamp
     users_file = Path(users_filename)
 
     # Check for existence of lock file
@@ -31,21 +36,21 @@ def read_users():
         # Check if the configuration file is newer than the version
         # loaded into memory. If not, return
         if timestamp <= users_timestamp:
-            return users_list               
+            return users_list
 
-        print("Reading users from: ", users_filename)
+        logger.info(f"Reading users from: {users_filename}")
 
         with open(users_file, "r") as json_file:
             users_list=json.load(json_file)
             users_timestamp=timestamp
             return users_list
     else:
-        raise FileNotFoundError(f"Users file not fould: {users_file}")
+        raise FileNotFoundError(f"Users file not found: {users_file}")
 
 
 def save_users():
     global users_list
-    global users_timestamp    
+    global users_timestamp
     users_file = Path(users_filename)
 
     # Check for existence of lock file
@@ -63,7 +68,7 @@ def save_users():
     except AttributeError:
         users_timestamp=0
 
-    print("Stored user list into: ", users_filename)
+    logger.info(f"Stored user list into: {users_filename}")
 
 
 def evaluate_password(username, password):

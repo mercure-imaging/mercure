@@ -1,7 +1,12 @@
 import json
+import logging
 import os
 from pathlib import Path
 
+import daiquiri
+
+daiquiri.setup(level=logging.INFO)
+logger = daiquiri.getLogger("config")
 
 configuration_timestamp = 0
 configuration_filename  = os.path.realpath(os.path.dirname(os.path.realpath(__file__))+'/../configuration/hermes.json')
@@ -51,7 +56,7 @@ def read_config():
         if timestamp <= configuration_timestamp:
             return hermes
 
-        print("Reading configuration from: ", configuration_filename)
+        logger.info("Reading configuration from: {configuration_filename}")
 
         with open(configuration_file, "r") as json_file:
             loaded_config=json.load(json_file)
@@ -67,10 +72,10 @@ def read_config():
             if not checkFolders():
                 raise FileNotFoundError("Configured folders missing")
 
-            print("")
-            print("Active configuration: ")
-            print(json.dumps(hermes, indent=4))
-            print("")
+            logger.info("")
+            logger.info("Active configuration: ")
+            logger.info(json.dumps(hermes, indent=4))
+            logger.info("")
             configuration_timestamp=timestamp
             return hermes
     else:
@@ -96,13 +101,12 @@ def save_config():
     except AttributeError:
         configuration_timestamp=0
 
-    print("Stored configuration into: ", configuration_file)
+    logger.info("Stored configuration into: ", configuration_file)
 
 
 def checkFolders():
     for entry in ['incoming_folder','outgoing_folder','success_folder','error_folder','discard_folder']:
         if not Path(hermes[entry]).exists():
-            print("ERROR: Folder not found ",hermes[entry])
+            logger.info("ERROR: Folder not found ",hermes[entry])
             return False
     return True
-
