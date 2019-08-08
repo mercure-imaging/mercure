@@ -6,6 +6,8 @@ import shutil
 import json
 import distro
 import random
+import os
+import asyncio
 from starlette.applications import Starlette
 from starlette.staticfiles import StaticFiles
 from starlette.responses import HTMLResponse
@@ -366,6 +368,16 @@ async def targets_delete_post(request):
     return RedirectResponse(url='/targets', status_code=303)   
 
 
+async def async_run(cmd):
+    proc = await asyncio.create_subprocess_shell(
+        cmd,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE)
+
+    stdout, stderr = await proc.communicate()
+    return proc.returncode
+
+
 @app.route('/targets/test/{target}', methods=["POST"])
 @requires(['authenticated'], redirect='login')
 async def targets_test_post(request):
@@ -375,11 +387,28 @@ async def targets_test_post(request):
         return PlainTextResponse('Configuration is being updated. Try again in a minute.')
 
     testtarget=request.path_params["target"]
-   
-    # TODO: Ping and c-echo target
+    
+    ping_response="False"
+    cecho_response="False"
+    target_ip=""
+    target_port=""
+
+    try:
+        target_ip=config.hermes["targets"][testtarget]["ip"]
+        target_port=config.hermes["targets"][testtarget]["port"]
+    except:
+        pass
 
     print("Testing target ", testtarget)
-    return JSONResponse('{"ping": "True", "c-echo": "False" }')
+
+    if (target_ip) and (target_port):
+        if (await async_run("ping -w 1 -c 1 " + target_ip))==0:
+            ping_response="True"
+            # Only test for c-echo if the ping was successful
+            if (await async_run("echoscu -to 10 " + target_ip + " " + target_port))==0:
+                cecho_response="True"
+    
+    return JSONResponse('{"ping": "'+ping_response+'", "c-echo": "'+cecho_response+'" }')
 
 
 ###################################################################################
