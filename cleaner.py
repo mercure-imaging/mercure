@@ -9,6 +9,7 @@ import threading
 import time
 from datetime import timedelta
 from pathlib import Path
+from shutil import rmtree
 
 import daiquiri
 import graphyte
@@ -45,15 +46,36 @@ def clean(args):
     success_folder = config.hermes["success_folder"]
     discard_folder = config.hermes["discard_folder"]
     retention = timedelta(seconds=config.hermes["retention"])
-    
+
     clean_dirs = [success_folder, discard_folder]
     logger.info(f"Checking for cleaning data in {clean_dirs}")
 
+    clean_success(success_folder, retention)
+    clean_discard(discard_folder, retention)
+
+
+def clean_discard(discard_folder, retention):
     candidates = [
-        (i, retention < timedelta(seconds=(time.time() - i.stat().st_mtime)))
-        for i in Path(success_folder).glob("**/sent.txt")
+        (f, f.stat().st_mtime)
+        for f in Path(discard_folder).iterdir()
+        if f.is_dir()
+        and retention < timedelta(seconds=(time.time() - f.stat().st_mtime))
     ]
-    print(candidates)
+    oldest_first = sorted(candidates, key=lambda x: x[1], reverse=True)
+    for entry in oldest_first:
+        rmtree(entry[0])
+
+
+def clean_success(success_folder, retention):
+    # list of (sent.txt path, modification time)
+    candidates = [
+        (i, i.stat().st_mtime)
+        for i in Path(success_folder).glob("**/sent.txt")
+        if retention < timedelta(seconds=(time.time() - i.stat().st_mtime))
+    ]
+    oldest_first = sorted(candidates, key=lambda x: x[1], reverse=True)
+    for entry in oldest_first:
+        rmtree(entry[0].parent)
 
 
 def exit_cleaner(args):
