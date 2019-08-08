@@ -13,14 +13,16 @@ hermes_defaults = {
     'success_folder'           : './success',
     'error_folder'             : './error',
     'discard_folder'           : './discard',
-    'router_scan_interval'     :  1,
-    'dispatcher_scan_interval' :  1,
-    'cleaner_scan_interval'    : 10,
-    'series_complete_trigger'  : 60,
-    'graphite_ip'              : '',
-    'graphite_port'            : 2003,
-    "targets"                  : {},
-    "rules"                    : {}
+    'router_scan_interval'     :      1, # in seconds
+    'dispatcher_scan_interval' :      1, # in seconds
+    'cleaner_scan_interval'    :     10, # in seconds
+    #'retention'                : 259200, # in seconds (3 days)
+    'retention'                :     10, # in seconds (3 days)
+    'series_complete_trigger'  :     60, # in seconds
+    'graphite_ip'              :     '',
+    'graphite_port'            :   2003,
+    "targets"                  :     {},
+    "rules"                    :     {}
 }
 
 hermes = {}

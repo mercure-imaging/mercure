@@ -7,6 +7,8 @@ import signal
 import sys
 import threading
 import time
+from datetime import timedelta
+from pathlib import Path
 
 import daiquiri
 import graphyte
@@ -40,8 +42,18 @@ def clean(args):
         logger.info("Unable to update configuration. Skipping processing.")
         return
 
-    clean_dirs = [config.hermes["success_folder"], config.hermes["discard_folder"]]
+    success_folder = config.hermes["success_folder"]
+    discard_folder = config.hermes["discard_folder"]
+    retention = timedelta(seconds=config.hermes["retention"])
+    
+    clean_dirs = [success_folder, discard_folder]
     logger.info(f"Checking for cleaning data in {clean_dirs}")
+
+    candidates = [
+        (i, retention < timedelta(seconds=(time.time() - i.stat().st_mtime)))
+        for i in Path(success_folder).glob("**/sent.txt")
+    ]
+    print(candidates)
 
 
 def exit_cleaner(args):
