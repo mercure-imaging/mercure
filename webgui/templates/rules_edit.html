@@ -79,15 +79,15 @@
         <section class="modal-card-body">
             <div class="container">
                 <div class="field">
+                    <label class="label">Result:</label>
+                    <div id="testresult" style="height: 3em;"></div>
+                </div>    
+                <div class="field">
                     <label class="label">Test Values:</label>
                     <div class="control">
                         <textarea class="textarea has-fixed-size" rows="8" placeholder="Testing tags" id="testvalues" name="testvalues">{{alltags|tojson(indent=4)}}</textarea>
                     </div>
                 </div>
-                <div class="field">
-                    <label class="label">Result:</label>
-                    <div id="testresult" style="height: 4em;"></div>
-                </div>    
             </div>
         </section>
         <footer class="modal-card-foot buttons is-right">
@@ -123,7 +123,7 @@
 </div>
     </div>
     <footer class="quickview-footer is-centered buttons">  
-        <button class="button" type="button" data-dismiss="quickview">Hide</button>
+        <button class="button" type="button" data-dismiss="quickview">Close</button>
     </footer>
 </div>
     

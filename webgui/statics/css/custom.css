@@ -42,6 +42,11 @@ html {
     color: hsl(141, 71%, 48%);
 }
 
+.logtabs li.is-active a {
+    color: hsl(141, 71%, 48%) !important;
+    font-weight: 500;
+}
+
 body {
     background-color: #FFF;
 }
@@ -71,4 +76,12 @@ body {
 
 .quickview-body {
     border-left: 1px solid #dbdbdb !important;
+}
+
+.configtitle {
+    margin-bottom: 10px !important;
+}
+
+.logviewer {
+    font-family: monospace;
 }

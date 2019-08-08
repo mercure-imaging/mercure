@@ -9,30 +9,14 @@
     <div class="columns">
       <div class="column">    
         <div class="field is-grouped is-grouped-multiline">
+          {% for service in service_status %}
           <div class="control">
             <div class="tags has-addons">
-              <span class="tag is-dark">Receiver</span>
-              <span class="tag is-success">UP</span>
+              <span class="tag is-dark">{{ service_status[service]["name"] }}</span>
+              <span {% if service_status[service]["running"]=="True" %} class="tag is-success">UP{% else %} class="tag is-danger">DOWN{% endif %}</span>
             </div>
           </div>
-          <div class="control">
-            <div class="tags has-addons">
-              <span class="tag is-dark">Router</span>
-              <span class="tag is-success">UP</span>
-            </div>
-          </div>
-          <div class="control">
-            <div class="tags has-addons">
-              <span class="tag is-dark">Dispatcher</span>
-              <span class="tag is-danger">DOWN</span>
-            </div>
-          </div>
-          <div class="control">
-            <div class="tags has-addons">
-              <span class="tag is-dark">Cleaner</span>
-              <span class="tag is-success">UP</span>
-            </div>
-          </div>  
+          {% endfor %}
         </div>
 
         <div class="columns" style="margin-top: 10px;">

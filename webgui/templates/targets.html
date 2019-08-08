@@ -25,7 +25,7 @@
                 <tr><td>Contact:</td><td>{{ targets[x]['contact'] }}</td></tr>
                 </table>
                 <div class="buttons is-right">                        
-                    <span class="button is-dark"><i class="fas fa-satellite-dish"></i>&nbsp;Test</span>
+                    <button type="button" class="button is-dark" value="{{x}}" onclick="testTarget(this.value)"><i class="fas fa-satellite-dish"></i>&nbsp;Test</button>
                     {% if is_admin %}
                     <a class="button is-success" href="/targets/edit/{{x}}"><i class="fas fa-pen"></i>&nbsp;Edit</a>                    
                     <button class="button is-danger" id="confirm-me" value="{{x}}" onclick="confirmDelete(this.value)" {% if x in used_targets%}disabled  title="Cannot delete because target is used by rule '{{ used_targets[x] }}'"{% endif %}><i class="fas fa-trash-alt"></i>&nbsp;Delete</button>
@@ -89,6 +89,31 @@
     </div>
 </div>
     
+<div class="modal" id="testmodal">
+    <div class="modal-background">        
+    </div>
+    <div class="modal-card">
+        <header class="modal-card-head">
+            <p class="modal-card-title">Target Connectivity</p>
+        </header>            
+        <section class="modal-card-body">
+            <div class="field">
+                <div style="margin-bottom: 8px;">
+                    <div id="testmode-pingtrue"><i class="fas fa-check-circle fa-lg has-text-success"></i>&nbsp;&nbsp;Responded to Ping</div>
+                    <div id="testmode-pingfalse"><i class="fas fa-times-circle fa-lg has-text-danger"></i>&nbsp;&nbsp;No Ping Response</div>
+                </div>
+                <div id="testmode-cechotrue"><i class="fas fa-check-circle fa-lg has-text-success"></i>&nbsp;&nbsp;Responded to C-Echo</div>
+                <div id="testmode-cechofalse"><i class="fas fa-times-circle fa-lg has-text-danger"></i>&nbsp;&nbsp;No C-Echo Response</div>
+            </div>
+            <div class="field" style="margin-top: 20px;">                
+                <p class="control buttons is-centered">
+                    <button id="closetestmodal" class="button">Close</button>
+                </p>
+            </div>
+        </section>
+    </div>
+</div>
+    
 
 </main>
 
@@ -117,6 +142,36 @@ function confirmDelete(val) {
     $("#deletemodal").addClass("is-active");
 }
 
+function testTarget(val) { 
+    $.ajax({
+        type: 'POST',
+        url: '/targets/test/'+val,
+        data: {},
+        dataType: 'json',
+        success: function (data) {
+            var jsondata=JSON.parse(data);
+
+            if (jsondata["ping"]=="True") {
+                $("#testmode-pingtrue").show();
+                $("#testmode-pingfalse").hide();
+            } else {
+                $("#testmode-pingtrue").hide();
+                $("#testmode-pingfalse").show();
+            }
+
+            if (jsondata["c-echo"]=="True") {
+                $("#testmode-cechotrue").show();
+                $("#testmode-cechofalse").hide();
+            } else {
+                $("#testmode-cechotrue").hide();
+                $("#testmode-cechofalse").show();
+            }
+
+            $("#testmodal").addClass("is-active");            
+        }
+    });
+}
+
 $(function () {
     $('#closeaddmodal').click(function () { 
         $("#addmodal").removeClass("is-active");  
@@ -133,6 +188,10 @@ $(function () {
         $('body').append(form);
         form.submit();        
     })           
+
+    $('#closetestmodal').click(function () { 
+        $("#testmodal").removeClass("is-active");  
+    })       
 });
 
 

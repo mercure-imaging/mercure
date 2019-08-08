@@ -47,17 +47,17 @@
             <a class="navbar-item {% if page != "targets" %}has-text-grey-light{% endif %}" href="/targets">
               Targets
             </a>
-            <a class="navbar-item {% if page != "logs" %}has-text-grey-light{% endif %}" href="/logs">
-              Logs
-            </a>
             {% if is_admin %}
             <a class="navbar-item {% if page != "users" %}has-text-grey-light{% endif %}" href="/users">
               Users
             </a>
+            <a class="navbar-item {% if page != "logs" %}has-text-grey-light{% endif %}" href="/logs">
+              Logs
+            </a>
             <a class="navbar-item {% if page != "configuration" %}has-text-grey-light{% endif %}" href="/configuration">
               Configuration
             </a>
-            {% endif %}            
+            {% endif %}
             {% endif %}
           </div>
           {% if logged_in %}
@@ -90,7 +90,7 @@
     </section>
     <footer class="footer">
       <div class="content has-text-centered">
-        <p>Hermes DICOM Router &minus; Version 0.1a<br />
+        <p>Hermes DICOM Router &minus; Version {{hermes_version}}<br />
           <a href="https://hermes-router.github.io" target="_blank">https://hermes-router.github.io</a>
         </p>
       </div>

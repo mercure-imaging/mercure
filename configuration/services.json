@@ -1,0 +1,22 @@
+{
+    "receiver": {
+        "name": "Receiver",
+        "systemd_service": "hermes_receiver.service"
+    },
+    "router": {
+        "name": "Router",
+        "systemd_service": "hermes_router.service"
+    },
+    "dispatcher": {
+        "name": "Dispatcher",
+        "systemd_service": "hermes_dispatcher.service"
+    },
+    "cleaner": {
+        "name": "Cleaner",
+        "systemd_service": "hermes_cleaner.service"
+    },    
+    "bookkeeper": {
+        "name": "Bookkeeper",
+        "systemd_service": "hermes_bookkeeper.service"
+    }
+}

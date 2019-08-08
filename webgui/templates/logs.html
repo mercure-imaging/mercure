@@ -4,6 +4,16 @@
 <main role="main">
   <div class="container">
     <h1 class="title">Logs</h1>
+    <div class="logtabs tabs is-boxed">
+      <ul>
+        {% for service in service_logs %}
+        <li {% if service_logs[service]["id"]==log_id %}class="is-active"{% endif %}><a href="/logs/{{service_logs[service]["id"]}}">{{ service_logs[service]["name"] }}</a></li>
+        {% endfor %}
+    </ul>
+    </div>    
+    <div class="logviewer is-full">
+      Logfile for service {{log_id}}
+    </code>
   </div>    
 </main>
 {% endblock %}
