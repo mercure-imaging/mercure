@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block content %}
+<main role="main">
+  <div class="container">
+    <h1 class="title">Configuration</h1>
+    <div class="columns">
+        <div class="column is-full">
+            <h5 class="title is-5 configtitle"><i class="fas fa-server has-text-success"></i>&nbsp;&nbsp;General</h5>
+            <table class="table is-narrow is-hoverable is-fullwidth">
+                <col width="200px">
+                <tr><td>Appliance Name:</td><td>{{config["appliance_name"]}}</td></tr>
+                <tr><td>Version:</td><td>{{hermes_version}}</td></tr>
+                <tr><td>Operating System:</td><td>{{os_string}}</td></tr>
+            </table>            
+        </div>
+    </div>
+    <div class="columns">
+        <div class="column is-full">
+            <h5 class="title is-5 configtitle"><i class="fas fa-folder-open has-text-success"></i>&nbsp;&nbsp;Server Folders</h5>
+            <table class="table is-narrow is-hoverable is-fullwidth">
+                <col width="200px">
+                <tr><td>Incoming:</td><td>{{config["incoming_folder"]}}</td></tr>
+                <tr><td>Outgoing:</td><td>{{config["outgoing_folder"]}}</td></tr>
+                <tr><td>Success:</td><td>{{config["success_folder"]}}</td></tr>
+                <tr><td>Error:</td><td>{{config["error_folder"]}}</td></tr>
+                <tr><td>Discard:</td><td>{{config["discard_folder"]}}</td></tr>
+            </table>
+        </div>
+    </div>
+    <div class="columns">
+        <div class="column is-full">
+            <h5 class="title is-5 configtitle"><i class="fas fa-bullhorn has-text-success"></i>&nbsp;&nbsp;Monitoring</h5>
+            <table class="table is-narrow is-hoverable is-fullwidth">
+                <col width="200px">
+                <tr><td>Graphite IP:</td><td>{{config["graphite_ip"]}}</td></tr>
+                <tr><td>Graphite Port:</td><td>{{config["graphite_port"]}}</td></tr>
+            </table>            
+        </div>
+    </div>    
+    <div class="columns">
+        <div class="column is-full">
+            <h5 class="title is-5 configtitle"><i class="fas fa-hourglass-end has-text-success"></i>&nbsp;&nbsp;Trigger Thesholds</h5>
+            <table class="table is-narrow is-hoverable is-fullwidth">
+                <col width="200px">
+                <tr><td>Router Interval:</td><td>{{config["router_scan_interval"]}} sec</td></tr>
+                <tr><td>Dispatcher Interval:</td><td>{{config["dispatcher_scan_interval"]}} sec</td></tr>
+                <tr><td>Cleaner Interval:</td><td>{{config["cleaner_scan_interval"]}} sec</td></tr>
+                <tr><td>Series Complete:</td><td>{{config["series_complete_trigger"]}} sec</td></tr>
+            </table>            
+        </div>
+    </div>        
+  </div>    
+</main>
+{% endblock %}

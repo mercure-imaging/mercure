@@ -17,6 +17,18 @@ import common.config as config
 from router.process_series import process_series
 
 
+# NOTES: Currently, the router only implements series-level rules, i.e. the proxy rules will be executed
+#        once the series is complete. In the future, also study-level rules can be implemented (i.e. a
+#        rule can be a series-level or study-level rule). Series-level rules are executed as done right now.
+#        If a study-level rule exists that applies to a series, the series will be moved to an /incoming-study
+#        folder and renamed with the studyUID as prefix. Once the study is complete (via a separate time
+#        tigger), the study-level rules will be applied by taking each rule and collecting the series of 
+#        the studies that apply to the rule. Each study-level rule will create a separate outgoing folder
+#        so that all series that apply to the study-level rule are transferred together in one DICOM
+#        transfer (association). This might be necessary for certain PACS systems or workstations (e.g.
+#        when transferring 4D series).
+
+
 def receiveSignal(signalNumber, frame):
     print('Received:', signalNumber)
     return

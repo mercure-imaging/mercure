@@ -17,3 +17,4 @@ starlette
 uvicorn
 itsdangerous
 python-multipart
+distro

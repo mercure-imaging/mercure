@@ -78,6 +78,28 @@ def read_config():
         raise FileNotFoundError(f"Configuration file not fould: {configuration_file}")
 
 
+def save_config():
+    global configuration_timestamp
+    configuration_file = Path(configuration_filename)
+
+    # Check for existence of lock file
+    lock_file=Path(configuration_file.parent/configuration_file.stem).with_suffix(".lock")
+
+    if lock_file.exists():
+        raise ResourceWarning(f"Configuration file locked: {lock_file}")
+
+    with open(configuration_file, "w") as json_file:
+        json.dump(hermes,json_file, indent=4)
+
+    try:
+        stat = os.stat(configuration_file)
+        configuration_timestamp=stat.st_mtime
+    except AttributeError:
+        configuration_timestamp=0
+
+    print("Stored configuration into: ", configuration_file)
+
+
 def checkFolders():
     for entry in ['incoming_folder','outgoing_folder','success_folder','error_folder','discard_folder']:
         if not Path(hermes[entry]).exists():

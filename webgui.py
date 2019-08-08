@@ -4,6 +4,10 @@ import binascii
 import sys
 import shutil
 import json
+import distro
+import random
+import os
+import asyncio
 from starlette.applications import Starlette
 from starlette.staticfiles import StaticFiles
 from starlette.responses import HTMLResponse
@@ -27,6 +31,10 @@ import common.config as config
 import common.rule_evaluation as rule_evaluation
 import webgui.users as users
 import webgui.tagslist as tagslist
+import webgui.services as services
+
+
+hermes_version = "0.1a"
 
 
 ###################################################################################
@@ -60,7 +68,7 @@ class SessionAuthBackend(AuthenticationBackend):
         return AuthCredentials(credentials), ExtendedUser(username,is_admin)
 
 
-webgui_config = Config("webgui.env")
+webgui_config = Config("configuration/webgui.env")
 SECRET_KEY = webgui_config('SECRET_KEY', cast=Secret, default="NONE")
 WEBGUI_PORT = webgui_config('PORT', cast=int, default=8000)
 WEBGUI_HOST = webgui_config('HOST', default='0.0.0.0')
@@ -82,9 +90,30 @@ def get_user_information(request):
 
 @app.route('/logs')
 @requires('authenticated', redirect='login')
-async def logs(request):
+async def show_first_log(request):
+    # Get first service entry and forward to corresponding entry point
+    if (services.services_list):
+        first_service=next(iter(services.services_list))
+        return RedirectResponse(url='/logs/'+first_service, status_code=303)  
+    else:
+        return PlainTextResponse('No services configured')
+
+
+@app.route('/logs/{service}')
+@requires('authenticated', redirect='login')
+async def show_log(request):
+    requested_service=request.path_params["service"]
+
+    service_logs = {}
+    for service in services.services_list:
+        service_logs[service]={ "id": service, "name": services.services_list[service]["name"] }
+
+    if not requested_service in service_logs:
+        return PlainTextResponse('Service does not exist.')
+
     template = "logs.html"
-    context = {"request": request, "page": "logs"}
+    context = {"request": request, "hermes_version": hermes_version, "page": "logs", 
+               "service_logs": service_logs, "log_id": requested_service }
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
 
@@ -102,7 +131,7 @@ async def show_rules(request):
         return PlainTextResponse('Configuration is being updated. Try again in a minute.')
 
     template = "rules.html"
-    context = {"request": request, "page": "rules", "rules": config.hermes["rules"]}
+    context = {"request": request, "hermes_version": hermes_version, "page": "rules", "rules": config.hermes["rules"]}
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
 
@@ -123,6 +152,11 @@ async def add_rule(request):
     
     config.hermes["rules"][newrule]={ "rule": "False" }
 
+    try: 
+        config.save_config()
+    except:
+        return PlainTextResponse('ERROR: Unable to write configuration. Try again.')
+
     print("Created rule ", newrule)
     return RedirectResponse(url='/rules/edit/'+newrule, status_code=303)  
 
@@ -137,7 +171,7 @@ async def rules_edit(request):
 
     rule=request.path_params["rule"]
     template = "rules_edit.html"
-    context = {"request": request, "page": "rules", "rules": config.hermes["rules"], 
+    context = {"request": request, "hermes_version": hermes_version, "page": "rules", "rules": config.hermes["rules"], 
                "targets": config.hermes["targets"], "rule": rule, 
                "alltags": tagslist.alltags, "sortedtags": tagslist.sortedtags}
     context.update(get_user_information(request))
@@ -164,7 +198,10 @@ async def rules_edit_post(request):
     config.hermes["rules"][editrule]["contact"]=form["contact"]
     config.hermes["rules"][editrule]["comment"]=form["comment"]
 
-    # TODO: Save configuration
+    try: 
+        config.save_config()
+    except:
+        return PlainTextResponse('ERROR: Unable to write configuration. Try again.')
 
     print("Edited rule ", editrule)
     return RedirectResponse(url='/rules', status_code=303)   
@@ -183,6 +220,11 @@ async def rules_delete_post(request):
     if deleterule in config.hermes["rules"]:
         del config.hermes["rules"][deleterule]
 
+    try: 
+        config.save_config()
+    except:
+        return PlainTextResponse('ERROR: Unable to write configuration. Try again.')
+    
     print("Deleted rule ", deleterule)
     return RedirectResponse(url='/rules', status_code=303)   
 
@@ -200,10 +242,10 @@ async def rules_test(request):
     result=rule_evaluation.test_rule(testrule,testvalues)
 
     if (result=="True"):
-        return PlainTextResponse('<span class="tag is-success is-medium ruleresult"><i class="fas fa-thumbs-up"></i>&nbsp;Trigger</span>')
+        return PlainTextResponse('<span class="tag is-success is-medium ruleresult"><i class="fas fa-thumbs-up"></i>&nbsp;Route</span>')
     else:
         if (result=="False"):
-            return PlainTextResponse('<span class="tag is-info is-medium ruleresult"><i class="fas fa-thumbs-down"></i>&nbsp;Pass</span>')
+            return PlainTextResponse('<span class="tag is-info is-medium ruleresult"><i class="fas fa-thumbs-down"></i>&nbsp;Discard</span>')
         else:
             return PlainTextResponse('<span class="tag is-danger is-medium ruleresult"><i class="fas fa-bug"></i>&nbsp;Error</span>&nbsp;&nbsp;Invalid rule: '+result)
 
@@ -226,7 +268,7 @@ async def show_targets(request):
         used_targets[used_target]=rule
 
     template = "targets.html"
-    context = {"request": request, "page": "targets", "targets": config.hermes["targets"], "used_targets": used_targets}
+    context = {"request": request, "hermes_version": hermes_version, "page": "targets", "targets": config.hermes["targets"], "used_targets": used_targets}
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
 
@@ -247,6 +289,11 @@ async def add_target(request):
     
     config.hermes["targets"][newtarget]={ "ip": "", "port": "" }
 
+    try: 
+        config.save_config()
+    except:
+        return PlainTextResponse('ERROR: Unable to write configuration. Try again.')
+
     print("Created target ", newtarget)
     return RedirectResponse(url='/targets/edit/'+newtarget, status_code=303)  
 
@@ -265,7 +312,7 @@ async def targets_edit(request):
         return RedirectResponse(url='/targets', status_code=303) 
 
     template = "targets_edit.html"
-    context = {"request": request, "page": "targets", "targets": config.hermes["targets"], "edittarget": edittarget}
+    context = {"request": request, "hermes_version": hermes_version, "page": "targets", "targets": config.hermes["targets"], "edittarget": edittarget}
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)    
 
@@ -290,7 +337,10 @@ async def targes_edit_post(request):
     config.hermes["targets"][edittarget]["aet_source"]=form["aet_source"]
     config.hermes["targets"][edittarget]["contact"]=form["contact"]
 
-    # TODO: Save configuration
+    try: 
+        config.save_config()
+    except:
+        return PlainTextResponse('ERROR: Unable to write configuration. Try again.')
 
     print("Edited target ", edittarget)
     return RedirectResponse(url='/targets', status_code=303)   
@@ -309,9 +359,56 @@ async def targets_delete_post(request):
     if deletetarget in config.hermes["targets"]:
         del config.hermes["targets"][deletetarget]
 
+    try: 
+        config.save_config()
+    except:
+        return PlainTextResponse('ERROR: Unable to write configuration. Try again.')    
+
     print("Deleted target ", deletetarget)
     return RedirectResponse(url='/targets', status_code=303)   
 
+
+async def async_run(cmd):
+    proc = await asyncio.create_subprocess_shell(
+        cmd,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE)
+
+    stdout, stderr = await proc.communicate()
+    return proc.returncode
+
+
+@app.route('/targets/test/{target}', methods=["POST"])
+@requires(['authenticated'], redirect='login')
+async def targets_test_post(request):
+    try: 
+        config.read_config()
+    except:
+        return PlainTextResponse('Configuration is being updated. Try again in a minute.')
+
+    testtarget=request.path_params["target"]
+    
+    ping_response="False"
+    cecho_response="False"
+    target_ip=""
+    target_port=""
+
+    try:
+        target_ip=config.hermes["targets"][testtarget]["ip"]
+        target_port=config.hermes["targets"][testtarget]["port"]
+    except:
+        pass
+
+    print("Testing target ", testtarget)
+
+    if (target_ip) and (target_port):
+        if (await async_run("ping -w 1 -c 1 " + target_ip))==0:
+            ping_response="True"
+            # Only test for c-echo if the ping was successful
+            if (await async_run("echoscu -to 10 " + target_ip + " " + target_port))==0:
+                cecho_response="True"
+    
+    return JSONResponse('{"ping": "'+ping_response+'", "c-echo": "'+cecho_response+'" }')
 
 
 ###################################################################################
@@ -327,7 +424,7 @@ async def show_users(request):
         return PlainTextResponse('Configuration is being updated. Try again in a minute.')
 
     template = "users.html"
-    context = {"request": request, "page": "users", "users": users.users_list }
+    context = {"request": request, "hermes_version": hermes_version, "page": "users", "users": users.users_list }
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)    
 
@@ -372,7 +469,7 @@ async def users_edit(request):
         return RedirectResponse(url='/users', status_code=303) 
 
     template = "users_edit.html"
-    context = {"request": request, "page": "users", "users": users.users_list, "edituser": edituser}
+    context = {"request": request, "hermes_version": hermes_version, "page": "users", "users": users.users_list, "edituser": edituser}
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)    
 
@@ -443,7 +540,7 @@ async def settings_edit(request):
         return PlainTextResponse('Configuration is being updated. Try again in a minute.')
 
     template = "users_edit.html"
-    context = {"request": request, "page": "settings", "users": users.users_list, "edituser": request.user.display_name, "own_settings": "True"}
+    context = {"request": request, "hermes_version": hermes_version, "page": "settings", "users": users.users_list, "edituser": request.user.display_name, "own_settings": "True"}
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)    
 
@@ -455,8 +552,10 @@ async def settings_edit(request):
 @app.route('/configuration')
 @requires(['authenticated','admin'], redirect='homepage')
 async def configuration(request):
-    template = "generic.html"
-    context = {"request": request, "page": "configuration"}
+    template = "configuration.html"
+    os_info=distro.linux_distribution()
+    os_string=f"{os_info[0]} Version {os_info[1]} ({os_info[2]})"
+    context = {"request": request, "hermes_version": hermes_version, "page": "configuration", "config": config.hermes, "os_string": os_string}
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
 
@@ -469,7 +568,7 @@ async def configuration(request):
 async def login(request):
     request.session.clear()
     template = "login.html"
-    context = {"request": request }
+    context = {"request": request, "hermes_version": hermes_version }
     return templates.TemplateResponse(template, context)
 
 
@@ -527,8 +626,17 @@ async def homepage(request):
         free_space="N/A"
         disk_total="N/A"
 
+    service_status = {}
+    for service in services.services_list:
+        if random.randint(0,1)==0:
+            service_status[service]={ "id": service, "name": services.services_list[service]["name"], "running": "True" }
+        else:
+            service_status[service]={ "id": service, "name": services.services_list[service]["name"], "running": "False" }
+
     template = "index.html"
-    context = {"request": request, "page": "homepage", "used_space": used_space, "free_space": free_space, "total_space": total_space }
+    context = {"request": request, "hermes_version": hermes_version, "page": "homepage", 
+               "used_space": used_space, "free_space": free_space, "total_space": total_space,
+               "service_status": service_status }
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
 
@@ -551,7 +659,7 @@ async def not_found(request, exc):
     Return an HTTP 404 page.
     """
     template = "404.html"
-    context = {"request": request}
+    context = {"request": request, "hermes_version": hermes_version }
     return templates.TemplateResponse(template, context, status_code=404)
 
 
@@ -561,7 +669,7 @@ async def server_error(request, exc):
     Return an HTTP 500 page.
     """
     template = "500.html"
-    context = {"request": request}
+    context = {"request": request, "hermes_version": hermes_version }
     return templates.TemplateResponse(template, context, status_code=500)
 
 
@@ -571,6 +679,7 @@ async def server_error(request, exc):
 
 if __name__ == "__main__":
     try:
+        services.read_services()
         config.read_config()
         users.read_users()
     except Exception as e: 
