@@ -1,0 +1,17 @@
+[Unit]
+Description=Hermes Bookkeeper
+Documentation=https://hermes-router.github.io/
+After=network.target
+Requires=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/hermes/hermes
+ExecStart=/home/hermes/hermes-env/bin/python /home/hermes/hermes/bookkeeper.py
+
+Restart=on-failure
+RestartSec=3
+
+
+[Install]
+WantedBy=multi-user.target

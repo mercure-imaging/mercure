@@ -6,9 +6,8 @@ Requires=network.target
 
 [Service]
 Type=simple
-User=hermes
 WorkingDirectory=/home/hermes/hermes
-ExecStart=/home/hermes/hermes-env/bin/python /home/hermes/hermes/receiver.py
+ExecStart=/home/hermes/hermes/receiver.sh
 
 Restart=on-failure
 RestartSec=3

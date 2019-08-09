@@ -1,5 +1,5 @@
 [Unit]
-Description=Hermes Router
+Description=Hermes UI
 Documentation=https://hermes-router.github.io/
 After=network.target
 Requires=network.target
@@ -7,7 +7,7 @@ Requires=network.target
 [Service]
 Type=simple
 WorkingDirectory=/home/hermes/hermes
-ExecStart=/home/hermes/hermes-env/bin/python /home/hermes/hermes/router.py
+ExecStart=/home/hermes/hermes-env/python /home/hermes/hermes/webui.py
 
 Restart=on-failure
 RestartSec=3
