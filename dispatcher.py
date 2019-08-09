@@ -104,7 +104,7 @@ if __name__ == "__main__":
     graphite_prefix='hermes.dispatcher.'+instance_name
 
     if len(config.hermes['graphite_ip']) > 0:
-        logging.info('Sending events to graphite server: ',config.hermes['graphite_ip'])
+        logging.info(f'Sending events to graphite server: {config.hermes["graphite_ip"]}')
         graphyte.init(config.hermes['graphite_ip'], config.hermes['graphite_port'], prefix=graphite_prefix)
 
     logger.info(f"Dispatching folder: {config.hermes['outgoing_folder']}")
