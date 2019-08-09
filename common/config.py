@@ -56,7 +56,7 @@ def read_config():
         if timestamp <= configuration_timestamp:
             return hermes
 
-        logger.info("Reading configuration from: {configuration_filename}")
+        logger.info(f"Reading configuration from: {configuration_filename}")
 
         with open(configuration_file, "r") as json_file:
             loaded_config=json.load(json_file)
@@ -79,7 +79,7 @@ def read_config():
             configuration_timestamp=timestamp
             return hermes
     else:
-        raise FileNotFoundError(f"Configuration file not fould: {configuration_file}")
+        raise FileNotFoundError(f"Configuration file not found: {configuration_file}")
 
 
 def save_config():
@@ -101,12 +101,12 @@ def save_config():
     except AttributeError:
         configuration_timestamp=0
 
-    logger.info("Stored configuration into: ", configuration_file)
+    logger.info(f"Stored configuration into: {configuration_file}")
 
 
 def checkFolders():
     for entry in ['incoming_folder','outgoing_folder','success_folder','error_folder','discard_folder']:
         if not Path(hermes[entry]).exists():
-            logger.info("ERROR: Folder not found ",hermes[entry])
+            logger.error(f"Folder not found {hermes[entry]}")
             return False
     return True
