@@ -84,4 +84,14 @@ body {
 
 .logviewer {
     font-family: monospace;
+    overflow-x: scroll;
+    overflow-y: scroll;
+    display: flex;
+    width:100%;
+    white-space: nowrap;
+    height: 100%;
+}
+
+.logview {
+    height: 70vh;
 }

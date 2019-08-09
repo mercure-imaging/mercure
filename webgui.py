@@ -8,6 +8,7 @@ import distro
 import random
 import os
 import asyncio
+import datetime
 from starlette.applications import Starlette
 from starlette.staticfiles import StaticFiles
 from starlette.responses import HTMLResponse
@@ -84,6 +85,16 @@ def get_user_information(request):
     return { "logged_in": request.user.is_authenticated, "user": request.user.display_name, "is_admin": request.user.is_admin }
 
 
+async def async_run(cmd):
+    proc = await asyncio.create_subprocess_shell(
+        cmd,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE)
+
+    stdout, stderr = await proc.communicate()
+    return proc.returncode,stdout,stderr
+
+
 ###################################################################################
 ## Logs endpoints
 ###################################################################################
@@ -104,16 +115,50 @@ async def show_first_log(request):
 async def show_log(request):
     requested_service=request.path_params["service"]
 
+    # Get optional start and end dates from the URL. Make sure 
+    # that the date format is clean
+    try:
+        start_date=request.query_params.get("from","")
+        datetime.datetime.strptime(start_date, '%Y-%m-%d')
+        start_date_cmd=" --since "+start_date
+    except: 
+        start_date=""
+        start_date_cmd=""
+
+    try:
+        end_date=request.query_params.get("to","")
+        datetime.datetime.strptime(end_date, '%Y-%m-%d')
+        end_date_cmd=" --until "+end_date
+    except: 
+        end_date=""
+        end_date_cmd=""
+
     service_logs = {}
     for service in services.services_list:
-        service_logs[service]={ "id": service, "name": services.services_list[service]["name"] }
+        service_logs[service]={ "id": service, "name": services.services_list[service]["name"], "systemd": services.services_list[service]["systemd_service"] }
 
-    if not requested_service in service_logs:
-        return PlainTextResponse('Service does not exist.')
+    if (not requested_service in service_logs) or (not services.services_list[requested_service]["systemd_service"]):
+        return PlainTextResponse('Service does not exist or is incorrectly configured.')
+
+    run_result=await async_run("journalctl -n 10000 -u " + services.services_list[requested_service]["systemd_service"]
+                               + start_date_cmd + end_date_cmd)
+
+    log_content=""
+
+    if run_result[0]==0:
+        log_content=str(run_result[1].decode())
+        line_list=log_content.split('\n')
+        if len(line_list) and (not line_list[-1]):
+            del line_list[-1]
+
+        log_content='<br>'.join(reversed(line_list))
+    else:
+        log_content="Error reading log information."
 
     template = "logs.html"
     context = {"request": request, "hermes_version": hermes_version, "page": "logs", 
-               "service_logs": service_logs, "log_id": requested_service }
+               "service_logs": service_logs, "log_id": requested_service, "log_content": log_content,
+               "start_date": start_date, "end_date": end_date }
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
 
@@ -368,16 +413,6 @@ async def targets_delete_post(request):
     return RedirectResponse(url='/targets', status_code=303)   
 
 
-async def async_run(cmd):
-    proc = await asyncio.create_subprocess_shell(
-        cmd,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE)
-
-    stdout, stderr = await proc.communicate()
-    return proc.returncode
-
-
 @app.route('/targets/test/{target}', methods=["POST"])
 @requires(['authenticated'], redirect='login')
 async def targets_test_post(request):
@@ -402,10 +437,10 @@ async def targets_test_post(request):
     print("Testing target ", testtarget)
 
     if (target_ip) and (target_port):
-        if (await async_run("ping -w 1 -c 1 " + target_ip))==0:
+        if (await async_run("ping -w 1 -c 1 " + target_ip))[0]==0:
             ping_response="True"
             # Only test for c-echo if the ping was successful
-            if (await async_run("echoscu -to 10 " + target_ip + " " + target_port))==0:
+            if (await async_run("echoscu -to 10 " + target_ip + " " + target_port))[0]==0:
                 cecho_response="True"
     
     return JSONResponse('{"ping": "'+ping_response+'", "c-echo": "'+cecho_response+'" }')
@@ -628,11 +663,14 @@ async def homepage(request):
 
     service_status = {}
     for service in services.services_list:
-        if random.randint(0,1)==0:
-            service_status[service]={ "id": service, "name": services.services_list[service]["name"], "running": "True" }
-        else:
-            service_status[service]={ "id": service, "name": services.services_list[service]["name"], "running": "False" }
+        running_status="False"
 
+        if (services.services_list[service].get("systemd_service","")):
+            if (await async_run("systemctl is-active " + services.services_list[service]["systemd_service"]))[0]==0:
+                running_status="True"
+        
+        service_status[service]={ "id": service, "name": services.services_list[service]["name"], "running": running_status }
+        
     template = "index.html"
     context = {"request": request, "hermes_version": hermes_version, "page": "homepage", 
                "used_space": used_space, "free_space": free_space, "total_space": total_space,

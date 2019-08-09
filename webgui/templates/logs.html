@@ -2,18 +2,52 @@
 
 {% block content %}
 <main role="main">
-  <div class="container">
-    <h1 class="title">Logs</h1>
-    <div class="logtabs tabs is-boxed">
-      <ul>
-        {% for service in service_logs %}
-        <li {% if service_logs[service]["id"]==log_id %}class="is-active"{% endif %}><a href="/logs/{{service_logs[service]["id"]}}">{{ service_logs[service]["name"] }}</a></li>
-        {% endfor %}
-    </ul>
+  <div class="columns">
+    <div class="column">
+        <h1 class="title">Logs</h1>
+    </div>
+    <div class="column">
+      <div class="container">
+        <div class="field is-grouped is-pulled-right">
+          <label class="label">From:&nbsp;</label>
+          <div class="control"><input class="input is-small" type="date" id="startdate" value="{{start_date}}"></div>
+          <label class="label">To:&nbsp;</label>
+          <div class="control"><input class="input is-small" type="date" id="enddate" value="{{end_date}}"></div>
+          <button class="button is-dark is-small" onclick="refreshDate()">
+          <i class="fas fa-sync"></i></button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="columns">  
+    <div class="column">
+      <div class="logtabs tabs is-boxed">
+        <ul>
+          {% for service in service_logs %}
+          <li title="{{service_logs[service]["systemd"]}}" {% if service_logs[service]["id"]==log_id %}class="is-active"{% endif %}><a href="/logs/{{service_logs[service]["id"]}}">{{ service_logs[service]["name"] }}</a></li>
+          {% endfor %}
+        </ul>
+      </div>    
+      <div class="logview">
+        <p class="logviewer is-full">
+          {{log_content|safe}}
+        </p>
+      </div>
     </div>    
-    <div class="logviewer is-full">
-      Logfile for service {{log_id}}
-    </code>
-  </div>    
+  </div>        
 </main>
+
+<script>
+function refreshDate(val) { 
+  var url = window.location.href.split('?')[0];
+
+  startDate=$("#startdate").val();
+  endDate=$("#enddate").val();
+
+  url += "?from="+startDate+"&to="+endDate
+
+  window.location.href = url;
+}
+</script>
+
 {% endblock %}
