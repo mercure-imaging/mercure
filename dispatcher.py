@@ -41,8 +41,8 @@ def dispatch(args):
     try:
         config.read_config()
     except Exception as e:
-        logger.info(e)
-        logger.info("Unable to update configuration. Skipping processing.")
+        logger.error(e)
+        logger.error("Unable to update configuration. Skipping processing.")
         return
 
     logger.info(f"Checking for outgoing data in {config.hermes['outgoing_folder']}")
@@ -96,9 +96,9 @@ if __name__ == "__main__":
     try:
         config.read_config()
     except Exception as e:
-        logger.info(e)
-        logger.info("Cannot start service. Going down.")
-        logger.info("")
+        logger.error(e)
+        logger.error("Cannot start service. Going down.")
+        logger.error("")
         sys.exit(1)
 
     graphite_prefix='hermes.dispatcher.'+instance_name

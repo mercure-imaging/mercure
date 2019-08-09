@@ -58,8 +58,8 @@ def runRouter(args):
     try:
         config.read_config()
     except Exception as e:
-        logger.info(e)
-        logger.info("Unable to update configuration. Skipping processing.")
+        logger.error(e)
+        logger.error("Unable to update configuration. Skipping processing.")
         # TODO: Send error notification!
         return
 
