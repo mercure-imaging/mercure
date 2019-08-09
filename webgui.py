@@ -100,7 +100,7 @@ async def async_run(cmd):
 ###################################################################################
 
 @app.route('/logs')
-@requires('authenticated', redirect='login')
+@requires(['authenticated','admin'], redirect='login')
 async def show_first_log(request):
     # Get first service entry and forward to corresponding entry point
     if (services.services_list):
@@ -111,7 +111,7 @@ async def show_first_log(request):
 
 
 @app.route('/logs/{service}')
-@requires('authenticated', redirect='login')
+@requires(['authenticated','admin'], redirect='login')
 async def show_log(request):
     requested_service=request.path_params["service"]
 
@@ -319,7 +319,7 @@ async def show_targets(request):
 
 
 @app.route('/targets', methods=["POST"])
-@requires('authenticated', redirect='login')
+@requires(['authenticated','admin'], redirect='login')
 async def add_target(request):
     try: 
         config.read_config()
@@ -478,8 +478,8 @@ async def add_new_user(request):
     if newuser in users.users_list:
         return PlainTextResponse('User already exists.')
     
-    newpassword=form.get("password","here_should_be_a_password")
-    users.users_list[newuser]={ "password": newpassword, "is_admin": "False" }
+    newpassword=users.hash_password(form.get("password","here_should_be_a_password"))
+    users.users_list[newuser]={ "password": newpassword, "is_admin": "False", "change_password": "True" }
 
     try: 
         users.save_users()
@@ -504,7 +504,26 @@ async def users_edit(request):
         return RedirectResponse(url='/users', status_code=303) 
 
     template = "users_edit.html"
-    context = {"request": request, "hermes_version": hermes_version, "page": "users", "users": users.users_list, "edituser": edituser}
+    context = {"request": request, "hermes_version": hermes_version, "page": "users", 
+               "edituser": edituser, "edituser_info": users.users_list[edituser]}
+    context.update(get_user_information(request))
+    return templates.TemplateResponse(template, context)    
+
+
+@app.route('/settings', methods=["GET"])
+@requires(['authenticated'], redirect='login')
+async def settings_edit(request):
+    try: 
+        users.read_users()
+    except:
+        return PlainTextResponse('Configuration is being updated. Try again in a minute.')
+
+    own_name=request.user.display_name
+
+    template = "users_edit.html"
+    context = {"request": request, "hermes_version": hermes_version, "page": "settings", 
+               "edituser": own_name, "edituser_info": users.users_list[own_name], "own_settings": "True", 
+               "change_password": users.users_list[own_name].get("change_password","False") }
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)    
 
@@ -525,8 +544,9 @@ async def users_edit_post(request):
 
     users.users_list[edituser]["email"]=form["email"]
     if form["password"]:
-        users.users_list[edituser]["password"]=form["password"]
-
+        users.users_list[edituser]["password"]=users.hash_password(form["password"])
+        users.users_list[edituser]["change_password"]="False"
+ 
     # Only admins are allowed to change the admin status, and the current user
     # cannot change the status for himself (which includes the settings page)
     if (request.user.is_admin) and (request.user.display_name != edituser):
@@ -564,20 +584,6 @@ async def users_delete_post(request):
 
     print("Deleted user ", deleteuser)
     return RedirectResponse(url='/users', status_code=303)   
-
-
-@app.route('/settings', methods=["GET"])
-@requires(['authenticated'], redirect='login')
-async def settings_edit(request):
-    try: 
-        users.read_users()
-    except:
-        return PlainTextResponse('Configuration is being updated. Try again in a minute.')
-
-    template = "users_edit.html"
-    context = {"request": request, "hermes_version": hermes_version, "page": "settings", "users": users.users_list, "edituser": request.user.display_name, "own_settings": "True"}
-    context.update(get_user_information(request))
-    return templates.TemplateResponse(template, context)    
 
 
 ###################################################################################
@@ -622,7 +628,10 @@ async def login_post(request):
         if users.is_admin(form["username"])==True:
             request.session.update({"is_admin": "Jawohl"})
 
-        return RedirectResponse(url='/', status_code=303)
+        if users.needs_change_password(form["username"]):
+            return RedirectResponse(url='/settings', status_code=303)
+        else:
+            return RedirectResponse(url='/', status_code=303)
     else:
         template = "login.html"
         context = {"request": request, "invalid_password": 1 }

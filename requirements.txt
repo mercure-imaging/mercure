@@ -18,3 +18,4 @@ uvicorn
 itsdangerous
 python-multipart
 distro
+passlib

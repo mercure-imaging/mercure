@@ -3,13 +3,11 @@
 {% block content %}
 <main role="main">
 
-  <div class="container">
-    
+  <div class="container">   
     <h1 class="title">Login</h1>
 
-    <div class="columns">
-      <div class="column"></div>
-      <div class="column is-two-thirds">
+    <div class="columns is-centered" style="margin-top: 10px;">
+      <div class="column is-half card" style="padding: 30px;">   
         <form method="post">
           <div class="field">
             <p class="control has-icons-left has-icons-right">
@@ -35,24 +33,13 @@
             </p>
           </div>
         </form>
-      </div>
-      <div class="column"></div>
+        {% if invalid_password %}
+        <div class="notification is-danger" style="margin-top: 20px;">
+          <i class="fas fa-lock"></i>&nbsp;&nbsp;Invalid username or password entered
+        </div>   
+        {% endif %}        
+      </div>    
     </div>
-
-    {% if invalid_password %}
-    <div class="container">
-      <div class="columns is-centered">
-        <div class="column  is-two-thirds">
-          <div class="notification is-danger">
-              Invalid username or password entered
-            </div>   
-          </div>
-        </div>
-      </div>
-    </div>
-    {% endif %}
-
-
   </div> <!-- /container -->
 
 </main>

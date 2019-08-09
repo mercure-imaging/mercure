@@ -2,7 +2,7 @@ import json
 import os
 import logging
 from pathlib import Path
-
+from passlib.apps import custom_app_context as pwd_context
 import daiquiri
 
 daiquiri.setup(level=logging.INFO)
@@ -45,7 +45,14 @@ def read_users():
             users_timestamp=timestamp
             return users_list
     else:
-        raise FileNotFoundError(f"Users file not found: {users_file}")
+        create_users()
+
+
+def create_users():
+    print("No user file found. Creating user list with seed admin account.")
+    global users_list
+    users_list = { "admin": { "password": hash_password("router"), "is_admin": "True", "change_password": "True" } }
+    save_users()
 
 
 def save_users():
@@ -82,12 +89,17 @@ def evaluate_password(username, password):
     if len(stored_password)==0:
         return False
 
-    # TODO: Implement hashing of passwords
-
-    if password==stored_password:
-        return True
-    else:
+    try:
+        if pwd_context.verify(password, stored_password):
+            return True
+        else:
+            return False
+    except:
         return False
+
+
+def hash_password(password):
+    return pwd_context.hash(password)
 
 
 def is_admin(username):
@@ -98,3 +110,14 @@ def is_admin(username):
         return True
     else:
         return False
+
+
+def needs_change_password(username):
+    if not username in users_list:
+        return False
+
+    if users_list[username].get("change_password","False")=="True":
+        return True
+    else:
+        return False
+    
