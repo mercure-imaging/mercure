@@ -90,8 +90,8 @@ if __name__ == "__main__":
         instance_name=sys.argv[1]
 
     logger.info(sys.version)
-    logger.info('Instance name = ',instance_name)
-    logger.info("Router PID is:", os.getpid())
+    logger.info(f"Instance name = {instance_name}")
+    logger.info(f"Router PID is: {os.getpid()}")
 
     try:
         config.read_config()
