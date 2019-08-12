@@ -5,7 +5,7 @@
 #include "dcmtk/dcmdata/dctk.h"
 #include "dcmtk/ofstd/ofstd.h"
 
-#define VERSION "0.1d"
+#define VERSION "0.1e"
 
 static OFString tagPatientName="";
 static OFString tagSeriesInstanceUID="";
@@ -130,7 +130,8 @@ bool writeTagsFile(OFString dcmFile, OFString originalFile)
                              errorStr.append(dcmFile.getDataset()->findAndGetOFString(TAG, VAR).text()); \
                              writeErrorInformation(path+origFilename, errorStr); \
                              return 1; \
-                         }
+                         } \
+                         for (size_t i=0; i<VAR.length(); i++) { if (VAR[i]==13) { VAR[i]=';'; } else { if (VAR[i]==10) { VAR[i]=' '; } } }
 
 int main(int argc, char *argv[])
 {           
@@ -223,4 +224,3 @@ int main(int argc, char *argv[])
         return 1;
     }
 }
-

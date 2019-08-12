@@ -64,7 +64,7 @@ def process_series(series_UID):
                 stemName=entry.name[:-5]
                 fileList.append(stemName)
 
-    logger.info("DICOMs found: {len(fileList)}")
+    logger.info("DICOMs found: "+str(len(fileList)))
 
     # Use the tags file from the first slice for evaluating the routing rules
     tagsMasterFile=Path(config.hermes['incoming_folder'] + '/' + fileList[0] + ".tags")
