@@ -17,21 +17,10 @@ DEFINES += QT_DEPRECATED_WARNINGS
 INCLUDEPATH += /usr/local/include/dcmtk/dcmnet/
 INCLUDEPATH += /usr/local/include/dcmtk/config/
 
-LIBS += /usr/local/lib/libdcmdata.a
-LIBS += /usr/local/lib/liboflog.a
-LIBS += /usr/local/lib/libofstd.a
+LIBS += -ldcmdata -loflog -lofstd
+LIBS += -lz -ldl -lpthread
 
-ICU_PATH=/usr/lib/x86_64-linux-gnu
-
-LIBS += $$ICU_PATH/libicui18n.a
-LIBS += $$ICU_PATH/libicuuc.a
-LIBS += $$ICU_PATH/libicudata.a
-
-LIBS += -lz
-LIBS += -ldl -lpthread
-
-SOURCES += \
-        main.cpp
+SOURCES += main.cpp
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

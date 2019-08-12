@@ -5,7 +5,7 @@
 #include "dcmtk/dcmdata/dctk.h"
 #include "dcmtk/ofstd/ofstd.h"
 
-#define VERSION "0.1c"
+#define VERSION "0.1d"
 
 static OFString tagPatientName="";
 static OFString tagSeriesInstanceUID="";
