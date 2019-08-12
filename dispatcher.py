@@ -27,7 +27,8 @@ daiquiri.setup(
         "stdout",
         daiquiri.output.Journal(
             formatter=daiquiri.formatter.ColorFormatter(
-                fmt="%(color)s%(levelname)-8.8s %(name)s%(extras)s: %(message)s%(color_stop)s"
+                fmt="%(asctime)s [%(process)d] %(color)s%(levelname)-8.8s "
+                "%(name)s: %(message)s%(color_stop)s"
             )
         ),
     ),
