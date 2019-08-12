@@ -9,5 +9,6 @@ and their package managers (apt, yum, rpm aso.)
 Please lookup how to install these packages on your system
  * gcc
  * dcmtk
- 
+ * pkg-config
+ * libsystemd-dev
  

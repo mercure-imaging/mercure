@@ -22,8 +22,7 @@ hermes_cleaner_version = "0.1a"
 daiquiri.setup(
     level=logging.INFO,
     outputs=(
-        "stdout",
-        daiquiri.output.Journal(
+        daiquiri.output.Stream(
             formatter=daiquiri.formatter.ColorFormatter(
                 fmt="%(color)s%(levelname)-8.8s "
                 "%(name)s: %(message)s%(color_stop)s"

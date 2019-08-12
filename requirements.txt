@@ -1,4 +1,4 @@
-daiquiri
+daiquiri[systemd]
 pydicom
 graphyte
 

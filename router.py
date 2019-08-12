@@ -23,8 +23,7 @@ from router.process_series import process_series
 daiquiri.setup(
     level=logging.INFO,
     outputs=(
-        "stdout",
-        daiquiri.output.Journal(
+        daiquiri.output.Stream(
             formatter=daiquiri.formatter.ColorFormatter(
                 fmt="%(color)s%(levelname)-8.8s "
                 "%(name)s: %(message)s%(color_stop)s"
