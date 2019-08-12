@@ -21,7 +21,15 @@ from dispatch.send import execute
 # Dispatcher version
 hermes_dispatcher_version = "0.1a"
 
-daiquiri.setup(level=logging.INFO)
+daiquiri.setup(
+    level=logging.INFO,
+    outputs=(
+        "stdout",
+        daiquiri.output.Journal(
+            formatter="%(color)s%(levelname)-8.8s %(name)s%(extras)s: %(message)s%(color_stop)s"
+        ),
+    ),
+)
 logger = daiquiri.getLogger("dispatcher")
 
 
@@ -31,7 +39,7 @@ def receiveSignal(signalNumber, frame):
 
 
 def terminateProcess(signalNumber, frame):
-    logger.info('Shutdown requested')
+    logger.info("Shutdown requested")
     helper.triggerTerminate()
 
 
@@ -85,9 +93,9 @@ if __name__ == "__main__":
     signal.signal(signal.SIGALRM, receiveSignal)
     signal.signal(signal.SIGTERM, terminateProcess)
 
-    instance_name="main"
-    if len(sys.argv)>1:
-        instance_name=sys.argv[1]
+    instance_name = "main"
+    if len(sys.argv) > 1:
+        instance_name = sys.argv[1]
 
     logger.info(sys.version)
     logger.info(f"Instance name = {instance_name}")
@@ -101,11 +109,17 @@ if __name__ == "__main__":
         logger.error("")
         sys.exit(1)
 
-    graphite_prefix='hermes.dispatcher.'+instance_name
+    graphite_prefix = "hermes.dispatcher." + instance_name
 
-    if len(config.hermes['graphite_ip']) > 0:
-        logging.info(f'Sending events to graphite server: {config.hermes["graphite_ip"]}')
-        graphyte.init(config.hermes['graphite_ip'], config.hermes['graphite_port'], prefix=graphite_prefix)
+    if len(config.hermes["graphite_ip"]) > 0:
+        logging.info(
+            f'Sending events to graphite server: {config.hermes["graphite_ip"]}'
+        )
+        graphyte.init(
+            config.hermes["graphite_ip"],
+            config.hermes["graphite_port"],
+            prefix=graphite_prefix,
+        )
 
     logger.info(f"Dispatching folder: {config.hermes['outgoing_folder']}")
 
@@ -116,4 +130,4 @@ if __name__ == "__main__":
 
     # Start the asyncio event loop for asynchronous function calls
     helper.loop.run_forever()
-    logging.info('Going down now')
+    logging.info("Going down now")
