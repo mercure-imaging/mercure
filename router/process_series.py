@@ -58,6 +58,7 @@ def process_series(series_UID):
     fileList = []
     seriesPrefix=series_UID+"#"
 
+    # Collect all files belonging to the series
     for entry in os.scandir(config.hermes['incoming_folder']):
             if entry.name.endswith(".tags") and entry.name.startswith(seriesPrefix) and not entry.is_dir():
                 stemName=entry.name[:-5]
@@ -65,6 +66,7 @@ def process_series(series_UID):
 
     logger.info("DICOMs found: {len(fileList)}")
 
+    # Use the tags file from the first slice for evaluating the routing rules
     tagsMasterFile=Path(config.hermes['incoming_folder'] + '/' + fileList[0] + ".tags")
     if not tagsMasterFile.exists():
         logger.error(f'ERROR: Missing file! {tagsMasterFile.name}')
@@ -78,12 +80,14 @@ def process_series(series_UID):
         logger.error(f"ERROR: Invalid tag information of series {series_UID}")
         return
 
-    # Now decide to which targets the series should be sent to
+    # Now test the routing rules and decide to which targets the series should be sent to
     transfer_targets = get_routing_targets(tagsList)
 
     if len(transfer_targets)==0:
+        # If no routing rule has triggered, discard the series
         push_series_discard(fileList,series_UID)
     else:
+        # Otherwise, push the series to a different outgoing folder for every target
         push_series_outgoing(fileList,series_UID,transfer_targets)
 
     try:
@@ -95,6 +99,7 @@ def process_series(series_UID):
 
 
 def get_routing_targets(tagList):
+    """Evaluates the routing rules and returns a list with the desired targets."""
     selected_targets = {}
 
     for current_rule in config.hermes["rules"]:
@@ -118,6 +123,7 @@ def get_routing_targets(tagList):
 
 
 def push_series_discard(fileList,series_UID):
+    """Discards the series by moving all files into the "discard" folder, which will be periodically cleared."""
     source_folder=config.hermes['incoming_folder'] + '/'
     target_folder=config.hermes['discard_folder'] + '/'
 
@@ -151,6 +157,7 @@ def push_series_discard(fileList,series_UID):
 
 
 def push_series_outgoing(fileList,series_UID,transfer_targets):
+    """Move the DICOM files of the series to a seperate subfolder for each target in the outgoing folder."""
     source_folder=config.hermes['incoming_folder'] + '/'
 
     total_targets=len(transfer_targets)

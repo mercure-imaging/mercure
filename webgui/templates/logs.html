@@ -10,15 +10,17 @@
       <div class="container">
         <div class="field is-grouped is-pulled-right">
           <label class="label">From:&nbsp;</label>
-          <div class="control"><input class="input is-small" type="date" id="startdate" value="{{start_date}}"></div>
+          <div class="control" style="margin-right: 2px;"><input class="input is-small" type="date" id="startdate" value="{{start_date}}"></div>
+          <div class="control"><input class="input is-small" type="time" id="starttime" value="{{start_time}}"></div>
           <label class="label">To:&nbsp;</label>
-          <div class="control"><input class="input is-small" type="date" id="enddate" value="{{end_date}}"></div>
+          <div class="control" style="margin-right: 2px;"><input class="input is-small" type="date" id="enddate" value="{{end_date}}"></div>
+          <div class="control"><input class="input is-small" type="time" id="endtime" value="{{end_time}}"></div>
           <button class="button is-dark is-small" onclick="refreshDate()">
           <i class="fas fa-sync"></i></button>
         </div>
       </div>
     </div>
-  </div>
+  </div>  
   <div class="columns">  
     <div class="column" style="width: 100% !important;">
       <div class="logtabs tabs is-boxed">
@@ -42,9 +44,11 @@ function refreshDate(val) {
   var url = window.location.href.split('?')[0];
 
   startDate=$("#startdate").val();
+  startTime=$("#starttime").val();
   endDate=$("#enddate").val();
+  endTime=$("#endtime").val();
 
-  url += "?from="+startDate+"&to="+endDate
+  url += "?from="+startDate+"&from_time="+startTime+"&to="+endDate+"&to_time="+endTime
 
   window.location.href = url;
 }

@@ -122,19 +122,34 @@ async def show_log(request):
     # that the date format is clean
     try:
         start_date=request.query_params.get("from","")
+        start_time=request.query_params.get("from_time","")
         datetime.datetime.strptime(start_date, '%Y-%m-%d')
-        start_date_cmd=" --since "+start_date
+        start_date_cmd=' --since "'+start_date
+        if start_date and start_time:
+            datetime.datetime.strptime(start_time, '%H:%M')
+            start_date_cmd = start_date_cmd + " " + start_time
+        start_date_cmd=start_date_cmd+'"'
     except: 
         start_date=""
+        start_time=""
         start_date_cmd=""
 
     try:
         end_date=request.query_params.get("to","")
+        end_time=request.query_params.get("to_time","")        
         datetime.datetime.strptime(end_date, '%Y-%m-%d')
-        end_date_cmd=" --until "+end_date
+        end_date_cmd=' --until "'+end_date
+        if end_date and end_time:
+            datetime.datetime.strptime(end_time, '%H:%M')
+            end_date_cmd = end_date_cmd + " " + end_time
+        end_date_cmd=end_date_cmd+'"'
     except: 
         end_date=""
+        end_time=""
         end_date_cmd=""
+
+    print(start_date_cmd)
+    print(end_date_cmd)
 
     service_logs = {}
     for service in services.services_list:
@@ -143,7 +158,7 @@ async def show_log(request):
     if (not requested_service in service_logs) or (not services.services_list[requested_service]["systemd_service"]):
         return PlainTextResponse('Service does not exist or is incorrectly configured.')
 
-    run_result=await async_run("journalctl -n 1000 -u " + services.services_list[requested_service]["systemd_service"]
+    run_result=await async_run('journalctl -n 1000 -u ' + services.services_list[requested_service]["systemd_service"]
                                + start_date_cmd + end_date_cmd)
 
     log_content=""
@@ -157,11 +172,13 @@ async def show_log(request):
         log_content='<br>'.join(reversed(line_list))
     else:
         log_content="Error reading log information."
+        if start_date or end_date:
+            log_content=log_content+"<br /><br />Are the From/To settings valid?"
 
     template = "logs.html"
     context = {"request": request, "hermes_version": hermes_version, "page": "logs", 
                "service_logs": service_logs, "log_id": requested_service, "log_content": log_content,
-               "start_date": start_date, "end_date": end_date }
+               "start_date": start_date, "start_time": start_time, "end_date": end_date, "end_time": end_time }
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
 

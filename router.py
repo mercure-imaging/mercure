@@ -46,24 +46,27 @@ logger = daiquiri.getLogger("router")
 
 
 def receiveSignal(signalNumber, frame):
+    """Function for testing purpose only. Should be removed."""
     logger.info(f'Received: {signalNumber}')
     return
 
 
 def terminateProcess(signalNumber, frame):
+    """Triggers the shutdown of the service."""
     helper.g_log('events.shutdown', 1)
     logger.info('Shutdown requested')
     helper.triggerTerminate()
 
 
 def runRouter(args):
+    """Main processing function that is called every second."""    
     if helper.isTerminated():
         return
 
     helper.g_log('events.run', 1)
 
-    logger.info('')
-    logger.info('Processing incoming folder...')
+    #logger.info('')
+    #logger.info('Processing incoming folder...')
 
     try:
         config.read_config()
@@ -77,6 +80,8 @@ def runRouter(args):
     series={}
     completeSeries={}
 
+    # Check the incoming folder for completed series. To this end, generate a map of all
+    # series in the folder with the timestamp of the latest DICOM file as value
     for entry in os.scandir(config.hermes['incoming_folder']):
             if entry.name.endswith(".tags") and not entry.is_dir():
                 filecount += 1
@@ -89,16 +94,18 @@ def runRouter(args):
                 else:
                     series[seriesString]=modificationTime
 
+    # Check if any of the series exceeds the "series complete" threshold
     for entry in series:
         if ((time.time()-series[entry]) > config.hermes['series_complete_trigger']):
             completeSeries[entry]=series[entry]
 
-    logger.info(f'Files found     = {filecount}')
-    logger.info(f'Series found    = {len(series)}')
-    logger.info(f'Complete series = {len(completeSeries)}')
+    #logger.info(f'Files found     = {filecount}')
+    #logger.info(f'Series found    = {len(series)}')
+    #logger.info(f'Complete series = {len(completeSeries)}')
     helper.g_log('incoming.files', filecount)
     helper.g_log('incoming.series', len(series))
 
+    # Process all complete series
     for entry in sorted(completeSeries):
         try:
             process_series(entry)
@@ -109,8 +116,9 @@ def runRouter(args):
         if helper.isTerminated():
             break
 
+
 def exitRouter(args):
-    # Stop the asyncio event loop
+    """Callback function that is triggered when the process terminates. Stops the asyncio event loop."""
     helper.loop.call_soon_threadsafe(helper.loop.stop)
 
 
@@ -146,6 +154,7 @@ if __name__ == '__main__':
     logger.info(f'Instance name = {instance_name}')
     logger.info(f'Instance PID = {os.getpid()}')
 
+    # Read the configuration file and terminate if it cannot be read
     try:
         config.read_config()
     except Exception as e:
@@ -163,6 +172,7 @@ if __name__ == '__main__':
     logger.info(f'Incoming folder: {config.hermes["incoming_folder"]}')
     logger.info(f'Outgoing folder: {config.hermes["outgoing_folder"]}')
 
+    # Start the timer that will periodically trigger the scan of the incoming folder
     mainLoop = helper.RepeatedTimer(config.hermes['router_scan_interval'], runRouter, exitRouter, {})
     mainLoop.start()
 
@@ -170,4 +180,6 @@ if __name__ == '__main__':
 
     # Start the asyncio event loop for asynchronous function calls
     helper.loop.run_forever()
+
+    # Process will exit here once the asyncio loop has been stopped
     logger.info('Going down now')
