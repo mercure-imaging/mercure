@@ -20,7 +20,18 @@ import common.helper as helper
 import common.config as config
 from router.process_series import process_series
 
-daiquiri.setup(level=logging.INFO)
+daiquiri.setup(
+    level=logging.INFO,
+    outputs=(
+        "stdout",
+        daiquiri.output.Journal(
+            formatter=daiquiri.formatter.ColorFormatter(
+                fmt="%(color)s%(levelname)-8.8s "
+                "%(name)s: %(message)s%(color_stop)s"
+            )
+        ),
+    ),
+)
 logger = daiquiri.getLogger("router")
 
 # NOTES: Currently, the router only implements series-level rules, i.e. the proxy rules will be executed

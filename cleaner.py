@@ -19,7 +19,18 @@ import common.helper as helper
 
 hermes_cleaner_version = "0.1a"
 
-daiquiri.setup(level=logging.INFO)
+daiquiri.setup(
+    level=logging.INFO,
+    outputs=(
+        "stdout",
+        daiquiri.output.Journal(
+            formatter=daiquiri.formatter.ColorFormatter(
+                fmt="%(color)s%(levelname)-8.8s "
+                "%(name)s: %(message)s%(color_stop)s"
+            )
+        ),
+    ),
+)
 logger = daiquiri.getLogger("cleaner")
 
 
