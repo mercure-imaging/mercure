@@ -19,6 +19,8 @@ logger = daiquiri.getLogger("process_series")
 
 
 class FileLock:
+    """Helper class that implements a file lock. The lock file will be removed also from the destructor so that
+       no spurious lock files remain if exceptions are raised."""
     def __init__(self, path_for_lockfile):
         self.lockCreated=True
         self.lockfile=path_for_lockfile
@@ -37,6 +39,7 @@ class FileLock:
 
 
 def process_series(series_UID):
+    """Processes the series with the given series UID from the incoming folder."""
     lock_file=Path(config.hermes['incoming_folder'] + '/' + str(series_UID) + '.lock')
 
     if lock_file.exists():
@@ -72,7 +75,7 @@ def process_series(series_UID):
             tagsList=json.load(json_file)
     except Exception as e:
         logger.error(e)
-        logger.errr(f"ERROR: Invalid tag information of series {series_UID}")
+        logger.error(f"ERROR: Invalid tag information of series {series_UID}")
         return
 
     # Now decide to which targets the series should be sent to

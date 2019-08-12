@@ -15,6 +15,8 @@ users_list = {}
 
 
 def read_users():
+    """Reads the user list from the configuration file. The file will only be read if it has been updated since the last
+       function call. If the file does not exist, create a new user file."""
     global users_list
     global users_timestamp
     users_file = Path(users_filename)
@@ -49,6 +51,7 @@ def read_users():
 
 
 def create_users():
+    """Create new users file and create seed admin account with name "admin" and password "router"."""
     print("No user file found. Creating user list with seed admin account.")
     global users_list
     users_list = { "admin": { "password": hash_password("router"), "is_admin": "True", "change_password": "True" } }
@@ -56,6 +59,7 @@ def create_users():
 
 
 def save_users():
+    """Write the users list into a file on the disk."""
     global users_list
     global users_timestamp
     users_file = Path(users_filename)
@@ -79,6 +83,7 @@ def save_users():
 
 
 def evaluate_password(username, password):
+    """Check if the given password for the given user is correct. Hashed passwords are stored with salt."""
     if (len(username)==0) or (len(password)==0):
         return False
 
@@ -99,10 +104,12 @@ def evaluate_password(username, password):
 
 
 def hash_password(password):
+    """Hash the password using the passlib library."""
     return pwd_context.hash(password)
 
 
 def is_admin(username):
+    """Check in the user list if the given user has admin rights."""
     if not username in users_list:
         return False
 
@@ -113,6 +120,7 @@ def is_admin(username):
 
 
 def needs_change_password(username):
+    """Check if the given user has to change his password after login."""
     if not username in users_list:
         return False
 

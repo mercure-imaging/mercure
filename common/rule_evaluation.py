@@ -31,6 +31,8 @@ def replace_tags(rule,tags):
 
 
 def parse_rule(rule,tags):
+    """Parses the given rule, replaces all tag variables with values from the given tags dictionary, and
+       evaluates the rule. If the rule is invalid, an exception will be raised."""
     try:
         logger.info(f"Rule: {rule}")
         rule=replace_tags(rule,tags)
@@ -45,6 +47,8 @@ def parse_rule(rule,tags):
 
 
 def test_rule(rule,tags):
+    """Tests the given rule for validity using the given tags dictionary. Similar to parse_rule but with
+       more diagnostic output format for the testing dialog. Also warns about invalid tags."""
     try:
         logger.info(f"Rule: {rule}")
         rule=replace_tags(rule,tags)
@@ -59,6 +63,7 @@ def test_rule(rule,tags):
             return "False"
     except Exception as e: 
         return str(e)    
+
 
 #if __name__ == "__main__":
 #    result=parse_rule(sys.argv[1],{ "ManufacturerModelName": "Trio" })

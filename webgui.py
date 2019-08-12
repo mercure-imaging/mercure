@@ -82,10 +82,12 @@ app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 
 
 def get_user_information(request):
+    """Returns dictionary of values that should always be passed to the templates when the user is logged in."""
     return { "logged_in": request.user.is_authenticated, "user": request.user.display_name, "is_admin": request.user.is_admin }
 
 
 async def async_run(cmd):
+    """Executes the given command in a way compatible with ayncio."""
     proc = await asyncio.create_subprocess_shell(
         cmd,
         stdout=asyncio.subprocess.PIPE,
@@ -102,7 +104,7 @@ async def async_run(cmd):
 @app.route('/logs')
 @requires(['authenticated','admin'], redirect='login')
 async def show_first_log(request):
-    # Get first service entry and forward to corresponding entry point
+    """Get the first service entry and forward to corresponding log entry point."""
     if (services.services_list):
         first_service=next(iter(services.services_list))
         return RedirectResponse(url='/logs/'+first_service, status_code=303)  
@@ -113,6 +115,7 @@ async def show_first_log(request):
 @app.route('/logs/{service}')
 @requires(['authenticated','admin'], redirect='login')
 async def show_log(request):
+    """Render the log for the given service. The time range can be specified via URL parameters."""
     requested_service=request.path_params["service"]
 
     # Get optional start and end dates from the URL. Make sure 
@@ -140,7 +143,7 @@ async def show_log(request):
     if (not requested_service in service_logs) or (not services.services_list[requested_service]["systemd_service"]):
         return PlainTextResponse('Service does not exist or is incorrectly configured.')
 
-    run_result=await async_run("journalctl -n 10000 -u " + services.services_list[requested_service]["systemd_service"]
+    run_result=await async_run("journalctl -n 1000 -u " + services.services_list[requested_service]["systemd_service"]
                                + start_date_cmd + end_date_cmd)
 
     log_content=""
@@ -170,6 +173,7 @@ async def show_log(request):
 @app.route('/rules', methods=["GET"])
 @requires('authenticated', redirect='login')
 async def show_rules(request):
+    """Show all defined routing rules. Can be executed by all logged-in users."""
     try: 
         config.read_config()
     except:
@@ -184,6 +188,7 @@ async def show_rules(request):
 @app.route('/rules', methods=["POST"])
 @requires(['authenticated','admin'], redirect='login')
 async def add_rule(request):
+    """Creates a new routing rule and forwards the user to the rule edit page."""
     try: 
         config.read_config()
     except:
@@ -209,6 +214,7 @@ async def add_rule(request):
 @app.route('/rules/edit/{rule}', methods=["GET"])
 @requires(['authenticated','admin'], redirect='login')
 async def rules_edit(request):
+    """Shows the edit page for the given routing rule."""
     try: 
         config.read_config()
     except:
@@ -226,6 +232,7 @@ async def rules_edit(request):
 @app.route('/rules/edit/{rule}', methods=["POST"])
 @requires(['authenticated','admin'], redirect='login')
 async def rules_edit_post(request):
+    """Updates the settings for the given routing rule."""
     try: 
         config.read_config()
     except:
@@ -255,6 +262,7 @@ async def rules_edit_post(request):
 @app.route('/rules/delete/{rule}', methods=["POST"])
 @requires(['authenticated','admin'], redirect='login')
 async def rules_delete_post(request):
+    """Deletes the given routing rule"""
     try: 
         config.read_config()
     except:
@@ -277,6 +285,7 @@ async def rules_delete_post(request):
 @app.route('/rules/test', methods=["POST"])
 @requires(['authenticated','admin'], redirect='login')
 async def rules_test(request):
+    """Evalutes if a given routing rule is valid. The rule and testing dictionary have to be passed as form parameters."""
     try:
         form = dict(await request.form())
         testrule=form["rule"]
@@ -302,6 +311,7 @@ async def rules_test(request):
 @app.route('/targets', methods=["GET"])
 @requires('authenticated', redirect='login')
 async def show_targets(request):
+    """Shows all configured targets."""
     try: 
         config.read_config()
     except:
@@ -321,6 +331,7 @@ async def show_targets(request):
 @app.route('/targets', methods=["POST"])
 @requires(['authenticated','admin'], redirect='login')
 async def add_target(request):
+    """Creates a new target."""
     try: 
         config.read_config()
     except:
@@ -346,6 +357,7 @@ async def add_target(request):
 @app.route('/targets/edit/{target}', methods=["GET"])
 @requires(['authenticated','admin'], redirect='login')
 async def targets_edit(request):
+    """Shows the edit page for the given target."""
     try: 
         config.read_config()
     except:
@@ -365,6 +377,7 @@ async def targets_edit(request):
 @app.route('/targets/edit/{target}', methods=["POST"])
 @requires(['authenticated','admin'], redirect='login')
 async def targes_edit_post(request):
+    """Updates the given target using the form values posted with the request."""
     try: 
         config.read_config()
     except:
@@ -394,6 +407,7 @@ async def targes_edit_post(request):
 @app.route('/targets/delete/{target}', methods=["POST"])
 @requires(['authenticated','admin'], redirect='login')
 async def targets_delete_post(request):
+    """Deletes the given target."""
     try: 
         config.read_config()
     except:
@@ -416,6 +430,7 @@ async def targets_delete_post(request):
 @app.route('/targets/test/{target}', methods=["POST"])
 @requires(['authenticated'], redirect='login')
 async def targets_test_post(request):
+    """Tests the connectivity of the given target by executing ping and c-echo requests."""
     try: 
         config.read_config()
     except:
@@ -453,6 +468,7 @@ async def targets_test_post(request):
 @app.route('/users', methods=["GET"])
 @requires(['authenticated','admin'], redirect='homepage')
 async def show_users(request):
+    """Shows all available users."""
     try: 
         users.read_users()
     except:
@@ -467,6 +483,7 @@ async def show_users(request):
 @app.route('/users', methods=["POST"])
 @requires(['authenticated','admin'], redirect='homepage')
 async def add_new_user(request):
+    """Creates a new user and redirects to the user-edit page."""
     try: 
         users.read_users()
     except:
@@ -493,6 +510,7 @@ async def add_new_user(request):
 @app.route('/users/edit/{user}', methods=["GET"])
 @requires(['authenticated','admin'], redirect='login')
 async def users_edit(request):
+    """Shows the settings for a given user."""
     try: 
         users.read_users()
     except:
@@ -513,6 +531,7 @@ async def users_edit(request):
 @app.route('/settings', methods=["GET"])
 @requires(['authenticated'], redirect='login')
 async def settings_edit(request):
+    """Shows the settings for the current user. Renders the same template as the normal user edit, but with parameter own_settings=True."""
     try: 
         users.read_users()
     except:
@@ -531,6 +550,7 @@ async def settings_edit(request):
 @app.route('/users/edit/{user}', methods=["POST"])
 @requires(['authenticated'], redirect='login')
 async def users_edit_post(request):
+    """Updates the given user with settings passed as form parameters."""
     try: 
         users.read_users()
     except:
@@ -567,6 +587,7 @@ async def users_edit_post(request):
 @app.route('/users/delete/{user}', methods=["POST"])
 @requires(['authenticated','admin'], redirect='login')
 async def users_delete_post(request):
+    """Deletes the given users."""
     try: 
         config.read_config()
     except:
@@ -593,6 +614,7 @@ async def users_delete_post(request):
 @app.route('/configuration')
 @requires(['authenticated','admin'], redirect='homepage')
 async def configuration(request):
+    """Shows the current configuration of the hermes appliance."""
     template = "configuration.html"
     os_info=distro.linux_distribution()
     os_string=f"{os_info[0]} Version {os_info[1]} ({os_info[2]})"
@@ -605,8 +627,9 @@ async def configuration(request):
 ## Login/logout endpoints
 ###################################################################################
 
-@app.route('/login')
+@app.route('/login', methods=["GET"])
 async def login(request):
+    """Shows the login page."""
     request.session.clear()
     template = "login.html"
     context = {"request": request, "hermes_version": hermes_version }
@@ -615,6 +638,8 @@ async def login(request):
 
 @app.route("/login", methods=["POST"])
 async def login_post(request):
+    """Evaluate the submitted login information. Redirects to index page if login information valid, otherwise back to login. 
+       On the first login, the user will be directed to the settings page and asked to change the password."""    
     try: 
         users.read_users()
     except:
@@ -640,6 +665,7 @@ async def login_post(request):
 
 @app.route('/logout')
 async def logout(request):
+    """Logouts the users by clearing the session cookie."""
     request.session.clear()
     return RedirectResponse(url='/login')
 
@@ -651,7 +677,7 @@ async def logout(request):
 @app.route('/')
 @requires('authenticated', redirect='login')
 async def homepage(request):
-
+    """Renders the index page that shows information about the system status."""
     used_space=0
     free_space=0
     total_space=0

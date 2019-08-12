@@ -9,6 +9,7 @@ alltags = {}
 sortedtags = []
 
 def read_tagslist():
+    """Reads the list of supported DICOM tags with example values. This list is parsed from the C code of the getseqparam module."""
     global alltags 
     alltags = {}    
     with open(tagslist_source, 'r') as f:

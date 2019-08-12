@@ -33,6 +33,9 @@ hermes = {}
 
 
 def read_config():
+    """Reads the configuration settings (rules, targets, general settings) from the configuration file. The configuration will
+       only be updated if the file has changed compared the the last function call. If the configuration file is locked by 
+       another process, an exception will be raised."""
     global hermes
     global configuration_timestamp
     configuration_file = Path(configuration_filename)
@@ -83,6 +86,8 @@ def read_config():
 
 
 def save_config():
+    """Saves the current configuration in a file on the disk. Raises an exception if the file has 
+       been locked by another process."""
     global configuration_timestamp
     configuration_file = Path(configuration_filename)
 
@@ -105,6 +110,7 @@ def save_config():
 
 
 def checkFolders():
+    """Check if all required folders exist."""
     for entry in ['incoming_folder','outgoing_folder','success_folder','error_folder','discard_folder']:
         if not Path(hermes[entry]).exists():
             logger.error(f"Folder not found {hermes[entry]}")

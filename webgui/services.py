@@ -14,6 +14,8 @@ services_list = {}
 
 
 def read_services():
+    """Reads the list of configured services from the configuration file. This list normally does not have to be changed, but 
+       can be modified if multiple instances of individual services should be used to increase performance."""
     global services_list
     services_file = Path(services_filename)
 
