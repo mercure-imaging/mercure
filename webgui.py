@@ -731,6 +731,34 @@ async def homepage(request):
     return templates.TemplateResponse(template, context)
 
 
+@app.route('/services/control', methods=["POST"])
+@requires(['authenticated','admin'], redirect='homepage')
+async def control_services(request):
+    form = dict(await request.form())
+    action=''
+
+    if form.get('action','')=='start':
+        action='start'
+    if form.get('action','')=='stop':
+        action='stop'
+    if form.get('action','')=='restart':
+        action='restart'
+    if form.get('action','')=='kill':
+        action='kill'
+
+    controlservices=form.get('services','').split(",")
+
+    if action and len(controlservices)>0:
+        for service in controlservices:
+            if not str(service) in services.services_list:
+                continue                            
+            command="systemctl "+action+" "+services.services_list[service]["systemd_service"]
+            print("Executing:",command)
+            await async_run(command)
+
+    return JSONResponse("{ }")
+
+
 ###################################################################################
 ## Error handlers
 ###################################################################################
