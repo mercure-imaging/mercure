@@ -27,7 +27,7 @@
         {% if is_admin %}
         <div class="columns" style="margin-top: 10px;">
           <div class="column is-one-third">
-            <button class="button is-success" id="servicecontrol" value="" onclick="showControlModal()"><i class="fas fa-wrench"></i>&nbsp;Control Services</button>
+            <button class="button" id="servicecontrol" value="" onclick="showControlModal()"><i class="fas fa-wrench"></i>&nbsp;Service Control</button>
           </div>
         </div>
         {% endif %}
@@ -39,7 +39,7 @@
     <div class="modal-background"></div>
     <div class="modal-card">
       <header class="modal-card-head">
-        <p class="modal-card-title">Control Services</p>
+        <p class="modal-card-title">Service Control</p>
       </header>            
       <section class="modal-card-body">
         <div class="field">
@@ -103,7 +103,7 @@
           $("#controlpageloader").removeClass('is-active');
           clearTimeout(pageloaderTimeout);
           location.reload();
-        }, 3000 );                   
+        }, 2000 );                   
       }
     });  
   })           
