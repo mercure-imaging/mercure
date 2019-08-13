@@ -30,8 +30,8 @@
           {% endfor %}
         </ul>
       </div>    
-      <div class="logview">
-        <p class="logviewer is-full">
+      <div class="logview" >
+        <p class="logviewer is-full" id="logviewdiv">
           {{log_content|safe}}
         </p>
       </div>
@@ -52,6 +52,8 @@ function refreshDate(val) {
 
   window.location.href = url;
 }
+
+$("#logviewdiv").scrollTop($("#logviewdiv")[0].scrollHeight);
 </script>
 
 {% endblock %}

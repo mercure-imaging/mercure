@@ -169,7 +169,7 @@ async def show_log(request):
         if len(line_list) and (not line_list[-1]):
             del line_list[-1]
 
-        log_content='<br>'.join(reversed(line_list))
+        log_content='<br>'.join(line_list)
     else:
         log_content="Error reading log information."
         if start_date or end_date:
