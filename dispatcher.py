@@ -67,7 +67,9 @@ def dispatch(args):
             ):
                 logger.info(f"Sending folder {entry.path}")
                 execute(entry.path, success_folder, error_folder)
-
+            # If termination is requested, stop processing series after the active one has been completed
+            if helper.isTerminated():
+                break
 
 def exit_dispatcher(args):
     """ Stop the asyncio event loop. """
