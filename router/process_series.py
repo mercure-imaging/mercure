@@ -208,7 +208,7 @@ def push_series_outgoing(fileList,series_UID,transfer_targets):
         target_json["target_ip"]        =config.hermes["targets"][target]["ip"]
         target_json["target_port"]      =config.hermes["targets"][target]["port"]
         target_json["target_aet_target"]=config.hermes["targets"][target].get("aet_target","ANY-SCP")
-        target_json["target_aec_source"]=config.hermes["targets"][target].get("aet_source","HERMES")
+        target_json["target_aet_source"]=config.hermes["targets"][target].get("aet_source","HERMES")
         target_json["target_name"]      =target
         target_json["applied_rule"]     =transfer_targets[target]
 

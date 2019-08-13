@@ -28,7 +28,8 @@
 }
 
 .footer {
-    margin-top: 120px;
+    margin-top: 96px;
+    padding-bottom: 48px;
     background-color: hsl(0, 0%, 21%);
     border-top: 3px solid hsl(141, 71%, 48%);
     color: hsl(0, 0%, 96%);
@@ -49,6 +50,9 @@ html {
 
 body {
     background-color: #FFF;
+    display: flex;
+    min-height: 100vh;
+    flex-direction: column;    
 }
 
 .ruleresult {
