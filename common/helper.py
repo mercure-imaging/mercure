@@ -13,12 +13,14 @@ loop=asyncio.get_event_loop()
 
 def is_ready_for_sending(folder):
     """ 
-    No lock file should be in sending folder, if there is one copy/move is 
-    not done yet. Also at least some dicom files should be there for sending.
+    No lock file (.lock) should be in sending folder and no error file (.error),
+    if there is one  copy/move is not done yet. Also at least some dicom files 
+    should be there for sending.
     """
     path = Path(folder)
     return (
         not (path / ".lock").exists()
+        and not (path / ".error").exists()
         and not (path / ".sending").exists()
         and len(list(path.glob("*.dcm"))) > 0
     )
