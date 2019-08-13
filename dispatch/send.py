@@ -30,10 +30,16 @@ def _read_target(folder):
 
 def _create_command(folder):
     target = _read_target(folder)
+    if not all(
+        [key in target for key in ["target_ip", "target_port", "target_aet_target"]]
+    ):
+        raise KeyError(
+            f"Mandatory key of ['target_ip', 'target_port', 'target_aet_target'] is missing in target.json = {target}"
+        )
     target_ip = target["target_ip"]
-    target_aet_target = target["target_aet_target"]
-    target_aet_source = target["target_aet_source"]    
     target_port = target["target_port"]
+    target_aet_target = target["target_aet_target"]
+    target_aet_source = target.get("target_aet_source", "")
     dcmsend_status_file = Path(folder) / "sent.txt"
     command = f"dcmsend {target_ip} {target_port} +sd {folder} \
             -aet {target_aet_source} -aec {target_aet_target} -nuc \
@@ -42,7 +48,12 @@ def _create_command(folder):
 
 
 def execute(source_folder, success_folder, error_folder):
-    """ Execute the dcmsend command. """
+    """ 
+    Execute the dcmsend command. It will create a .lock file to indicate that 
+    the folder is being sent. This is to prevent double sending. If there 
+    happens any error the .lock file is deleted and an .error file is created.
+    Folder with .error files are _not_ ready for sending.
+    """
     if is_ready_for_sending(source_folder):
         logger.info(f"Folder {source_folder} is ready for sending")
         # Create a .sending file to indicate that this folder is being sent,
@@ -59,8 +70,10 @@ def execute(source_folder, success_folder, error_folder):
                 f"Folder {source_folder} was sent successful, moving to {success_folder}"
             )
             shutil.move(source_folder, success_folder)
-        except CalledProcessError:
-            send_error_file = Path(source_folder / "send.error")
+        except CalledProcessError as e:
+            logger.exception(e)
+            logger.error(f"Error running command: {command}")
+            (Path(source_folder) / ".error").touch()
             lock_file.unlink()
     else:
         logger.warn(f"Folder {source_folder} is *not* ready for sending")
