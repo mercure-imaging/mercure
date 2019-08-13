@@ -4,9 +4,12 @@
 #include "dcmtk/dcmdata/dcerror.h"
 #include "dcmtk/dcmdata/dctk.h"
 #include "dcmtk/ofstd/ofstd.h"
+#include "dcmtk/dcmdata/dcspchrs.h"
+#include "dcmtk/dcmdata/dctypes.h"
 
-#define VERSION "0.1e"
+#define VERSION "0.1f"
 
+static OFString tagSpecificCharacterSet="";
 static OFString tagPatientName="";
 static OFString tagSeriesInstanceUID="";
 static OFString tagStudyInstanceUID="";
@@ -53,7 +56,7 @@ void writeErrorInformation(OFString dcmFile, OFString errorString)
 
     if (fp==nullptr)
     {
-        std::cout << "ERROR: Unable to write error file " << filename;
+        std::cout << "ERROR: Unable to write error file " << filename << std::endl;
     }
 
     fprintf(fp, "%s\n", errorString.c_str());
@@ -62,7 +65,19 @@ void writeErrorInformation(OFString dcmFile, OFString errorString)
 }
 
 
-#define INSERTTAG(A,B,C) fprintf(fp, "\"%s\": \"%s\",\n",A,B.c_str())
+static DcmSpecificCharacterSet charsetConverter;
+static bool isConversionNeeded=false;
+
+#define INSERTTAG(A,B,C)    conversionBuffer=""; \
+                            if (isConversionNeeded) { \
+                                if (!charsetConverter.convertString(B, conversionBuffer).good()) { \
+                                    std::cout << "ERROR: Unable to convert charset for tag " << A << std::endl; \
+                                    std::cout << "ERROR: Unable to process file " << dcmFile << std::endl; \
+                                } \
+                            } else { \
+                                conversionBuffer=B; \
+                            } \
+                            fprintf(fp, "\"%s\": \"%s\",\n",A,conversionBuffer.c_str())
 
 bool writeTagsFile(OFString dcmFile, OFString originalFile)
 {
@@ -71,12 +86,14 @@ bool writeTagsFile(OFString dcmFile, OFString originalFile)
 
     if (fp==nullptr)
     {
-        std::cout << "ERROR: Unable to write tag file " << filename;
+        std::cout << "ERROR: Unable to write tag file " << filename << std::endl;
         return false;
     }
 
     fprintf(fp, "{\n");
+    OFString conversionBuffer="";
 
+    INSERTTAG("SpecificCharacterSet",          tagSpecificCharacterSet,          "ISO_IR 100");
     INSERTTAG("Modality",                      tagModality,                      "MR");
     INSERTTAG("BodyPartExamined",              tagBodyPartExamined,              "BRAIN");
     INSERTTAG("ProtocolName",                  tagProtocolName,                  "COR T1 PIT(POST)");
@@ -134,7 +151,16 @@ bool writeTagsFile(OFString dcmFile, OFString originalFile)
                          for (size_t i=0; i<VAR.length(); i++) { if (VAR[i]==13) { VAR[i]=';'; } else { if (VAR[i]==10) { VAR[i]=' '; } } }
 
 int main(int argc, char *argv[])
-{           
+{
+    if (!charsetConverter.isConversionAvailable())
+    {
+        std::cout << std::endl;
+        std::cout << "ERROR: Characterset converter not available" << std::endl << std::endl;
+        std::cout << "ERROR: Check installed libraries" << std::endl << std::endl;
+
+        return 1;
+    }
+
     if (argc < 2)
     {
         std::cout << std::endl;
@@ -167,6 +193,7 @@ int main(int argc, char *argv[])
         return 1;
     }
 
+    READTAG(DCM_SpecificCharacterSet,          tagSpecificCharacterSet);
     READTAG(DCM_Modality,                      tagModality);
     READTAG(DCM_BodyPartExamined,              tagBodyPartExamined);
     READTAG(DCM_ProtocolName,                  tagProtocolName);
@@ -203,6 +230,20 @@ int main(int argc, char *argv[])
     READTAG(DCM_ContrastBolusAgent,            tagContrastBolusAgent);
     READTAG(DCM_ImageComments,                 tagImageComments);
     READTAG(DCM_SliceThickness,                tagSliceThickness);
+
+    isConversionNeeded=true;
+    if (tagSpecificCharacterSet.compare("ISO_IR 192")==0)
+    {
+        // Incoming DICOM image already has UTF-8 format, conversion is not needed.
+        isConversionNeeded=false;
+    }
+
+    if (!charsetConverter.selectCharacterSet(tagSpecificCharacterSet).good())
+    {
+        std::cout << "ERROR: Unable to perform character set conversion! " << std::endl;
+        std::cout << "ERROR: Incoming charset is " << tagSpecificCharacterSet << std::endl;
+        return 1;
+    }
 
     OFString newFilename=tagSeriesInstanceUID+"#"+origFilename;
 
