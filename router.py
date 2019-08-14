@@ -18,6 +18,7 @@ import daiquiri
 # App-specific includes
 import common.helper as helper
 import common.config as config
+import common.monitor as monitor
 from router.process_series import process_series
 
 daiquiri.setup(
@@ -55,6 +56,7 @@ def terminateProcess(signalNumber, frame):
     """Triggers the shutdown of the service."""
     helper.g_log('events.shutdown', 1)
     logger.info('Shutdown requested')
+    monitor.send_event(monitor.h_events.SHUTDOWN_REQUEST, monitor.severity.INFO)
     helper.triggerTerminate()
 
 
@@ -154,6 +156,9 @@ if __name__ == '__main__':
     logger.info(f'Instance name = {instance_name}')
     logger.info(f'Instance PID = {os.getpid()}')
 
+    monitor.configure('router',instance_name,'0.0.0.0:8080')
+    monitor.send_event(monitor.h_events.BOOT, monitor.severity.INFO)
+
     # Read the configuration file and terminate if it cannot be read
     try:
         config.read_config()
@@ -182,4 +187,5 @@ if __name__ == '__main__':
     helper.loop.run_forever()
 
     # Process will exit here once the asyncio loop has been stopped
+    monitor.send_event(monitor.h_events.SHUTDOWN, monitor.severity.INFO)
     logger.info('Going down now')

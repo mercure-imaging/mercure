@@ -19,3 +19,7 @@ itsdangerous
 python-multipart
 distro
 passlib
+sqlalchemy
+databases
+databases[postgresql]
+psycopg2
