@@ -59,17 +59,15 @@ void sendBookkeeperPost(OFString filename, OFString fileUID, OFString seriesUID)
         return;
     }
 
-    // TODO: Send data in body instead!!!! not as parameter
-
-    std::string cmd="wget -q --post-data=\"\" \"http://";
-    cmd.append(bookkeeperAddress);
-    cmd.append("/register-dicom?filename=");
+    std::string cmd="wget -q --post-data=\"filename=";
     cmd.append(filename.c_str());
     cmd.append("&file_uid=");
     cmd.append(fileUID.c_str());
     cmd.append("&series_uid=");
     cmd.append(seriesUID.c_str());
-    cmd.append("\" -O /dev/null");
+    cmd.append("\" http://");
+    cmd.append(bookkeeperAddress);
+    cmd.append("/register-dicom\" -O /dev/null");
 
     std::cout << cmd << std::endl;
 
