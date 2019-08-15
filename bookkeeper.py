@@ -208,6 +208,25 @@ async def post_webgui_event(request):
     return JSONResponse({'success': 'true'})
 
 
+@app.route('/register-dicom', methods=["POST"])
+async def register_dicom(request):
+
+    # TODO: Retrieve parameters from body instead
+
+    filename  =request.query_params.get("filename","")
+    file_uid  =request.query_params.get("file_uid","")
+    series_uid=request.query_params.get("series_uid","")
+
+    print("Request: ",filename,file_uid,series_uid)
+
+    #query = webgui_events.insert().values(
+    #    sender=sender, event=event, user=user, description=description, time=datetime.datetime.now()
+    #)
+    #await database.execute(query)
+
+    return JSONResponse({'running': 'true'})
+
+
 ###################################################################################
 ## Main entry function
 ###################################################################################

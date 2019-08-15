@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "dcmtk/dcmdata/dcpath.h"
 #include "dcmtk/dcmdata/dcerror.h"
@@ -7,10 +8,11 @@
 #include "dcmtk/dcmdata/dcspchrs.h"
 #include "dcmtk/dcmdata/dctypes.h"
 
-#define VERSION "0.1f"
+#define VERSION "0.1g"
 
 static OFString tagSpecificCharacterSet="";
 static OFString tagPatientName="";
+static OFString tagSOPInstanceUID="";
 static OFString tagSeriesInstanceUID="";
 static OFString tagStudyInstanceUID="";
 static OFString tagModality="";
@@ -46,6 +48,33 @@ static OFString tagSoftwareVersions="";
 static OFString tagContrastBolusAgent="";
 static OFString tagImageComments="";
 static OFString tagSliceThickness="";
+
+static std::string bookkeeperAddress="";
+
+
+void sendBookkeeperPost(OFString filename, OFString fileUID, OFString seriesUID)
+{
+    if (bookkeeperAddress.empty())
+    {
+        return;
+    }
+
+    // TODO: Send data in body instead!!!! not as parameter
+
+    std::string cmd="wget -q --post-data=\"\" \"http://";
+    cmd.append(bookkeeperAddress);
+    cmd.append("/register-dicom?filename=");
+    cmd.append(filename.c_str());
+    cmd.append("&file_uid=");
+    cmd.append(fileUID.c_str());
+    cmd.append("&series_uid=");
+    cmd.append(seriesUID.c_str());
+    cmd.append("\" -O /dev/null");
+
+    std::cout << cmd << std::endl;
+
+    system(cmd.data());
+}
 
 
 void writeErrorInformation(OFString dcmFile, OFString errorString)
@@ -113,6 +142,7 @@ bool writeTagsFile(OFString dcmFile, OFString originalFile)
     INSERTTAG("ReferringPhysicianName",        tagReferringPhysicianName,        "Tanner^Willie");
     INSERTTAG("StudyID",                       tagStudyID,                       "243211348");
     INSERTTAG("SeriesNumber",                  tagSeriesNumber,                  "99");
+    INSERTTAG("SOPInstanceUID",                tagSOPInstanceUID,                "1.2.256.0.7220020.3.1.3.541411159.31.1254476944.91518");
     INSERTTAG("SeriesInstanceUID",             tagSeriesInstanceUID,             "1.2.256.0.7230020.3.1.3.531431169.31.1254476944.91508");
     INSERTTAG("StudyInstanceUID",              tagStudyInstanceUID,              "1.2.226.0.7231010.3.1.2.531431169.31.1554576944.99502");
     INSERTTAG("SeriesDate",                    tagSeriesDate,                    "20190131");
@@ -164,11 +194,16 @@ int main(int argc, char *argv[])
     if (argc < 2)
     {
         std::cout << std::endl;
-        std::cout << "getdcmtags ver " << VERSION << std::endl;
-        std::cout << "-------------------" << std::endl << std::endl;
-        std::cout << "Usage: [dcm file to analyze]" << std::endl << std::endl;
+        std::cout << "getdcmtags ver "                                      << VERSION   << std::endl;
+        std::cout << "-------------------"                                  << std::endl << std::endl;
+        std::cout << "Usage: [dcm file to analyze] [ip:port of bookkeeper]" << std::endl << std::endl;
 
         return 0;
+    }
+
+    if (argc > 2)
+    {
+        bookkeeperAddress=std::string(argv[2]);
     }
 
     OFString origFilename=OFString(argv[1]);
@@ -213,6 +248,7 @@ int main(int argc, char *argv[])
     READTAG(DCM_ReferringPhysicianName,        tagReferringPhysicianName);
     READTAG(DCM_StudyID,                       tagStudyID);
     READTAG(DCM_SeriesNumber,                  tagSeriesNumber);
+    READTAG(DCM_SOPInstanceUID,                tagSOPInstanceUID);
     READTAG(DCM_SeriesInstanceUID,             tagSeriesInstanceUID);
     READTAG(DCM_StudyInstanceUID,              tagStudyInstanceUID);
     READTAG(DCM_SeriesDate,                    tagSeriesDate);
@@ -264,4 +300,6 @@ int main(int argc, char *argv[])
         writeErrorInformation(path+origFilename, errorString);
         return 1;
     }
+
+    sendBookkeeperPost(newFilename, tagSOPInstanceUID, tagSeriesInstanceUID);
 }
