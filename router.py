@@ -75,7 +75,7 @@ def runRouter(args):
     except Exception as e:
         logger.error(e)
         logger.error("Unable to update configuration. Skipping processing.")
-        # TODO: Send error notification!
+        monitor.send_event(monitor.h_events.CONFIG_UPDATE,monitor.severity.WARNING,"Unable to update configuration (possibly locked)")
         return
 
     filecount=0
@@ -156,9 +156,6 @@ if __name__ == '__main__':
     logger.info(f'Instance name = {instance_name}')
     logger.info(f'Instance PID = {os.getpid()}')
 
-    monitor.configure('router',instance_name,'0.0.0.0:8080')
-    monitor.send_event(monitor.h_events.BOOT, monitor.severity.INFO)
-
     # Read the configuration file and terminate if it cannot be read
     try:
         config.read_config()
@@ -168,8 +165,10 @@ if __name__ == '__main__':
         logger.error("")
         sys.exit(1)
 
-    graphite_prefix='hermes.router.'+instance_name
+    monitor.configure('router',instance_name,config.hermes['bookkeeper'])
+    monitor.send_event(monitor.h_events.BOOT,monitor.severity.INFO,f'PID = {os.getpid()}')
 
+    graphite_prefix='hermes.router.'+instance_name
     if len(config.hermes['graphite_ip']) > 0:
         logger.info(f'Sending events to graphite server: {config.hermes["graphite_ip"]}')
         graphyte.init(config.hermes['graphite_ip'], config.hermes['graphite_port'], prefix=graphite_prefix)

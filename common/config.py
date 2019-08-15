@@ -2,7 +2,7 @@ import json
 import logging
 import os
 from pathlib import Path
-
+import common.monitor as monitor
 import daiquiri
 
 daiquiri.setup(level=logging.INFO)
@@ -13,20 +13,21 @@ configuration_filename  = os.path.realpath(os.path.dirname(os.path.realpath(__fi
 
 hermes_defaults = {
     'appliance_name'           : 'Hermes Router',
-    'incoming_folder'          : './incoming',
-    'outgoing_folder'          : './outgoing',
-    'success_folder'           : './success',
-    'error_folder'             : './error',
-    'discard_folder'           : './discard',
-    'router_scan_interval'     :      1, # in seconds
-    'dispatcher_scan_interval' :      1, # in seconds
-    'cleaner_scan_interval'    :     10, # in seconds
-    'retention'                : 604800, # in seconds (7 days)
-    'series_complete_trigger'  :     60, # in seconds
-    'graphite_ip'              :     '',
-    'graphite_port'            :   2003,
-    "targets"                  :     {},
-    "rules"                    :     {}
+    'incoming_folder'          :    './incoming',
+    'outgoing_folder'          :    './outgoing',
+    'success_folder'           :     './success',
+    'error_folder'             :       './error',
+    'discard_folder'           :     './discard',
+    'router_scan_interval'     :               1, # in seconds
+    'dispatcher_scan_interval' :               1, # in seconds
+    'cleaner_scan_interval'    :              10, # in seconds
+    'retention'                :          604800, # in seconds (7 days)
+    'series_complete_trigger'  :              60, # in seconds
+    'graphite_ip'              :              '',
+    'graphite_port'            :            2003,
+    'bookkeeper'               :  '0.0.0.0:8080',
+    'targets'                  :              {},
+    'rules'                    :              {}
 }
 
 hermes = {}
@@ -80,6 +81,7 @@ def read_config():
             logger.info(json.dumps(hermes, indent=4))
             logger.info("")
             configuration_timestamp=timestamp
+            monitor.send_event(monitor.h_events.CONFIG_UPDATE, monitor.severity.INFO, "Configuration updated")
             return hermes
     else:
         raise FileNotFoundError(f"Configuration file not found: {configuration_file}")
@@ -106,6 +108,7 @@ def save_config():
     except AttributeError:
         configuration_timestamp=0
 
+    monitor.send_event(monitor.h_events.CONFIG_UPDATE, monitor.severity.INFO, "Saved new configuration.")
     logger.info(f"Stored configuration into: {configuration_file}")
 
 
@@ -114,5 +117,6 @@ def checkFolders():
     for entry in ['incoming_folder','outgoing_folder','success_folder','error_folder','discard_folder']:
         if not Path(hermes[entry]).exists():
             logger.error(f"Folder not found {hermes[entry]}")
+            monitor.send_event(monitor.h_events.CONFIG_UPDATE, monitor.severity.CRITICAL, "Folders are missing")
             return False
     return True

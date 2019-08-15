@@ -1,9 +1,10 @@
 import logging
-
+import common.monitor as monitor
 import daiquiri
 
 daiquiri.setup(level=logging.INFO)
 logger = daiquiri.getLogger("rule_evaluation")
+
 
 safe_eval_cmds={"float": float, "int": int, "str": str}
 
@@ -43,6 +44,7 @@ def parse_rule(rule,tags):
     except Exception as e: 
         logger.error(f"ERROR: {e}")
         logger.warn(f"WARNING: Invalid rule expression {rule}",'"'+rule+'"')
+        monitor.send_event(monitor.h_events.CONFIG_UPDATE,monitor.severity.ERROR,f"Invalid rule encountered {rule}")
         return False
 
 

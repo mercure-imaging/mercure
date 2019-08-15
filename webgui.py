@@ -29,6 +29,7 @@ from starlette.datastructures import URL, Secret
 # App-specific includes
 import common.helper as helper
 import common.config as config
+import common.monitor as monitor
 import common.rule_evaluation as rule_evaluation
 import webgui.users as users
 import webgui.tagslist as tagslist
@@ -78,7 +79,7 @@ templates = Jinja2Templates(directory='webgui/templates')
 app = Starlette(debug=True)
 app.mount('/static', StaticFiles(directory='webgui/statics'), name='static')
 app.add_middleware(AuthenticationMiddleware, backend=SessionAuthBackend())
-app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
+app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY, session_cookie="hermes_session")
 
 
 def get_user_information(request):
@@ -225,6 +226,7 @@ async def add_rule(request):
         return PlainTextResponse('ERROR: Unable to write configuration. Try again.')
 
     print("Created rule ", newrule)
+    monitor.send_webgui_event(monitor.w_events.RULE_CREATE, request.user.display_name, newrule)    
     return RedirectResponse(url='/rules/edit/'+newrule, status_code=303)  
 
 
@@ -273,6 +275,7 @@ async def rules_edit_post(request):
         return PlainTextResponse('ERROR: Unable to write configuration. Try again.')
 
     print("Edited rule ", editrule)
+    monitor.send_webgui_event(monitor.w_events.RULE_EDIT, request.user.display_name, editrule)    
     return RedirectResponse(url='/rules', status_code=303)   
 
 
@@ -296,6 +299,7 @@ async def rules_delete_post(request):
         return PlainTextResponse('ERROR: Unable to write configuration. Try again.')
     
     print("Deleted rule ", deleterule)
+    monitor.send_webgui_event(monitor.w_events.RULE_DELETE, request.user.display_name, deleterule)    
     return RedirectResponse(url='/rules', status_code=303)   
 
 
@@ -368,6 +372,7 @@ async def add_target(request):
         return PlainTextResponse('ERROR: Unable to write configuration. Try again.')
 
     print("Created target ", newtarget)
+    monitor.send_webgui_event(monitor.w_events.TARGET_CREATE, request.user.display_name, newtarget)    
     return RedirectResponse(url='/targets/edit/'+newtarget, status_code=303)  
 
 
@@ -418,6 +423,7 @@ async def targes_edit_post(request):
         return PlainTextResponse('ERROR: Unable to write configuration. Try again.')
 
     print("Edited target ", edittarget)
+    monitor.send_webgui_event(monitor.w_events.TARGET_EDIT, request.user.display_name, edittarget)    
     return RedirectResponse(url='/targets', status_code=303)   
 
 
@@ -441,6 +447,7 @@ async def targets_delete_post(request):
         return PlainTextResponse('ERROR: Unable to write configuration. Try again.')    
 
     print("Deleted target ", deletetarget)
+    monitor.send_webgui_event(monitor.w_events.TARGET_DELETE, request.user.display_name, deletetarget)    
     return RedirectResponse(url='/targets', status_code=303)   
 
 
@@ -521,6 +528,7 @@ async def add_new_user(request):
         return PlainTextResponse('ERROR: Unable to write user list. Try again.')    
 
     print("Created user ", newuser)
+    monitor.send_webgui_event(monitor.w_events.USER_CREATE, request.user.display_name, newuser)    
     return RedirectResponse(url='/users/edit/'+newuser, status_code=303)  
 
 
@@ -595,6 +603,7 @@ async def users_edit_post(request):
         return PlainTextResponse('ERROR: Unable to write user list. Try again.')    
 
     print("Edited user ", edituser)
+    monitor.send_webgui_event(monitor.w_events.USER_EDIT, request.user.display_name, edituser)
     if "own_settings" in form:
         return RedirectResponse(url='/', status_code=303)   
     else:
@@ -621,6 +630,7 @@ async def users_delete_post(request):
         return PlainTextResponse('ERROR: Unable to write user list. Try again.')
 
     print("Deleted user ", deleteuser)
+    monitor.send_webgui_event(monitor.w_events.USER_DELETE, request.user.display_name, deleteuser)
     return RedirectResponse(url='/users', status_code=303)   
 
 
@@ -670,11 +680,19 @@ async def login_post(request):
         if users.is_admin(form["username"])==True:
             request.session.update({"is_admin": "Jawohl"})
 
+        monitor.send_webgui_event(monitor.w_events.LOGIN, form["username"], "{admin}".format(admin="ADMIN" if users.is_admin(form["username"]) else ""))
+
         if users.needs_change_password(form["username"]):
             return RedirectResponse(url='/settings', status_code=303)
         else:
             return RedirectResponse(url='/', status_code=303)
-    else:
+    else:        
+        if request.client.host is None:
+            source_ip="UNKOWN IP"
+        else:
+            source_ip=request.client.host
+        monitor.send_webgui_event(monitor.w_events.LOGIN_FAIL, form["username"], source_ip)
+
         template = "login.html"
         context = {"request": request, "invalid_password": 1 }
         return templates.TemplateResponse(template, context)
@@ -682,7 +700,8 @@ async def login_post(request):
 
 @app.route('/logout')
 async def logout(request):
-    """Logouts the users by clearing the session cookie."""
+    """Logouts the users by clearing the session cookie."""    
+    monitor.send_webgui_event(monitor.w_events.LOGOUT, request.user.display_name, "")
     request.session.clear()
     return RedirectResponse(url='/login')
 
@@ -756,6 +775,8 @@ async def control_services(request):
             print("Executing:",command)
             await async_run(command)
 
+    monitor_string="action: "+action+" services: "+form.get('services','')
+    monitor.send_webgui_event(monitor.w_events.SERVICE_CONTROL, request.user.display_name, monitor_string)
     return JSONResponse("{ }")
 
 
@@ -806,6 +827,9 @@ if __name__ == "__main__":
         print("")
         sys.exit(1)
 
+    monitor.configure('webgui','main',config.hermes['bookkeeper'])
+    monitor.send_event(monitor.h_events.BOOT,monitor.severity.INFO,f'PID = {os.getpid()}')    
+
     try:
         tagslist.read_tagslist()
     except Exception as e: 
@@ -817,3 +841,6 @@ if __name__ == "__main__":
         sys.exit(1)
 
     uvicorn.run(app, host=WEBGUI_HOST, port=WEBGUI_PORT)
+
+    # Process will exit here
+    monitor.send_event(monitor.h_events.SHUTDOWN,monitor.severity.INFO,'')    

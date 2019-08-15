@@ -20,6 +20,7 @@ import databases
 import sqlalchemy
  
 # App-specific includes
+import common.monitor as monitor
 
 hermes_bookkeeper_version = "0.1a"
 
@@ -63,8 +64,19 @@ hermes_events = sqlalchemy.Table(
     sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
     sqlalchemy.Column("time", sqlalchemy.DateTime),
     sqlalchemy.Column("sender", sqlalchemy.String, default="Unknown"),
-    sqlalchemy.Column("event", sqlalchemy.Integer, default=0),
-    sqlalchemy.Column("severity", sqlalchemy.Integer, default=0),
+    sqlalchemy.Column("event", sqlalchemy.String, default=monitor.h_events.UKNOWN),
+    sqlalchemy.Column("severity", sqlalchemy.Integer, default=monitor.severity.INFO),
+    sqlalchemy.Column("description", sqlalchemy.String, default="")
+)
+
+webgui_events = sqlalchemy.Table(
+    "webgui_events",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("time", sqlalchemy.DateTime),
+    sqlalchemy.Column("sender", sqlalchemy.String, default="Unknown"),
+    sqlalchemy.Column("event", sqlalchemy.String, default=monitor.w_events.UKNOWN),
+    sqlalchemy.Column("user", sqlalchemy.String, default=""),
     sqlalchemy.Column("description", sqlalchemy.String, default="")
 )
 
@@ -170,12 +182,27 @@ async def test_endpoint(request):
 @database.transaction()
 async def post_hermes_event(request):
     sender=request.query_params.get("sender","Unknown")
-    event=int(request.query_params.get("event",0))
-    severity=int(request.query_params.get("severity",0))    
+    event=request.query_params.get("event",monitor.h_events.UKNOWN)
+    severity=int(request.query_params.get("severity",monitor.severity.INFO))    
     description=request.query_params.get("description","")       
 
     query = hermes_events.insert().values(
         sender=sender, event=event, severity=severity, description=description, time=datetime.datetime.now()
+    )
+    await database.execute(query)
+    return JSONResponse({'success': 'true'})
+
+
+@app.route('/webgui-event', methods=["POST"])
+@database.transaction()
+async def post_webgui_event(request):
+    sender=request.query_params.get("sender","Unknown")
+    event=request.query_params.get("event",monitor.w_events.UKNOWN)
+    user=request.query_params.get("user","UNKNOWN")
+    description=request.query_params.get("description","")       
+
+    query = webgui_events.insert().values(
+        sender=sender, event=event, user=user, description=description, time=datetime.datetime.now()
     )
     await database.execute(query)
     return JSONResponse({'success': 'true'})

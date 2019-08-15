@@ -3,13 +3,31 @@ import requests
 sender_name=""
 bookkeeper_address=""
 
-class h_events:
-    UKNOWN=0
-    BOOT=1
-    SHUTDOWN=2
-    SHUTDOWN_REQUEST=3
-    CONFIG_UPDATE=4
 
+class h_events:
+    UKNOWN="UNKNOWN"
+    BOOT="BOOT"
+    SHUTDOWN="SHUTDOWN"
+    SHUTDOWN_REQUEST="SHUTDOWN_REQUEST"
+    CONFIG_UPDATE="CONFIG_UPDATE"
+
+
+class w_events:
+    UKNOWN         ="UNKNOWN"
+    LOGIN          ="LOGIN"
+    LOGIN_FAIL     ="LOGIN_FAIL"
+    LOGOUT         ="LOGOUT"
+    USER_CREATE    ="USER_CREATE"
+    USER_DELETE    ="USER_DELETE"
+    USER_EDIT      ="USER_EDIT"
+    RULE_CREATE    ="RULE_CREATE"
+    RULE_DELETE    ="RULE_DELETE"
+    RULE_EDIT      ="RULE_EDIT"
+    TARGET_CREATE  ="TARGET_CREATE"
+    TARGET_DELETE  ="TARGET_DELETE"
+    TARGET_EDIT    ="TARGET_EDIT"
+    SERVICE_CONTROL="SERVICE_CONTROL"
+    
 
 class severity:
     INFO=0
@@ -33,3 +51,14 @@ def send_event(event, severity = severity.INFO, description = ""):
         requests.post(bookkeeper_address+"/hermes-event", params=payload)
     except:
         pass
+
+
+def send_webgui_event(event, user, description = ""):
+    if not bookkeeper_address:
+        return
+    try:
+        payload = {'sender': sender_name, 'event': event, 'user': user, 'description': description }
+        requests.post(bookkeeper_address+"/webgui-event", params=payload)
+    except:
+        pass
+
