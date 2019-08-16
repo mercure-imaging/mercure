@@ -1,4 +1,9 @@
 import requests
+import daiquiri
+import logging
+
+daiquiri.setup(level=logging.INFO)
+logger = daiquiri.getLogger("config")
 
 sender_name=""
 bookkeeper_address=""
@@ -47,10 +52,11 @@ def send_event(event, severity = severity.INFO, description = ""):
     if not bookkeeper_address:
         return
     try:
-        payload = {'sender': sender_name, 'event': event, 'severity': severity, 'description': description }
-        requests.post(bookkeeper_address+"/hermes-event", params=payload)
-    except:
-        pass
+        payload = {'sender': sender_name, 'event': event, 'severity': severity, 'description': description }        
+        requests.post(bookkeeper_address+"/hermes-event", params=payload, timeout=1)
+    except requests.exceptions.RequestException as e:
+        logger.warning("Failed request to bookkeeper")
+        logger.warning(e)
 
 
 def send_webgui_event(event, user, description = ""):
@@ -58,7 +64,19 @@ def send_webgui_event(event, user, description = ""):
         return
     try:
         payload = {'sender': sender_name, 'event': event, 'user': user, 'description': description }
-        requests.post(bookkeeper_address+"/webgui-event", params=payload)
-    except:
-        pass
+        requests.post(bookkeeper_address+"/webgui-event", params=payload, timeout=1)
+    except requests.exceptions.RequestException as e:
+        logger.warning("Failed request to bookkeeper")
+        logger.warning(e)
 
+
+def send_register_series():
+    if not bookkeeper_address:
+        return
+    try:
+        payload = {'sender': sender_name, 'event': event, 'user': user, 'description': description }
+        requests.post(bookkeeper_address+"/webgui-event", params=payload, timeout=1)
+    except requests.exceptions.RequestException as e:
+        logger.warning("Failed request to bookkeeper")
+        logger.warning(e)
+    

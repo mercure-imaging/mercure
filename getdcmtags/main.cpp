@@ -59,7 +59,9 @@ void sendBookkeeperPost(OFString filename, OFString fileUID, OFString seriesUID)
         return;
     }
 
-    std::string cmd="wget -q --post-data=\"filename=";
+    // Send REST call to bookkeeper instance as forked process, so that the
+    // current process can proceed and terminate
+    std::string cmd="wget -q -T 1 -t 3 --post-data=\"filename=";
     cmd.append(filename.c_str());
     cmd.append("&file_uid=");
     cmd.append(fileUID.c_str());
