@@ -57,6 +57,8 @@ app = Starlette(debug=True)
 ###################################################################################
 
 metadata = sqlalchemy.MetaData()
+engine = sqlalchemy.create_engine(DATABASE_URL)
+connection = None
 
 hermes_events = sqlalchemy.Table(
     "hermes_events",
@@ -153,25 +155,31 @@ series_event = sqlalchemy.Table(
 )
 
 
+###################################################################################
+## Event handlers
+###################################################################################
+
 def create_database():
-    engine = sqlalchemy.create_engine(DATABASE_URL)
     metadata.create_all(engine)
 
 
-###################################################################################
-## Endpoints
-###################################################################################
-
 @app.on_event("startup")
 async def startup():
-    await database.connect()
+    #await database.connect()
+    global connection
+    connection = engine.connect()
     create_database()
 
 
 @app.on_event("shutdown")
 async def shutdown():
-    await database.disconnect()
+    #await database.disconnect()
+    engine.disconnect()
 
+
+###################################################################################
+## Endpoints
+###################################################################################
 
 @app.route('/test')
 async def test_endpoint(request):
@@ -189,7 +197,9 @@ async def post_hermes_event(request):
     query = hermes_events.insert().values(
         sender=sender, event=event, severity=severity, description=description, time=datetime.datetime.now()
     )
-    await database.execute(query)
+    #await database.execute(query)
+    connection.execute(query)
+
     return JSONResponse({'success': 'true'})
 
 
@@ -204,25 +214,29 @@ async def post_webgui_event(request):
     query = webgui_events.insert().values(
         sender=sender, event=event, user=user, description=description, time=datetime.datetime.now()
     )
-    await database.execute(query)
+    #await database.execute(query)
+    connection.execute(query)
+
     return JSONResponse({'success': 'true'})
 
 
 @app.route('/register-dicom', methods=["POST"])
 async def register_dicom(request):
+    form = dict(await request.form())
+    filename  =form.get("filename","")
+    file_uid  =form.get("file_uid","")
+    series_uid=form.get("series_uid","")
 
-    # TODO: Retrieve parameters from body instead
+    #async with database.transaction():
+    #    query = dicom_file.insert().values(
+    #        filename=filename, file_uid=file_uid, series_uid=series_uid
+    #    )
+    #    await database.execute(query)
 
-    filename  =request.query_params.get("filename","")
-    file_uid  =request.query_params.get("file_uid","")
-    series_uid=request.query_params.get("series_uid","")
-
-    print("Request: ",filename,file_uid,series_uid)
-
-    #query = webgui_events.insert().values(
-    #    sender=sender, event=event, user=user, description=description, time=datetime.datetime.now()
-    #)
-    #await database.execute(query)
+    query = dicom_file.insert().values(
+        filename=filename, file_uid=file_uid, series_uid=series_uid
+    )
+    connection.execute(query)
 
     return JSONResponse({'running': 'true'})
 

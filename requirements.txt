@@ -23,3 +23,4 @@ sqlalchemy
 databases
 databases[postgresql]
 psycopg2
+asyncpg

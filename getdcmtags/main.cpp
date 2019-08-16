@@ -67,9 +67,7 @@ void sendBookkeeperPost(OFString filename, OFString fileUID, OFString seriesUID)
     cmd.append(seriesUID.c_str());
     cmd.append("\" http://");
     cmd.append(bookkeeperAddress);
-    cmd.append("/register-dicom\" -O /dev/null");
-
-    std::cout << cmd << std::endl;
+    cmd.append("/register-dicom -O /dev/null");
 
     system(cmd.data());
 }
