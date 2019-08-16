@@ -129,11 +129,17 @@ dicom_series = sqlalchemy.Table(
     sqlalchemy.Column("tag_stationname", sqlalchemy.String)
 )
 
-dicom_series_map = sqlalchemy.Table(
-    "dicom_series_map",
+series_events = sqlalchemy.Table(
+    "series_events",
     metadata,
-    sqlalchemy.Column("file_id", sqlalchemy.Integer, primary_key=True),
-    sqlalchemy.Column("series_id", sqlalchemy.Integer)
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("time", sqlalchemy.DateTime),
+    sqlalchemy.Column("sender", sqlalchemy.String, default="Unknown"),    
+    sqlalchemy.Column("event", sqlalchemy.String),
+    sqlalchemy.Column("series_uid", sqlalchemy.String),
+    sqlalchemy.Column("file_count", sqlalchemy.Integer),
+    sqlalchemy.Column("target", sqlalchemy.String),    
+    sqlalchemy.Column("info", sqlalchemy.String)
 )
 
 file_events = sqlalchemy.Table(
@@ -145,16 +151,11 @@ file_events = sqlalchemy.Table(
     sqlalchemy.Column("event", sqlalchemy.Integer)
 )
 
-series_events = sqlalchemy.Table(
-    "series_events",
+dicom_series_map = sqlalchemy.Table(
+    "dicom_series_map",
     metadata,
-    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
-    sqlalchemy.Column("time", sqlalchemy.DateTime),
-    sqlalchemy.Column("dicom_series", sqlalchemy.Integer),
-    sqlalchemy.Column("event", sqlalchemy.Integer),
-    sqlalchemy.Column("source", sqlalchemy.String),
-    sqlalchemy.Column("target", sqlalchemy.String),
-    sqlalchemy.Column("file_count", sqlalchemy.Integer)
+    sqlalchemy.Column("id_file", sqlalchemy.Integer, primary_key=True),
+    sqlalchemy.Column("id_series", sqlalchemy.Integer)
 )
 
 
@@ -168,7 +169,6 @@ def create_database():
 
 @app.on_event("startup")
 async def startup():
-    #await database.connect()
     global connection
     connection = engine.connect()
     create_database()
@@ -176,7 +176,6 @@ async def startup():
 
 @app.on_event("shutdown")
 async def shutdown():
-    #await database.disconnect()
     engine.disconnect()
 
 
@@ -198,10 +197,11 @@ async def test_endpoint(request):
 
 @app.route('/hermes-event', methods=["POST"])
 async def post_hermes_event(request):
-    sender=request.query_params.get("sender","Unknown")
-    event=request.query_params.get("event",monitor.h_events.UKNOWN)
-    severity=int(request.query_params.get("severity",monitor.severity.INFO))    
-    description=request.query_params.get("description","")       
+    payload     = dict(await request.form())
+    sender      = payload.get("sender","Unknown")
+    event       = payload.get("event",monitor.h_events.UKNOWN)
+    severity    = int(payload.get("severity",monitor.severity.INFO))    
+    description = payload.get("description","")       
 
     query = hermes_events.insert().values(
         sender=sender, event=event, severity=severity, description=description, time=datetime.datetime.now()
@@ -213,10 +213,11 @@ async def post_hermes_event(request):
 
 @app.route('/webgui-event', methods=["POST"])
 async def post_webgui_event(request):
-    sender=request.query_params.get("sender","Unknown")
-    event=request.query_params.get("event",monitor.w_events.UKNOWN)
-    user=request.query_params.get("user","UNKNOWN")
-    description=request.query_params.get("description","")       
+    payload     = dict(await request.form())
+    sender      = payload.get("sender","Unknown")
+    event       = payload.get("event",monitor.w_events.UKNOWN)
+    user        = payload.get("user","UNKNOWN")
+    description = payload.get("description","")       
 
     query = webgui_events.insert().values(
         sender=sender, event=event, user=user, description=description, time=datetime.datetime.now()
@@ -228,10 +229,10 @@ async def post_webgui_event(request):
     
 @app.route('/register-dicom', methods=["POST"])
 async def register_dicom(request):
-    form = dict(await request.form())
-    filename  =form.get("filename","")
-    file_uid  =form.get("file_uid","")
-    series_uid=form.get("series_uid","")
+    payload    = dict(await request.form())
+    filename   = payload.get("filename","")
+    file_uid   = payload.get("file_uid","")
+    series_uid = payload.get("series_uid","")
 
     query = dicom_files.insert().values(
         filename=filename, file_uid=file_uid, series_uid=series_uid, time=datetime.datetime.now()
@@ -242,8 +243,6 @@ async def register_dicom(request):
 
 
 async def parse_and_submit_tags(payload):
-    #print("Now submitting to DB")
-    #print(payload)
     try:
         query = dicom_series.insert().values(
             time                      =datetime.datetime.now(), 
@@ -289,6 +288,25 @@ async def register_series(request):
     payload = dict(await request.form())
     tasks = BackgroundTasks()
     tasks.add_task(parse_and_submit_tags, payload=payload)    
+    return JSONResponse({'ok': ''}, background=tasks)
+
+
+@app.route('/series-event', methods=["POST"])
+async def post_series_event(request):
+    payload    = dict(await request.form())
+    sender     = payload.get("sender","Unknown")
+    event      = payload.get("event",monitor.s_events.UKNOWN)
+    series_uid = payload.get("series_uid","")
+    file_count = payload.get("file_count",0)
+    target     = payload.get("target","")
+    info       = payload.get("info","")
+
+    query = series_events.insert().values(
+        sender=sender, event=event, series_uid=series_uid, file_count=file_count, 
+        target=target, info=info, time=datetime.datetime.now()
+    )
+    tasks = BackgroundTasks()
+    tasks.add_task(execute_db_operation, operation=query)
     return JSONResponse({'ok': ''}, background=tasks)
 
 

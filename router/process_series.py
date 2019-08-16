@@ -151,6 +151,9 @@ def push_series_discard(fileList,series_UID):
             logger.error(e)
             logger.error(f'ERROR: Problem during discarding file {entry}')
             # TODO: Send alert
+    
+    monitor.send_series_event(monitor.s_events.DISCARD, series_UID, len(fileList), "", "")
+
     try:
         lock.free()
     except:
@@ -235,6 +238,8 @@ def push_series_outgoing(fileList,series_UID,transfer_targets):
                 logger.error(e)
                 logger.error(f'ERROR: Problem during pusing file to outgoing {entry}')
                 # TODO: Send alert
+
+        monitor.send_series_event(monitor.s_events.ROUTE, series_UID, len(fileList), target, transfer_targets[target])
 
         try:
             lock.free()
