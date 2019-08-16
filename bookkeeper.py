@@ -83,8 +83,8 @@ webgui_events = sqlalchemy.Table(
     sqlalchemy.Column("description", sqlalchemy.String, default="")
 )
 
-dicom_file = sqlalchemy.Table(
-    "dicom_file",
+dicom_files = sqlalchemy.Table(
+    "dicom_files",
     metadata,
     sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
     sqlalchemy.Column("time", sqlalchemy.DateTime),
@@ -98,7 +98,7 @@ dicom_series = sqlalchemy.Table(
     metadata,
     sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
     sqlalchemy.Column("time", sqlalchemy.DateTime),
-    sqlalchemy.Column("series_uid", sqlalchemy.String),
+    sqlalchemy.Column("series_uid", sqlalchemy.String, unique=True),
     sqlalchemy.Column("tag_patienname", sqlalchemy.String),
     sqlalchemy.Column("tag_patientid", sqlalchemy.String),
     sqlalchemy.Column("tag_accessionnumber", sqlalchemy.String),
@@ -136,8 +136,8 @@ dicom_series_map = sqlalchemy.Table(
     sqlalchemy.Column("series_id", sqlalchemy.Integer)
 )
 
-file_event = sqlalchemy.Table(
-    "file_event",
+file_events = sqlalchemy.Table(
+    "file_events",
     metadata,
     sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
     sqlalchemy.Column("time", sqlalchemy.DateTime),
@@ -145,8 +145,8 @@ file_event = sqlalchemy.Table(
     sqlalchemy.Column("event", sqlalchemy.Integer)
 )
 
-series_event = sqlalchemy.Table(
-    "series_event",
+series_events = sqlalchemy.Table(
+    "series_events",
     metadata,
     sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
     sqlalchemy.Column("time", sqlalchemy.DateTime),
@@ -185,8 +185,11 @@ async def shutdown():
 ###################################################################################
 
 async def execute_db_operation(operation):
-    connection.execute(operation)
-    
+    try:
+        connection.execute(operation)
+    except:
+        pass
+
 
 @app.route('/test', methods=["GET","POST"])
 async def test_endpoint(request):
@@ -222,15 +225,15 @@ async def post_webgui_event(request):
     tasks.add_task(execute_db_operation, operation=query)
     return JSONResponse({'ok': ''}, background=tasks)
 
-
+    
 @app.route('/register-dicom', methods=["POST"])
 async def register_dicom(request):
-    form = await request.form()
+    form = dict(await request.form())
     filename  =form.get("filename","")
     file_uid  =form.get("file_uid","")
     series_uid=form.get("series_uid","")
 
-    query = dicom_file.insert().values(
+    query = dicom_files.insert().values(
         filename=filename, file_uid=file_uid, series_uid=series_uid, time=datetime.datetime.now()
     )
     tasks = BackgroundTasks()
@@ -238,47 +241,55 @@ async def register_dicom(request):
     return JSONResponse({'ok': ''}, background=tasks)
 
 
+async def parse_and_submit_tags(payload):
+    #print("Now submitting to DB")
+    #print(payload)
+    try:
+        query = dicom_series.insert().values(
+            time                      =datetime.datetime.now(), 
+            series_uid                =payload.get("SeriesInstanceUID",""),
+            tag_patienname            =payload.get("PatientName",""),
+            tag_patientid             =payload.get("PatientID",""),
+            tag_accessionnumber       =payload.get("AccessionNumber",""),
+            tag_seriesnumber          =payload.get("SeriesNumber",""),
+            tag_studyid               =payload.get("StudyID",""),
+            tag_patientbirthdate      =payload.get("PatientBirthDate",""),
+            tag_patientsex            =payload.get("PatientSex",""),
+            tag_acquisitiondate       =payload.get("AcquisitionDate",""),
+            tag_acquisitiontime       =payload.get("AcquisitionTime",""),
+            tag_modality              =payload.get("Modality",""),
+            tag_bodypartexamined      =payload.get("BodyPartExamined",""),
+            tag_studydescription      =payload.get("StudyDescription",""),
+            tag_seriesdescription     =payload.get("SeriesDescription",""),
+            tag_protocolname          =payload.get("ProtocolName",""),
+            tag_codevalue             =payload.get("CodeValue",""),
+            tag_codemeaning           =payload.get("CodeMeaning",""),
+            tag_sequencename          =payload.get("SequenceName",""),
+            tag_scanningsequence      =payload.get("ScanningSequence",""),
+            tag_sequencevariant       =payload.get("SequenceVariant",""),
+            tag_slicethickness        =payload.get("SliceThickness",""),
+            tag_contrastbolusagent    =payload.get("ContrastBolusAgent",""),
+            tag_referringphysicianname=payload.get("ReferringPhysicianName",""),
+            tag_manufacturer          =payload.get("Manufacturer",""),
+            tag_manufacturermodelname =payload.get("ManufacturerModelName",""),
+            tag_magneticfieldstrength =payload.get("MagneticFieldStrength",""),
+            tag_deviceserialnumber    =payload.get("DeviceSerialNumber",""),
+            tag_softwareversions      =payload.get("SoftwareVersions",""),
+            tag_stationname           =payload.get("StationName","")
+        )
+        connection.execute(query)
+    except Exception as e:
+        print(e)
+        # TODO: Implement differentiation between IntegrityError and other exceptions
+        pass
+
+
 @app.route('/register-series', methods=["POST"])
 async def register_series(request):
-    form = await request.form()
-
-    query = dicom_series.insert().values(
-        time=datetime.datetime.now(), series_uid=form.get("series_uid",""),
-        tag_patienname=form.get("tag_patienname","")
-    )
+    payload = dict(await request.form())
     tasks = BackgroundTasks()
-    tasks.add_task(execute_db_operation, operation=query)    
+    tasks.add_task(parse_and_submit_tags, payload=payload)    
     return JSONResponse({'ok': ''}, background=tasks)
-
-#    sqlalchemy.Column("tag_patienname", sqlalchemy.String),
-#    sqlalchemy.Column("tag_patientid", sqlalchemy.String),
-#    sqlalchemy.Column("tag_accessionnumber", sqlalchemy.String),
-#    sqlalchemy.Column("tag_seriesnumber", sqlalchemy.String),    
-#    sqlalchemy.Column("tag_studyid", sqlalchemy.String),
-#    sqlalchemy.Column("tag_patientbirthdate", sqlalchemy.String),
-#    sqlalchemy.Column("tag_patientsex", sqlalchemy.String),
-#    sqlalchemy.Column("tag_acquisitiondate", sqlalchemy.String),
-#    sqlalchemy.Column("tag_acquisitiontime", sqlalchemy.String),
-#    sqlalchemy.Column("tag_modality", sqlalchemy.String),
-#    sqlalchemy.Column("tag_bodypartexamined", sqlalchemy.String),
-#    sqlalchemy.Column("tag_studydescription", sqlalchemy.String),
-#    sqlalchemy.Column("tag_seriesdescription", sqlalchemy.String),    
-#    sqlalchemy.Column("tag_protocolname", sqlalchemy.String),
-#    sqlalchemy.Column("tag_codevalue", sqlalchemy.String),
-#    sqlalchemy.Column("tag_codemeaning", sqlalchemy.String),
-#    sqlalchemy.Column("tag_sequencename", sqlalchemy.String),
-#    sqlalchemy.Column("tag_scanningsequence", sqlalchemy.String),
-#    sqlalchemy.Column("tag_sequencevariant", sqlalchemy.String),
-#    sqlalchemy.Column("tag_slicethickness", sqlalchemy.String),
-#    sqlalchemy.Column("tag_contrastbolusagent", sqlalchemy.String),
-#    sqlalchemy.Column("tag_referringphysicianname", sqlalchemy.String),    
-#    sqlalchemy.Column("tag_manufacturer", sqlalchemy.String),
-#    sqlalchemy.Column("tag_manufacturermodelname", sqlalchemy.String),
-#    sqlalchemy.Column("tag_magneticfieldstrength", sqlalchemy.String),
-#    sqlalchemy.Column("tag_deviceserialnumber", sqlalchemy.String),    
-#    sqlalchemy.Column("tag_softwareversions", sqlalchemy.String),
-#    sqlalchemy.Column("tag_stationname", sqlalchemy.String)
-
 
 
 ###################################################################################

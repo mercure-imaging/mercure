@@ -70,12 +70,11 @@ def send_webgui_event(event, user, description = ""):
         logger.warning(e)
 
 
-def send_register_series():
+def send_register_series(tags):
     if not bookkeeper_address:
         return
     try:
-        payload = {'sender': sender_name, 'event': event, 'user': user, 'description': description }
-        requests.post(bookkeeper_address+"/webgui-event", params=payload, timeout=1)
+        requests.post(bookkeeper_address+"/register-series", data=tags, timeout=1)
     except requests.exceptions.RequestException as e:
         logger.warning("Failed request to bookkeeper")
         logger.warning(e)

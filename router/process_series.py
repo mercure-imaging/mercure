@@ -13,6 +13,7 @@ import daiquiri
 import common.helper as helper
 import common.config as config
 import common.rule_evaluation as rule_evaluation
+import common.monitor as monitor
 
 daiquiri.setup(level=logging.INFO)
 logger = daiquiri.getLogger("process_series")
@@ -80,6 +81,8 @@ def process_series(series_UID):
         logger.error(f"ERROR: Invalid tag information of series {series_UID}")
         return
 
+    monitor.send_register_series(tagsList)
+ 
     # Now test the routing rules and decide to which targets the series should be sent to
     transfer_targets = get_routing_targets(tagsList)
 
