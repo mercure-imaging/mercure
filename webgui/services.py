@@ -22,7 +22,7 @@ def read_services():
     if not services_file.exists():
         raise FileNotFoundError(f"Services file not found: {services_file}")
 
-    logger.info("Reading services from: ", services_file)
+    logger.info(f"Reading services from: {services_file}")
 
     with open(services_file, "r") as json_file:
         services_list=json.load(json_file)
