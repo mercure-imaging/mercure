@@ -48,9 +48,9 @@ def _create_command(folder):
 
 
 def execute(source_folder, success_folder, error_folder):
-    """ 
-    Execute the dcmsend command. It will create a .lock file to indicate that 
-    the folder is being sent. This is to prevent double sending. If there 
+    """
+    Execute the dcmsend command. It will create a .lock file to indicate that
+    the folder is being sent. This is to prevent double sending. If there
     happens any error the .lock file is deleted and an .error file is created.
     Folder with .error files are _not_ ready for sending.
     """
@@ -71,8 +71,7 @@ def execute(source_folder, success_folder, error_folder):
             )
             shutil.move(source_folder, success_folder)
         except CalledProcessError as e:
-            logger.exception(e)
-            logger.error(f"Error running command: {command}")
+            logger.exception(f"Error running command: {command}")
             (Path(source_folder) / ".error").touch()
             lock_file.unlink()
     else:

@@ -51,8 +51,7 @@ def dispatch(args):
     try:
         config.read_config()
     except Exception as e:
-        logger.error(e)
-        logger.error("Unable to update configuration. Skipping processing.")
+        logger.exception("Unable to update configuration. Skipping processing.")
         return
 
     logger.info(f"Checking for outgoing data in {config.hermes['outgoing_folder']}")
@@ -71,7 +70,7 @@ def dispatch(args):
             if helper.isTerminated():
                 break
 
-                
+
 def exit_dispatcher(args):
     """ Stop the asyncio event loop. """
     helper.loop.call_soon_threadsafe(helper.loop.stop)
@@ -109,9 +108,7 @@ if __name__ == "__main__":
     try:
         config.read_config()
     except Exception as e:
-        logger.error(e)
-        logger.error("Cannot start service. Going down.")
-        logger.error("")
+        logger.exception("Cannot start service. Going down.")
         sys.exit(1)
 
     graphite_prefix = "hermes.dispatcher." + instance_name

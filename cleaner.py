@@ -49,8 +49,7 @@ def clean(args):
     try:
         config.read_config()
     except Exception as e:
-        logger.error(e)
-        logger.error("Unable to update configuration. Skipping processing.")
+        logger.exception("Unable to update configuration. Skipping processing.")
         return
 
     success_folder = config.hermes["success_folder"]
@@ -120,9 +119,7 @@ if __name__ == "__main__":
     try:
         config.read_config()
     except Exception as e:
-        logger.error(e)
-        logger.error("Cannot start service. Going down.")
-        logger.error("")
+        logger.exception("Cannot start service. Going down.")
         sys.exit(1)
 
     graphite_prefix = "hermes.cleaner.main"
