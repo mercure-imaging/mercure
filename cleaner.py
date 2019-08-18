@@ -1,11 +1,8 @@
 # Standard python includes
-import asyncio
-import json
 import logging
 import os
 import signal
 import sys
-import threading
 import time
 from datetime import timedelta
 from pathlib import Path
@@ -50,7 +47,7 @@ def clean(args):
         return
     try:
         config.read_config()
-    except Exception as e:
+    except Exception:
         logger.exception("Unable to update configuration. Skipping processing.")
         monitor.send_event(monitor.h_events.CONFIG_UPDATE,monitor.severity.WARNING,"Unable to update configuration (possibly locked)")
         return
@@ -121,11 +118,11 @@ if __name__ == "__main__":
 
     try:
         config.read_config()
-    except Exception as e:
+    except Exception:
         logger.exception("Cannot start service. Going down.")
         sys.exit(1)
 
-    monitor.configure('cleaner',instance_name,config.hermes['bookkeeper'])
+    monitor.configure('cleaner',"main",config.hermes['bookkeeper'])
     monitor.send_event(monitor.h_events.BOOT,monitor.severity.INFO,f'PID = {os.getpid()}')
 
     graphite_prefix = "hermes.cleaner.main"

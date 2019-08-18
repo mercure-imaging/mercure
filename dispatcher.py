@@ -7,7 +7,6 @@ import logging
 import os
 import signal
 import sys
-import time
 from pathlib import Path
 
 import daiquiri
@@ -51,7 +50,7 @@ def dispatch(args):
         return
     try:
         config.read_config()
-    except Exception as e:
+    except Exception:
         logger.exception("Unable to update configuration. Skipping processing.")
         monitor.send_event(
             monitor.h_events.CONFIG_UPDATE,
@@ -113,7 +112,7 @@ if __name__ == "__main__":
 
     try:
         config.read_config()
-    except Exception as e:
+    except Exception:
         logger.exception("Cannot start service. Going down.")
         sys.exit(1)
 

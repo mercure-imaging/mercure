@@ -1,21 +1,16 @@
 import os
-import sys
 from pathlib import Path
-import time
 import uuid
 import json
 import shutil
-import logging
 
 import daiquiri
 
 # App-specific includes
-import common.helper as helper
 import common.config as config
 import common.rule_evaluation as rule_evaluation
 import common.monitor as monitor
 
-daiquiri.setup(level=logging.INFO)
 logger = daiquiri.getLogger("process_series")
 
 
@@ -76,7 +71,7 @@ def process_series(series_UID):
     try:
         with open(tagsMasterFile, "r") as json_file:
             tagsList=json.load(json_file)
-    except Exception as e:
+    except Exception:
         logger.exception(f"Invalid tag information of series {series_UID}")
         return
 
@@ -146,7 +141,7 @@ def push_series_discard(fileList,series_UID):
         try:
             shutil.move(source_folder+entry+'.dcm',target_folder+entry+'.dcm')
             shutil.move(source_folder+entry+'.tags',target_folder+entry+'.tags')
-        except Exception as e:
+        except Exception:
             logger.exception(f'Problem during discarding file {entry}')
             # TODO: Send alert
 
@@ -186,7 +181,7 @@ def push_series_outgoing(fileList,series_UID,transfer_targets):
 
         try:
             os.mkdir(folder_name)
-        except Exception as e:
+        except Exception:
             logger.exception(f'Unable to create outgoing folder {folder_name}')
             # TODO: Send alert
             return
@@ -231,7 +226,7 @@ def push_series_outgoing(fileList,series_UID,transfer_targets):
             try:
                 operation(source_folder+entry+'.dcm',target_folder+entry+'.dcm')
                 operation(source_folder+entry+'.tags',target_folder+entry+'.tags')
-            except Exception as e:
+            except Exception:
                 logger.exception(f'Problem during pusing file to outgoing {entry}')
                 # TODO: Send alert
 

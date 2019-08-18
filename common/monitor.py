@@ -2,7 +2,6 @@ import requests
 import daiquiri
 import logging
 
-daiquiri.setup(level=logging.INFO)
 logger = daiquiri.getLogger("config")
 
 sender_name       =""

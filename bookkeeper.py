@@ -2,8 +2,6 @@
 
 # Standard python includes
 import uvicorn
-import os
-import asyncio
 import datetime
 import logging
 
