@@ -16,6 +16,7 @@ import graphyte
 
 import common.config as config
 import common.helper as helper
+import common.monitor as monitor
 
 hermes_cleaner_version = "0.1a"
 
@@ -40,6 +41,7 @@ def receiveSignal(signalNumber, frame):
 
 def terminateProcess(signalNumber, frame):
     logger.info("Shutdown requested")
+    monitor.send_event(monitor.h_events.SHUTDOWN_REQUEST, monitor.severity.INFO)
     helper.triggerTerminate()
 
 
@@ -50,6 +52,7 @@ def clean(args):
         config.read_config()
     except Exception as e:
         logger.exception("Unable to update configuration. Skipping processing.")
+        monitor.send_event(monitor.h_events.CONFIG_UPDATE,monitor.severity.WARNING,"Unable to update configuration (possibly locked)")
         return
 
     success_folder = config.hermes["success_folder"]
@@ -122,6 +125,9 @@ if __name__ == "__main__":
         logger.exception("Cannot start service. Going down.")
         sys.exit(1)
 
+    monitor.configure('cleaner',instance_name,config.hermes['bookkeeper'])
+    monitor.send_event(monitor.h_events.BOOT,monitor.severity.INFO,f'PID = {os.getpid()}')
+
     graphite_prefix = "hermes.cleaner.main"
 
     if len(config.hermes["graphite_ip"]) > 0:
@@ -141,4 +147,6 @@ if __name__ == "__main__":
 
     # Start the asyncio event loop for asynchronous function calls
     helper.loop.run_forever()
+
+    monitor.send_event(monitor.h_events.SHUTDOWN, monitor.severity.INFO)
     logger.info("Going down now")

@@ -9,14 +9,15 @@ import signal
 import sys
 import time
 from pathlib import Path
+
 import daiquiri
 import graphyte
 
 import common.config as config
 import common.helper as helper
+import common.monitor as monitor
 from common.helper import has_been_send, is_ready_for_sending
 from dispatch.send import execute
-
 
 # Dispatcher version
 hermes_dispatcher_version = "0.1a"
@@ -26,8 +27,7 @@ daiquiri.setup(
     outputs=(
         daiquiri.output.Stream(
             formatter=daiquiri.formatter.ColorFormatter(
-                fmt="%(color)s%(levelname)-8.8s "
-                "%(name)s: %(message)s%(color_stop)s"
+                fmt="%(color)s%(levelname)-8.8s " "%(name)s: %(message)s%(color_stop)s"
             )
         ),
     ),
@@ -42,6 +42,7 @@ def receiveSignal(signalNumber, frame):
 
 def terminateProcess(signalNumber, frame):
     logger.info("Shutdown requested")
+    monitor.send_event(monitor.h_events.SHUTDOWN_REQUEST, monitor.severity.INFO)
     helper.triggerTerminate()
 
 
@@ -52,6 +53,11 @@ def dispatch(args):
         config.read_config()
     except Exception as e:
         logger.exception("Unable to update configuration. Skipping processing.")
+        monitor.send_event(
+            monitor.h_events.CONFIG_UPDATE,
+            monitor.severity.WARNING,
+            "Unable to update configuration (possibly locked)",
+        )
         return
 
     logger.info(f"Checking for outgoing data in {config.hermes['outgoing_folder']}")
@@ -103,13 +109,16 @@ if __name__ == "__main__":
 
     logger.info(sys.version)
     logger.info(f"Instance name = {instance_name}")
-    logger.info(f"Router PID is: {os.getpid()}")
+    logger.info(f"Dispatcher PID is: {os.getpid()}")
 
     try:
         config.read_config()
     except Exception as e:
         logger.exception("Cannot start service. Going down.")
         sys.exit(1)
+
+    monitor.configure('dispatcher',instance_name,config.hermes['bookkeeper'])
+    monitor.send_event(monitor.h_events.BOOT,monitor.severity.INFO,f'PID = {os.getpid()}')
 
     graphite_prefix = "hermes.dispatcher." + instance_name
 
@@ -132,4 +141,6 @@ if __name__ == "__main__":
 
     # Start the asyncio event loop for asynchronous function calls
     helper.loop.run_forever()
+
+    monitor.send_event(monitor.h_events.SHUTDOWN, monitor.severity.INFO)
     logging.info("Going down now")
