@@ -12,6 +12,7 @@ import sys
 from pathlib import Path
 from shlex import split
 from subprocess import CalledProcessError, run
+
 import daiquiri
 
 from common.helper import is_ready_for_sending
@@ -19,17 +20,28 @@ from common.helper import is_ready_for_sending
 logger = daiquiri.getLogger("send")
 
 
+DCMSEND_ERROR_CODES = {
+    1: "EXITCODE_COMMANDLINE_SYNTAX_ERROR",
+    21: "EXITCODE_NO_INPUT_FILES",
+    22: "EXITCODE_INVALID_INPUT_FILE",
+    23: "EXITCODE_NO_VALID_INPUT_FILES",
+    43: "EXITCODE_CANNOT_WRITE_REPORT_FILE",
+    60: "EXITCODE_CANNOT_INITIALIZE_NETWORK",
+    61: "EXITCODE_CANNOT_NEGOTIATE_ASSOCIATION",
+    62: "EXITCODE_CANNOT_SEND_REQUEST",
+    65: "EXITCODE_CANNOT_ADD_PRESENTATION_CONTEXT",
+}
+
+
 def _read_target(folder):
     target_file = Path(folder) / "target.json"
-    if target_file.exists():
-        with open(target_file, "r") as f:
-            return json.load(f)
-    else:
-        raise FileNotFoundError(f"File target.json not found in folder {folder}")
+    with open(target_file, "r") as f:
+        return json.load(f)
 
 
 def _create_command(folder):
     target = _read_target(folder)
+
     if not all(
         [key in target for key in ["target_ip", "target_port", "target_aet_target"]]
     ):
@@ -41,9 +53,9 @@ def _create_command(folder):
     target_aet_target = target["target_aet_target"]
     target_aet_source = target.get("target_aet_source", "")
     dcmsend_status_file = Path(folder) / "sent.txt"
-    command = f"dcmsend {target_ip} {target_port} +sd {folder} \
-            -aet {target_aet_source} -aec {target_aet_target} -nuc \
-            +sp '*.dcm' -to 60 +crf {dcmsend_status_file}"
+    command = f"""dcmsend {target_ip} {target_port} +sd {folder}
+            -aet {target_aet_source} -aec {target_aet_target} -nuc
+            +sp '*.dcm' -to 60 +crf {dcmsend_status_file}"""
     return command
 
 
@@ -71,7 +83,10 @@ def execute(source_folder, success_folder, error_folder):
             )
             shutil.move(source_folder, success_folder)
         except CalledProcessError as e:
-            logger.exception(f"Error running command: {command}")
+            dcmsend_error_message = DCMSEND_ERROR_CODES.get(e.returncode, None)
+            logger.exception(
+                f"Failed command:\n {command} \nbecause of {dcmsend_error_message}"
+            )
             (Path(source_folder) / ".error").touch()
             lock_file.unlink()
     else:
