@@ -1,0 +1,20 @@
+{
+    "appliance_name"          : "Hermes Router",
+    "incoming_folder"         : "/home/hermes/data/incoming",
+    "outgoing_folder"         : "/home/hermes/data/outgoing",
+    "success_folder"          : "/home/hermes/data/success",
+    "error_folder"            : "/home/hermes/data/error",
+    "discard_folder"          : "/home/hermes/data/discard",
+    "bookkeeper"              : "0.0.0.0:8080",
+    "graphite_ip"             :     "",
+    "graphite_port"           :   2003,
+    "router_scan_interval"    :      1,
+    "series_complete_trigger" :     60,
+    "dispatcher_scan_interval":      1,
+    "cleaner_scan_interval"   :     10,
+    "retention"               : 604800,
+    "targets": {
+    },
+    "rules": {
+    }
+}
