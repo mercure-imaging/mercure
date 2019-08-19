@@ -114,9 +114,7 @@ tasks.db
 .mypy_cache
 .DS_Store
 .vscode
-configuration/hermes.json
 scripts/list.txt
-webgui.env
 build-getdcmtags-Desktop-Release/Makefile
 build-getdcmtags-Desktop-Release/getdcmtags
 build-getdcmtags-Desktop-Release/main.o
