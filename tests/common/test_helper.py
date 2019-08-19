@@ -29,4 +29,5 @@ def test_is_read_for_sending(fs):
     # "fs" is the reference to the fake file system
     fs.create_dir("/var/data/")
     fs.create_file("/var/data/a.dcm")
+    fs.create_file("/var/data/target.json")
     assert is_ready_for_sending("/var/data")
