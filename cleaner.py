@@ -1,11 +1,8 @@
 # Standard python includes
-import asyncio
-import json
 import logging
 import os
 import signal
 import sys
-import threading
 import time
 from datetime import timedelta
 from pathlib import Path
@@ -16,6 +13,7 @@ import graphyte
 
 import common.config as config
 import common.helper as helper
+import common.monitor as monitor
 
 hermes_cleaner_version = "0.1a"
 
@@ -40,6 +38,7 @@ def receiveSignal(signalNumber, frame):
 
 def terminateProcess(signalNumber, frame):
     logger.info("Shutdown requested")
+    monitor.send_event(monitor.h_events.SHUTDOWN_REQUEST, monitor.severity.INFO)
     helper.triggerTerminate()
 
 
@@ -48,9 +47,9 @@ def clean(args):
         return
     try:
         config.read_config()
-    except Exception as e:
-        logger.error(e)
-        logger.error("Unable to update configuration. Skipping processing.")
+    except Exception:
+        logger.exception("Unable to update configuration. Skipping processing.")
+        monitor.send_event(monitor.h_events.CONFIG_UPDATE,monitor.severity.WARNING,"Unable to update configuration (possibly locked)")
         return
 
     success_folder = config.hermes["success_folder"]
@@ -119,11 +118,12 @@ if __name__ == "__main__":
 
     try:
         config.read_config()
-    except Exception as e:
-        logger.error(e)
-        logger.error("Cannot start service. Going down.")
-        logger.error("")
+    except Exception:
+        logger.exception("Cannot start service. Going down.")
         sys.exit(1)
+
+    monitor.configure('cleaner',"main",config.hermes['bookkeeper'])
+    monitor.send_event(monitor.h_events.BOOT,monitor.severity.INFO,f'PID = {os.getpid()}')
 
     graphite_prefix = "hermes.cleaner.main"
 
@@ -144,4 +144,6 @@ if __name__ == "__main__":
 
     # Start the asyncio event loop for asynchronous function calls
     helper.loop.run_forever()
+
+    monitor.send_event(monitor.h_events.SHUTDOWN, monitor.severity.INFO)
     logger.info("Going down now")

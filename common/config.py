@@ -1,11 +1,9 @@
 import json
-import logging
 import os
 from pathlib import Path
 import common.monitor as monitor
 import daiquiri
 
-daiquiri.setup(level=logging.INFO)
 logger = daiquiri.getLogger("config")
 
 configuration_timestamp = 0

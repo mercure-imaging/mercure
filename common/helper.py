@@ -8,24 +8,25 @@ import graphyte
 
 # Global variable to broadcast when the process should terminate
 terminate=False
-loop=asyncio.get_event_loop() 
+loop=asyncio.get_event_loop()
 
 
 def is_ready_for_sending(folder):
-    """ 
+    """
     No lock file (.lock) should be in sending folder and no error file (.error),
-    if there is one  copy/move is not done yet. Also at least some dicom files 
+    if there is one  copy/move is not done yet. Also at least some dicom files
     should be there for sending.
     """
     path = Path(folder)
     return (
-        not (path / ".lock").exists()
+        (path / "target.json").exists()
+        and not (path / ".lock").exists()
         and not (path / ".error").exists()
         and not (path / ".sending").exists()
         and len(list(path.glob("*.dcm"))) > 0
     )
-    
-    
+
+
 def has_been_send(folder):
     """ If this folder has been sent. """
     path = Path(folder)
@@ -75,7 +76,7 @@ class RepeatedTimer(object):
         global terminate
         self.is_running = False
         self.function(*self.args, **self.kwargs)
-        if not terminate:            
+        if not terminate:
             self.start()
         else:
             self.exit_function(*self.args, **self.kwargs)

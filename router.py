@@ -6,10 +6,7 @@ import time
 import signal
 import os
 import sys
-import json
 import graphyte
-import asyncio
-import threading
 import logging
 
 # 3rd party
@@ -61,7 +58,7 @@ def terminateProcess(signalNumber, frame):
 
 
 def runRouter(args):
-    """Main processing function that is called every second."""    
+    """Main processing function that is called every second."""
     if helper.isTerminated():
         return
 
@@ -72,9 +69,8 @@ def runRouter(args):
 
     try:
         config.read_config()
-    except Exception as e:
-        logger.error(e)
-        logger.error("Unable to update configuration. Skipping processing.")
+    except Exception:
+        logger.exception("Unable to update configuration. Skipping processing.")
         monitor.send_event(monitor.h_events.CONFIG_UPDATE,monitor.severity.WARNING,"Unable to update configuration (possibly locked)")
         return
 
@@ -111,9 +107,8 @@ def runRouter(args):
     for entry in sorted(completeSeries):
         try:
             process_series(entry)
-        except Exception as e:
-            logger.error(e)
-            logger.error(f'ERROR: Problems while processing series {entry}')
+        except Exception:
+            logger.exception(f'Problems while processing series {entry}')
         # If termination is requested, stop processing series after the active one has been completed
         if helper.isTerminated():
             break
@@ -159,10 +154,8 @@ if __name__ == '__main__':
     # Read the configuration file and terminate if it cannot be read
     try:
         config.read_config()
-    except Exception as e:
-        logger.error(e)
-        logger.error("Cannot start service. Going down.")
-        logger.error("")
+    except Exception:
+        logger.exception("Cannot start service. Going down.")
         sys.exit(1)
 
     monitor.configure('router',instance_name,config.hermes['bookkeeper'])

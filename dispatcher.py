@@ -7,16 +7,16 @@ import logging
 import os
 import signal
 import sys
-import time
 from pathlib import Path
+
 import daiquiri
 import graphyte
 
 import common.config as config
 import common.helper as helper
+import common.monitor as monitor
 from common.helper import has_been_send, is_ready_for_sending
 from dispatch.send import execute
-
 
 # Dispatcher version
 hermes_dispatcher_version = "0.1a"
@@ -26,8 +26,7 @@ daiquiri.setup(
     outputs=(
         daiquiri.output.Stream(
             formatter=daiquiri.formatter.ColorFormatter(
-                fmt="%(color)s%(levelname)-8.8s "
-                "%(name)s: %(message)s%(color_stop)s"
+                fmt="%(color)s%(levelname)-8.8s " "%(name)s: %(message)s%(color_stop)s"
             )
         ),
     ),
@@ -42,6 +41,7 @@ def receiveSignal(signalNumber, frame):
 
 def terminateProcess(signalNumber, frame):
     logger.info("Shutdown requested")
+    monitor.send_event(monitor.h_events.SHUTDOWN_REQUEST, monitor.severity.INFO)
     helper.triggerTerminate()
 
 
@@ -50,14 +50,18 @@ def dispatch(args):
         return
     try:
         config.read_config()
-    except Exception as e:
-        logger.error(e)
-        logger.error("Unable to update configuration. Skipping processing.")
+    except Exception:
+        logger.exception("Unable to update configuration. Skipping processing.")
+        monitor.send_event(
+            monitor.h_events.CONFIG_UPDATE,
+            monitor.severity.WARNING,
+            "Unable to update configuration (possibly locked)",
+        )
         return
 
     logger.info(f"Checking for outgoing data in {config.hermes['outgoing_folder']}")
-    success_folder = config.hermes["success_folder"]
-    error_folder = config.hermes["error_folder"]
+    success_folder = Path(config.hermes["success_folder"])
+    error_folder = Path(config.hermes["error_folder"])
     with os.scandir(config.hermes["outgoing_folder"]) as it:
         for entry in it:
             if (
@@ -66,12 +70,12 @@ def dispatch(args):
                 and is_ready_for_sending(entry.path)
             ):
                 logger.info(f"Sending folder {entry.path}")
-                execute(entry.path, success_folder, error_folder)
+                execute(Path(entry.path), success_folder, error_folder)
             # If termination is requested, stop processing series after the active one has been completed
             if helper.isTerminated():
                 break
 
-                
+
 def exit_dispatcher(args):
     """ Stop the asyncio event loop. """
     helper.loop.call_soon_threadsafe(helper.loop.stop)
@@ -104,15 +108,16 @@ if __name__ == "__main__":
 
     logger.info(sys.version)
     logger.info(f"Instance name = {instance_name}")
-    logger.info(f"Router PID is: {os.getpid()}")
+    logger.info(f"Dispatcher PID is: {os.getpid()}")
 
     try:
         config.read_config()
-    except Exception as e:
-        logger.error(e)
-        logger.error("Cannot start service. Going down.")
-        logger.error("")
+    except Exception:
+        logger.exception("Cannot start service. Going down.")
         sys.exit(1)
+
+    monitor.configure('dispatcher',instance_name,config.hermes['bookkeeper'])
+    monitor.send_event(monitor.h_events.BOOT,monitor.severity.INFO,f'PID = {os.getpid()}')
 
     graphite_prefix = "hermes.dispatcher." + instance_name
 
@@ -135,4 +140,6 @@ if __name__ == "__main__":
 
     # Start the asyncio event loop for asynchronous function calls
     helper.loop.run_forever()
+
+    monitor.send_event(monitor.h_events.SHUTDOWN, monitor.severity.INFO)
     logging.info("Going down now")

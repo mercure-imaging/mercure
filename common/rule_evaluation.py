@@ -2,7 +2,6 @@ import logging
 import common.monitor as monitor
 import daiquiri
 
-daiquiri.setup(level=logging.INFO)
 logger = daiquiri.getLogger("rule_evaluation")
 
 

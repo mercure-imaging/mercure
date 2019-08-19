@@ -25,6 +25,7 @@ from starlette.middleware.authentication import AuthenticationMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.config import Config
 from starlette.datastructures import URL, Secret
+from starlette.routing import Route, Router
 
 # App-specific includes
 import common.helper as helper
@@ -813,6 +814,26 @@ async def server_error(request, exc):
 
 
 ###################################################################################
+## Emergency error handler
+###################################################################################
+
+async def emergency_response(request):
+    """Shows emergency message about invalid configuration."""
+    return PlainTextResponse('Webgui configuration is invalid. Check configuration and restart service.')
+
+def launch_emergency_app():
+    """Launches a minimal application to inform the user about the incorrect configuration"""
+    emergency_app = Starlette(debug=True)
+    emergency_app = Router([
+        Route('/', endpoint=emergency_response, methods=['GET','POST']),
+        Route('/{any1}', endpoint=emergency_response, methods=['GET','POST']),
+        Route('/{any1}/{any2}', endpoint=emergency_response, methods=['GET','POST']),
+        Route('/{any1}/{any2}/{any3}', endpoint=emergency_response, methods=['GET','POST'])
+    ])
+    uvicorn.run(emergency_app, host=WEBGUI_HOST, port=WEBGUI_PORT)
+
+
+###################################################################################
 ## Entry function
 ###################################################################################
 
@@ -823,8 +844,9 @@ if __name__ == "__main__":
         users.read_users()
     except Exception as e: 
         print(e)
-        print("Cannot start service. Going down.")
-        print("")
+        print("Cannot start service. Showing emergency message.")
+        launch_emergency_app()
+        print("Going down.")
         sys.exit(1)
 
     monitor.configure('webgui','main',config.hermes['bookkeeper'])
