@@ -22,5 +22,5 @@ passlib
 sqlalchemy
 databases
 databases[postgresql]
-psycopg2
+psycopg2-binary
 asyncpg
