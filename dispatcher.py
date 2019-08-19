@@ -59,7 +59,7 @@ def dispatch(args):
         )
         return
 
-    logger.info(f"Checking for outgoing data in {config.hermes['outgoing_folder']}")
+    #logger.info(f"Checking for outgoing data in {config.hermes['outgoing_folder']}")
     success_folder = Path(config.hermes["success_folder"])
     error_folder = Path(config.hermes["error_folder"])
     with os.scandir(config.hermes["outgoing_folder"]) as it:

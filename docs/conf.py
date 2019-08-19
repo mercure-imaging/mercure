@@ -7,9 +7,9 @@ sys.path.insert(0, os.path.abspath('..'))
 
 # -- Project information -----------------------------------------------------
 
-project = 'Hermes'
-copyright = '2019, Tobias Block, Joshy Cyriac'
-author = 'Tobias Block, Joshy Cyriac'
+project = 'Hermes DICOM Router'
+copyright = '2019, Kai Tobias Block, Joshy Cyriac'
+author = 'Kai Tobias Block, Joshy Cyriac'
 
 # The short X.Y version
 version = '0.1a'

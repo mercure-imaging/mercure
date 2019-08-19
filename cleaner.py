@@ -57,7 +57,7 @@ def clean(args):
     retention = timedelta(seconds=config.hermes["retention"])
 
     clean_dirs = [success_folder, discard_folder]
-    logger.info(f"Checking for cleaning data in {clean_dirs}")
+    #logger.info(f"Checking for cleaning data in {clean_dirs}")
 
     clean_success(success_folder, retention)
     clean_discard(discard_folder, retention)

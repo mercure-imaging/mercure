@@ -11,6 +11,7 @@ background information about Hermes, then focuses on how to setup and run Hermes
    :maxdepth: 2
 
    intro
+   install
 
 
 Source Code documentation
