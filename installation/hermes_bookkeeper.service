@@ -1,8 +1,8 @@
 [Unit]
 Description=Hermes Bookkeeper
 Documentation=https://hermes-router.github.io/
-After=network.target
-Requires=network.target
+After=network.target postgresql.service
+Requires=network.target postgresql.service
 
 [Service]
 Type=simple
@@ -11,7 +11,6 @@ ExecStart=/home/hermes/hermes-env/bin/python /home/hermes/hermes/bookkeeper.py
 
 Restart=on-failure
 RestartSec=3
-
 
 [Install]
 WantedBy=multi-user.target
