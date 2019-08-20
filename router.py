@@ -16,7 +16,7 @@ import daiquiri
 import common.helper as helper
 import common.config as config
 import common.monitor as monitor
-from router.process_series import process_series
+from routing.process_series import process_series
 
 daiquiri.setup(
     level=logging.INFO,

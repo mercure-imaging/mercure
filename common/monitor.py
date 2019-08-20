@@ -62,8 +62,8 @@ def send_event(event, severity = severity.INFO, description = ""):
     try:
         payload = {'sender': sender_name, 'event': event, 'severity': severity, 'description': description }
         requests.post(bookkeeper_address+"/hermes-event", data=payload, timeout=1)
-    except requests.exceptions.RequestException as e:
-        logger.exception("Failed request to bookkeeper")
+    except requests.exceptions.RequestException:
+        logger.error("Failed request to bookkeeper")
 
 
 def send_webgui_event(event, user, description = ""):
@@ -72,8 +72,8 @@ def send_webgui_event(event, user, description = ""):
     try:
         payload = {'sender': sender_name, 'event': event, 'user': user, 'description': description }
         requests.post(bookkeeper_address+"/webgui-event", data=payload, timeout=1)
-    except requests.exceptions.RequestException as e:
-        logger.exception("Failed request to bookkeeper")
+    except requests.exceptions.RequestException:
+        logger.error("Failed request to bookkeeper")
 
 
 def send_register_series(tags):
@@ -81,8 +81,8 @@ def send_register_series(tags):
         return
     try:
         requests.post(bookkeeper_address+"/register-series", data=tags, timeout=1)
-    except requests.exceptions.RequestException as e:
-        logger.exception("Failed request to bookkeeper")
+    except requests.exceptions.RequestException:
+        logger.error("Failed request to bookkeeper")
 
 
 def send_series_event(event, series_uid, file_count, target, info):
@@ -92,5 +92,5 @@ def send_series_event(event, series_uid, file_count, target, info):
         payload = {'sender': sender_name, 'event': event, 'series_uid': series_uid,
                    'file_count': file_count, 'target': target, 'info': info }
         requests.post(bookkeeper_address+"/series-event", data=payload, timeout=1)
-    except requests.exceptions.RequestException as e:
-        logger.exception("Failed request to bookkeeper")
+    except requests.exceptions.RequestException:
+        logger.error("Failed request to bookkeeper")

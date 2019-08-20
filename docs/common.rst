@@ -20,6 +20,13 @@ common.helper module
    :undoc-members:
    :show-inheritance:
 
+common.monitor module
+---------------------
+
+.. automodule:: common.monitor
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 Module contents
 ---------------

@@ -32,9 +32,9 @@ import common.helper as helper
 import common.config as config
 import common.monitor as monitor
 import common.rule_evaluation as rule_evaluation
-import webgui.users as users
-import webgui.tagslist as tagslist
-import webgui.services as services
+import webinterface.users as users
+import webinterface.tagslist as tagslist
+import webinterface.services as services
 
 
 hermes_version = "0.1a"
@@ -75,10 +75,12 @@ webgui_config = Config("configuration/webgui.env")
 SECRET_KEY = webgui_config('SECRET_KEY', cast=Secret, default="NONE")
 WEBGUI_PORT = webgui_config('PORT', cast=int, default=8000)
 WEBGUI_HOST = webgui_config('HOST', default='0.0.0.0')
-templates = Jinja2Templates(directory='webgui/templates')
+templates = Jinja2Templates(directory='webinterface/templates')
 
 app = Starlette(debug=True)
-app.mount('/static', StaticFiles(directory='webgui/statics'), name='static')
+# Don't check the existence of the static folder because the wrong parent folder is used if the 
+# source code is parsed by sphinx. This would raise an exception and lead to failure of sphix.
+app.mount('/static', StaticFiles(directory='webinterface/statics', check_dir=False), name='static')
 app.add_middleware(AuthenticationMiddleware, backend=SessionAuthBackend())
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY, session_cookie="hermes_session")
 
@@ -150,8 +152,8 @@ async def show_log(request):
         end_time=""
         end_date_cmd=""
 
-    print(start_date_cmd)
-    print(end_date_cmd)
+    #print(start_date_cmd)
+    #print(end_date_cmd)
 
     service_logs = {}
     for service in services.services_list:

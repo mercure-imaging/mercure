@@ -45,7 +45,7 @@ logger = daiquiri.getLogger("bookkeeper")
 bookkeeper_config = Config("configuration/bookkeeper.env")
 BOOKKEEPER_PORT   = bookkeeper_config('PORT', cast=int, default=8080)
 BOOKKEEPER_HOST   = bookkeeper_config('HOST', default='0.0.0.0')
-DATABASE_URL      = bookkeeper_config('DATABASE_URL')
+DATABASE_URL      = bookkeeper_config('DATABASE_URL', default='postgresql://hermes@localhost')
 
 database = databases.Database(DATABASE_URL)
 app = Starlette(debug=True)

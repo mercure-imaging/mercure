@@ -1,8 +1,8 @@
-Welcome to hermes's documentation!
-==================================
+Hermes DICOM Router
+===================
 
-About
------
+User Guide
+----------
 
 This part of the documentation begins with some
 background information about Hermes, then focuses on how to setup and run Hermes.
@@ -14,11 +14,10 @@ background information about Hermes, then focuses on how to setup and run Hermes
    install
 
 
-Source Code documentation
---------------------------
+Developoer Resources
+--------------------
 
 .. toctree::
    :maxdepth: 2
 
    modules.rst
-
