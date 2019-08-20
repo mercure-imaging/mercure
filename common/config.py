@@ -74,10 +74,11 @@ def read_config():
             if not checkFolders():
                 raise FileNotFoundError("Configured folders missing")
 
-            logger.info("")
-            logger.info("Active configuration: ")
-            logger.info(json.dumps(hermes, indent=4))
-            logger.info("")
+            #logger.info("")
+            #logger.info("Active configuration: ")
+            #logger.info(json.dumps(hermes, indent=4))
+            #logger.info("")
+            
             configuration_timestamp=timestamp
             monitor.send_event(monitor.h_events.CONFIG_UPDATE, monitor.severity.INFO, "Configuration updated")
             return hermes

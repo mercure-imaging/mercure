@@ -14,6 +14,7 @@ class h_events:
     SHUTDOWN         = "SHUTDOWN"
     SHUTDOWN_REQUEST = "SHUTDOWN_REQUEST"
     CONFIG_UPDATE    = "CONFIG_UPDATE"
+    PROCESSING       = "PROCESSING"
 
 
 class w_events:

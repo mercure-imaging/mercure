@@ -31,6 +31,7 @@ daiquiri.setup(
 )
 logger = daiquiri.getLogger("router")
 
+
 # NOTES: Currently, the router only implements series-level rules, i.e. the proxy rules will be executed
 #        once the series is complete. In the future, also study-level rules can be implemented (i.e. a
 #        rule can be a series-level or study-level rule). Series-level rules are executed as done right now.
@@ -109,6 +110,8 @@ def runRouter(args):
             process_series(entry)
         except Exception:
             logger.exception(f'Problems while processing series {entry}')
+            monitor.send_series_event(monitor.s_events.ERROR, entry, 0, "", "Exception while processing")
+            monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, "Exception while processing series")
         # If termination is requested, stop processing series after the active one has been completed
         if helper.isTerminated():
             break

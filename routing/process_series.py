@@ -47,6 +47,7 @@ def process_series(series_UID):
     except:
         # Can't create lock file, so something must be seriously wrong
         logger.error(f'Unable to create lock file {lock_file}')
+        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Unable to create lock file {lock_file}')
         return
 
     logger.info(f'Processing series {series_UID}')
@@ -66,6 +67,7 @@ def process_series(series_UID):
     tagsMasterFile=Path(config.hermes['incoming_folder'] + '/' + fileList[0] + ".tags")
     if not tagsMasterFile.exists():
         logger.error(f'Missing file! {tagsMasterFile.name}')
+        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Missing file {tagsMasterFile.name}')
         return
 
     try:
@@ -73,6 +75,8 @@ def process_series(series_UID):
             tagsList=json.load(json_file)
     except Exception:
         logger.exception(f"Invalid tag information of series {series_UID}")
+        monitor.send_series_event(monitor.s_events.ERROR, entry, 0, "", "Invalid tag information")
+        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Invalid tag for series {series_UID}")        
         return
 
     monitor.send_register_series(tagsList)
@@ -92,6 +96,7 @@ def process_series(series_UID):
     except:
         # Can't delete lock file, so something must be seriously wrong
         logger.error(f'Unable to remove lock file {lock_file}')
+        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Unable to remove lock file {lock_file}')
         return
 
 
@@ -112,6 +117,7 @@ def get_routing_targets(tagList):
         except Exception as e:
             logger.error(e)
             logger.error(f"Invalid rule found: {current_rule}")
+            monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Invalid rule: {current_rule}")
             continue
 
     logger.info("Selected routing:")
@@ -128,6 +134,7 @@ def push_series_discard(fileList,series_UID):
     if lock_file.exists():
         # Lock file exists in discard folder. This should normally not happen. Send alert.
         logger.error(f'Stale lock file found in discard folder {lock_file}')
+        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Stale lock file found in discard folder {lock_file}')
         return
 
     try:
@@ -135,6 +142,7 @@ def push_series_discard(fileList,series_UID):
     except:
         # Can't create lock file, so something must be seriously wrong
         logger.error(f'Unable to create lock file {lock_file}')
+        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Unable to create lock file {lock_file}')
         return
 
     for entry in fileList:
@@ -142,8 +150,8 @@ def push_series_discard(fileList,series_UID):
             shutil.move(source_folder+entry+'.dcm',target_folder+entry+'.dcm')
             shutil.move(source_folder+entry+'.tags',target_folder+entry+'.tags')
         except Exception:
-            logger.exception(f'Problem during discarding file {entry}')
-            # TODO: Send alert
+            logger.exception(f'Problem while discarding file {entry}')
+            monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Problem during discarding file {entry}')
 
     monitor.send_series_event(monitor.s_events.DISCARD, series_UID, len(fileList), "", "")
 
@@ -152,6 +160,7 @@ def push_series_discard(fileList,series_UID):
     except:
         # Can't delete lock file, so something must be seriously wrong
         logger.error(f'Unable to remove lock file {lock_file}')
+        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Unable to remove lock file {lock_file}')
         return
 
 
@@ -168,6 +177,7 @@ def push_series_outgoing(fileList,series_UID,transfer_targets):
 
         if not target in config.hermes["targets"]:
             logger.error(f"Invalid target selected {target}")
+            monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Invalid target selected {target}")
             continue
 
         # Determine if the files should be copied or moved. For the last
@@ -183,12 +193,12 @@ def push_series_outgoing(fileList,series_UID,transfer_targets):
             os.mkdir(folder_name)
         except Exception:
             logger.exception(f'Unable to create outgoing folder {folder_name}')
-            # TODO: Send alert
+            monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Unable to create outgoing folder {folder_name}')
             return
 
         if not Path(folder_name).exists():
             logger.error(f'Creating folder not possible {folder_name}')
-            # TODO: Send alert
+            monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Creating folder not possible {folder_name}')
             return
 
         try:
@@ -197,6 +207,7 @@ def push_series_outgoing(fileList,series_UID,transfer_targets):
         except:
             # Can't create lock file, so something must be seriously wrong
             logger.error(f'Unable to create lock file {lock_file}')
+            monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Unable to create lock file {lock_file}')
             return
 
         # Generate target file target.json
@@ -215,6 +226,7 @@ def push_series_outgoing(fileList,series_UID,transfer_targets):
                 json.dump(target_json, target_file)
         except:
             logger.error(f"Unable to create target file {target_filename}")
+            monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Unable to create target file {target_filename}")
             continue
 
         if move_operation:
@@ -227,8 +239,8 @@ def push_series_outgoing(fileList,series_UID,transfer_targets):
                 operation(source_folder+entry+'.dcm',target_folder+entry+'.dcm')
                 operation(source_folder+entry+'.tags',target_folder+entry+'.tags')
             except Exception:
-                logger.exception(f'Problem during pusing file to outgoing {entry}')
-                # TODO: Send alert
+                logger.exception(f'Problem while pushing file to outgoing {entry}')
+                monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Problem while pushing file to outgoing {entry}')
 
         monitor.send_series_event(monitor.s_events.ROUTE, series_UID, len(fileList), target, transfer_targets[target])
 
@@ -237,4 +249,5 @@ def push_series_outgoing(fileList,series_UID,transfer_targets):
         except:
             # Can't delete lock file, so something must be seriously wrong
             logger.error(f'Unable to remove lock file {lock_file}')
+            monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Unable to remove lock file {lock_file}')
             return
