@@ -108,7 +108,7 @@ def _move_sent_directory(success_folder, source_folder):
             copy_function=shutil.copy2,
         )
     else:
-        shutil.move(source_folder, str(success_folder))
+        shutil.move(str(source_folder), str(success_folder))
 
 
 if __name__ == "__main__":
