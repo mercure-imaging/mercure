@@ -94,7 +94,7 @@ def exit_cleaner(args):
 
 if __name__ == "__main__":
     logger.info("")
-    logger.info("Hermes DICOM Cleaner ver", hermes_cleaner_version)
+    logger.info(f"Hermes DICOM Cleaner ver {hermes_cleaner_version}")
     logger.info("----------------------------")
     logger.info("")
 
