@@ -6,8 +6,9 @@ Installing Hermes
 
 ::
 
-    sudo adduser hermes
     sudo apt install build-essential -y
+    sudo apt install dcmtk -y
+    sudo adduser hermes
     ssh hermes@localhost
     git clone https://github.com/hermes-router/hermes.git
     cd ~/hermes/installation
@@ -22,6 +23,7 @@ Installing Hermes
     sudo systemctl enable hermes_router.service
     sudo systemctl enable hermes_ui.service
 
+
 Create data storage
 -------------------
 
@@ -30,6 +32,7 @@ Create data storage
     ssh hermes@localhost
     mkdir hermes-data; cd hermes-data
     mkdir incoming; mkdir outgoing; mkdir success; mkdir error; mkdir discard;
+
 
 Installing Postgresql
 ---------------------
@@ -65,6 +68,7 @@ Installing Postgresql
     ------
     sudo service postgresql restart
 
+
 Installing Redash
 -----------------
 
@@ -96,4 +100,3 @@ Adapting configuration files
 * Change SECRET_KEY in webgui.env (change port and host if needed)
 * Change database password in bookkeeper.env (change port and host if needed)
 * Change installation paths in hermes.json if needed
-
