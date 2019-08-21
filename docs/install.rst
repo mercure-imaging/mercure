@@ -1,5 +1,5 @@
-Installation Steps
-==================
+Installation
+============
 
 Installing Hermes
 -----------------

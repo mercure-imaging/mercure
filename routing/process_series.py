@@ -165,7 +165,7 @@ def push_series_discard(fileList,series_UID):
 
 
 def push_series_outgoing(fileList,series_UID,transfer_targets):
-    """Move the DICOM files of the series to a seperate subfolder for each target in the outgoing folder."""
+    """Move the DICOM files of the series to a separate subfolder for each target in the outgoing folder."""
     source_folder=config.hermes['incoming_folder'] + '/'
 
     total_targets=len(transfer_targets)
@@ -220,6 +220,7 @@ def push_series_outgoing(fileList,series_UID,transfer_targets):
         target_json["target_aet_source"]=config.hermes["targets"][target].get("aet_source","HERMES")
         target_json["target_name"]      =target
         target_json["applied_rule"]     =transfer_targets[target]
+        target_json["series_uid"]       =series_UID
 
         try:
             with open(target_filename, 'w') as target_file:

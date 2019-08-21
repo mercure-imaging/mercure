@@ -1,8 +1,7 @@
 Hermes DICOM Router
 ===================
 
-This part of the documentation begins with some
-background information about Hermes, then focuses on how to setup and run Hermes.
+Hermes is a flexible open-source DICOM routing solution with a simple-to-use web interface and extensive monitoring options.
 
 .. toctree::
    :hidden:
@@ -10,14 +9,15 @@ background information about Hermes, then focuses on how to setup and run Hermes
 
    github.com/hermes-router/hermes <https://github.com/hermes-router/hermes>
 
-
 .. toctree::
    :caption: User Guide
    :maxdepth: 2
 
    intro
    install
-
+   configuration
+   monitoring
+   advanced
 
 .. toctree::
    :caption: Developer Information
