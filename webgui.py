@@ -72,7 +72,10 @@ class SessionAuthBackend(AuthenticationBackend):
 
 
 webgui_config = Config("configuration/webgui.env")
-SECRET_KEY = webgui_config('SECRET_KEY', cast=Secret, default="NONE")
+# Note: PutSomethingRandomHere is the default value in the shipped configuration file.
+#       The app will not start with this value, forcing the users to set their onw secret 
+#       key. Therefore, the value is used as default here as well.
+SECRET_KEY = webgui_config('SECRET_KEY', cast=Secret, default="PutSomethingRandomHere")
 WEBGUI_PORT = webgui_config('PORT', cast=int, default=8000)
 WEBGUI_HOST = webgui_config('HOST', default='0.0.0.0')
 templates = Jinja2Templates(directory='webinterface/templates')
@@ -843,7 +846,10 @@ if __name__ == "__main__":
     try:
         services.read_services()
         config.read_config()
-        users.read_users()
+        users.read_users()        
+        if (str(SECRET_KEY)=='PutSomethingRandomHere'):
+            print("You need to change the SECRET_KEY in configuration/webgui.env")
+            raise Exception("Invalid or missing SECRET_KEY in webgui.env")
     except Exception as e: 
         print(e)
         print("Cannot start service. Showing emergency message.")
@@ -859,10 +865,6 @@ if __name__ == "__main__":
     except Exception as e: 
         print(e)
         print("Unable to parse tag list. Rule evaluation will not be available.")
-
-    if (SECRET_KEY=='NONE'):
-        print("ERROR: No secret key defined! Not starting service.")
-        sys.exit(1)
 
     uvicorn.run(app, host=WEBGUI_HOST, port=WEBGUI_PORT)
 
