@@ -1,0 +1,8 @@
+#!/bin/bash
+incoming=/home/hermes/testing/incoming
+binary=/home/hermes/hermes/bin/getdcmtags
+bookkeeper=0.0.0.0:8080
+testport=4242
+
+echo "Starting test DICOM receiver..."
+storescp --fork --promiscuous -od "$incoming" +uf -xcr "$binary $incoming/#f $bookkeeper" $testport

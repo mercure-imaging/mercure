@@ -1,0 +1,13 @@
+#!/bin/bash
+testdata=/home/hermes/testdata
+testnode=127.0.0.1
+testport=4242
+
+echo "Sending test DICOMs now..."
+
+start=`date +%s`
+dcmsend +sd +crf "sent.txt" $testnode $testport $testdata/*.dcm
+end=`date +%s`
+
+runtime=$((end-start))
+echo "Done. Duration $runtime sec"
