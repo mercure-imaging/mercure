@@ -12,9 +12,9 @@ copyright = '2019, Kai Tobias Block, Joshy Cyriac'
 author = 'Kai Tobias Block, Joshy Cyriac'
 
 # The short X.Y version
-version = '0.1a'
+version = 'Version 0.1a'
 # The full version, including alpha/beta/rc tags
-release = '0.1a'
+release = 'Version 0.1a'
 
 
 # -- General configuration ---------------------------------------------------
@@ -71,7 +71,9 @@ pygments_style = 'sphinx'
 # further.  For a list of options available for each theme, see the
 # documentation.
 #
-# html_theme_options = {}
+html_theme_options = {
+    'logo_only': True
+}
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -88,3 +90,5 @@ html_static_path = ['_static']
 #
 # html_sidebars = {}
 html_theme = 'sphinx_rtd_theme'
+
+html_logo = 'hermes_logo.png'
