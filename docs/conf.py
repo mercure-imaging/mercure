@@ -7,14 +7,14 @@ sys.path.insert(0, os.path.abspath('..'))
 
 # -- Project information -----------------------------------------------------
 
-project = 'Hermes DICOM Router'
+project = 'Hermes'
 copyright = '2019, Kai Tobias Block, Joshy Cyriac'
 author = 'Kai Tobias Block, Joshy Cyriac'
 
 # The short X.Y version
 version = 'Version 0.1a'
 # The full version, including alpha/beta/rc tags
-release = 'Version 0.1a'
+release = '0.1a'
 
 
 # -- General configuration ---------------------------------------------------
@@ -72,7 +72,8 @@ pygments_style = 'sphinx'
 # documentation.
 #
 html_theme_options = {
-    'logo_only': True
+    'logo_only': True,
+    'style_external_links': True
 }
 
 # Add any paths that contain custom static files (such as style sheets) here,
@@ -90,5 +91,5 @@ html_static_path = ['_static']
 #
 # html_sidebars = {}
 html_theme = 'sphinx_rtd_theme'
-
 html_logo = 'hermes_logo.png'
+html_show_sourcelink = False
