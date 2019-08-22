@@ -61,7 +61,7 @@ def process_series(series_UID):
                 stemName=entry.name[:-5]
                 fileList.append(stemName)
 
-    logger.info("DICOMs found: "+str(len(fileList)))
+    logger.info("DICOM files found: "+str(len(fileList)))
 
     # Use the tags file from the first slice for evaluating the routing rules
     tagsMasterFile=Path(config.hermes['incoming_folder'] + '/' + fileList[0] + ".tags")
@@ -126,31 +126,44 @@ def get_routing_targets(tagList):
 
 
 def push_series_discard(fileList,series_UID):
-    """Discards the series by moving all files into the "discard" folder, which will be periodically cleared."""
-    source_folder=config.hermes['incoming_folder'] + '/'
-    target_folder=config.hermes['discard_folder'] + '/'
+    """Discards the series by moving all files into the "discard" folder, which is periodically cleared."""
+    # Define the source and target folder. Use UUID as name for the target folder in the 
+    # discard directory to avoid collisions
+    discard_path  =config.hermes['discard_folder']  + '/' + str(uuid.uuid1())
+    discard_folder=discard_path + '/'
+    source_folder =config.hermes['incoming_folder'] + '/'
 
-    lock_file=Path(config.hermes['discard_folder'] + '/' + str(series_UID) + '.lock')
-    if lock_file.exists():
-        # Lock file exists in discard folder. This should normally not happen. Send alert.
-        logger.error(f'Stale lock file found in discard folder {lock_file}')
-        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Stale lock file found in discard folder {lock_file}')
+    # Create subfolder in the discard directory and validate that is has been created
+    try:
+        os.mkdir(discard_path)
+    except Exception:
+        logger.exception(f'Unable to create outgoing folder {discard_path}')
+        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Unable to create discard folder {discard_path}')
+        return
+    if not Path(discard_path).exists():
+        logger.error(f'Creating discard folder not possible {discard_path}')
+        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Creating discard folder not possible {discard_path}')
         return
 
+    # Create lock file in destination folder (to prevent the cleaner module to work on the folder). Note that 
+    # the DICOM series in the incoming folder has already been locked in the parent function.
     try:
+        lock_file=Path(discard_path + '/lock')
         lock=FileLock(lock_file)
     except:
         # Can't create lock file, so something must be seriously wrong
         logger.error(f'Unable to create lock file {lock_file}')
-        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Unable to create lock file {lock_file}')
+        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Unable to create lock file in discard folder {lock_file}')
         return
 
     for entry in fileList:
         try:
-            shutil.move(source_folder+entry+'.dcm',target_folder+entry+'.dcm')
-            shutil.move(source_folder+entry+'.tags',target_folder+entry+'.tags')
+            shutil.move(source_folder+entry+'.dcm',discard_folder+entry+'.dcm')
+            shutil.move(source_folder+entry+'.tags',discard_folder+entry+'.tags')
         except Exception:
             logger.exception(f'Problem while discarding file {entry}')
+            logger.exception(f'Source folder {source_folder}')
+            logger.exception(f'Target folder {discard_folder}')
             monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Problem during discarding file {entry}')
 
     monitor.send_series_event(monitor.s_events.DISCARD, series_UID, len(fileList), "", "")
@@ -213,7 +226,6 @@ def push_series_outgoing(fileList,series_UID,transfer_targets):
         # Generate target file target.json
         target_filename = target_folder + "target.json"
         target_json = {}
-
         target_json["target_ip"]        =config.hermes["targets"][target]["ip"]
         target_json["target_port"]      =config.hermes["targets"][target]["port"]
         target_json["target_aet_target"]=config.hermes["targets"][target].get("aet_target","ANY-SCP")
@@ -237,10 +249,12 @@ def push_series_outgoing(fileList,series_UID,transfer_targets):
 
         for entry in fileList:
             try:
-                operation(source_folder+entry+'.dcm',target_folder+entry+'.dcm')
+                operation(source_folder+entry+'.dcm', target_folder+entry+'.dcm')
                 operation(source_folder+entry+'.tags',target_folder+entry+'.tags')
             except Exception:
                 logger.exception(f'Problem while pushing file to outgoing {entry}')
+                logger.exception(f'Source folder {source_folder}')
+                logger.exception(f'Target folder {target_folder}')
                 monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Problem while pushing file to outgoing {entry}')
 
         monitor.send_series_event(monitor.s_events.ROUTE, series_UID, len(fileList), target, transfer_targets[target])
