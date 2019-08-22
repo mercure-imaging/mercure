@@ -9,6 +9,9 @@ import random
 import os
 import asyncio
 import datetime
+import logging
+import daiquiri
+
 from starlette.applications import Starlette
 from starlette.staticfiles import StaticFiles
 from starlette.responses import HTMLResponse
@@ -43,6 +46,20 @@ hermes_version = "0.1a"
 ###################################################################################
 ## Helper classes
 ###################################################################################
+
+daiquiri.setup(
+    level=logging.INFO,
+    outputs=(
+        daiquiri.output.Stream(
+            formatter=daiquiri.formatter.ColorFormatter(
+                fmt="%(color)s%(levelname)-8.8s "
+                "%(name)s: %(message)s%(color_stop)s"
+            )
+        ),
+    ),
+)
+logger = daiquiri.getLogger("router")
+
 
 class ExtendedUser(SimpleUser):
     def __init__(self, username: str, is_admin: False) -> None:
@@ -155,9 +172,6 @@ async def show_log(request):
         end_time=""
         end_date_cmd=""
 
-    #print(start_date_cmd)
-    #print(end_date_cmd)
-
     service_logs = {}
     for service in services.services_list:
         service_logs[service]={ "id": service, "name": services.services_list[service]["name"], "systemd": services.services_list[service]["systemd_service"] }
@@ -231,7 +245,7 @@ async def add_rule(request):
     except:
         return PlainTextResponse('ERROR: Unable to write configuration. Try again.')
 
-    print("Created rule ", newrule)
+    logger.info(f'Created rule {newrule}')
     monitor.send_webgui_event(monitor.w_events.RULE_CREATE, request.user.display_name, newrule)    
     return RedirectResponse(url='/rules/edit/'+newrule, status_code=303)  
 
@@ -280,7 +294,7 @@ async def rules_edit_post(request):
     except:
         return PlainTextResponse('ERROR: Unable to write configuration. Try again.')
 
-    print("Edited rule ", editrule)
+    logger.info(f'Edited rule {editrule}')
     monitor.send_webgui_event(monitor.w_events.RULE_EDIT, request.user.display_name, editrule)    
     return RedirectResponse(url='/rules', status_code=303)   
 
@@ -304,7 +318,7 @@ async def rules_delete_post(request):
     except:
         return PlainTextResponse('ERROR: Unable to write configuration. Try again.')
     
-    print("Deleted rule ", deleterule)
+    logger.info(f'Deleted rule {deleterule}')    
     monitor.send_webgui_event(monitor.w_events.RULE_DELETE, request.user.display_name, deleterule)    
     return RedirectResponse(url='/rules', status_code=303)   
 
@@ -377,7 +391,7 @@ async def add_target(request):
     except:
         return PlainTextResponse('ERROR: Unable to write configuration. Try again.')
 
-    print("Created target ", newtarget)
+    logger.info(f'Created target {newtarget}')
     monitor.send_webgui_event(monitor.w_events.TARGET_CREATE, request.user.display_name, newtarget)    
     return RedirectResponse(url='/targets/edit/'+newtarget, status_code=303)  
 
@@ -428,7 +442,7 @@ async def targes_edit_post(request):
     except:
         return PlainTextResponse('ERROR: Unable to write configuration. Try again.')
 
-    print("Edited target ", edittarget)
+    logger.info(f'Edited target {edittarget}')
     monitor.send_webgui_event(monitor.w_events.TARGET_EDIT, request.user.display_name, edittarget)    
     return RedirectResponse(url='/targets', status_code=303)   
 
@@ -452,7 +466,7 @@ async def targets_delete_post(request):
     except:
         return PlainTextResponse('ERROR: Unable to write configuration. Try again.')    
 
-    print("Deleted target ", deletetarget)
+    logger.info(f'Deleted target {deletetarget}')
     monitor.send_webgui_event(monitor.w_events.TARGET_DELETE, request.user.display_name, deletetarget)    
     return RedirectResponse(url='/targets', status_code=303)   
 
@@ -479,7 +493,7 @@ async def targets_test_post(request):
     except:
         pass
 
-    print("Testing target ", testtarget)
+    logger.info(f'Testing target {testtarget}')
 
     if (target_ip) and (target_port):
         if (await async_run("ping -w 1 -c 1 " + target_ip))[0]==0:
@@ -533,7 +547,7 @@ async def add_new_user(request):
     except:
         return PlainTextResponse('ERROR: Unable to write user list. Try again.')    
 
-    print("Created user ", newuser)
+    logger.info(f'Created user {newuser}')
     monitor.send_webgui_event(monitor.w_events.USER_CREATE, request.user.display_name, newuser)    
     return RedirectResponse(url='/users/edit/'+newuser, status_code=303)  
 
@@ -608,7 +622,7 @@ async def users_edit_post(request):
     except:
         return PlainTextResponse('ERROR: Unable to write user list. Try again.')    
 
-    print("Edited user ", edituser)
+    logger.info(f'Edited user {edituser}')
     monitor.send_webgui_event(monitor.w_events.USER_EDIT, request.user.display_name, edituser)
     if "own_settings" in form:
         return RedirectResponse(url='/', status_code=303)   
@@ -635,7 +649,7 @@ async def users_delete_post(request):
     except:
         return PlainTextResponse('ERROR: Unable to write user list. Try again.')
 
-    print("Deleted user ", deleteuser)
+    logger.info(f'Deleted user {deleteuser}')        
     monitor.send_webgui_event(monitor.w_events.USER_DELETE, request.user.display_name, deleteuser)
     return RedirectResponse(url='/users', status_code=303)   
 
@@ -778,7 +792,7 @@ async def control_services(request):
             if not str(service) in services.services_list:
                 continue                            
             command="systemctl "+action+" "+services.services_list[service]["systemd_service"]
-            print("Executing:",command)
+            logger.info(f'Executing: {command}')
             await async_run(command)
 
     monitor_string="action: "+action+" services: "+form.get('services','')
@@ -848,13 +862,13 @@ if __name__ == "__main__":
         config.read_config()
         users.read_users()        
         if (str(SECRET_KEY)=='PutSomethingRandomHere'):
-            print("You need to change the SECRET_KEY in configuration/webgui.env")
+            logger.error("You need to change the SECRET_KEY in configuration/webgui.env")
             raise Exception("Invalid or missing SECRET_KEY in webgui.env")
     except Exception as e: 
-        print(e)
-        print("Cannot start service. Showing emergency message.")
+        logger.error(e)
+        logger.error("Cannot start service. Showing emergency message.")
         launch_emergency_app()
-        print("Going down.")
+        logger.info("Going down.")
         sys.exit(1)
 
     monitor.configure('webgui','main',config.hermes['bookkeeper'])
@@ -863,8 +877,8 @@ if __name__ == "__main__":
     try:
         tagslist.read_tagslist()
     except Exception as e: 
-        print(e)
-        print("Unable to parse tag list. Rule evaluation will not be available.")
+        logger.info(e)
+        logger.info("Unable to parse tag list. Rule evaluation will not be available.")
 
     uvicorn.run(app, host=WEBGUI_HOST, port=WEBGUI_PORT)
 

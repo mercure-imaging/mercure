@@ -52,7 +52,7 @@ def read_users():
 
 def create_users():
     """Create new users file and create seed admin account with name "admin" and password "router"."""
-    print("No user file found. Creating user list with seed admin account.")
+    logger.info("No user file found. Creating user list with seed admin account.")
     global users_list
     users_list = { "admin": { "password": hash_password("router"), "is_admin": "True", "change_password": "True" } }
     save_users()
