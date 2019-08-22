@@ -39,6 +39,7 @@ class w_events:
 class s_events:
     """Event types for monitoring everything related to one specific series."""
     UKNOWN           = "UNKNOWN"
+    REGISTERED       = "REGISTERED"
     ROUTE            = "ROUTE"
     DISCARD          = "DISCARD"
     DISPATCH         = "DISPATCH"

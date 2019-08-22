@@ -80,6 +80,7 @@ def process_series(series_UID):
         return
 
     monitor.send_register_series(tagsList)
+    monitor.send_series_event(monitor.s_events.REGISTERED, series_UID, len(fileList), "", "")
 
     # Now test the routing rules and decide to which targets the series should be sent to
     transfer_targets = get_routing_targets(tagsList)
