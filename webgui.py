@@ -795,7 +795,7 @@ async def control_services(request):
             logger.info(f'Executing: {command}')
             await async_run(command)
 
-    monitor_string="action: "+action+" services: "+form.get('services','')
+    monitor_string="action: "+action+"; services: "+form.get('services','')
     monitor.send_webgui_event(monitor.w_events.SERVICE_CONTROL, request.user.display_name, monitor_string)
     return JSONResponse("{ }")
 
