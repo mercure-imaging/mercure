@@ -51,15 +51,14 @@ def dispatch(args):
     try:
         config.read_config()
     except Exception:
-        logger.exception("Unable to update configuration. Skipping processing.")
+        logger.exception("Unable to read configuration. Skipping processing.")
         monitor.send_event(
             monitor.h_events.CONFIG_UPDATE,
             monitor.severity.WARNING,
-            "Unable to update configuration (possibly locked)",
+            "Unable to read configuration (possibly locked)",
         )
         return
 
-    #logger.info(f"Checking for outgoing data in {config.hermes['outgoing_folder']}")
     success_folder = Path(config.hermes["success_folder"])
     error_folder = Path(config.hermes["error_folder"])
     with os.scandir(config.hermes["outgoing_folder"]) as it:
@@ -71,7 +70,8 @@ def dispatch(args):
             ):
                 logger.info(f"Sending folder {entry.path}")
                 execute(Path(entry.path), success_folder, error_folder)
-            # If termination is requested, stop processing series after the active one has been completed
+            # If termination is requested, stop processing series after the 
+            # active one has been completed
             if helper.isTerminated():
                 break
 
@@ -116,8 +116,10 @@ if __name__ == "__main__":
         logger.exception("Cannot start service. Going down.")
         sys.exit(1)
 
-    monitor.configure('dispatcher',instance_name,config.hermes['bookkeeper'])
-    monitor.send_event(monitor.h_events.BOOT,monitor.severity.INFO,f'PID = {os.getpid()}')
+    monitor.configure("dispatcher", instance_name, config.hermes["bookkeeper"])
+    monitor.send_event(
+        monitor.h_events.BOOT, monitor.severity.INFO, f"PID = {os.getpid()}"
+    )
 
     graphite_prefix = "hermes.dispatcher." + instance_name
 

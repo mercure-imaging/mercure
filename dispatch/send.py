@@ -17,6 +17,8 @@ from subprocess import CalledProcessError, run
 import daiquiri
 
 from common.helper import is_ready_for_sending
+from common.monitor import send_series_event
+from common.monitor.s_events import DISPATCH
 
 logger = daiquiri.getLogger("send")
 
@@ -57,7 +59,7 @@ def _create_command(folder):
     command = f"""dcmsend {target_ip} {target_port} +sd {folder}
             -aet {target_aet_source} -aec {target_aet_target} -nuc
             +sp '*.dcm' -to 60 +crf {dcmsend_status_file}"""
-    return command
+    return command, target
 
 
 def execute(source_folder, success_folder, error_folder):
@@ -74,7 +76,7 @@ def execute(source_folder, success_folder, error_folder):
         # still going on
         lock_file = Path(source_folder) / ".sending"
         lock_file.touch()
-        command = _create_command(source_folder)
+        command, target = _create_command(source_folder)
         logger.debug(f"Running command {command}")
         try:
             result = run(shlex.split(command), check=True)
@@ -83,6 +85,10 @@ def execute(source_folder, success_folder, error_folder):
             )
             lock_file.unlink()
             _move_sent_directory(success_folder, source_folder)
+            file_count = len(list(Path(source_folder).glob("*.dcm")))
+            send_series_event(
+                DISPATCH, target["series_uid"], file_count, target["target_name"], ""
+            )
         except CalledProcessError as e:
             lock_file.unlink()
             dcmsend_error_message = DCMSEND_ERROR_CODES.get(e.returncode, None)
@@ -109,9 +115,3 @@ def _move_sent_directory(success_folder, source_folder):
         )
     else:
         shutil.move(str(source_folder), str(success_folder))
-
-
-if __name__ == "__main__":
-    result = 0
-    execute(sys.argv[1], sys.argv[2], sys.argv[3])
-    sys.exit(result)
