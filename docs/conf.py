@@ -30,7 +30,7 @@ extensions = [
     'sphinx.ext.todo',
     'sphinx.ext.autodoc',
     'sphinx.ext.viewcode',
-    'sphinx.ext.githubpages',
+    'sphinx.ext.githubpages'
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -93,5 +93,5 @@ html_css_files = ['custom.css']
 #
 # html_sidebars = {}
 html_theme = 'sphinx_rtd_theme'
-html_logo = 'hermes_logo.png'
+html_logo = 'hermes_logo_w.png'
 html_show_sourcelink = False
