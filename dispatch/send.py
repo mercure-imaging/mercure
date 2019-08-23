@@ -18,7 +18,7 @@ import daiquiri
 
 from common.helper import is_ready_for_sending
 from common.monitor import send_series_event
-from common.monitor.s_events import DISPATCH
+from common.monitor import s_events
 
 logger = daiquiri.getLogger("send")
 
@@ -87,7 +87,7 @@ def execute(source_folder, success_folder, error_folder):
             _move_sent_directory(success_folder, source_folder)
             file_count = len(list(Path(source_folder).glob("*.dcm")))
             send_series_event(
-                DISPATCH, target["series_uid"], file_count, target["target_name"], ""
+                s_event.DISPATCH, target["series_uid"], file_count, target["target_name"], ""
             )
         except CalledProcessError as e:
             lock_file.unlink()

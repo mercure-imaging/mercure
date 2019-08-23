@@ -14,6 +14,10 @@ import graphyte
 import common.config as config
 import common.helper as helper
 import common.monitor as monitor
+from common.helper import is_ready_for_sending
+from common.monitor import send_series_event
+from common.monitor import s_events 
+
 
 hermes_cleaner_version = "0.1a"
 
@@ -56,9 +60,6 @@ def clean(args):
     discard_folder = config.hermes["discard_folder"]
     retention = timedelta(seconds=config.hermes["retention"])
 
-    clean_dirs = [success_folder, discard_folder]
-    #logger.info(f"Checking for cleaning data in {clean_dirs}")
-
     clean_success(success_folder, retention)
     clean_discard(discard_folder, retention)
 
@@ -72,7 +73,9 @@ def clean_discard(discard_folder, retention):
     ]
     oldest_first = sorted(candidates, key=lambda x: x[1], reverse=True)
     for entry in oldest_first:
+        series_uid = find_series_uid(entry[0])
         rmtree(entry[0])
+        send_series_event(s_events.CLEAN, series_uid, "", "", "")
 
 
 def clean_success(success_folder, retention):
@@ -84,7 +87,16 @@ def clean_success(success_folder, retention):
     ]
     oldest_first = sorted(candidates, key=lambda x: x[1], reverse=True)
     for entry in oldest_first:
+        series_uid = find_series_uid(entry[0])
         rmtree(entry[0].parent)
+        send_series_event(CLEAN, series_uid, "", "", "")
+        
+
+
+def find_series_uid(dir):
+    to_be_deleted_dir = Path(dir)
+    for entry in to_be_deleted_dir.iterdir():
+        return entry.name.split("#")[0]
 
 
 def exit_cleaner(args):
