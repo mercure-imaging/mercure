@@ -13,7 +13,7 @@ loop=asyncio.get_event_loop()
 
 def is_ready_for_sending(folder):
     """Checks if a case in the outgoing folder is ready for sending by the dispatcher.
-    
+
     No lock file (.lock) should be in sending folder and no error file (.error),
     if there is one  copy/move is not done yet. Also at least some dicom files
     should be there for sending.
@@ -30,8 +30,7 @@ def is_ready_for_sending(folder):
 
 def has_been_send(folder):
     """Checks if the given folder has already been sent."""
-    path = Path(folder)
-    return len(list(path.glob("sent.txt"))) == 1
+    return (Path(folder) / "sent.txt").exists()
 
 
 def triggerTerminate():
