@@ -1,7 +1,7 @@
 """
 send.py
 ====================================
-The functions for sending DICOM series 
+The functions for sending DICOM series
 to target destinations.
 """
 import json
@@ -23,7 +23,7 @@ from common.monitor import s_events
 logger = daiquiri.getLogger("send")
 
 DCMSEND_ERROR_CODES = {
-    1:  "EXITCODE_COMMANDLINE_SYNTAX_ERROR",
+    1: "EXITCODE_COMMANDLINE_SYNTAX_ERROR",
     21: "EXITCODE_NO_INPUT_FILES",
     22: "EXITCODE_INVALID_INPUT_FILE",
     23: "EXITCODE_NO_VALID_INPUT_FILES",
@@ -78,27 +78,35 @@ def execute(source_folder, success_folder, error_folder):
         command, target = _create_command(source_folder)
         logger.debug(f"Running command {command}")
         try:
-            result = run(shlex.split(command), check=True)
+            run(shlex.split(command), check=True)
             logger.info(
                 f"Folder {source_folder} successfully sent, moving to {success_folder}"
             )
             # Send bookkeeper notification
             file_count = len(list(Path(source_folder).glob("*.dcm")))
             send_series_event(
-                s_events.DISPATCH, target["series_uid"], file_count, target["target_name"], ""
+                s_events.DISPATCH,
+                target["series_uid"],
+                file_count,
+                target["target_name"],
+                "",
             )
-            # TODO: Lock file should stay in folder until folder has been moved to the 
-            #       success directory. Otherwise, another process might start reprocessing
-            #       it in this moment
-            lock_file.unlink()
             _move_sent_directory(success_folder, source_folder)
+            # Move was successfull, so lockfile .sending can be deleted
+            lock_file.unlink()
         except CalledProcessError as e:
             dcmsend_error_message = DCMSEND_ERROR_CODES.get(e.returncode, None)
             logger.exception(
                 f"Failed command:\n {command} \nbecause of {dcmsend_error_message}"
             )
             (Path(source_folder) / ".error").touch()
-            # TODO: Send error notification to bookkeeper
+            send_series_event(
+                s_events.ERROR,
+                target["series_uid"],
+                file_count,
+                target["target_name"],
+                dcmsend_error_message,
+            )
             lock_file.unlink()
     else:
         logger.warn(f"Folder {source_folder} is *not* ready for sending")
@@ -107,7 +115,7 @@ def execute(source_folder, success_folder, error_folder):
 def _move_sent_directory(success_folder, source_folder):
     """
     This check is needed if there is already a folder with the same name
-    in the success folder. If so a new directory is create with a timestamp 
+    in the success folder. If so a new directory is create with a timestamp
     as suffix.
     """
     if (success_folder / source_folder.name).exists():
