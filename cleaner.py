@@ -7,7 +7,6 @@ import time
 from datetime import timedelta
 from pathlib import Path
 from shutil import rmtree
-
 import daiquiri
 import graphyte
 
@@ -20,6 +19,7 @@ from common.monitor import s_events
 
 
 hermes_cleaner_version = "0.1a"
+
 
 daiquiri.setup(
     level=logging.INFO,

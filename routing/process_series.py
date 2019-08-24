@@ -3,7 +3,6 @@ from pathlib import Path
 import uuid
 import json
 import shutil
-
 import daiquiri
 
 # App-specific includes
@@ -270,10 +269,10 @@ def push_series_outgoing(fileList,series_UID,transfer_targets):
 
 
 def process_error_files():
-
-    # Look for error files, move these files and the source files to the error folder, 
-    # and send alert to bookkeeper
-
+    """
+    Looks for error files, moves these files and the corresponding DICOM files to the error folder, 
+    and sends an alert to the bookkeeper instance.
+    """
     error_files_found = 0
 
     for entry in os.scandir(config.hermes['incoming_folder']):
@@ -288,13 +287,19 @@ def process_error_files():
                 continue
 
             logger.error(f'Found incoming error file {entry.name}')
+            error_files_found += 1
+
             shutil.move(config.hermes['incoming_folder'] + '/' + entry.name,
                         config.hermes['error_folder'] + '/' + entry.name)
 
-            # TODO: Move the DICOM file
+            dicom_filename = entry.name[:-6]
+            dicom_file = Path(config.hermes['incoming_folder'] + '/' + dicom_filename)
+            if dicom_file.exists():
+                shutil.move(config.hermes['incoming_folder'] + '/' + dicom_filename,
+                            config.hermes['error_folder'] + '/' + dicom_filename)
 
             lock.free()
-            error_files_found += 1
 
-    monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Error parsing {error_files_found} incoming files')
+    if error_files_found > 0:
+        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Error parsing {error_files_found} incoming files')
     return

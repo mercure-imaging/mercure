@@ -1,6 +1,3 @@
-#!/usr/bin/python
-hermes_router_version = "0.1a"
-
 # Standard python includes
 import time
 import signal
@@ -8,8 +5,6 @@ import os
 import sys
 import graphyte
 import logging
-
-# 3rd party
 import daiquiri
 
 # App-specific includes
@@ -18,6 +13,9 @@ import common.config as config
 import common.monitor as monitor
 from routing.process_series import process_series
 from routing.process_series import process_error_files
+
+
+hermes_router_version = "0.1a"
 
 
 daiquiri.setup(
@@ -81,19 +79,25 @@ def runRouter(args):
     series={}
     completeSeries={}
 
+    error_files_found = False
+
     # Check the incoming folder for completed series. To this end, generate a map of all
     # series in the folder with the timestamp of the latest DICOM file as value
     for entry in os.scandir(config.hermes['incoming_folder']):
-            if entry.name.endswith(".tags") and not entry.is_dir():
-                filecount += 1
-                seriesString=entry.name.split('#',1)[0]
-                modificationTime=entry.stat().st_mtime
+        if entry.name.endswith(".tags") and not entry.is_dir():
+            filecount += 1
+            seriesString=entry.name.split('#',1)[0]
+            modificationTime=entry.stat().st_mtime
 
-                if seriesString in series.keys():
-                    if modificationTime > series[seriesString]:
-                        series[seriesString]=modificationTime
-                else:
+            if seriesString in series.keys():
+                if modificationTime > series[seriesString]:
                     series[seriesString]=modificationTime
+            else:
+                series[seriesString]=modificationTime
+        # Check if at least one .error file exists. In that case, the incoming folder should
+        # be searched for .error files at the end of the update run
+        if (not error_files_found) and entry.name.endswith(".error"):
+            error_files_found = True
 
     # Check if any of the series exceeds the "series complete" threshold
     for entry in series:
@@ -118,7 +122,8 @@ def runRouter(args):
         if helper.isTerminated():
             return
 
-    process_error_files()
+    if error_files_found:
+        process_error_files()
 
 
 def exitRouter(args):

@@ -8,7 +8,6 @@ import os
 import signal
 import sys
 from pathlib import Path
-
 import daiquiri
 import graphyte
 
@@ -18,8 +17,9 @@ import common.monitor as monitor
 from common.helper import has_been_send, is_ready_for_sending
 from dispatch.send import execute
 
-# Dispatcher version
+
 hermes_dispatcher_version = "0.1a"
+
 
 daiquiri.setup(
     level=logging.INFO,

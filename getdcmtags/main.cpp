@@ -8,7 +8,7 @@
 #include "dcmtk/dcmdata/dcspchrs.h"
 #include "dcmtk/dcmdata/dctypes.h"
 
-#define VERSION "0.1h"
+#define VERSION "0.1i"
 
 static OFString tagSpecificCharacterSet="";
 static OFString tagPatientName="";
@@ -83,6 +83,13 @@ void writeErrorInformation(OFString dcmFile, OFString errorString)
     // Create lock file to ensure that no other process moves the file
     // while the error information is written
     FILE* lfp = fopen(lock_filename.c_str(), "w+");
+    if (lfp==nullptr)
+    {
+        std::cout << "ERROR: Unable to create lock file " << lock_filename << std::endl;
+        // If the lock file cannot be created, something is seriously wrong. In this case,
+        // it is better to let the received file remain in the incoming folder.
+        return;
+    }
     fclose(lfp);
 
     errorString="ERROR: "+errorString;
@@ -307,6 +314,11 @@ int main(int argc, char *argv[])
         errorString.append(newFilename);
         errorString.append("\n");
         writeErrorInformation(path+origFilename, errorString);
+
+        // Rename DICOM file back to original name, so that the name matches to
+        // the .error file and can be moved to the error folder by the router
+        rename((path+newFilename+".dcm").c_str(),(path+origFilename).c_str());
+
         return 1;
     }
 

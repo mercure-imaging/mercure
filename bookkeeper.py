@@ -21,6 +21,7 @@ import sqlalchemy
 # App-specific includes
 import common.monitor as monitor
 
+
 hermes_bookkeeper_version = "0.1a"
 
 

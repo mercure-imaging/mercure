@@ -3,11 +3,11 @@ import json
 import sys
 import logging
 from pathlib import Path
-
 import daiquiri
 
 daiquiri.setup(level=logging.INFO)
-logger = daiquiri.getLogger("proces_dcmsend_result")
+logger = daiquiri.getLogger("process_dcmsend_result")
+
 
 def _parse_header(header):
     result = {}
@@ -36,7 +36,7 @@ def _parse_summary(summary):
 
 
 def parse(result_file):
-    """ Parses dcmsend result file and return a python dictionary. """
+    """ Parses dcmsend result file and return a python dictionary."""
     with result_file.open() as f:
         content = f.readlines()
 

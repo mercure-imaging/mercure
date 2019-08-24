@@ -13,15 +13,14 @@ from datetime import datetime
 from pathlib import Path
 from shlex import split
 from subprocess import CalledProcessError, run
-
 import daiquiri
 
 from common.helper import is_ready_for_sending
 from common.monitor import send_series_event
 from common.monitor import s_events
 
-logger = daiquiri.getLogger("send")
 
+logger = daiquiri.getLogger("send")
 
 DCMSEND_ERROR_CODES = {
     1:  "EXITCODE_COMMANDLINE_SYNTAX_ERROR",
@@ -81,22 +80,26 @@ def execute(source_folder, success_folder, error_folder):
         try:
             result = run(shlex.split(command), check=True)
             logger.info(
-                f"Folder {source_folder} was sent successful, moving to {success_folder}"
+                f"Folder {source_folder} successfully sent, moving to {success_folder}"
             )
-            lock_file.unlink()
-            _move_sent_directory(success_folder, source_folder)
+            # Send bookkeeper notification
             file_count = len(list(Path(source_folder).glob("*.dcm")))
             send_series_event(
                 s_events.DISPATCH, target["series_uid"], file_count, target["target_name"], ""
             )
-        except CalledProcessError as e:
+            # TODO: Lock file should stay in folder until folder has been moved to the 
+            #       success directory. Otherwise, another process might start reprocessing
+            #       it in this moment
             lock_file.unlink()
+            _move_sent_directory(success_folder, source_folder)
+        except CalledProcessError as e:
             dcmsend_error_message = DCMSEND_ERROR_CODES.get(e.returncode, None)
             logger.exception(
                 f"Failed command:\n {command} \nbecause of {dcmsend_error_message}"
             )
             (Path(source_folder) / ".error").touch()
-
+            # TODO: Send error notification to bookkeeper
+            lock_file.unlink()
     else:
         logger.warn(f"Folder {source_folder} is *not* ready for sending")
 
@@ -104,8 +107,8 @@ def execute(source_folder, success_folder, error_folder):
 def _move_sent_directory(success_folder, source_folder):
     """
     This check is needed if there is already a folder with the same name
-    in the success folder (sent two time). Then a new directory is created
-    with a timestamp as suffix.
+    in the success folder. If so a new directory is create with a timestamp 
+    as suffix.
     """
     if (success_folder / source_folder.name).exists():
         shutil.move(
