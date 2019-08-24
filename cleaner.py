@@ -15,7 +15,7 @@ import common.helper as helper
 import common.monitor as monitor
 from common.helper import is_ready_for_sending
 from common.monitor import send_series_event
-from common.monitor import s_events 
+from common.monitor import s_events
 
 
 hermes_cleaner_version = "0.1a"
@@ -26,8 +26,7 @@ daiquiri.setup(
     outputs=(
         daiquiri.output.Stream(
             formatter=daiquiri.formatter.ColorFormatter(
-                fmt="%(color)s%(levelname)-8.8s "
-                "%(name)s: %(message)s%(color_stop)s"
+                fmt="%(color)s%(levelname)-8.8s " "%(name)s: %(message)s%(color_stop)s"
             )
         ),
     ),
@@ -52,8 +51,12 @@ def clean(args):
     try:
         config.read_config()
     except Exception:
-        logger.exception("Unable to update configuration. Skipping processing.")
-        monitor.send_event(monitor.h_events.CONFIG_UPDATE,monitor.severity.WARNING,"Unable to update configuration (possibly locked)")
+        logger.exception("Unable to read configuration. Skipping processing.")
+        monitor.send_event(
+            monitor.h_events.CONFIG_UPDATE,
+            monitor.severity.WARNING,
+            "Unable to read configuration (possibly locked)",
+        )
         return
 
     success_folder = config.hermes["success_folder"]
@@ -75,9 +78,7 @@ def clean_discard(discard_folder, retention):
     ]
     oldest_first = sorted(candidates, key=lambda x: x[1], reverse=True)
     for entry in oldest_first:
-        series_uid = find_series_uid(entry[0])
-        rmtree(entry[0])
-        send_series_event(s_events.CLEAN, series_uid, 0, "", "")
+        delete_folder(entry, "discard")
 
 
 def clean_success(success_folder, retention):
@@ -89,15 +90,34 @@ def clean_success(success_folder, retention):
     ]
     oldest_first = sorted(candidates, key=lambda x: x[1], reverse=True)
     for entry in oldest_first:
-        series_uid = find_series_uid(entry[0])
-        rmtree(entry[0].parent)
-        send_series_event(s_events.CLEAN, series_uid, 0, "", "")
+        delete_folder(entry, "success")
+
+
+def delete_folder(entry, folder):
+    try:
+        sent_txt_path = entry[0]
+        delete_path = sent_txt_path.parent
+        series_uid = find_series_uid(sent_txt_path)
+        rmtree(delete_path)
+        send_series_event(
+            s_events.CLEAN,
+            series_uid,
+            0,
+            "",
+            f"Error deleting folder {delete_path} in {folder} folder",
+        )
+    except Exception as e:
+        logger.exception(e)
+        send_series_event(s_events.ERROR, series_uid, 0, "", "")
 
 
 def find_series_uid(dir):
     to_be_deleted_dir = Path(dir)
     for entry in to_be_deleted_dir.iterdir():
-        return entry.name.split("#")[0]
+        if "#" in entry.name:
+            return entry.name.split("#")[0]
+        else:
+            return "series_uid-not-found"
 
 
 def exit_cleaner(args):
@@ -135,8 +155,10 @@ if __name__ == "__main__":
         logger.exception("Cannot start service. Going down.")
         sys.exit(1)
 
-    monitor.configure('cleaner',"main",config.hermes['bookkeeper'])
-    monitor.send_event(monitor.h_events.BOOT,monitor.severity.INFO,f'PID = {os.getpid()}')
+    monitor.configure("cleaner", "main", config.hermes["bookkeeper"])
+    monitor.send_event(
+        monitor.h_events.BOOT, monitor.severity.INFO, f"PID = {os.getpid()}"
+    )
 
     graphite_prefix = "hermes.cleaner.main"
 
