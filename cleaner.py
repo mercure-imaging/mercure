@@ -60,6 +60,8 @@ def clean(args):
     discard_folder = config.hermes["discard_folder"]
     retention = timedelta(seconds=config.hermes["retention"])
 
+    # TODO: Adaptively reduce the retention time if the disk space is running low
+
     clean_success(success_folder, retention)
     clean_discard(discard_folder, retention)
 
@@ -75,7 +77,7 @@ def clean_discard(discard_folder, retention):
     for entry in oldest_first:
         series_uid = find_series_uid(entry[0])
         rmtree(entry[0])
-        send_series_event(s_events.CLEAN, series_uid, "", "", "")
+        send_series_event(s_events.CLEAN, series_uid, 0, "", "")
 
 
 def clean_success(success_folder, retention):
@@ -89,8 +91,7 @@ def clean_success(success_folder, retention):
     for entry in oldest_first:
         series_uid = find_series_uid(entry[0])
         rmtree(entry[0].parent)
-        send_series_event(CLEAN, series_uid, "", "", "")
-        
+        send_series_event(s_events.CLEAN, series_uid, 0, "", "")
 
 
 def find_series_uid(dir):

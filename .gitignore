@@ -125,3 +125,9 @@ configuration/hermes.json
 configuration/services.json
 configuration/webgui.env
 tests/scripts/sent.txt
+build-getdcmtags-Desktop_Qt_5_13_0_GCC_64bit-Debug/getdcmtags
+build-getdcmtags-Desktop_Qt_5_13_0_GCC_64bit-Debug/main.o
+build-getdcmtags-Desktop_Qt_5_13_0_GCC_64bit-Release/getdcmtags
+build-getdcmtags-Desktop_Qt_5_13_0_GCC_64bit-Release/main.o
+build-getdcmtags-Desktop_Qt_5_13_0_GCC_64bit-Release/Makefile
+build-getdcmtags-Desktop_Qt_5_13_0_GCC_64bit-Debug/Makefile

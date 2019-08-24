@@ -61,6 +61,7 @@ def dispatch(args):
 
     success_folder = Path(config.hermes["success_folder"])
     error_folder = Path(config.hermes["error_folder"])
+    
     with os.scandir(config.hermes["outgoing_folder"]) as it:
         for entry in it:
             if (
@@ -70,6 +71,7 @@ def dispatch(args):
             ):
                 logger.info(f"Sending folder {entry.path}")
                 execute(Path(entry.path), success_folder, error_folder)
+
             # If termination is requested, stop processing series after the 
             # active one has been completed
             if helper.isTerminated():

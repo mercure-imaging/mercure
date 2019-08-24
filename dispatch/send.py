@@ -1,8 +1,8 @@
 """
 send.py
 ====================================
-The file for sending the dicoms to
-target destination.
+The functions for sending DICOM series 
+to target destinations.
 """
 import json
 import logging
@@ -24,7 +24,7 @@ logger = daiquiri.getLogger("send")
 
 
 DCMSEND_ERROR_CODES = {
-    1: "EXITCODE_COMMANDLINE_SYNTAX_ERROR",
+    1:  "EXITCODE_COMMANDLINE_SYNTAX_ERROR",
     21: "EXITCODE_NO_INPUT_FILES",
     22: "EXITCODE_INVALID_INPUT_FILE",
     23: "EXITCODE_NO_VALID_INPUT_FILES",
@@ -87,7 +87,7 @@ def execute(source_folder, success_folder, error_folder):
             _move_sent_directory(success_folder, source_folder)
             file_count = len(list(Path(source_folder).glob("*.dcm")))
             send_series_event(
-                s_event.DISPATCH, target["series_uid"], file_count, target["target_name"], ""
+                s_events.DISPATCH, target["series_uid"], file_count, target["target_name"], ""
             )
         except CalledProcessError as e:
             lock_file.unlink()

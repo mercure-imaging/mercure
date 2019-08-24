@@ -267,3 +267,34 @@ def push_series_outgoing(fileList,series_UID,transfer_targets):
             logger.error(f'Unable to remove lock file {lock_file}')
             monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Unable to remove lock file {lock_file}')
             return
+
+
+def process_error_files():
+
+    # Look for error files, move these files and the source files to the error folder, 
+    # and send alert to bookkeeper
+
+    error_files_found = 0
+
+    for entry in os.scandir(config.hermes['incoming_folder']):
+        if entry.name.endswith(".error") and not entry.is_dir():
+            # Check if a lock file exists. If not, create one.
+            lock_file=Path(config.hermes['incoming_folder'] + '/' + entry.name + '.lock')
+            if lock_file.exists():
+                continue
+            try:
+                lock=FileLock(lock_file)
+            except:
+                continue
+
+            logger.error(f'Found incoming error file {entry.name}')
+            shutil.move(config.hermes['incoming_folder'] + '/' + entry.name,
+                        config.hermes['error_folder'] + '/' + entry.name)
+
+            # TODO: Move the DICOM file
+
+            lock.free()
+            error_files_found += 1
+
+    monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Error parsing {error_files_found} incoming files')
+    return

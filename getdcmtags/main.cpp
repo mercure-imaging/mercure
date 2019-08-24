@@ -8,7 +8,7 @@
 #include "dcmtk/dcmdata/dcspchrs.h"
 #include "dcmtk/dcmdata/dctypes.h"
 
-#define VERSION "0.1g"
+#define VERSION "0.1h"
 
 static OFString tagSpecificCharacterSet="";
 static OFString tagPatientName="";
@@ -78,6 +78,13 @@ void sendBookkeeperPost(OFString filename, OFString fileUID, OFString seriesUID)
 void writeErrorInformation(OFString dcmFile, OFString errorString)
 {
     OFString filename=dcmFile+".error";
+    OFString lock_filename=dcmFile+".error.lock";
+
+    // Create lock file to ensure that no other process moves the file
+    // while the error information is written
+    FILE* lfp = fopen(lock_filename.c_str(), "w+");
+    fclose(lfp);
+
     errorString="ERROR: "+errorString;
     FILE* fp = fopen(filename.c_str(), "w+");
 
@@ -88,6 +95,10 @@ void writeErrorInformation(OFString dcmFile, OFString errorString)
 
     fprintf(fp, "%s\n", errorString.c_str());
     fclose(fp);
+
+    // Remove lock file
+    remove(lock_filename.c_str());
+
     std::cout << errorString << std::endl;
 }
 

@@ -10,7 +10,7 @@ bookkeeper_address=""
 
 class h_events:
     """Event types for general Hermes monitoring."""
-    UKNOWN           = "UNKNOWN"
+    UNKNOWN          = "UNKNOWN"
     BOOT             = "BOOT"
     SHUTDOWN         = "SHUTDOWN"
     SHUTDOWN_REQUEST = "SHUTDOWN_REQUEST"
@@ -20,7 +20,7 @@ class h_events:
 
 class w_events:
     """Event types for monitoring the webgui activity."""
-    UKNOWN           = "UNKNOWN"
+    UNKNOWN          = "UNKNOWN"
     LOGIN            = "LOGIN"
     LOGIN_FAIL       = "LOGIN_FAIL"
     LOGOUT           = "LOGOUT"
@@ -38,7 +38,7 @@ class w_events:
 
 class s_events:
     """Event types for monitoring everything related to one specific series."""
-    UKNOWN           = "UNKNOWN"
+    UNKNOWN          = "UNKNOWN"
     REGISTERED       = "REGISTERED"
     ROUTE            = "ROUTE"
     DISCARD          = "DISCARD"

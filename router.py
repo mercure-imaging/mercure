@@ -17,6 +17,8 @@ import common.helper as helper
 import common.config as config
 import common.monitor as monitor
 from routing.process_series import process_series
+from routing.process_series import process_error_files
+
 
 daiquiri.setup(
     level=logging.INFO,
@@ -114,7 +116,9 @@ def runRouter(args):
             monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, "Exception while processing series")
         # If termination is requested, stop processing series after the active one has been completed
         if helper.isTerminated():
-            break
+            return
+
+    process_error_files()
 
 
 def exitRouter(args):
