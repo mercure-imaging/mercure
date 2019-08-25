@@ -4,21 +4,17 @@ send.py
 The functions for sending DICOM series
 to target destinations.
 """
-import json
-import logging
-import shlex
+
 import shutil
-import sys
 from datetime import datetime
 from pathlib import Path
 from shlex import split
 from subprocess import CalledProcessError, run
+
 import daiquiri
 
 from common.helper import is_ready_for_sending
-from common.monitor import send_series_event
-from common.monitor import s_events
-
+from common.monitor import s_events, send_series_event
 
 logger = daiquiri.getLogger("send")
 
@@ -35,21 +31,7 @@ DCMSEND_ERROR_CODES = {
 }
 
 
-def _read_target(folder):
-    target_file = Path(folder) / "target.json"
-    with open(target_file, "r") as f:
-        return json.load(f)
-
-
-def _create_command(folder):
-    target = _read_target(folder)
-
-    if not all(
-        [key in target for key in ["target_ip", "target_port", "target_aet_target"]]
-    ):
-        raise KeyError(
-            f"Mandatory key of ['target_ip', 'target_port', 'target_aet_target'] is missing in target.json = {target}"
-        )
+def _create_command(target, folder):
     target_ip = target["target_ip"]
     target_port = target["target_port"]
     target_aet_target = target["target_aet_target"]
@@ -68,17 +50,18 @@ def execute(source_folder, success_folder, error_folder):
     happens any error the .lock file is deleted and an .error file is created.
     Folder with .error files are _not_ ready for sending.
     """
-    if is_ready_for_sending(source_folder):
+    ready, target = is_ready_for_sending(source_folder)
+    if ready:
         logger.info(f"Folder {source_folder} is ready for sending")
         # Create a .sending file to indicate that this folder is being sent,
         # otherwise the dispatcher would pick it up again if the transfer is
         # still going on
         lock_file = Path(source_folder) / ".sending"
         lock_file.touch()
-        command, target = _create_command(source_folder)
+        command, target = _create_command(target, source_folder)
         logger.debug(f"Running command {command}")
         try:
-            run(shlex.split(command), check=True)
+            run(split(command), check=True)
             logger.info(
                 f"Folder {source_folder} successfully sent, moving to {success_folder}"
             )

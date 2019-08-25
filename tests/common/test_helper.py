@@ -1,8 +1,10 @@
-from common.helper import is_ready_for_sending, has_been_send
+import json
+
+from common.helper import (has_been_send, is_ready_for_sending,
+                           is_target_json_valid)
 
 pytest_plugins = ("pyfakefs",)
 
-import os
 
 # "fs" is the reference to the fake file system
 def test_is_not_read_for_sending_for_empty_dir(fs):
@@ -25,7 +27,8 @@ def test_is_not_read_for_sending_while_sending(fs):
 def test_is_read_for_sending(fs):
     fs.create_dir("/var/data/")
     fs.create_file("/var/data/a.dcm")
-    fs.create_file("/var/data/target.json")
+    target = {"target_ip": "0.0.0.0", "target_port": 104, "target_aet_target": "ANY"}
+    fs.create_file("/var/data/target.json", contents=json.dumps(target))
     assert is_ready_for_sending("/var/data")
 
 
@@ -38,3 +41,20 @@ def test_has_been_send(fs):
 def test_has_been_send_not(fs):
     fs.create_dir("/var/data/")
     assert not has_been_send("/var/data/")
+
+
+def test_read_target(fs):
+    target = {"target_ip": "0.0.0.0", "target_port": 104, "target_aet_target": "ANY"}
+    fs.create_file("/var/data/target.json", contents=json.dumps(target))
+    read_target = is_target_json_valid("/var/data/")
+    assert read_target
+    assert "target_ip" in read_target
+    assert "target_port" in read_target
+    assert "target_aet_target" in read_target
+
+
+def test_read_target_with_missing_key(fs):
+    target = {"target_port": 104, "target_aet_target": "ANY"}
+    fs.create_file("/var/data/target.json", contents=json.dumps(target))
+    read_target = is_target_json_valid("/var/data/")
+    assert not read_target
