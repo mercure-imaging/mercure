@@ -1,4 +1,9 @@
-# Standard python includes
+"""
+cleaner.py
+==========
+The cleaner service of hermes. Responsible for deleting processed data after
+retention time has passed.
+"""
 import logging
 import os
 import signal
@@ -45,6 +50,7 @@ def terminateProcess(signalNumber, frame):
 
 
 def clean(args):
+    """ Main entry function. """
     if helper.isTerminated():
         return
     try:
@@ -69,6 +75,10 @@ def clean(args):
 
 
 def clean_discard(discard_folder, retention):
+    """
+    Cleans the discard folder if it is older than the retention time, starting
+    from oldest first.
+    """
     candidates = [
         (f, f.stat().st_mtime)
         for f in Path(discard_folder).iterdir()
@@ -77,10 +87,14 @@ def clean_discard(discard_folder, retention):
     ]
     oldest_first = sorted(candidates, key=lambda x: x[1], reverse=True)
     for entry in oldest_first:
-        delete_folder(entry, "discard")
+        delete_folder(entry)
 
 
 def clean_success(success_folder, retention):
+    """
+    Cleans the success folder if it is older than the retention time, starting
+    from oldest first.
+    """
     # list of (sent.txt path, modification time)
     candidates = [
         (i, i.stat().st_mtime)
@@ -89,10 +103,11 @@ def clean_success(success_folder, retention):
     ]
     oldest_first = sorted(candidates, key=lambda x: x[1], reverse=True)
     for entry in oldest_first:
-        delete_folder(entry, "success")
+        delete_folder(entry)
 
 
-def delete_folder(entry, folder):
+def delete_folder(entry):
+    """ Deletes given folder. """
     try:
         sent_txt_path = entry[0]
         delete_path = sent_txt_path.parent
@@ -103,20 +118,28 @@ def delete_folder(entry, folder):
             series_uid,
             0,
             "",
-            f"Error deleting folder {delete_path} in {folder} folder",
+            f"Successful deleted folder {delete_path}",
         )
     except Exception as e:
         logger.exception(e)
-        send_series_event(s_events.ERROR, series_uid, 0, "", "")
+        send_series_event(
+            s_events.ERROR,
+            series_uid,
+            0,
+            "",
+            f"Error deleting folder {delete_path}",
+        )
 
 
-def find_series_uid(dir):
-    to_be_deleted_dir = Path(dir)
+def find_series_uid(work_dir):
+    """
+    Finds series uid which is always part before the '#'-sign in filename.
+    """
+    to_be_deleted_dir = Path(work_dir)
     for entry in to_be_deleted_dir.iterdir():
         if "#" in entry.name:
             return entry.name.split("#")[0]
-        else:
-            return "series_uid-not-found"
+        return "series_uid-not-found"
 
 
 def exit_cleaner(args):
