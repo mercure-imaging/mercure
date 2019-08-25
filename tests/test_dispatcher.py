@@ -1,6 +1,9 @@
+"""
+test_dispatcher.py
+==================
+"""
 import dispatcher as d
 
-class TestDispatcher(object):
-
-    def test_dispatcher_no_syntax_errors(self):
-        assert d
+def test_dispatcher_no_syntax_errors():
+    """ Checks if dispatcher.py can be started. """
+    assert d
