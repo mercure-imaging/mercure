@@ -13,7 +13,6 @@ import graphyte
 import common.config as config
 import common.helper as helper
 import common.monitor as monitor
-from common.helper import is_ready_for_sending
 from common.monitor import send_series_event
 from common.monitor import s_events
 
