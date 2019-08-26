@@ -17,6 +17,16 @@ from routing.process_series import process_error_files
 
 hermes_router_version = "0.1a"
 
+# NOTES: Currently, the router only implements series-level rules, i.e. the proxy rules will be executed
+#        once the series is complete. In the future, also study-level rules can be implemented (i.e. a
+#        rule can be a series-level or study-level rule). Series-level rules are executed as done right now.
+#        If a study-level rule exists that applies to a series, the series will be moved to an /incoming-study
+#        folder and renamed with the studyUID as prefix. Once the study is complete (via a separate time
+#        tigger), the study-level rules will be applied by taking each rule and collecting the series of
+#        the studies that apply to the rule. Each study-level rule will create a separate outgoing folder
+#        so that all series that apply to the study-level rule are transferred together in one DICOM
+#        transfer (association). This might be necessary for certain PACS systems or workstations (e.g.
+#        when transferring 4D series).
 
 daiquiri.setup(
     level=logging.INFO,
@@ -31,19 +41,6 @@ daiquiri.setup(
 )
 logger = daiquiri.getLogger("router")
 
-
-# NOTES: Currently, the router only implements series-level rules, i.e. the proxy rules will be executed
-#        once the series is complete. In the future, also study-level rules can be implemented (i.e. a
-#        rule can be a series-level or study-level rule). Series-level rules are executed as done right now.
-#        If a study-level rule exists that applies to a series, the series will be moved to an /incoming-study
-#        folder and renamed with the studyUID as prefix. Once the study is complete (via a separate time
-#        tigger), the study-level rules will be applied by taking each rule and collecting the series of
-#        the studies that apply to the rule. Each study-level rule will create a separate outgoing folder
-#        so that all series that apply to the study-level rule are transferred together in one DICOM
-#        transfer (association). This might be necessary for certain PACS systems or workstations (e.g.
-#        when transferring 4D series).
-
-
 def receiveSignal(signalNumber, frame):
     """Function for testing purpose only. Should be removed."""
     logger.info(f'Received: {signalNumber}')
@@ -55,6 +52,9 @@ def terminateProcess(signalNumber, frame):
     helper.g_log('events.shutdown', 1)
     logger.info('Shutdown requested')
     monitor.send_event(monitor.h_events.SHUTDOWN_REQUEST, monitor.severity.INFO)
+    # Note: main_loop can be read here because it has been declares as global variable
+    if 'main_loop' in globals() and main_loop.is_running:
+        main_loop.stop()
     helper.triggerTerminate()
 
 
@@ -182,8 +182,9 @@ if __name__ == '__main__':
     logger.info(f'Outgoing folder: {config.hermes["outgoing_folder"]}')
 
     # Start the timer that will periodically trigger the scan of the incoming folder
-    mainLoop = helper.RepeatedTimer(config.hermes['router_scan_interval'], runRouter, exitRouter, {})
-    mainLoop.start()
+    global main_loop
+    main_loop = helper.RepeatedTimer(config.hermes['router_scan_interval'], runRouter, exitRouter, {})
+    main_loop.start()
 
     helper.g_log('events.boot', 1)
 
