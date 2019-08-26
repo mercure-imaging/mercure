@@ -20,9 +20,7 @@ import sqlalchemy
  
 # App-specific includes
 import common.monitor as monitor
-
-
-hermes_bookkeeper_version = "0.1a"
+import common.version as version
 
 
 ###################################################################################
@@ -327,7 +325,7 @@ async def post_series_event(request):
 
 if __name__ == '__main__':
     logger.info("")
-    logger.info(f"Hermes Bookkeeper ver {hermes_bookkeeper_version}")
+    logger.info(f"Hermes Bookkeeper ver {version.hermes_version}")
     logger.info("----------------------------")
     logger.info("")
 

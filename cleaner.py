@@ -18,11 +18,9 @@ import graphyte
 import common.config as config
 import common.helper as helper
 import common.monitor as monitor
+import common.version as version
 from common.monitor import send_series_event
 from common.monitor import s_events
-
-
-hermes_cleaner_version = "0.1a"
 
 
 daiquiri.setup(
@@ -158,7 +156,7 @@ def exit_cleaner(args):
 
 if __name__ == "__main__":
     logger.info("")
-    logger.info(f"Hermes DICOM Cleaner ver {hermes_cleaner_version}")
+    logger.info(f"Hermes DICOM Cleaner ver {version.hermes_version}")
     logger.info("----------------------------")
     logger.info("")
 

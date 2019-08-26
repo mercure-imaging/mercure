@@ -11,11 +11,10 @@ import daiquiri
 import common.helper as helper
 import common.config as config
 import common.monitor as monitor
+import common.version as version
 from routing.process_series import process_series
 from routing.process_series import process_error_files
 
-
-hermes_router_version = "0.1a"
 
 # NOTES: Currently, the router only implements series-level rules, i.e. the proxy rules will be executed
 #        once the series is complete. In the future, also study-level rules can be implemented (i.e. a
@@ -133,7 +132,7 @@ def exitRouter(args):
 
 if __name__ == '__main__':
     logger.info("")
-    logger.info(f"Hermes DICOM Router ver {hermes_router_version}")
+    logger.info(f"Hermes DICOM Router ver {version.hermes_version}")
     logger.info("----------------------------")
     logger.info("")
 

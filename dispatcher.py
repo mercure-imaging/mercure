@@ -14,11 +14,9 @@ import graphyte
 import common.config as config
 import common.helper as helper
 import common.monitor as monitor
+import common.version as version
 from common.helper import has_been_send, is_ready_for_sending
 from dispatch.send import execute
-
-
-hermes_dispatcher_version = "0.1a"
 
 
 daiquiri.setup(
@@ -95,7 +93,7 @@ def exit_dispatcher(args):
 
 if __name__ == "__main__":
     logger.info("")
-    logger.info(f"Hermes DICOM Dispatcher ver {hermes_dispatcher_version}")
+    logger.info(f"Hermes DICOM Dispatcher ver {version.hermes_version}")
     logger.info("----------------------------")
     logger.info("")
 
