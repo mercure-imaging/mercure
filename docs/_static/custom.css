@@ -115,3 +115,48 @@ input[type="text"] {
     box-shadow: none;
     padding: 8px 12px 8px 12px;
 }
+
+.wy-alert.wy-alert-info .wy-alert-title,
+.rst-content .note .admonition-title {
+    background-color: #23d160;
+}
+
+.wy-alert.wy-alert-info,
+.rst-content .note {
+    background-color: #f6fef9;
+}
+
+.rst-content .tip .admonition-title, 
+.rst-content .hint .admonition-title,
+.rst-content .seealso .admonition-title {
+    background-color: #363636;
+}
+
+.rst-content .tip,
+.rst-content .hint,
+.rst-content .seealso {
+    background-color: #fafafa;
+}
+
+.rst-content .warning .admonition-title,
+.rst-content .attention .admonition-title, 
+.rst-content .important .admonition-title{
+    background-color: #ff3860;
+}
+
+.rst-content .warning,
+.rst-content .attention,
+.rst-content .important {
+    background-color: #fff5f7;
+}
+
+.rst-content dl:not(.docutils) dt {    
+    border-top: solid 3px #3273dc;
+    color: #3273dc;
+    background-color: #f6f9fe;
+}
+
+.rst-content .viewcode-link {
+    color: hsl(141, 71%, 42%);
+}
+
