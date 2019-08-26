@@ -20,6 +20,8 @@ hermes_defaults = {
     'dispatcher_scan_interval' :               1, # in seconds
     'cleaner_scan_interval'    :              10, # in seconds
     'retention'                :          604800, # in seconds (7 days)
+    'retry_delay'              :             300, # in seconds (5 min)
+    'retry_max'                :               3,
     'series_complete_trigger'  :              60, # in seconds
     'graphite_ip'              :              '',
     'graphite_port'            :            2003,
@@ -33,7 +35,7 @@ hermes = {}
 
 def read_config():
     """Reads the configuration settings (rules, targets, general settings) from the configuration file. The configuration will
-       only be updated if the file has changed compared the the last function call. If the configuration file is locked by 
+       only be updated if the file has changed compared the the last function call. If the configuration file is locked by
        another process, an exception will be raised."""
     global hermes
     global configuration_timestamp
@@ -78,7 +80,7 @@ def read_config():
             #logger.info("Active configuration: ")
             #logger.info(json.dumps(hermes, indent=4))
             #logger.info("")
-            
+
             configuration_timestamp=timestamp
             monitor.send_event(monitor.h_events.CONFIG_UPDATE, monitor.severity.INFO, "Configuration updated")
             return hermes
@@ -87,7 +89,7 @@ def read_config():
 
 
 def save_config():
-    """Saves the current configuration in a file on the disk. Raises an exception if the file has 
+    """Saves the current configuration in a file on the disk. Raises an exception if the file has
        been locked by another process."""
     global configuration_timestamp
     configuration_file = Path(configuration_filename)

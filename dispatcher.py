@@ -69,6 +69,8 @@ def dispatch(args):
 
     success_folder = Path(config.hermes["success_folder"])
     error_folder = Path(config.hermes["error_folder"])
+    retry_max = config.hermes["retry_max"]
+    retry_delay = config.hermes["retry_delay"]
 
     with os.scandir(config.hermes["outgoing_folder"]) as it:
         for entry in it:
@@ -78,7 +80,7 @@ def dispatch(args):
                 and is_ready_for_sending(entry.path)
             ):
                 logger.info(f"Sending folder {entry.path}")
-                execute(Path(entry.path), success_folder, error_folder)
+                execute(Path(entry.path), success_folder, error_folder, retry_max, retry_delay)
 
             # If termination is requested, stop processing series after the
             # active one has been completed

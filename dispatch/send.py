@@ -13,8 +13,9 @@ from subprocess import CalledProcessError, run
 
 import daiquiri
 
-from dispatch.status import is_ready_for_sending
 from common.monitor import s_events, send_series_event
+from dispatch.retry import increase_retry
+from dispatch.status import is_ready_for_sending
 
 logger = daiquiri.getLogger("send")
 
@@ -43,7 +44,13 @@ def _create_command(target_info, folder):
     return command
 
 
-def execute(source_folder: Path, success_folder: Path, error_folder: Path):
+def execute(
+    source_folder: Path,
+    success_folder: Path,
+    error_folder: Path,
+    retry_max,
+    retry_delay,
+):
     """
     Execute the dcmsend command. It will create a .sending file to indicate that
     the folder is being sent. This is to prevent double sending. If there
@@ -88,25 +95,29 @@ def execute(source_folder: Path, success_folder: Path, error_folder: Path):
                 target_info.get("target_name", "target_name-missing"),
                 dcmsend_error_message,
             )
-            lock_file.unlink()
+            retry_increased = increase_retry(source_folder, retry_max, retry_delay)
+            if retry_increased:
+                lock_file.unlink()
+            else:
+                _move_sent_directory(source_folder, error_folder)
     else:
         logger.warning(f"Folder {source_folder} is *not* ready for sending")
 
 
-def _move_sent_directory(source_folder, success_folder):
+def _move_sent_directory(source_folder, destination_folder):
     """
     This check is needed if there is already a folder with the same name
     in the success folder. If so a new directory is create with a timestamp
     as suffix.
     """
-    if (success_folder / source_folder.name).exists():
-        target_folder = success_folder / (
+    if (destination_folder / source_folder.name).exists():
+        target_folder = destination_folder / (
             source_folder.name + "_" + datetime.now().isoformat()
         )
         logger.debug(f"Moving {source_folder} to {target_folder}")
         shutil.move(source_folder, target_folder, copy_function=shutil.copy2)
         (Path(target_folder) / ".sending").unlink()
     else:
-        logger.debug(f"Moving {source_folder} to {success_folder / source_folder.name}")
-        shutil.move(source_folder, success_folder / source_folder.name)
-        (success_folder / source_folder.name / ".sending").unlink()
+        logger.debug(f"Moving {source_folder} to {destination_folder / source_folder.name}")
+        shutil.move(source_folder, destination_folder / source_folder.name)
+        (destination_folder / source_folder.name / ".sending").unlink()
