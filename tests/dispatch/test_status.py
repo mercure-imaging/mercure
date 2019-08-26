@@ -1,6 +1,6 @@
 import json
 
-from common.helper import (has_been_send, is_ready_for_sending,
+from dispatch.status import (has_been_send, is_ready_for_sending,
                            is_target_json_valid)
 
 pytest_plugins = ("pyfakefs",)

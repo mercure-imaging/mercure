@@ -15,7 +15,7 @@ import common.config as config
 import common.helper as helper
 import common.monitor as monitor
 import common.version as version
-from common.helper import has_been_send, is_ready_for_sending
+from dispatch.status import has_been_send, is_ready_for_sending
 from dispatch.send import execute
 
 
@@ -33,7 +33,7 @@ logger = daiquiri.getLogger("dispatcher")
 
 
 def receiveSignal(signalNumber, frame):
-    """Function for testing purpose only. Should be removed."""    
+    """Function for testing purpose only. Should be removed."""
     logger.info("Received:", signalNumber)
     return
 

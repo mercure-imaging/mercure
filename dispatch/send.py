@@ -13,7 +13,7 @@ from subprocess import CalledProcessError, run
 
 import daiquiri
 
-from common.helper import is_ready_for_sending
+from dispatch.status import is_ready_for_sending
 from common.monitor import s_events, send_series_event
 
 logger = daiquiri.getLogger("send")
