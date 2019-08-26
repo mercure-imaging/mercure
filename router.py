@@ -52,7 +52,7 @@ def terminateProcess(signalNumber, frame):
     helper.g_log('events.shutdown', 1)
     logger.info('Shutdown requested')
     monitor.send_event(monitor.h_events.SHUTDOWN_REQUEST, monitor.severity.INFO)
-    # Note: main_loop can be read here because it has been declares as global variable
+    # Note: main_loop can be read here because it has been declared as global variable
     if 'main_loop' in globals() and main_loop.is_running:
         main_loop.stop()
     helper.triggerTerminate()

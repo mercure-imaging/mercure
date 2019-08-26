@@ -39,13 +39,19 @@ logger = daiquiri.getLogger("cleaner")
 
 
 def receiveSignal(signalNumber, frame):
+    """Function for testing purpose only. Should be removed."""
     logger.info("Received:", signalNumber)
     return
 
 
 def terminateProcess(signalNumber, frame):
+    """Triggers the shutdown of the service."""
+    helper.g_log('events.shutdown', 1)
     logger.info("Shutdown requested")
     monitor.send_event(monitor.h_events.SHUTDOWN_REQUEST, monitor.severity.INFO)
+    # Note: main_loop can be read here because it has been declared as global variable
+    if 'main_loop' in globals() and main_loop.is_running:
+        main_loop.stop()
     helper.triggerTerminate()
 
 
@@ -53,6 +59,9 @@ def clean(args):
     """ Main entry function. """
     if helper.isTerminated():
         return
+
+    helper.g_log('events.run', 1)
+
     try:
         config.read_config()
     except Exception:
@@ -194,10 +203,13 @@ if __name__ == "__main__":
             prefix=graphite_prefix,
         )
 
-    mainLoop = helper.RepeatedTimer(
+    global main_loop
+    main_loop = helper.RepeatedTimer(
         config.hermes["cleaner_scan_interval"], clean, exit_cleaner, {}
     )
-    mainLoop.start()
+    main_loop.start()
+
+    helper.g_log('events.boot', 1)
 
     # Start the asyncio event loop for asynchronous function calls
     helper.loop.run_forever()

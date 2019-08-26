@@ -98,7 +98,7 @@ dicom_series = sqlalchemy.Table(
     sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
     sqlalchemy.Column("time", sqlalchemy.DateTime),
     sqlalchemy.Column("series_uid", sqlalchemy.String, unique=True),
-    sqlalchemy.Column("tag_patienname", sqlalchemy.String),
+    sqlalchemy.Column("tag_patientname", sqlalchemy.String),
     sqlalchemy.Column("tag_patientid", sqlalchemy.String),
     sqlalchemy.Column("tag_accessionnumber", sqlalchemy.String),
     sqlalchemy.Column("tag_seriesnumber", sqlalchemy.String),    
@@ -256,7 +256,7 @@ async def parse_and_submit_tags(payload):
         query = dicom_series.insert().values(
             time                      =datetime.datetime.now(), 
             series_uid                =payload.get("SeriesInstanceUID",""),
-            tag_patienname            =payload.get("PatientName",""),
+            tag_patientname           =payload.get("PatientName",""),
             tag_patientid             =payload.get("PatientID",""),
             tag_accessionnumber       =payload.get("AccessionNumber",""),
             tag_seriesnumber          =payload.get("SeriesNumber",""),

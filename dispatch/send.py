@@ -75,7 +75,7 @@ def execute(source_folder, success_folder, error_folder):
                 "",
             )
             _move_sent_directory(success_folder, source_folder)
-            # Move was successfull, so lockfile .sending can be deleted
+            # Move was successful, so lockfile .sending can be deleted
             lock_file.unlink()
         except CalledProcessError as e:
             dcmsend_error_message = DCMSEND_ERROR_CODES.get(e.returncode, None)
