@@ -9,6 +9,7 @@ sphinx-rtd-theme
 # testing
 pytest
 pyfakefs
+pytest-mock
 
 # user interface
 aiofiles

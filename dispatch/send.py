@@ -100,7 +100,6 @@ def _move_sent_directory(source_folder, success_folder):
     as suffix.
     """
     if (success_folder / source_folder.name).exists():
-        
         target_folder = success_folder / (
             source_folder.name + "_" + datetime.now().isoformat()
         )
