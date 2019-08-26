@@ -28,7 +28,9 @@ def is_ready_for_sending(folder):
         and len(list(path.glob("*.dcm"))) > 0
     )
     content = is_target_json_valid(folder)
-    return folder_status and content
+    if folder_status and content:
+        return content
+    return False
 
 
 def has_been_send(folder):
