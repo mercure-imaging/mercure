@@ -36,7 +36,7 @@ def _parse_summary(summary):
 
 
 def parse(result_file):
-    """ Parses dcmsend result file and return a python dictionary."""
+    """Parses the dcmsend result file and returns a python dictionary."""
     with result_file.open() as f:
         content = f.readlines()
 
@@ -53,7 +53,7 @@ def parse(result_file):
 
 
 def create_arg_parser():
-    """"Creates and returns the ArgumentParser object."""
+    """Creates and returns the ArgumentParser object."""
     parser = argparse.ArgumentParser(
         description="Creates stripped json representation of a dcmsend result text file and prints it out."
     )

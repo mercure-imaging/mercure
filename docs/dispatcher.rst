@@ -1,5 +1,5 @@
-dispatcher module
-=================
+Service dispatcher
+==================
 
 .. automodule:: dispatcher
    :members:

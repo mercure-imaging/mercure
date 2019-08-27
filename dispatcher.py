@@ -1,7 +1,7 @@
 """
 dispatcher.py
-====================================
-The dispatching module of the proxy.
+=============
+The dispatcher service of Hermes that executes the DICOM transfer to the different targets.
 """
 import logging
 import os

@@ -15,9 +15,13 @@ Hermes is a flexible open-source DICOM routing solution with a simple-to-use web
 
    intro
    install
-   configuration
+   usage
    monitoring
    advanced
+
+.. toctree::
+   :maxdepth: 1
+
    faq
 
 .. toctree::
@@ -25,5 +29,3 @@ Hermes is a flexible open-source DICOM routing solution with a simple-to-use web
    :maxdepth: 2
 
    modules.rst
-
-

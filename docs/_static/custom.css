@@ -164,3 +164,10 @@ ul.simple li, ul.simple li p {
     margin-bottom: 12px !important;
 }
 
+footer {
+    margin-top: 50px;
+}
+
+h2 {
+    margin-top: 40px;
+}

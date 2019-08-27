@@ -1,5 +1,9 @@
-#!/usr/bin/python
-
+"""
+bookkeeper.py
+=============
+The bookkeeper service of Hermes, which receives notifications from all Hermes services
+and stores the information in a Postgres database.
+"""
 # Standard python includes
 import uvicorn
 import datetime

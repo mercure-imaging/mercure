@@ -1,4 +1,4 @@
-Configuration
-=============
+Usage
+=====
 
 .. note:: This section is coming soon.

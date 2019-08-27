@@ -1,5 +1,5 @@
-webgui module
-=============
+Service webgui
+==============
 
 .. automodule:: webgui
    :members:
