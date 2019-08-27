@@ -160,3 +160,7 @@ input[type="text"] {
     color: hsl(141, 71%, 42%);
 }
 
+ul.simple li, ul.simple li p {
+    margin-bottom: 12px !important;
+}
+
