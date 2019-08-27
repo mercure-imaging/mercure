@@ -19,8 +19,6 @@ def increase_retry(source_folder, retry_max, retry_delay):
     if target_json["retries"] >= retry_max:
         return False
 
-    print("---------------------------")
-    print(f"writing to {target_json_path}")
     with open(target_json_path, "w") as file:
         json.dump(target_json, file)
     return True

@@ -4,8 +4,8 @@ send.py
 The functions for sending DICOM series
 to target destinations.
 """
-
 import shutil
+import time
 from datetime import datetime
 from pathlib import Path
 from shlex import split
@@ -58,7 +58,9 @@ def execute(
     Folder with .error files are _not_ ready for sending.
     """
     target_info = is_ready_for_sending(source_folder)
-    if target_info:
+    delay = target_info.get("next_retry_at", 0)
+
+    if target_info and time.time() >= delay:
         logger.info(f"Folder {source_folder} is ready for sending")
         # Create a .sending file to indicate that this folder is being sent,
         # otherwise the dispatcher would pick it up again if the transfer is
@@ -87,7 +89,6 @@ def execute(
             logger.exception(
                 f"Failed command:\n {command} \nbecause of {dcmsend_error_message}"
             )
-            (Path(source_folder) / ".error").touch()
             send_series_event(
                 s_events.ERROR,
                 target_info.get("series_uid", "series_uid-missing"),
@@ -99,6 +100,7 @@ def execute(
             if retry_increased:
                 lock_file.unlink()
             else:
+                logger.debug(f"Max retries reached, moving to {error_folder}")
                 _move_sent_directory(source_folder, error_folder)
     else:
         logger.warning(f"Folder {source_folder} is *not* ready for sending")
@@ -118,6 +120,8 @@ def _move_sent_directory(source_folder, destination_folder):
         shutil.move(source_folder, target_folder, copy_function=shutil.copy2)
         (Path(target_folder) / ".sending").unlink()
     else:
-        logger.debug(f"Moving {source_folder} to {destination_folder / source_folder.name}")
+        logger.debug(
+            f"Moving {source_folder} to {destination_folder / source_folder.name}"
+        )
         shutil.move(source_folder, destination_folder / source_folder.name)
         (destination_folder / source_folder.name / ".sending").unlink()
