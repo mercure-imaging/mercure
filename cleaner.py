@@ -77,11 +77,11 @@ def clean(args):
 
     # TODO: Adaptively reduce the retention time if the disk space is running low
 
-    clean_success(success_folder, retention)
-    clean_discard(discard_folder, retention)
+    clean_dir(success_folder, retention)
+    clean_dir(discard_folder, retention)
 
 
-def clean_discard(discard_folder, retention):
+def clean_dir(discard_folder, retention):
     """
     Cleans the discard folder if it is older than the retention time, starting
     from oldest first.
@@ -97,28 +97,11 @@ def clean_discard(discard_folder, retention):
         delete_folder(entry)
 
 
-def clean_success(success_folder, retention):
-    """
-    Cleans the success folder if it is older than the retention time, starting
-    from oldest first.
-    """
-    # list of (sent.txt path, modification time)
-    candidates = [
-        (i, i.stat().st_mtime)
-        for i in Path(success_folder).glob("**/sent.txt")
-        if retention < timedelta(seconds=(time.time() - i.stat().st_mtime))
-    ]
-    oldest_first = sorted(candidates, key=lambda x: x[1], reverse=True)
-    for entry in oldest_first:
-        delete_folder(entry)
-
-
 def delete_folder(entry):
     """ Deletes given folder. """
+    delete_path = entry[0]
+    series_uid = find_series_uid(delete_path)
     try:
-        sent_txt_path = entry[0]
-        delete_path = sent_txt_path.parent
-        series_uid = find_series_uid(sent_txt_path)
         rmtree(delete_path)
         send_series_event(
             s_events.CLEAN,
