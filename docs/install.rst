@@ -10,7 +10,9 @@ Installing Hermes
 
 After finishing the Ubuntu installation procedure, the Offis DICOM toolkit (DCMTK) and gcc compiler need to be installed. A user called "hermes" should be created (the adduser command will ask for a password), and the Hermes installation file should be cloned using the shown Git command. By default, Hermes should be installed into the home directory of the user hermes. 
 
-Afterwards, the installation script should be executed. This will install the required Python runtime environment (Python 3.6 or higher) and create configuration files from the templates that are shipped with Hermes. Finally, the included ".service" files for runnning the Hermes modules as daemons need to be copied to the systemd folder and enabled via the "systemctl enable" command.
+Afterwards, the installation script should be executed. This will install the required Python runtime environment (Python 3.6 or higher) and create configuration files from the templates that are shipped with Hermes. Finally, the included ".service" files for running the Hermes modules as daemons need to be copied to the systemd folder and enabled via the "systemctl enable" command.
+
+You can perform these steps by copying the commands listed below into a bash shell. It is assumed that you are logged in as user with sudo rights.
 
 ::
 
@@ -53,7 +55,7 @@ The bookkeeper service uses a PostgreSQL database to store all recorded data. Se
 
 .. note:: The commands below create a database for the Hermes data and already prepare the database for use with the Redash visualization software, as described on the Monitoring page. If Redash should not be used, all commands containing the word "redash" can be omitted. 
 
-.. hint:: Note that '[hermes pwd]' needs to be replaced with the password that was entered when creating user hermes (and redash, respectively).
+Keep in mind that '[hermes pwd]' in the command below needs to be replaced with the password that was entered when creating user hermes (and redash, respectively).
 
 ::
 
@@ -84,15 +86,15 @@ The bookkeeper service uses a PostgreSQL database to store all recorded data. Se
 
 .. note:: The commands above assign read/write rights to the user "hermes", enabling the bookkeeper service to create the required database tables and store received monitoring information in the database. However, when working with the database for data analysis, an account with read-only rights should be used to prevent accidental data modification during the analysis. This applies in particular to the created user "redash".
 
-.. hint:: Read-only permissions can only be granted if the database tables already exist. The tables are automatically created when the bookkeeper service is started for the first time. Therefore, we first need to complete the Hermes configuration before we can grant read-only permissions.
+Read-only permissions can only be granted if the database tables already exist. The tables are automatically created when the bookkeeper service is started for the first time. Therefore, we first need to complete the Hermes configuration before we can grant read-only permissions.
 
 
 Basic Hermes configuration
 --------------------------
 
-Before we can start Hermes for the first time, several basic configuration steps are required.
+Before Hermes can be started for the first time, several basic configuration steps are required.
 
-First, we need to edit "webgui.env" and change the SECRET_KEY for the webgui. 
+First, you need to edit "webgui.env" and change the SECRET_KEY for the webgui. 
 
 ::
 
@@ -108,13 +110,13 @@ By default, the webgui runs on port 8080. Thus, you need to enter "http://x.x.x.
 
 .. note:: The Redash installation script automatically installs Redash on port :80. If you want to run the Hermes webgui on port :80 instead, you first need to change the port of Redash (see instructions in the Redash installation section).
 
-Next, we need to tell the bookkeeper the database password. This is done in the file "bookkeeper.env":
+Next, you need to tell the bookkeeper the database password. This needs to be done in the file "bookkeeper.env" by replacing "ChangePasswordHere" with the password that you selected for the database user hermes:
 
 ::
 
     nano bookkeeper.env
 
-.. hint:: In this file, you can also change the port that the bookkeeper listens on (8080 by default), but that is normally not needed. If you need to change it, change it also in the file "hermes.json".
+.. tip:: In this file, you can also change the port that the bookkeeper listens on (8080 by default), but that is normally not needed. If you need to change it, change it also in the file "hermes.json".
 
 Finally, if you are using a different storage location than "/home/hermes/hermes-data", then you need to update the paths in the following two files:
 
@@ -132,7 +134,7 @@ Finally, if you are using a different storage location than "/home/hermes/hermes
 First start of Hermes
 ---------------------
 
-Now, we can start Hermes for the fist time. For now, let's only start the bookkeeper service, so that the database tables are created, and the webgui, so that we can start the other services later through the webgui.
+Now, you can start Hermes for the fist time. For now, start only the bookkeeper service, so that the database tables are created, and the webgui, so that the other services can later be started through the webgui.
 
 The following commands need to be entered using a sudo account (i.e., not as user hermes):
 
@@ -148,13 +150,13 @@ You can validate if the two services started correctly with the following two co
     journalctl -u hermes_bookkeeper.service
     journalctl -u hermes_ui.service
 
-In addition, you could open a webbrowser and test if the login page appears if you enter the server ip (with port :8000 - or the port that you selected).
+In addition, you should open a web browser and test if the login page appears if you enter the server ip (with port :8000 - or the port that you selected).
 
 
 Completing the PostgreSQL configuration
 ---------------------------------------
 
-Now that the database tables have been created by the bookkeeper, we can grant read-only permissions to the user "redash". This can be achieved by running the following commands. 
+Now that the database tables have been created by the bookkeeper, you can grant read-only permissions to the user "redash". This can be achieved by running the following commands. 
 
 ::
 
@@ -184,7 +186,7 @@ Redash provides a convenient installation script that uses Docker for the Redash
     chmod 700 setup.sh
     sudo ./setup.sh
 
-Open the Redash configuration page in a webbrowser
+Open the Redash configuration page in a web browser
 
 ::
 
