@@ -1,37 +1,42 @@
-common package
+Package common 
 ==============
 
-Submodules
-----------
-
-common.config module
---------------------
+common.config 
+-------------
 
 .. automodule:: common.config
    :members:
    :undoc-members:
    :show-inheritance:
 
-common.helper module
---------------------
+common.helper 
+-------------
 
 .. automodule:: common.helper
    :members:
    :undoc-members:
    :show-inheritance:
 
-common.monitor module
----------------------
+common.monitor 
+--------------
 
 .. automodule:: common.monitor
    :members:
    :undoc-members:
    :show-inheritance:
 
-Module contents
----------------
+common.rule_evaluation
+----------------------
 
-.. automodule:: common
+.. automodule:: common.rule_evaluation
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+common.version
+--------------
+
+.. automodule:: common.version
    :members:
    :undoc-members:
    :show-inheritance:

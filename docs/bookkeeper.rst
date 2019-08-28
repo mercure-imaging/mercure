@@ -1,5 +1,5 @@
-bookkeeper module
-=================
+Service bookkeeper
+==================
 
 .. automodule:: bookkeeper
    :members:

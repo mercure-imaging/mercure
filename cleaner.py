@@ -1,7 +1,7 @@
 """
 cleaner.py
 ==========
-The cleaner service of hermes. Responsible for deleting processed data after
+The cleaner service of Hermes. Responsible for deleting processed data after
 retention time has passed.
 """
 import logging

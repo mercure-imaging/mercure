@@ -1,5 +1,5 @@
-cleaner module
-==============
+Service cleaner
+===============
 
 .. automodule:: cleaner
    :members:

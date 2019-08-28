@@ -114,7 +114,7 @@ def save_config():
 
 
 def checkFolders():
-    """Check if all required folders for storing DICOMs exist."""
+    """Checks if all required folders for handling the DICOM files exist."""
     for entry in ['incoming_folder','outgoing_folder','success_folder','error_folder','discard_folder']:
         if not Path(hermes[entry]).exists():
             logger.error(f"Folder not found {hermes[entry]}")

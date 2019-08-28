@@ -1,4 +1,4 @@
-Advanced Usage
-==============
+Advanced Configuration
+======================
 
 .. note:: This section is coming soon.

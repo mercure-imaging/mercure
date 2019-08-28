@@ -160,3 +160,14 @@ input[type="text"] {
     color: hsl(141, 71%, 42%);
 }
 
+ul.simple li, ul.simple li p {
+    margin-bottom: 12px !important;
+}
+
+footer {
+    margin-top: 50px;
+}
+
+h2 {
+    margin-top: 40px;
+}

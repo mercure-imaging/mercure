@@ -1,3 +1,8 @@
+"""
+webgui.py
+=========
+The web-based graphical user interface of Hermes.
+"""
 import uvicorn
 import base64
 import binascii

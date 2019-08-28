@@ -1,5 +1,5 @@
-router module
-=============
+Service router
+==============
 
 .. automodule:: router
    :members:
