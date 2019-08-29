@@ -19,6 +19,14 @@ What is the purpose of the retention period?
 
 If Hermes receives images and no routing rule does apply, the images will not be deleted but instead kept in the "discard" folder for a retention period. This enables resending the images to the router again if a routing rule had not been properly configured (otherwise, the images would be lost). The retention period for which the files will be kept in the discard folder can be configured in the configuration files hermes.json.
 
+
+--------
+
+Can the series be dispatched in a certain order?
+------------------------------------------------
+
+Hermes dispatches series of a study in the order they were received. If multiple simultaneous connections are used to transmit a study (this depends on the sender), it could happen that the dispatching order is changed. At the moment, there is no mechanism for sorting the dispatching order again. However, if there is sufficient interest among Hermes users, we will implement a feature to enforce sequential dispatching of all series belonging to one study.
+
 --------
 
 What can I do to further improve the performance?

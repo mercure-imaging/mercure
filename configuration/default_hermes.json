@@ -11,8 +11,10 @@
     "router_scan_interval"    :      1,
     "series_complete_trigger" :     60,
     "dispatcher_scan_interval":      1,
+    "retry_delay"             :    900,
+    "retry_max"               :      5,
     "cleaner_scan_interval"   :     10,
-    "retention"               : 604800,
+    "retention"               : 432000,
     "targets": {
     },
     "rules": {

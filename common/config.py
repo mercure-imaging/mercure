@@ -19,9 +19,9 @@ hermes_defaults = {
     'router_scan_interval'     :               1, # in seconds
     'dispatcher_scan_interval' :               1, # in seconds
     'cleaner_scan_interval'    :              10, # in seconds
-    'retention'                :          604800, # in seconds (7 days)
-    'retry_delay'              :             300, # in seconds (5 min)
-    'retry_max'                :               3,
+    'retention'                :          432000, # in seconds (5 days)
+    'retry_delay'              :             900, # in seconds (15 min)
+    'retry_max'                :               5,
     'series_complete_trigger'  :              60, # in seconds
     'graphite_ip'              :              '',
     'graphite_port'            :            2003,
