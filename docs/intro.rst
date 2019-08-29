@@ -22,7 +22,7 @@ Hermes can automate all of these tasks. While other commercial DICOM routing sol
 Architecture
 ------------
 
-The Hermes router consists of multiple service modules that interact with each other. The modularized architecture ensures high reliability of the routing system. For example, in the (unlikely) event that one of the modules crashes or needs to be restarted, the other modules continue to function (e.g., the router continues to receive images from the scanners). Moreover, all modules have been designed such that instances can be scaled-up if higher processing power is needed (e.g., the router can be configured to send out two or more series at the same time). Lastly, the modularized design makes it easy to extend the router's capabilities by replacing individual modules with customized versions.
+The Hermes DICOM router consists of multiple service modules that interact with each other. The modularized architecture ensures high reliability of the routing system. For example, in the (unlikely) event that one of the modules crashes or needs to be restarted, the other modules continue to function (e.g., the router continues to receive images from the scanners). Moreover, all modules have been designed such that instances can be scaled-up if higher processing power is needed (e.g., the router can be configured to send out two or more series at the same time). Lastly, the modularized design makes it easy to extend the router's capabilities by replacing individual modules with customized versions.
 
 .. topic:: Receiver
 
