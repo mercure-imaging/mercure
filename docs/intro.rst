@@ -1,6 +1,10 @@
 What is Hermes?
 ===============
 
+.. image:: scheme.png
+   :width: 550px
+   :align: center
+
 Hermes is a solution for routing medical images (DICOM series) to different targets based on routing rules that can be defined using Hermes' web-based user interface. There are various situations when such a "DICOM proxy" or "DICOM router" is needed:
 
 * It is often necessary to send certain studies to special image-analysis software (e.g., all cardiac MR studies to dedicated CMR software). Setting up the corresponding DICOM nodes on every scanner and keeping settings up-to-date is time-consuming and prone to errors
