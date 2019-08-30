@@ -1,6 +1,10 @@
 Hermes DICOM Router
 ===================
 
+.. image:: scheme.png
+   :width: 550px
+   :align: center
+
 Hermes is a flexible open-source DICOM routing solution with a simple-to-use web interface and extensive monitoring options.
 
 .. toctree::
