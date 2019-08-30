@@ -28,11 +28,11 @@ You can see the status of the different Hermes service components on the "Overvi
 
 You can start, stop, and restart services by clicking the "Service Control" button. This will show a dialog where you can select which service(s) to control and which operation to execute (e.g., start or stop). If a service does not react at all anymore, it is also possible to kill a service. 
 
-.. note:: If you stop a service, it might take a short moment until the service goes down. This is because the services have been designed such that they finish the processed series because terminating. 
+.. note:: If you stop a service, it might take a short moment until the service goes down. This is because the services have been designed to finish the active series before terminating. 
 
-Because during the Hermes installation procedure only the bookkeeper service has been started, all other services should be red when you login for the first time. Therefore, you should go now ahead and start all services.
+If you followed the Hermes installation instructions, then only the bookkeeper service has been started so far. All other services should be red when you login for the first time. Therefore, you should now go ahead and start all services.
 
-.. tip:: If you don't want to use the web interface, you can also manually control the Hermes services from the command line. This can be done, e.g., with the command "systemctl start -u hermes_router.service" for the routing service. You can find the names of the individual services in the files "/configuration/services.json".
+.. tip:: If you don't want to use the web interface, you can also manually control the Hermes services from the command line. This can be done with the command "systemctl start -u hermes_router.service" (in this example for the routing service). You can find the names of the individual services in the files "/configuration/services.json".
 
 The Overview page also shows you the disk space available in the folder for buffering the incoming DICOM files. If this bar turns yellow or red, make sure to free up disk space as the router will not be able to receiver images if the disk is completely full.
 
@@ -77,7 +77,7 @@ will activate for all series that have the word "CINE" in the series description
 
   @SeriesDescription@ = 'CINE'
 
-This rule would not trigger if the series is called "CINE 2ch". Multiple conditions can be combined using the "or" and "and" operators. Here, it is recommended to enclose every sub-condition with "( )". By default, DICOM tags are treated as strings and case-sensitive. If you want to make your condition case-insensitive, then append ".lower()" to the tag. For example, the rule 
+This rule would not trigger if the series is called "CINE 2ch". Multiple conditions can be combined using the "or" and "and" operators. Here, it is recommended to enclose every sub-condition with "( )". By default, DICOM tags are treated as strings and are case-sensitive. If you want to make your condition case-insensitive, then append ".lower()" to the tag. For example, the rule 
 :: 
 
   @SeriesDescription@.lower() = 'cine'
@@ -87,7 +87,7 @@ would trigger for series called "CINE" or "cine". If you want to test for numeri
 
   float(@SliceThickness@) < 2.0
 
-To test a routing rule before activating it, click the icon with the cog wheels on the left side of input box. If you see a red icon in the dialog, the rule is invalid (it will also show you why). If the rule is valid, the dialog will test if the rule would trigger if a DICOM series with the values shown in the lower part of the dialog would arrive. You can modify these values and test if the rule acts as expected.
+To test a routing rule before activating it, click the icon with the cog wheels on the left side of input box. If you see a red icon in the dialog, the rule is invalid (the dialog will also tell you why). If the rule is valid, the dialog will test if the rule would trigger if a DICOM series with the values shown in the lower part of the dialog would arrive. You can modify these values and test if the rule acts as expected.
 
 .. hint:: If you make a mistake while changing the test values (e.g., missing a quotation mark), you will see a yellow icon. 
 

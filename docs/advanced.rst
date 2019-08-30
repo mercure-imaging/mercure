@@ -1,5 +1,5 @@
-Advanced Configuration
-======================
+Advanced Topics
+===============
 
 Configuration files
 -------------------
@@ -17,8 +17,8 @@ webgui.env     Contains the IP, port, and secret key for the webgui
 ============== ================
 
 
-Fine tuning
------------
+Additional settings
+-------------------
 
 Advanced settings can be adjusted in the file hermes.json. These changes need to be done using a Linux text editor, e.g. nano.
 

@@ -5,7 +5,7 @@ Hermes is a solution for routing medical images (DICOM series) to different targ
 
 * It is often necessary to send certain studies to special image-analysis software (e.g., all cardiac MR studies to dedicated CMR software). Setting up the corresponding DICOM nodes on every scanner and keeping settings up-to-date is time-consuming and prone to errors
 * Manual transfer of studies to application-specific processing tools requires instructing staff which series to send to which analysis software. This can be challenging in larger departments, especially when new software tools or prototypes are installed frequently
-* Many scanners only allow configuring a limited number of destination nodes (often only three), which can be insufficient for integrating all required analysis tools
+* Many scanners only allow configuring a limited number of destination nodes (sometimes only three), which can be insufficient for integrating all required analysis tools
 * Sometimes the same series should be sent to multiple destinations (e.g., to compare tools), or the incoming series should be distributed to multiple server instances ("load balancing")
 
 Hermes can automate all of these tasks. While other commercial DICOM routing solutions exist (often with a hefty price tag), Hermes provides a number of unique features that make it attractive especially in research-focused environments:
