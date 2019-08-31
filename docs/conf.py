@@ -74,7 +74,8 @@ pygments_style = 'sphinx'
 html_theme_options = {
     'logo_only': True,
     'style_external_links': True,
-    'display_version': False
+    'display_version': False,
+    'analytics_id': 'UA-63470225-6'
 }
 
 # Add any paths that contain custom static files (such as style sheets) here,

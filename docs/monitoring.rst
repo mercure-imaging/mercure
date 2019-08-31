@@ -92,10 +92,51 @@ The most convenient way for installing Graphite and Grafana is using `Docker Com
 Bookkeeer with Redash
 ---------------------
 
-.. note:: This section is coming soon.
+All Hermes components transfer real-time information about their activities to Hermes' bookkeeper service, which acts as central monitoring hub. The bookkeeper service can be disabled if not needed, but it's highly recommended to use it, as it allows analyzing which series have been processed (or discarded) and what the processing times were. Of course, it also keeps track of all errors and processing abnormalities that might occur. Moreover, because bookkeeper tracks all DICOM files that pass through the router, including series that are discarded, the bookkeeper can be used for data mining that exceeds the capabilities of many PACS systems (e.g., searching for series where a certain contrast agent has been administered).
+
+Bookkeeper is running as RESTful service on a TCP/IP port (by default 8080) and stores the received information in a PostgreSQL database, which can be queried for analytics purpose.
+
+The following information is stored in the database:
+
+====================================== ===========================================================================
+Table                                  Meaning
+====================================== ===========================================================================
+hermes_events                          General events of Hermes modules, e.g. startup or detected errors
+webgui_events                          Activities of webgui, e.g. login attempts or configuration changes
+dicom_files                            All received DICOM files with file name, file UID, and series UID
+dicom_series                           Information on all received series, incl relevant tag information
+series_events                          All processing events related to one series, e.g. dispatch or discard 
+file_events                            Currently unused
+dicom_series_map                       Currently unused
+====================================== ===========================================================================
+
+The tables dicom_series, series_events, and dicom_files can be joined using series_uid as common column, allowing to query the events associated with one series and the names of the individual DICOM files.
+
+A very convenient and powerful tool for working with the collected PostgreSQL data is the `Redash <http://redash.io>`_ web application, which has already been described in the installation section. Redash allows prototyping SQL queries right in the browser and provides a navigator for the database keys. The query results can be displayed as tables or graphically using various visualization options. The visualizations can then be embedded into dashboards, allowing to rapidly create custom dashboards for various applications without need for any programming besides formulating the SQL queries. The dashboards can even be made interactive using a set of available user controls that can be integrated into the SQL queries. Redash is equipped with a multi-user authorization system and can be used simultaneously by different users. 
+
+Dashboards that we created for our own Hermes installation include:
+
+* A dashboard to display all Hermes events in chronological order, with separate display of ERROR events and separate display of the web activity ("System Status")
+* A "Dispatch Browser" that allows reviewing which patient exams have been dispatched to a certain target within a selectable time span
+* A "Patient Browser" that allows searching by patient name, sequence, MRN, or ACC and shows all matching images series
+* A "Series Detail" dashboard that is cross-linked from the other dashboards and shows all collected information for a selected series, including all DICOM tags and processing events
+
+Instructions how to create these dashboards are provided in the :doc:`Dashboard Gallery <../dashboards>`.
 
 
-Setting alerts
---------------
+Alerts
+------
 
-.. note:: This section is coming soon.
+It is highly recommended to setup alerts for processing errors and server problems, so that you are automatically notified if the Hermes router needs your attention. Both Grafana and Redash provide functions for automatic alerts that can be utilized. With both tools, alerts can be delivered via email. However, we recommend using a messaging tool that supports custom webhooks, such as `Slack <https://slack.com>`_. In this way, alerts can be delivered in real-time and across multiple devices, including smartphones.
+
+Examples for useful alerts include:
+
+* If the disk space on the server drops below a certain threshold [alert via Grafana]
+* If the server cannot be reached ("pinged") over the network [alert via Grafana]
+* If the Hermes services (router, dispatcher, cleaner) have not notified Graphite for a longer period [alert via Grafana]
+* If bookkeeper has received any error notifications [alert via Redash]
+* If the number of series dispatched to a certain target falls below the expected value [alert via Redash]
+
+In addition to the alerting options provided by Grafana and Redash, it is also possible setup custom notifications via a small Python script that is periodically executed and that calls the webhooks of your messaging service.
+
+.. important:: If you develop your own alert scripts, make sure to NEVER post any sensitive patient information (PHI) to the messaging service
