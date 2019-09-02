@@ -103,22 +103,25 @@ def delete_folder(entry):
     series_uid = find_series_uid(delete_path)
     try:
         rmtree(delete_path)
+        logger.info(f'Deleted folder {delete_path} from {series_uid}')
         send_series_event(
             s_events.CLEAN,
             series_uid,
             0,
-            "",
-            f"Successful deleted folder {delete_path}",
+            delete_path,
+            "Deleted folder"
         )
     except Exception as e:
+        logger.info(f'Unable to delete folder {delete_path}')
         logger.exception(e)
         send_series_event(
             s_events.ERROR,
             series_uid,
             0,
-            "",
-            f"Error deleting folder {delete_path}",
+            delete_path,
+            "Unable to delete folder"
         )
+        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Unable to delete folder {delete_path}")
 
 
 def find_series_uid(work_dir):
@@ -158,7 +161,13 @@ if __name__ == "__main__":
     signal.signal(signal.SIGALRM, receiveSignal)
     signal.signal(signal.SIGTERM, terminateProcess)
 
+    instance_name="main"
+
+    if len(sys.argv)>1:
+        instance_name=sys.argv[1]
+
     logger.info(sys.version)
+    logger.info(f'Instance name = {instance_name}')
     logger.info(f"Cleaner PID is: {os.getpid()}")
 
     try:
@@ -167,12 +176,12 @@ if __name__ == "__main__":
         logger.exception("Cannot start service. Going down.")
         sys.exit(1)
 
-    monitor.configure("cleaner", "main", config.hermes["bookkeeper"])
+    monitor.configure("cleaner", instance_name, config.hermes["bookkeeper"])
     monitor.send_event(
         monitor.h_events.BOOT, monitor.severity.INFO, f"PID = {os.getpid()}"
     )
 
-    graphite_prefix = "hermes.cleaner.main"
+    graphite_prefix = "hermes.cleaner."+instance_name
 
     if len(config.hermes["graphite_ip"]) > 0:
         logger.info(
@@ -195,5 +204,6 @@ if __name__ == "__main__":
     # Start the asyncio event loop for asynchronous function calls
     helper.loop.run_forever()
 
+    # Process will exit here once the asyncio loop has been stopped
     monitor.send_event(monitor.h_events.SHUTDOWN, monitor.severity.INFO)
     logger.info("Going down now")

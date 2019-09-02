@@ -45,6 +45,8 @@ class s_events:
     DISPATCH         = "DISPATCH"
     CLEAN            = "CLEAN"
     ERROR            = "ERROR"
+    MOVE             = "MOVE"
+    SUSPEND          = "SUSPEND"
 
 
 class severity:

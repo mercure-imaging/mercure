@@ -156,6 +156,8 @@ def push_series_discard(fileList,series_UID):
         monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Unable to create lock file in discard folder {lock_file}')
         return
 
+    monitor.send_series_event(monitor.s_events.DISCARD, series_UID, len(fileList), "", "")
+
     for entry in fileList:
         try:
             shutil.move(source_folder+entry+'.dcm',discard_folder+entry+'.dcm')
@@ -166,7 +168,7 @@ def push_series_discard(fileList,series_UID):
             logger.exception(f'Target folder {discard_folder}')
             monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Problem during discarding file {entry}')
 
-    monitor.send_series_event(monitor.s_events.DISCARD, series_UID, len(fileList), "", "")
+    monitor.send_series_event(monitor.s_events.MOVE, series_UID, len(fileList), discard_path, "")
 
     try:
         lock.free()
@@ -242,6 +244,8 @@ def push_series_outgoing(fileList,series_UID,transfer_targets):
             monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Unable to create target file {target_filename}")
             continue
 
+        monitor.send_series_event(monitor.s_events.ROUTE, series_UID, len(fileList), target, transfer_targets[target])
+
         if move_operation:
             operation=shutil.move
         else:
@@ -257,7 +261,7 @@ def push_series_outgoing(fileList,series_UID,transfer_targets):
                 logger.exception(f'Target folder {target_folder}')
                 monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Problem while pushing file to outgoing {entry}')
 
-        monitor.send_series_event(monitor.s_events.ROUTE, series_UID, len(fileList), target, transfer_targets[target])
+        monitor.send_series_event(monitor.s_events.MOVE, series_UID, len(fileList), folder_name, "")
 
         try:
             lock.free()

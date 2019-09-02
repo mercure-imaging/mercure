@@ -13,7 +13,7 @@ from subprocess import CalledProcessError, run
 
 import daiquiri
 
-from common.monitor import s_events, send_series_event
+from common.monitor import s_events, send_series_event, send_event, h_events, severity
 from dispatch.retry import increase_retry
 from dispatch.status import is_ready_for_sending
 
@@ -33,6 +33,7 @@ DCMSEND_ERROR_CODES = {
 
 
 def _create_command(target_info, folder):
+    """Composes the command for calling the dcmsend tool from DCMTK, which is used for sending out the DICOMS."""
     target_ip = target_info["target_ip"]
     target_port = target_info["target_port"]
     target_aet_target = target_info["target_aet_target"]
@@ -62,11 +63,19 @@ def execute(
 
     if target_info and time.time() >= delay:
         logger.info(f"Folder {source_folder} is ready for sending")
+
+        series_uid=target_info.get("series_uid", "series_uid-missing") 
+        target_name=target_info.get("target_name", "target_name-missing")
+
+        if (series_uid=="series_uid-missing") or (target_name=="target_name-missing"):
+            send_event(h_events.PROCESSING, severity.WARNING, f"Missing information for folder {source_folder}")    
+
         # Create a .sending file to indicate that this folder is being sent,
         # otherwise the dispatcher would pick it up again if the transfer is
         # still going on
         lock_file = Path(source_folder) / ".sending"
         lock_file.touch()
+
         command = _create_command(target_info, source_folder)
         logger.debug(f"Running command {command}")
         try:
@@ -84,24 +93,23 @@ def execute(
                 "",
             )
             _move_sent_directory(source_folder, success_folder)
+            send_series_event(s_events.MOVE, series_uid, 0, success_folder, "")
         except CalledProcessError as e:
             dcmsend_error_message = DCMSEND_ERROR_CODES.get(e.returncode, None)
             logger.exception(
                 f"Failed command:\n {command} \nbecause of {dcmsend_error_message}"
             )
-            send_series_event(
-                s_events.ERROR,
-                target_info.get("series_uid", "series_uid-missing"),
-                0,
-                target_info.get("target_name", "target_name-missing"),
-                dcmsend_error_message,
-            )
+            send_event(h_events.PROCESSING, severity.ERROR, f"Error sending {series_uid} to {target_name}")
+            send_series_event(s_events.ERROR, series_uid, 0, target_name, dcmsend_error_message)
             retry_increased = increase_retry(source_folder, retry_max, retry_delay)
             if retry_increased:
                 lock_file.unlink()
             else:
-                logger.debug(f"Max retries reached, moving to {error_folder}")
+                logger.info(f"Max retries reached, moving to {error_folder}")
+                send_series_event(s_events.SUSPEND, series_uid, 0, target_name, "Max retries reached")
                 _move_sent_directory(source_folder, error_folder)
+                send_series_event(s_events.MOVE, series_uid, 0, error_folder, "")
+                send_event(h_events.PROCESSING, severity.ERROR, f"Series suspended after reaching max retries")
     else:
         logger.warning(f"Folder {source_folder} is *not* ready for sending")
 
@@ -112,16 +120,20 @@ def _move_sent_directory(source_folder, destination_folder):
     in the success folder. If so a new directory is create with a timestamp
     as suffix.
     """
-    if (destination_folder / source_folder.name).exists():
-        target_folder = destination_folder / (
-            source_folder.name + "_" + datetime.now().isoformat()
-        )
-        logger.debug(f"Moving {source_folder} to {target_folder}")
-        shutil.move(source_folder, target_folder, copy_function=shutil.copy2)
-        (Path(target_folder) / ".sending").unlink()
-    else:
-        logger.debug(
-            f"Moving {source_folder} to {destination_folder / source_folder.name}"
-        )
-        shutil.move(source_folder, destination_folder / source_folder.name)
-        (destination_folder / source_folder.name / ".sending").unlink()
+    try:
+        if (destination_folder / source_folder.name).exists():
+            target_folder = destination_folder / (
+                source_folder.name + "_" + datetime.now().isoformat()
+            )
+            logger.debug(f"Moving {source_folder} to {target_folder}")
+            shutil.move(source_folder, target_folder, copy_function=shutil.copy2)
+            (Path(target_folder) / ".sending").unlink()
+        else:
+            logger.debug(
+                f"Moving {source_folder} to {destination_folder / source_folder.name}"
+            )
+            shutil.move(source_folder, destination_folder / source_folder.name)
+            (destination_folder / source_folder.name / ".sending").unlink()
+    except:
+        logger.info(f"Error moving folder {source_folder} to {destination_folder}")        
+        send_event(h_events.PROCESSING, severity.ERROR, f"Error moving {source_folder} to {destination_folder}")
