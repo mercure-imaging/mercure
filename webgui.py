@@ -16,6 +16,7 @@ import asyncio
 import datetime
 import logging
 import daiquiri
+from pathlib import Path
 
 from starlette.applications import Starlette
 from starlette.staticfiles import StaticFiles
@@ -665,12 +666,66 @@ async def users_delete_post(request):
 @requires(['authenticated','admin'], redirect='homepage')
 async def configuration(request):
     """Shows the current configuration of the hermes appliance."""
+    try: 
+        config.read_config()
+    except:
+        pass
     template = "configuration.html"
+    config_edited=int(request.query_params.get("edited",0))
     os_info=distro.linux_distribution()
     os_string=f"{os_info[0]} Version {os_info[1]} ({os_info[2]})"
-    context = {"request": request, "hermes_version": version.hermes_version, "page": "configuration", "config": config.hermes, "os_string": os_string}
+    context = {"request": request, "hermes_version": version.hermes_version, "page": "configuration", "config": config.hermes, "os_string": os_string, "config_edited": config_edited}
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
+
+
+@app.route('/configuration/edit')
+@requires(['authenticated','admin'], redirect='homepage')
+async def configuration_edit(request):
+    """Shows a configuration editor"""
+
+    # Check for existence of lock file
+    cfg_file = Path(config.configuration_filename)
+    cfg_lock=Path(cfg_file.parent/cfg_file.stem).with_suffix(".lock")
+    if cfg_lock.exists():
+        return PlainTextResponse('Configuration is being updated. Try again in a minute.')
+    
+    try:
+        with open(cfg_file, "r") as json_file:
+            config_content=json.load(json_file)    
+    except:
+        return PlainTextResponse('Error reading configuration file.')
+
+    config_content=json.dumps(config_content, indent=4, sort_keys=False)
+
+    template = "configuration_edit.html"
+    context = {"request": request, "hermes_version": version.hermes_version, "page": "configuration", "config_content": config_content}
+    context.update(get_user_information(request))
+    return templates.TemplateResponse(template, context)
+
+
+@app.route('/configuration/edit', methods=["POST"])
+@requires(['authenticated','admin'], redirect='homepage')
+async def configuration_edit_post(request):
+    """Updates the configuration after post from editor"""
+
+    form = dict(await request.form())
+    editor_json=form.get("editor","{}")
+    try:
+        validated_json=json.loads(editor_json)
+    except ValueError:
+        return PlainTextResponse('Invalid JSON data transferred.')
+
+    try:
+        config.write_configfile(validated_json)
+        config.read_config()
+    except ValueError:
+        return PlainTextResponse('Unable to write config file. Might be locked.')
+
+    logger.info(f'Updates hermes configuration file.')     
+    monitor.send_webgui_event(monitor.w_events.CONFIG_EDIT, request.user.display_name, "")
+
+    return RedirectResponse(url='/configuration?edited=1', status_code=303)
 
 
 ###################################################################################
@@ -682,7 +737,7 @@ async def login(request):
     """Shows the login page."""
     request.session.clear()
     template = "login.html"
-    context = {"request": request, "hermes_version": version.hermes_version }
+    context = {"request": request, "hermes_version": version.hermes_version, "appliance_name": config.hermes.get('appliance_name','Hermes Router') }
     return templates.TemplateResponse(template, context)
 
 
@@ -717,7 +772,7 @@ async def login_post(request):
         monitor.send_webgui_event(monitor.w_events.LOGIN_FAIL, form["username"], source_ip)
 
         template = "login.html"
-        context = {"request": request, "invalid_password": 1 }
+        context = {"request": request, "invalid_password": 1, "appliance_name": config.hermes.get('appliance_name','Hermes Router') }
         return templates.TemplateResponse(template, context)
 
 

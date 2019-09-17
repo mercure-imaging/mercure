@@ -34,6 +34,7 @@ class w_events:
     TARGET_DELETE    = "TARGET_DELETE"
     TARGET_EDIT      = "TARGET_EDIT"
     SERVICE_CONTROL  = "SERVICE_CONTROL"
+    CONFIG_EDIT      = "CONFIG_EDIT"
 
 
 class s_events:

@@ -113,6 +113,23 @@ def save_config():
     logger.info(f"Stored configuration into: {configuration_file}")
 
 
+def write_configfile(json_content):
+    """Rewrites the config file using the JSON data passed as argument. Used by the config editor of the webgui."""
+    configuration_file = Path(configuration_filename)
+
+    # Check for existence of lock file
+    lock_file=Path(configuration_file.parent/configuration_file.stem).with_suffix(".lock")
+
+    if lock_file.exists():
+        raise ResourceWarning(f"Configuration file locked: {lock_file}")
+
+    with open(configuration_file, "w") as json_file:
+        json.dump(json_content, json_file, indent=4)
+
+    monitor.send_event(monitor.h_events.CONFIG_UPDATE, monitor.severity.INFO, "Wrote configuration file.")
+    logger.info(f"Wrote configuration into: {configuration_file}")
+
+
 def checkFolders():
     """Checks if all required folders for handling the DICOM files exist."""
     for entry in ['incoming_folder','outgoing_folder','success_folder','error_folder','discard_folder']:
