@@ -5,8 +5,8 @@
 
   <div class="container">   
     <h1 class="title">Login</h1>
-    <div class="columns is-centered" style="margin-top: 10px;">
-      <div class="column is-two-fifths card" style="padding: 30px; padding-top: 38px; padding-bottom: 34px; border-top: solid 3px #23d160;">
+    <div class="columns is-centered" style="margin-top: 40px;">    
+      <div class="column is-one-third card" style="padding: 40px; padding-top: 48px; padding-bottom: 44px; border-top: solid 4px #23d160;">
         <form method="post">
           <div class="field">
             <p class="control has-icons-left has-icons-right">
@@ -26,19 +26,25 @@
           </div>
           <div class="field">
             <p class="control">
-              <button type="submit" class="button is-success" value="default action"  style="margin-top: 16px;">
+              <button type="submit" class="button is-success is-fullwidth" value="default action"  style="margin-top: 34px;">
                 <i class="fas fa-key"></i>&nbsp;Login
               </button>
             </p>
           </div>
         </form>          
-        {% if invalid_password %}
-        <div class="notification is-danger" style="margin-top: 20px;">
-          <i class="fas fa-lock"></i>&nbsp;&nbsp;Invalid username or password entered
-        </div>   
-        {% endif %}        
-    </div>    
+      </div>    
     </div>
+
+    {% if invalid_password %}
+    <div class="columns is-centered">
+      <div class="column is-one-third" style="padding: 0px; margin-top: 1px;">
+        <div class="notification is-danger" style="padding-top: 15px; padding-bottom: 15px; border-radius: 0px !important; box-shadow: 0 2px 3px rgba(10,10,10,.1), 0 0 0 1px rgba(10,10,10,.1);">
+          <i class="fas fa-lock"></i>&nbsp;&nbsp;Invalid credentials
+        </div>   
+      </div>
+    </div>
+    {% endif %}                
+
   </div> <!-- /container -->
 
 </main>

@@ -772,7 +772,7 @@ async def login_post(request):
         monitor.send_webgui_event(monitor.w_events.LOGIN_FAIL, form["username"], source_ip)
 
         template = "login.html"
-        context = {"request": request, "invalid_password": 1, "appliance_name": config.hermes.get('appliance_name','Hermes Router') }
+        context = {"request": request, "invalid_password": 1, "hermes_version": version.hermes_version, "appliance_name": config.hermes.get('appliance_name','Hermes Router') }
         return templates.TemplateResponse(template, context)
 
 
