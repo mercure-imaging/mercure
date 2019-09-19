@@ -30,7 +30,7 @@ The Hermes DICOM router consists of multiple service modules that interact with 
 
 .. topic:: Receiver
 
-    The receiver service listens to incoming connections, receives DICOM images, and extracts relevant DICOM tags that can be used in the routing rules. It forks a separate process for every incoming connection, so that images from multiple senders can be received simultaneously. Internally, it uses the widely-established storescp tool from the Office DCMTK for image reception. 
+    The receiver service listens to incoming connections, receives DICOM images, and extracts relevant DICOM tags that can be used in the routing rules. It forks a separate process for every incoming connection, so that images from multiple senders can be received simultaneously. Internally, it uses the widely-established storescp tool from the Office DCMTK for image reception.
 
 .. topic:: Router
 
@@ -38,11 +38,11 @@ The Hermes DICOM router consists of multiple service modules that interact with 
 
 .. topic:: Dispatcher
 
-    The dispatcher service will send the prepared series to the desired target DICOM nodes. In case the DICOM target is temporarily unavailable or if the DICOM transfer fails, it will retry the transfer after a configurable waiting period. After a configurable number of unsuccessful retries, the DICOM images will be moved to an error folder and an alert will be triggered. The transfer can later be restarted again. 
+    The dispatcher service will send the prepared series to the desired target DICOM nodes. In case the DICOM target is temporarily unavailable or if the DICOM transfer fails, it will retry the transfer after a configurable waiting period. After a configurable number of unsuccessful retries, the DICOM images will be moved to an error folder and an alert will be triggered. The transfer can later be restarted again.
 
 .. topic:: Cleaner
 
-    The cleaner service deletes processed images after the (configurable) retention period has passed. This applies to discarded images (for which no routing rule had triggered) as well as dispatched images (which have been successfully transferred to the desired targets). 
+    The cleaner service deletes processed images after the (configurable) retention period has passed and it is offpeak time (configurable, default: 22:00-06:00). The offpeak time was introduced to reduce I/O during receiving and sending exams. This applies to discarded images (for which no routing rule had triggered) as well as dispatched images (which have been successfully transferred to the desired targets).
 
 .. topic:: Bookkeeper
 

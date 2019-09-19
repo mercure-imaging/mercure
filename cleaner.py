@@ -2,14 +2,16 @@
 cleaner.py
 ==========
 The cleaner service of Hermes. Responsible for deleting processed data after
-retention time has passed.
+retention time has passed and if it is offpeak. Offpeak is the time
+period when the cleaning has to be done, because cleaning I/O should be kept
+to minimum when receiving and sending exams.
 """
 import logging
 import os
 import signal
 import sys
 import time
-from datetime import timedelta
+from datetime import timedelta, datetime
 from pathlib import Path
 from shutil import rmtree
 import daiquiri
@@ -44,11 +46,11 @@ def receiveSignal(signalNumber, frame):
 
 def terminateProcess(signalNumber, frame):
     """Triggers the shutdown of the service."""
-    helper.g_log('events.shutdown', 1)
+    helper.g_log("events.shutdown", 1)
     logger.info("Shutdown requested")
     monitor.send_event(monitor.h_events.SHUTDOWN_REQUEST, monitor.severity.INFO)
     # Note: main_loop can be read here because it has been declared as global variable
-    if 'main_loop' in globals() and main_loop.is_running:
+    if "main_loop" in globals() and main_loop.is_running:
         main_loop.stop()
     helper.triggerTerminate()
 
@@ -58,7 +60,7 @@ def clean(args):
     if helper.isTerminated():
         return
 
-    helper.g_log('events.run', 1)
+    helper.g_log("events.run", 1)
 
     try:
         config.read_config()
@@ -77,8 +79,27 @@ def clean(args):
 
     # TODO: Adaptively reduce the retention time if the disk space is running low
 
-    clean_dir(success_folder, retention)
-    clean_dir(discard_folder, retention)
+    if _is_offpeak(
+        config.hermes["offpeak_start"],
+        config.hermes["offpeak_end"],
+        time.localtime(),
+    ):
+        clean_dir(success_folder, retention)
+        clean_dir(discard_folder, retention)
+
+
+def _is_offpeak(offpeak_start, offpeak_end, current_time):
+    try:
+        start_time = datetime.strptime(offpeak_start, "%H:%M").time()
+        end_time = datetime.strptime(offpeak_end, "%H:%M").time()
+    except ValueError as e:
+        logger.error("Error parsing offpeak time, please check configuration", e)
+        return True
+
+    if start_time < end_time:
+        return current_time >= start_time and current_time <= end_time
+    # Over midnight
+    return current_time >= start_time or current_time <= end_time
 
 
 def clean_dir(discard_folder, retention):
@@ -103,25 +124,19 @@ def delete_folder(entry):
     series_uid = find_series_uid(delete_path)
     try:
         rmtree(delete_path)
-        logger.info(f'Deleted folder {delete_path} from {series_uid}')
-        send_series_event(
-            s_events.CLEAN,
-            series_uid,
-            0,
-            delete_path,
-            "Deleted folder"
-        )
+        logger.info(f"Deleted folder {delete_path} from {series_uid}")
+        send_series_event(s_events.CLEAN, series_uid, 0, delete_path, "Deleted folder")
     except Exception as e:
-        logger.info(f'Unable to delete folder {delete_path}')
+        logger.info(f"Unable to delete folder {delete_path}")
         logger.exception(e)
         send_series_event(
-            s_events.ERROR,
-            series_uid,
-            0,
-            delete_path,
-            "Unable to delete folder"
+            s_events.ERROR, series_uid, 0, delete_path, "Unable to delete folder"
         )
-        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Unable to delete folder {delete_path}")
+        monitor.send_event(
+            monitor.h_events.PROCESSING,
+            monitor.severity.ERROR,
+            f"Unable to delete folder {delete_path}",
+        )
 
 
 def find_series_uid(work_dir):
@@ -161,13 +176,13 @@ if __name__ == "__main__":
     signal.signal(signal.SIGALRM, receiveSignal)
     signal.signal(signal.SIGTERM, terminateProcess)
 
-    instance_name="main"
+    instance_name = "main"
 
-    if len(sys.argv)>1:
-        instance_name=sys.argv[1]
+    if len(sys.argv) > 1:
+        instance_name = sys.argv[1]
 
     logger.info(sys.version)
-    logger.info(f'Instance name = {instance_name}')
+    logger.info(f"Instance name = {instance_name}")
     logger.info(f"Cleaner PID is: {os.getpid()}")
 
     try:
@@ -181,7 +196,7 @@ if __name__ == "__main__":
         monitor.h_events.BOOT, monitor.severity.INFO, f"PID = {os.getpid()}"
     )
 
-    graphite_prefix = "hermes.cleaner."+instance_name
+    graphite_prefix = "hermes.cleaner." + instance_name
 
     if len(config.hermes["graphite_ip"]) > 0:
         logger.info(
@@ -199,7 +214,7 @@ if __name__ == "__main__":
     )
     main_loop.start()
 
-    helper.g_log('events.boot', 1)
+    helper.g_log("events.boot", 1)
 
     # Start the asyncio event loop for asynchronous function calls
     helper.loop.run_forever()
