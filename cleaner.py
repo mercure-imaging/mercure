@@ -73,17 +73,16 @@ def clean(args):
         )
         return
 
-    success_folder = config.hermes["success_folder"]
-    discard_folder = config.hermes["discard_folder"]
-    retention = timedelta(seconds=config.hermes["retention"])
-
     # TODO: Adaptively reduce the retention time if the disk space is running low
 
     if _is_offpeak(
         config.hermes["offpeak_start"],
         config.hermes["offpeak_end"],
-        time.localtime(),
+        datetime.now().time(),
     ):
+        success_folder = config.hermes["success_folder"]
+        discard_folder = config.hermes["discard_folder"]
+        retention = timedelta(seconds=config.hermes["retention"])
         clean_dir(success_folder, retention)
         clean_dir(discard_folder, retention)
 
