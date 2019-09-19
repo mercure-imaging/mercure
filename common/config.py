@@ -26,6 +26,8 @@ hermes_defaults = {
     'graphite_ip'              :              '',
     'graphite_port'            :            2003,
     'bookkeeper'               :  '0.0.0.0:8080',
+    'nightshift_start'         :         '22:00',
+    'nightshift_end'           :         '06:00',
     'targets'                  :              {},
     'rules'                    :              {}
 }
