@@ -2,9 +2,9 @@
 cleaner.py
 ==========
 The cleaner service of Hermes. Responsible for deleting processed data after
-retention time has passed and if it is nightshift. Nightshift is the time
-period when the cleaning has to be done, because I/O should be kept to minimum
-when receiving and sending exams.
+retention time has passed and if it is offpeak. Offpeak is the time
+period when the cleaning has to be done, because cleaning I/O should be kept
+to minimum when receiving and sending exams.
 """
 import logging
 import os
@@ -79,21 +79,21 @@ def clean(args):
 
     # TODO: Adaptively reduce the retention time if the disk space is running low
 
-    if _is_nightshift(
-        config.hermes["nightshift_start"],
-        config.hermes["nightshift_end"],
+    if _is_offpeak(
+        config.hermes["offpeak_start"],
+        config.hermes["offpeak_end"],
         time.localtime(),
     ):
         clean_dir(success_folder, retention)
         clean_dir(discard_folder, retention)
 
 
-def _is_nightshift(nightshift_start, nightshift_end, current_time):
+def _is_offpeak(offpeak_start, offpeak_end, current_time):
     try:
-        start_time = datetime.strptime(nightshift_start, "%H:%M").time()
-        end_time = datetime.strptime(nightshift_end, "%H:%M").time()
+        start_time = datetime.strptime(offpeak_start, "%H:%M").time()
+        end_time = datetime.strptime(offpeak_end, "%H:%M").time()
     except ValueError as e:
-        logger.error("Error parsing nightshift time, please check configuration", e)
+        logger.error("Error parsing offpeak time, please check configuration", e)
         return True
 
     if start_time < end_time:
