@@ -42,7 +42,7 @@ The Hermes DICOM router consists of multiple service modules that interact with 
 
 .. topic:: Cleaner
 
-    The cleaner service deletes processed images after the (configurable) retention period has passed and it is offpeak time (configurable, default: 22:00-06:00). The offpeak time was introduced to reduce I/O during receiving and sending exams. This applies to discarded images (for which no routing rule had triggered) as well as dispatched images (which have been successfully transferred to the desired targets).
+    The cleaner service deletes processed images after the (configurable) retention period has passed. This applies to discarded images (for which no routing rule had triggered) as well as to dispatched images (which have been successfully transferred to the desired targets). Because images are kept for a retention period and not deleted right away, it is possible to retrospectively route images for which no routing rule had been defined. The cleaner service is only active during off-peak hours (default: 10pm - 6am) to reduce I/O operations during regular work hours when a high number of series are received and dispatched.
 
 .. topic:: Bookkeeper
 

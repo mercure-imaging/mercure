@@ -18,8 +18,8 @@ hermes_defaults = {
     'discard_folder'           :     './discard',
     'router_scan_interval'     :               1, # in seconds
     'dispatcher_scan_interval' :               1, # in seconds
-    'cleaner_scan_interval'    :              10, # in seconds
-    'retention'                :          432000, # in seconds (5 days)
+    'cleaner_scan_interval'    :              60, # in seconds
+    'retention'                :          259200, # in seconds (3 days)
     'retry_delay'              :             900, # in seconds (15 min)
     'retry_max'                :               5,
     'series_complete_trigger'  :              60, # in seconds

@@ -2,7 +2,7 @@
 cleaner.py
 ==========
 The cleaner service of Hermes. Responsible for deleting processed data after
-retention time has passed and if it is offpeak. Offpeak is the time
+retention time has passed and if it is offpeak time. Offpeak is the time
 period when the cleaning has to be done, because cleaning I/O should be kept
 to minimum when receiving and sending exams.
 """
@@ -98,7 +98,7 @@ def _is_offpeak(offpeak_start, offpeak_end, current_time):
 
     if start_time < end_time:
         return current_time >= start_time and current_time <= end_time
-    # Over midnight
+    # End time is after midnight
     return current_time >= start_time or current_time <= end_time
 
 

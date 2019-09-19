@@ -20,9 +20,13 @@ webgui.env     Contains the IP, port, and secret key for the webgui
 Additional settings
 -------------------
 
-Advanced settings can be adjusted in the file hermes.json. These changes need to be done using a Linux text editor, e.g. nano.
+Advanced settings can be reviewed and adjusted on the Configuration page of the webgui. To change the settings, click the "Edit Settings" button at the bottom of the page. Once saved, the different service modules will automatically load the updated configuration. 
 
-.. important:: It is required to shutdown all Hermes services (via the webgui or systemctl command) before this file should be edited. Make sure to preserve correct formatting of the .json file.
+.. important:: Make sure to preserve correct JSON formatting of the settings. The webgui will automatically check the syntax before saving the file.
+
+Alternatively to using the webgui, the changes can also be made by directly editing the file hermes.json with a Linux text editor, e.g. nano.
+
+.. important:: When editing the configuration file directly, it is required to shutdown all Hermes services prior to making any changes (via the webgui or systemctl command).
 
 The following settings can be customized (default values can be found in default_hermes.json):
 
@@ -44,6 +48,8 @@ retry_delay              Delay before retrying to dispatch series after failure 
 retry_max                Maximum number of retries when dispatching
 cleaner_scan_interval    Interval how often the cleaner checks for files to be deleted (in sec)
 retention                Duration how long files will be kept before deletion (in sec)
+offpeak_start            Start of the off-peak work hours (in 24h format)
+offpeak_end              End of the off-peak work hours (in 24h format)  
 targets                  Configured targets - should be edited via webgui
 rules                    Configured rules - should be edited via webgui 
 ======================== ===========================================================================

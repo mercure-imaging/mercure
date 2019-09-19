@@ -111,7 +111,8 @@ def execute(
                 send_series_event(s_events.MOVE, series_uid, 0, error_folder, "")
                 send_event(h_events.PROCESSING, severity.ERROR, f"Series suspended after reaching max retries")
     else:
-        logger.warning(f"Folder {source_folder} is *not* ready for sending")
+        pass
+        #logger.warning(f"Folder {source_folder} is *not* ready for sending")
 
 
 def _move_sent_directory(source_folder, destination_folder):
