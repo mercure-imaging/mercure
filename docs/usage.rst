@@ -4,6 +4,11 @@ Usage
 Web interface 
 -------------
 
+.. image:: ui_login.png
+   :width: 550px
+   :align: center
+   :class: border
+
 Hermes can be conveniently configured and controlled using the web-based user interface. To access it, use a modern web browser (e.g., Chrome or Firefox) and enter the IP of your Hermes server as URL. Depending on the port that you have selected during the installation (by default 8000), you need to add ":8000" to the URL.
 
 During the installation, Hermes creates a "seed account" that you need to use for the first login. You will be asked to change the password after the first login.
@@ -12,9 +17,13 @@ During the installation, Hermes creates a "seed account" that you need to use fo
 
 To end your session, use the menu on the top-right and select "Logout".
 
-
 User management
 ---------------
+
+.. image:: ui_users.png
+   :width: 550px
+   :align: center
+   :class: border
 
 Users can be created, modified, and deleted on the "Users" page. There are two types of users: Normal users, who can view the router configuration and status but not change anything, and administrators, who have full access. Users with administration rights are indicated by an icon with a shield in the user list.
 
@@ -24,7 +33,17 @@ Users can be created, modified, and deleted on the "Users" page. There are two t
 System status and control
 -------------------------
 
+.. image:: ui_status.png
+   :width: 550px
+   :align: center
+   :class: border
+
 You can see the status of the different Hermes service components on the "Overview" page. If a service is running, it will be shown in green, otherwise in red. In normal operation, everything should be green. 
+
+.. image:: ui_status_control.png
+   :width: 550px
+   :align: center
+   :class: border
 
 You can start, stop, and restart services by clicking the "Service Control" button. This will show a dialog where you can select which service(s) to control and which operation to execute (e.g., start or stop). If a service does not react at all anymore, it is also possible to kill a service. 
 
@@ -40,9 +59,19 @@ The Overview page also shows you the disk space available in the folder for buff
 Defining targets
 ----------------
 
+.. image:: ui_targets.png
+   :width: 550px
+   :align: center
+   :class: border
+
 DICOM nodes that should receive the routed series can be defined and modified on the "Targets" page. Here, you will see a list of the currently configured targets. By clicking on one item, you can see the target details (e.g., the IP address). You can also test if the target can be reached by clicking the "Test" button, which will first try to ping the server and afterwards open a C-Echo association. The target can only receive images if both tests are successful.
 
 Click the "Add New" button to create a new target. This can be done during normal operation of the router, i.e. it is not necessary to stop any of the router service.
+
+.. image:: ui_target_edit.png
+   :width: 550px
+   :align: center
+   :class: border
 
 After choosing a name for the target, you can enter the settings of the DICOM connection settings. Here, you need to enter the IP address, port, the target AET (application entity title) that should be called on the receiver side, and the source AET with which Hermes identifies itself to the target.
 
@@ -56,7 +85,17 @@ Defining routing rules
 
 .. highlight:: none
 
+.. image:: ui_rules.png
+   :width: 550px
+   :align: center
+   :class: border
+
 When you have configured a target, you can add routing rules that define which DICOM series should be forwarded to that target. This can be done on the "Rules" page. Again, it is not necessary to stop Hermes while defining new rules. The different Hermes services will automatically load the new configuration once the rule has been saved. Click the "Add New" button to create a new rule, or click on any of the existing rules and select "Edit" to modify it.
+
+.. image:: ui_rules_edit.png
+   :width: 550px
+   :align: center
+   :class: border
 
 The routing rule is evaluated for every incoming DICOM series using a set of DICOM sets that have been extracted from the DICOM files. To see the full list of DICOM tags available for writing rules, click the "Show Tags" button.
 
@@ -86,6 +125,11 @@ would trigger for series called "CINE" or "cine". If you want to test for numeri
 :: 
 
   float(@SliceThickness@) < 2.0
+
+.. image:: ui_rules_test.png
+   :width: 550px
+   :align: center
+   :class: border
 
 To test a routing rule before activating it, click the icon with the cog wheels on the left side of input box. If you see a red icon in the dialog, the rule is invalid (the dialog will also tell you why). If the rule is valid, the dialog will test if the rule would trigger if a DICOM series with the values shown in the lower part of the dialog would arrive. You can modify these values and test if the rule acts as expected.
 

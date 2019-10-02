@@ -123,7 +123,7 @@ input[type="text"] {
 
 .wy-alert.wy-alert-info,
 .rst-content .note {
-    background-color: #f6fef9;
+    background-color: #e5fbed;
 }
 
 .rst-content .tip .admonition-title, 
@@ -135,7 +135,7 @@ input[type="text"] {
 .rst-content .tip,
 .rst-content .hint,
 .rst-content .seealso {
-    background-color: #fafafa;
+    background-color: #eaeaea;
 }
 
 .rst-content .warning .admonition-title,
@@ -147,7 +147,7 @@ input[type="text"] {
 .rst-content .warning,
 .rst-content .attention,
 .rst-content .important {
-    background-color: #fff5f7;
+    background-color: #ffe9ed;
 }
 
 .rst-content dl:not(.docutils) dt {    
@@ -170,4 +170,10 @@ footer {
 
 h2 {
     margin-top: 40px;
+}
+
+img.border {
+    box-shadow: 0 5px 16px rgba(0,0,0,0.19), 0 6px 6px rgba(0,0,0,0.23);
+    margin-top: 30px !important;
+    margin-bottom: 30px !important;
 }
