@@ -8,7 +8,7 @@
 #include "dcmtk/dcmdata/dcspchrs.h"
 #include "dcmtk/dcmdata/dctypes.h"
 
-#define VERSION "0.1i"
+#define VERSION "0.2a"
 
 static OFString tagSpecificCharacterSet="";
 static OFString tagPatientName="";
@@ -187,14 +187,19 @@ bool writeTagsFile(OFString dcmFile, OFString originalFile)
 
 #define READTAG(TAG,VAR) if ((dcmFile.getDataset()->tagExistsWithValue(TAG)) && (!dcmFile.getDataset()->findAndGetOFString(TAG, VAR).good())) \
                          {  \
-                             OFString errorStr="Unable to read tag ";\
+                             OFString errorStr="Unable to read tag "; \
                              errorStr.append(TAG.toString()); \
                              errorStr.append("\nReason: "); \
                              errorStr.append(dcmFile.getDataset()->findAndGetOFString(TAG, VAR).text()); \
                              writeErrorInformation(path+origFilename, errorStr); \
                              return 1; \
                          } \
-                         for (size_t i=0; i<VAR.length(); i++) { if (VAR[i]==13) { VAR[i]=';'; } else { if (VAR[i]==10) { VAR[i]=' '; } } }
+                         for (size_t i=0; i<VAR.length(); i++) { switch (VAR[i]) { \
+                                                                    case 13: VAR[i]=';'; break; \
+                                                                    case 10: VAR[i]=' '; break; \
+                                                                    case 34: VAR[i]=39; break; \
+                                                                    default: break; \
+                                                               } }
 
 int main(int argc, char *argv[])
 {
