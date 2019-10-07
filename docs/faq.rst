@@ -57,3 +57,11 @@ Do you offer professional support for Hermes?
 
 Not currently. But please reach out to us through Github if you encounter any problems or bugs.
 
+--------
+
+Who is behind the project?
+--------------------------
+
+Hermes DICOM Router has been developed by `Kai Tobias Block <http://ktblock.de/>`_  and `Joshy Cyriac <https://twitter.com/irrwitz/>`_ at University Hospital Basel, Switzerland due to the internal requirement to integrate various prototypic analysis tools into the clinical workflow without creating additional load for the PACS. The name stems from Hermes, the messenger of the gods in ancient Greek mythology.
+
+.. important:: Please note that the project is not related to the Swedish software company "Hermes Medical Solutions".
