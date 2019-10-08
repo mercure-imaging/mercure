@@ -55,7 +55,7 @@ No, at this time, Hermes is neither FDA-approved nor does it have a CE label. Ho
 Do you offer professional support for Hermes?
 ---------------------------------------------
 
-Not currently. But please reach out to us through Github if you encounter any problems or bugs.
+Not currently. But please reach out to us through the :doc:`Discussion Board <../support>`, and please `submit an issue on Github <https://github.com/hermes-router/hermes/issues>`_ if you encounter any bug.
 
 --------
 
