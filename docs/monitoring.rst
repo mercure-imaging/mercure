@@ -8,6 +8,11 @@ Log files
 
 All Hermes services write detailed logging information with timestamps into system log files. The most convenient way to review these logs is to use the "Logs" page of the Hermes web interface. Here you can see a separate tab for every service. The logs are updated whenever you switch between tabs and when you click the refresh button on the top-right.
 
+.. image:: ui_log.png
+   :width: 550px
+   :align: center
+   :class: border
+
 Using the From/To controls, you can limit the time span that is shown in the log viewer.
 
 .. note:: Only the last 1000 lines of each log are displayed to keep the user interface responsive. If you are looking for an older event, use the From/To fields to narrow down the time span.
