@@ -41,3 +41,4 @@ Hermes is a flexible open-source DICOM routing solution with a simple-to-use web
    :maxdepth: 2
 
    modules.rst
+   roadmap.rst
