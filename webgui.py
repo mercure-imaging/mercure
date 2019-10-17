@@ -490,10 +490,14 @@ async def targets_test_post(request):
     cecho_response="False"
     target_ip=""
     target_port=""
+    target_aec="ANY-SCP"
+    target_aet="ECHOSCU"
 
     try:
         target_ip=config.hermes["targets"][testtarget]["ip"]
         target_port=config.hermes["targets"][testtarget]["port"]
+        target_aec=config.hermes["targets"][testtarget]["aet_target"]
+        target_aet=config.hermes["targets"][testtarget]["aet_source"]
     except:
         pass
 
@@ -503,7 +507,7 @@ async def targets_test_post(request):
         if (await async_run("ping -w 1 -c 1 " + target_ip))[0]==0:
             ping_response="True"
             # Only test for c-echo if the ping was successful
-            if (await async_run("echoscu -to 10 " + target_ip + " " + target_port))[0]==0:
+            if (await async_run("echoscu -to 10 -aec " + target_aec + " -aet " + target_aet + " " + target_ip + " " + target_port))[0]==0:
                 cecho_response="True"
     
     return JSONResponse('{"ping": "'+ping_response+'", "c-echo": "'+cecho_response+'" }')
