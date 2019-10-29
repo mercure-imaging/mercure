@@ -514,6 +514,25 @@ async def targets_test_post(request):
 
 
 ###################################################################################
+## Modules endpoints
+###################################################################################
+
+@app.route('/modules', methods=["GET"])
+@requires('authenticated', redirect='login')
+async def show_modules(request):
+    """Shows all configured targets."""
+    try: 
+        config.read_config()
+    except:
+        return PlainTextResponse('Configuration is being updated. Try again in a minute.')
+
+    template = "modules.html"
+    context = {"request": request, "hermes_version": version.hermes_version, "page": "modules"}
+    context.update(get_user_information(request))
+    return templates.TemplateResponse(template, context)
+
+
+###################################################################################
 ## Users endpoints
 ###################################################################################
 

@@ -86,6 +86,14 @@ body {
     margin-bottom: 10px !important;
 }
 
+.edittitle {
+    margin-bottom: 15px !important;
+}
+
+.editspace {
+    margin-top: 50px !important;
+}
+
 .logviewer {
     font-family: monospace;
     overflow-x: scroll;
@@ -98,4 +106,8 @@ body {
 
 .logview {
     height: 70vh;
+}
+
+.icospc {
+    margin-right: 2px;
 }
