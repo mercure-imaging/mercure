@@ -5,150 +5,188 @@
   <div class="container">
     <h1 class="title">Edit Rule - {{rule}}</h1>
 
-    <form method="post">
-        <h5 class="title is-5 edittitle"><i class="fas fa-lightbulb has-text-success icospc"></i>&nbsp;Activation</h5>
-        <div class="field">
-            <label class="label">Rule</label>
-            <div class="field has-addons">
-                <div class="control">
-                    <button class="button" type="button" onclick="showTestRule()" title="Test rule">
-                        <i class="fas fa-cogs "></i>
-                    </button>
-                </div>        
-                <div class="control is-expanded">
-                    <input name="rule" id="rule" pattern="[^{}\x22]+" class="input" autocomplete='off' type="text" placeholder="Routing rule" value="{{rules[rule]['rule']}}">
+    <div class="tabs is-boxed is-centered" id="tabs">
+            <ul>
+              <li class="is-active" data-tab="1">
+                <a>
+                  <span class="icon"><i class="fas fa-filter"></i></span>
+                  <span>Filtering</span>
+                </a>
+              </li>
+              <li data-tab="2">
+                <a>
+                  <span class="icon"><i class="fa fa-microchip"></i></span>
+                  <span>Processing</span>
+                </a>
+              </li>
+              <li data-tab="3">
+                <a>
+                  <span class="icon"><i class="fa fa-directions"></i></span>
+                  <span>Routing</span>
+                </a>
+              </li>
+              <li data-tab="4">
+                <a>
+                  <span class="icon"><i class="fa fa-bullhorn"></i></span>
+                  <span>Notification</span>
+                </a>
+              </li>
+              <li data-tab="5">
+                <a>
+                    <span class="icon"><i class="fa fa-info-circle"></i></span>
+                    <span>Information</span>
+                </a>
+              </li>
+            </ul>
+          </div>
+
+        <form method="post">
+          
+        <div id="tab-content">
+            <div class="panel is-active" data-content="1">
+                <div class="field">
+                    <label class="label">Selection Rule</label>
+                    <div class="field has-addons">
+                        <div class="control">
+                            <button class="button" type="button" onclick="showTestRule()" title="Test rule">
+                                <i class="fas fa-cogs "></i>
+                            </button>
+                        </div>        
+                        <div class="control is-expanded">
+                            <input name="rule" id="rule" pattern="[^{}\x22]+" class="input" autocomplete='off' type="text" placeholder="Routing rule" value="{{rules[rule]['rule']}}">
+                        </div>
+                    </div>
+                </div>
+                <div class="field  is-grouped is-grouped-right">
+                    <button class="button" type="button" data-show="quickview" data-target="quickviewDefault" style="margin: 0px;">
+                        <i class="fas fa-tags"></i>&nbsp;Available Tags
+                    </button>                    
+                </div>
+                <div class="field">
+                    <label class="label">Trigger</label>
+                    <div class="select">
+                        <div class="control">
+                            <select name="scope">
+                                <option value="route">Completed Series</option>
+                                <option value="both">Completed Study</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>    
+                <div class="field">
+                    <label class="label">Action</label>
+                    <div class="select">
+                        <div class="control">
+                            <select name="processing_mode">
+                                <option value="route">Routing</option>
+                                <option value="both">Processing & Routing</option>
+                                <option value="process">Processing Only</option>
+                                <option value="discard">Force Discard</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>          
+                <div class="field">
+                    <label class="label">Priority</label>
+                    <div class="select">
+                        <div class="control">
+                            <select name="processing_module">
+                                <option value="normal">Normal</option>
+                                <option value="high">Urgent</option>
+                                <option value="offpeak">Off-Peak</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>          
+                <div class="field">
+                    <label class="label">Status</label>
+                    <div class="select">
+                        <div class="control">
+                            <select name="disabled">
+                                <option value="False" {% if rules[rule]['disabled']!='True' %}selected{% endif%}>Enabled</option>
+                                <option value="True" {% if rules[rule]['disabled']=='True' %}selected{% endif%}>Disabled</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
-        <div class="field">
-            <div class="field">
-                <label class="label">Trigger</label>
-                <div class="select">
-                    <div class="control">
-                        <select name="scope">
-                            <option value="route">Completed Series</option>
-                            <option value="both">Completed Study</option>
-                        </select>
+            <div class="panel" data-content="2">
+                <div class="field">
+                    <div class="field">
+                        <label class="label">Module</label>
+                        <div class="select">
+                            <div class="control">
+                                <select name="processing_module">
+                                    <option value="route">Anonymizer</option>
+                                    <option value="both">Prostate Volume</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>          
+                </div>   
+            </div>
+            <div class="panel" data-content="3">
+                <div class="field">
+                    <label class="label">Target</label>
+                    <div class="select">
+                        <div class="control">
+                            <select name="target">
+                                {% for t in targets %}
+                                <option value="{{t}}" {% if rules[rule]['target']==t %}selected{% endif%}>{{ t }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
                     </div>
                 </div>
-            </div>          
-        </div>    
-        <div class="field">
-            <div class="field">
-                <label class="label">Action</label>
-                <div class="select">
+            </div>
+            <div class="panel" data-content="4">
+                <div class="field">
+                    <label class="label">Webhook URL</label>
                     <div class="control">
-                        <select name="processing_mode">
-                            <option value="route">Routing</option>
-                            <option value="both">Processing & Routing</option>
-                            <option value="process">Processing Only</option>
-                            <option value="discard">Force Discard</option>
-                        </select>
+                        <input name="contact" class="input" autocomplete='off' type="text" placeholder="REST endpoint" value="">
                     </div>
                 </div>
-            </div>          
+                <div class="field">
+                    <label class="label">Payload</label>
+                    <div class="control">
+                        <textarea name="comment" class="textarea" autocomplete='off' placeholder="JSON data for REST call"></textarea>
+                    </div>
+                </div>    
+                <div class="field">
+                    <div class="field">
+                        <label class="label">Trigger</label>
+                        <div class="select">
+                            <div class="control">
+                                <select name="processing_module">
+                                    <option value="route">Reception</option>
+                                    <option value="both">Completion</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>          
+                </div>   
+            </div>
+            <div class="panel" data-content="5">
+                <div class="field">
+                    <label class="label">Contact Email</label>
+                    <div class="control">
+                        <input name="contact" class="input" autocomplete='off' type="email" placeholder="Email address" value="{{rules[rule]['contact']}}">
+                    </div>
+                </div>            
+                <div class="field">
+                    <label class="label">Comment</label>
+                    <div class="control">
+                        <textarea name="comment" class="textarea" autocomplete='off' placeholder="Rule description">{{rules[rule]['comment']}}</textarea>
+                    </div>
+                </div>
+            </div>
         </div>  
-        <div class="field">
-            <div class="field">
-                <label class="label">Scheduling</label>
-                <div class="select">
-                    <div class="control">
-                        <select name="processing_module">
-                            <option value="route">Normal</option>
-                            <option value="both">Priority</option>
-                            <option value="both">Off-Peak</option>
-                        </select>
-                    </div>
-                </div>
-            </div>          
-        </div>
-        <div class="field">
-            <label class="label">Disabled</label>
-            <div class="select">
-                <div class="control">
-                    <select name="disabled">
-                        <option value="False" {% if rules[rule]['disabled']!='True' %}selected{% endif%}>False</option>
-                        <option value="True" {% if rules[rule]['disabled']=='True' %}selected{% endif%}>True</option>
-                    </select>
-                </div>
-            </div>
-        </div>
-        <h5 class="title is-5 edittitle editspace"><i class="fas fa-microchip has-text-success icospc"></i>&nbsp;Processing</h5>
-        <div class="field">
-            <div class="field">
-                <label class="label">Module</label>
-                <div class="select">
-                    <div class="control">
-                        <select name="processing_module">
-                            <option value="route">Anonymizer</option>
-                            <option value="both">Prostate Volume</option>
-                        </select>
-                    </div>
-                </div>
-            </div>          
-        </div>   
-        <h5 class="title is-5 edittitle editspace"><i class="fas fa-directions has-text-success icospc"></i>&nbsp;Routing</h5>
-        <div class="field">
-            <label class="label">Target</label>
-            <div class="select">
-                <div class="control">
-                    <select name="target">
-                        {% for t in targets %}
-                        <option value="{{t}}" {% if rules[rule]['target']==t %}selected{% endif%}>{{ t }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-            </div>
-        </div>
-        <h5 class="title is-5 edittitle editspace"><i class="fas fa-bullhorn has-text-success icospc"></i>&nbsp;Notification</h5>
-        <div class="field">
-            <label class="label">Webhook URL</label>
-            <div class="control">
-                <input name="contact" class="input" autocomplete='off' type="text" placeholder="REST endpoint" value="">
-            </div>
-        </div>
-        <div class="field">
-            <label class="label">Payload</label>
-            <div class="control">
-                <textarea name="comment" class="textarea" autocomplete='off' placeholder="JSON data for REST call"></textarea>
-            </div>
-        </div>    
-        <div class="field">
-            <div class="field">
-                <label class="label">Trigger</label>
-                <div class="select">
-                    <div class="control">
-                        <select name="processing_module">
-                            <option value="route">Reception</option>
-                            <option value="both">Completion</option>
-                        </select>
-                    </div>
-                </div>
-            </div>          
-        </div>   
-        <h5 class="title is-5 edittitle editspace"><i class="fas fa-info-circle has-text-success icospc"></i>&nbsp;Information</h5>
-        <div class="field">
-            <label class="label">Contact Email</label>
-            <div class="control">
-                <input name="contact" class="input" autocomplete='off' type="email" placeholder="Email address" value="{{rules[rule]['contact']}}">
-            </div>
-        </div>            
-        <div class="field">
-            <label class="label">Comment</label>
-            <div class="control">
-                <textarea name="comment" class="textarea" autocomplete='off' placeholder="Rule description">{{rules[rule]['comment']}}</textarea>
-            </div>
-        </div>
         <div class="field">
             <div class="control buttons is-expanded" style="margin-top: 50px;">
                 <button type="submit" class="button is-success" value="default action">
                     <i class="fas fa-save"></i>&nbsp;Save
                 </button>
                 <a class="button" href="/rules"><i class="fas fa-ban"></i>&nbsp;Cancel</a>
-                <div style="margin-left: auto; margin-right: auto;">&nbsp;</div>
-                <button class="button" type="button" data-show="quickview" data-target="quickviewDefault" style="margin: 0px;">
-                    <i class="fas fa-tags"></i>&nbsp;Show Tags
-                </button>
             </div>
         </div>        
     </form>
@@ -245,8 +283,18 @@ $(function(){
   });
 });
 
-$(document).ready(function(){
+$(document).ready(function() {
     var quickviews = bulmaQuickview.attach();
+
+    $('#tabs li').on('click', function() {
+        var tab = $(this).data('tab');
+
+        $('#tabs li').removeClass('is-active');
+        $(this).addClass('is-active');
+
+        $('#tab-content div.panel').removeClass('is-active');
+        $('div.panel[data-content="' + tab + '"]').addClass('is-active');
+    });
 });
 
 </script>

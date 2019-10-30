@@ -86,14 +86,6 @@ body {
     margin-bottom: 10px !important;
 }
 
-.edittitle {
-    margin-bottom: 15px !important;
-}
-
-.editspace {
-    margin-top: 50px !important;
-}
-
 .logviewer {
     font-family: monospace;
     overflow-x: scroll;
@@ -108,6 +100,20 @@ body {
     height: 70vh;
 }
 
-.icospc {
-    margin-right: 2px;
+#tab-content div.panel {
+    display: none;
+}
+  
+#tab-content div.panel.is-active {
+    display: block;
+}
+
+.tabs li.is-active a {
+    border-bottom-color: hsl(141, 71%, 48%);
+    color: hsl(141, 71%, 48%);
+}
+
+.tabs.is-toggle li.is-active a {
+    background-color: hsl(141, 71%, 48%);
+    border-color: hsl(141, 71%, 48%);
 }
