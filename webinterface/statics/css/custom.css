@@ -114,6 +114,15 @@ body {
 }
 
 .tabs.is-toggle li.is-active a {
-    background-color: hsl(141, 71%, 48%);
-    border-color: hsl(141, 71%, 48%);
+    background-color: #2f2f2f;
+    border-color: #2f2f2f;
 }
+
+.tabs li.is-disabled {
+    display: none;
+}
+
+.tabs li.is-disabled a:hover {
+    background-color: #FFF;
+}
+

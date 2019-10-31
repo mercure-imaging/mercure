@@ -5,33 +5,33 @@
   <div class="container">
     <h1 class="title">Edit Rule - {{rule}}</h1>
 
-    <div class="tabs is-boxed is-centered" id="tabs">
+    <div class="tabs is-centered is-toggle is-toggle-rounded" id="tabs">
             <ul>
-              <li class="is-active" data-tab="1">
+              <li class="is-active" data-tab="filtering">
                 <a>
                   <span class="icon"><i class="fas fa-filter"></i></span>
                   <span>Filtering</span>
                 </a>
               </li>
-              <li data-tab="2">
+              <li data-tab="processing">
                 <a>
                   <span class="icon"><i class="fa fa-microchip"></i></span>
                   <span>Processing</span>
                 </a>
               </li>
-              <li data-tab="3">
+              <li data-tab="routing">
                 <a>
                   <span class="icon"><i class="fa fa-directions"></i></span>
                   <span>Routing</span>
                 </a>
               </li>
-              <li data-tab="4">
+              <li data-tab="notification">
                 <a>
                   <span class="icon"><i class="fa fa-bullhorn"></i></span>
                   <span>Notification</span>
                 </a>
               </li>
-              <li data-tab="5">
+              <li data-tab="information">
                 <a>
                     <span class="icon"><i class="fa fa-info-circle"></i></span>
                     <span>Information</span>
@@ -43,7 +43,7 @@
         <form method="post">
           
         <div id="tab-content">
-            <div class="panel is-active" data-content="1">
+            <div class="panel is-active" data-content="filtering">
                 <div class="field">
                     <label class="label">Selection Rule</label>
                     <div class="field has-addons">
@@ -63,6 +63,19 @@
                     </button>                    
                 </div>
                 <div class="field">
+                    <label class="label">Action</label>
+                    <div class="select">
+                        <div class="control">
+                            <select name="action" id="action">
+                                <option value="route">Routing</option>
+                                <option value="both">Processing & Routing</option>
+                                <option value="process">Processing Only</option>
+                                <option value="discard">Force Discard</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>          
+                <div class="field">
                     <label class="label">Trigger</label>
                     <div class="select">
                         <div class="control">
@@ -73,19 +86,6 @@
                         </div>
                     </div>
                 </div>    
-                <div class="field">
-                    <label class="label">Action</label>
-                    <div class="select">
-                        <div class="control">
-                            <select name="processing_mode">
-                                <option value="route">Routing</option>
-                                <option value="both">Processing & Routing</option>
-                                <option value="process">Processing Only</option>
-                                <option value="discard">Force Discard</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>          
                 <div class="field">
                     <label class="label">Priority</label>
                     <div class="select">
@@ -110,7 +110,7 @@
                     </div>
                 </div>
             </div>
-            <div class="panel" data-content="2">
+            <div class="panel" data-content="processing">
                 <div class="field">
                     <div class="field">
                         <label class="label">Module</label>
@@ -124,8 +124,14 @@
                         </div>
                     </div>          
                 </div>   
+                <div class="field">
+                    <label class="label">Settings</label>
+                    <div class="control">
+                        <textarea name="comment" class="textarea" autocomplete='off' placeholder="Rule-specific module settings"></textarea>
+                    </div>
+                </div>    
             </div>
-            <div class="panel" data-content="3">
+            <div class="panel" data-content="routing">
                 <div class="field">
                     <label class="label">Target</label>
                     <div class="select">
@@ -139,7 +145,7 @@
                     </div>
                 </div>
             </div>
-            <div class="panel" data-content="4">
+            <div class="panel" data-content="notification">
                 <div class="field">
                     <label class="label">Webhook URL</label>
                     <div class="control">
@@ -166,7 +172,7 @@
                     </div>          
                 </div>   
             </div>
-            <div class="panel" data-content="5">
+            <div class="panel" data-content="information">
                 <div class="field">
                     <label class="label">Contact Email</label>
                     <div class="control">
@@ -290,11 +296,38 @@ $(document).ready(function() {
         var tab = $(this).data('tab');
 
         $('#tabs li').removeClass('is-active');
-        $(this).addClass('is-active');
+        $(this).addClass('is-active');        
 
         $('#tab-content div.panel').removeClass('is-active');
         $('div.panel[data-content="' + tab + '"]').addClass('is-active');
     });
+
+    $('#action').change(function() {
+        var action=$(this).children("option:selected").val();
+
+        if (action=='route')
+        {
+            $('#tabs li[data-tab="processing"]').addClass('is-disabled');
+            $('#tabs li[data-tab="routing"]').removeClass('is-disabled');
+        }
+        if (action=='both')
+        {
+            $('#tabs li[data-tab="processing"]').removeClass('is-disabled');
+            $('#tabs li[data-tab="routing"]').removeClass('is-disabled');
+        }
+        if (action=='process')
+        {
+            $('#tabs li[data-tab="processing"]').removeClass('is-disabled');
+            $('#tabs li[data-tab="routing"]').addClass('is-disabled');
+        }
+        if (action=='discard')
+        {
+            $('#tabs li[data-tab="processing"]').addClass('is-disabled');
+            $('#tabs li[data-tab="routing"]').addClass('is-disabled');
+        }
+    });   
+
+    $("#action").trigger('change');
 });
 
 </script>
