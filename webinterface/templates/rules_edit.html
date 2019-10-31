@@ -70,6 +70,7 @@
                                 <option value="route">Routing</option>
                                 <option value="both">Processing & Routing</option>
                                 <option value="process">Processing Only</option>
+                                <option value="notification">Notification Only</option>
                                 <option value="discard">Force Discard</option>
                             </select>
                         </div>
@@ -320,7 +321,7 @@ $(document).ready(function() {
             $('#tabs li[data-tab="processing"]').removeClass('is-disabled');
             $('#tabs li[data-tab="routing"]').addClass('is-disabled');
         }
-        if (action=='discard')
+        if ((action=='discard') || (action=='notification'))
         {
             $('#tabs li[data-tab="processing"]').addClass('is-disabled');
             $('#tabs li[data-tab="routing"]').addClass('is-disabled');
