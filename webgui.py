@@ -96,12 +96,13 @@ webgui_config = Config("configuration/webgui.env")
 # Note: PutSomethingRandomHere is the default value in the shipped configuration file.
 #       The app will not start with this value, forcing the users to set their onw secret 
 #       key. Therefore, the value is used as default here as well.
-SECRET_KEY = webgui_config('SECRET_KEY', cast=Secret, default="PutSomethingRandomHere")
-WEBGUI_PORT = webgui_config('PORT', cast=int, default=8000)
-WEBGUI_HOST = webgui_config('HOST', default='0.0.0.0')
-templates = Jinja2Templates(directory='webinterface/templates')
+SECRET_KEY  = webgui_config('SECRET_KEY', cast=Secret, default="PutSomethingRandomHere")
+WEBGUI_PORT = webgui_config('PORT',  cast=int, default=8000)
+WEBGUI_HOST = webgui_config('HOST',  default='0.0.0.0')
+DEBUG_MODE  = webgui_config('DEBUG', cast=bool, default=True)
+templates   = Jinja2Templates(directory='webinterface/templates')
 
-app = Starlette(debug=True)
+app = Starlette(debug=DEBUG_MODE)
 # Don't check the existence of the static folder because the wrong parent folder is used if the 
 # source code is parsed by sphinx. This would raise an exception and lead to failure of sphix.
 app.mount('/static', StaticFiles(directory='webinterface/statics', check_dir=False), name='static')
@@ -287,11 +288,21 @@ async def rules_edit_post(request):
     if not editrule in config.hermes["rules"]:
         return PlainTextResponse('Rule does not exist anymore.')
 
-    config.hermes["rules"][editrule]["rule"]=form["rule"]
-    config.hermes["rules"][editrule]["target"]=form["target"]
-    config.hermes["rules"][editrule]["disabled"]=form["disabled"]
-    config.hermes["rules"][editrule]["contact"]=form["contact"]
-    config.hermes["rules"][editrule]["comment"]=form["comment"]
+    print(form)
+
+    config.hermes["rules"][editrule]["rule"]=form.get("rule","False")
+    config.hermes["rules"][editrule]["target"]=form.get("target","")
+    config.hermes["rules"][editrule]["disabled"]=form.get("disabled","False")
+    config.hermes["rules"][editrule]["contact"]=form.get("contact","")
+    config.hermes["rules"][editrule]["comment"]=form.get("comment","")
+    config.hermes["rules"][editrule]["action"]=form.get("action","route")
+    config.hermes["rules"][editrule]["action_trigger"]=form.get("action_trigger","series")
+    config.hermes["rules"][editrule]["priority"]=form.get("priority","normal")
+    config.hermes["rules"][editrule]["processing_module"]=form.get("processing_module","")
+    config.hermes["rules"][editrule]["processing_settings"]=form.get("processing_settings","")
+    config.hermes["rules"][editrule]["notification_webhook"]=form.get("notification_webhook","")
+    config.hermes["rules"][editrule]["notification_payload"]=form.get("notification_payload","")
+    config.hermes["rules"][editrule]["notification_trigger"]=form.get("notification_trigger","receive")
 
     try: 
         config.save_config()
