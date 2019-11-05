@@ -5,6 +5,11 @@
     <div class="container">
         <h1 class="title">Edit Rule - {{rule}}</h1>
 
+        <div class="notification is-danger" id="erroralert" style="display: none;">
+            <i class="fas fa-bug"></i>&nbsp;&nbsp;Error in configuration detected. Please check input fields for correct
+            syntax.
+        </div>
+
         <div class="tabs is-centered is-toggle is-toggle-rounded" id="tabs">
             <ul>
                 <li data-tab="filtering" class="is-active">
@@ -40,7 +45,7 @@
             </ul>
         </div>
 
-        <form method="post">
+        <form method="post" onsubmit="return validate()">
             <div id="tab-content">
                 <div class="panel is-active" data-content="filtering">
                     <div class="field">
@@ -68,11 +73,17 @@
                         <div class="select">
                             <div class="control">
                                 <select name="action" id="action">
-                                    <option value="route">Routing</option>
-                                    <option value="both">Processing & Routing</option>
-                                    <option value="process">Processing Only</option>
-                                    <option value="notification">Notification Only</option>
-                                    <option value="discard">Force Discard</option>
+                                    <option value="route" {% if rules[rule]['action']=='route' %}selected{% endif%}>
+                                        Routing</option>
+                                    <option value="both" {% if rules[rule]['action']=='both' %}selected{% endif%}>
+                                        Processing & Routing</option>
+                                    <option value="process" {% if rules[rule]['action']=='process' %}selected{% endif%}>
+                                        Processing Only</option>
+                                    <option value="notification"
+                                        {% if rules[rule]['action']=='notification' %}selected{% endif%}>Notification
+                                        Only</option>
+                                    <option value="discard" {% if rules[rule]['action']=='discard' %}selected{% endif%}>
+                                        Force Discard</option>
                                 </select>
                             </div>
                         </div>
@@ -81,9 +92,13 @@
                         <label class="label">Trigger</label>
                         <div class="select">
                             <div class="control">
-                                <select name="action_trigger" is="action_trigger">
-                                    <option value="series">Completed Series</option>
-                                    <option value="study">Completed Study</option>
+                                <select name="action_trigger" id="action_trigger">
+                                    <option value="series"
+                                        {% if rules[rule]['action_trigger']=='series' %}selected{% endif%}>Completed
+                                        Series</option>
+                                    <option value="study"
+                                        {% if rules[rule]['action_trigger']=='study' %}selected{% endif%}>Completed
+                                        Study</option>
                                 </select>
                             </div>
                         </div>
@@ -93,9 +108,12 @@
                         <div class="select">
                             <div class="control">
                                 <select name="priority" id="priority">
-                                    <option value="normal">Normal</option>
-                                    <option value="high">Urgent</option>
-                                    <option value="offpeak">Off-Peak</option>
+                                    <option value="normal" {% if rules[rule]['priority']=='normal' %}selected{% endif%}>
+                                        Normal</option>
+                                    <option value="high" {% if rules[rule]['priority']=='high' %}selected{% endif%}>
+                                        Urgent</option>
+                                    <option value="offpeak"
+                                        {% if rules[rule]['priority']=='offpeak' %}selected{% endif%}>Off-Peak</option>
                                 </select>
                             </div>
                         </div>
@@ -105,7 +123,7 @@
                         <div class="select">
                             <div class="control">
                                 <select name="disabled">
-                                    <option value="False" {% if rules[rule]['disabled']!='True' %}selected{% endif%}>
+                                    <option value="False" {% if rules[rule]['disabled']=='False' %}selected{% endif%}>
                                         Enabled</option>
                                     <option value="True" {% if rules[rule]['disabled']=='True' %}selected{% endif%}>
                                         Disabled</option>
@@ -131,8 +149,9 @@
                     <div class="field">
                         <label class="label">Settings</label>
                         <div class="control">
-                            <textarea name="processing_settings" id="processing_settings" class="textarea" autocomplete='off'
-                                placeholder="Rule-specific module settings"></textarea>
+                            <textarea name="processing_settings" id="processing_settings" class="textarea"
+                                autocomplete='off'
+                                placeholder="Rule-specific module settings">{{rules[rule]['processing_settings']}}</textarea>
                         </div>
                     </div>
                 </div>
@@ -155,29 +174,57 @@
                     <div class="field">
                         <label class="label">Webhook URL</label>
                         <div class="control">
-                            <input name="notification_webhook" class="input" autocomplete='off' type="text"
-                                placeholder="REST endpoint" value="">
+                            <input name="notification_webhook" class="input" autocomplete='off' type="url"
+                                pattern="https://.*" placeholder="REST endpoint"
+                                value="{{rules[rule]['notification_webhook']}}">
                         </div>
                     </div>
                     <div class="field">
                         <label class="label">Payload</label>
                         <div class="control">
-                            <textarea name="notification_payload" class="textarea" autocomplete='off'
-                                placeholder="JSON data for REST call"></textarea>
+                            <textarea name="notification_payload" id="notification_payload" class="textarea"
+                                autocomplete='off'
+                                placeholder="Data for body of REST call">{{rules[rule]['notification_payload']}}</textarea>
                         </div>
                     </div>
-                    <div class="field">
-                        <div class="field">
-                            <label class="label">Trigger</label>
-                            <div class="select">
-                                <div class="control">
-                                    <select name="notification_trigger">
-                                        <option value="receive">Reception</option>
-                                        <option value="complete">Completion</option>
-                                    </select>
+                    <div class="field is-grouped is-grouped-right">
+                        <div class="dropdown is-right">
+                            <div class="dropdown-trigger">
+                                <button class="button" type="button" aria-haspopup="true" aria-controls="dropdown-menu">
+                                    <span><i class="fas fa-code"></i>&nbsp;Insert Template</span>
+                                    <span class="icon is-small"><i class="fas fa-angle-down"
+                                            aria-hidden="true"></i></span>
+                                </button>
+                            </div>
+                            <div class="dropdown-menu" id="dropdown-menu" role="menu">
+                                <div class="dropdown-content">
+                                    <a href="#" id="template_slack" class="dropdown-item">
+                                        Slack
+                                    </a>
+                                    <a href="#" id="template_webex" class="dropdown-item">
+                                        WebEx Teams
+                                    </a>
                                 </div>
                             </div>
                         </div>
+                    </div>
+                    <div class="field">
+                        <label class="label">Trigger</label>
+                    </div>
+                    <div class="field">
+                        <input id="notification_trigger_reception" type="checkbox" name="notification_trigger_reception"
+                            class="switch is-rounded is-dark" checked="checked">
+                        <label for="notification_trigger_reception">Reception</label>
+                    </div>
+                    <div class="field">
+                        <input id="notification_trigger_completion" type="checkbox" name="notification_trigger_completion"
+                            class="switch is-rounded is-dark" checked="checked">
+                        <label for="notification_trigger_completion">Completion</label>
+                    </div>
+                    <div class="field">
+                        <input id="notification_trigger_error" type="checkbox" name="notification_trigger_error"
+                            class="switch is-rounded is-dark" checked="checked">
+                        <label for="notification_trigger_error">Error</label>
                     </div>
                 </div>
                 <div class="panel" data-content="information">
@@ -277,6 +324,22 @@
 </div>
 
 <script>
+    function validate() {
+        var field = "";
+        try {
+            field = "Processing > Settings";
+            var str = '{' + $('#processing_settings').val() + '}';
+            JSON.parse(str);
+            field = "Notification > Payload";
+            str = '{' + $('#notification_payload').val() + '}';
+            JSON.parse(str);
+        } catch (e) {
+            $('#erroralert').html('<i class="fas fa-bug"></i>&nbsp;&nbsp;Invalid content in field "' + field + '". Please check for correct syntax.');
+            $('#erroralert').show();
+            return false;
+        }
+        return true;
+    }
 
     function showTestRule() {
         $("#testresult").html("Rule not yet tested");
@@ -343,6 +406,20 @@
         });
 
         $("#action").trigger('change');
+
+        var dropdown = document.querySelector('.dropdown');
+        dropdown.addEventListener('click', function (event) {
+            event.stopPropagation();
+            dropdown.classList.toggle('is-active');
+        });
+
+        $('#template_slack').click(function () {
+            $('#notification_payload').val("YOYO, Slack");
+        });
+
+        $('#template_webex').click(function () {
+            $('#notification_payload').val("YOYO, WebEx");
+        });
     });
 
 </script>

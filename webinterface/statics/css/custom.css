@@ -126,3 +126,23 @@ body {
     background-color: #FFF;
 }
 
+.switch[type='checkbox'] + label::before,
+.switch[type='checkbox']:checked + label:before {
+    outline: none !important;
+}
+
+.switch[type='checkbox'] + label::after,
+.switch[type='checkbox']:checked + label:after {
+    outline: none !important;
+}
+
+
+::selection {
+    background-color: #FFF;
+    color: rgb(54, 54, 54);
+}
+
+.textarea::selection, .input::selection {
+    background-color: rgb(50, 115, 220);
+    color: #FFF;
+}
