@@ -146,3 +146,8 @@ body {
     background-color: rgb(50, 115, 220);
     color: #FFF;
 }
+
+.ruleicon {
+    margin-left: 5px;
+    margin-right: 0px;    
+}

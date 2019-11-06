@@ -288,8 +288,6 @@ async def rules_edit_post(request):
     if not editrule in config.hermes["rules"]:
         return PlainTextResponse('Rule does not exist anymore.')
 
-    print(form)
-
     config.hermes["rules"][editrule]["rule"]=form.get("rule","False")
     config.hermes["rules"][editrule]["target"]=form.get("target","")
     config.hermes["rules"][editrule]["disabled"]=form.get("disabled","False")
@@ -302,7 +300,9 @@ async def rules_edit_post(request):
     config.hermes["rules"][editrule]["processing_settings"]=form.get("processing_settings","")
     config.hermes["rules"][editrule]["notification_webhook"]=form.get("notification_webhook","")
     config.hermes["rules"][editrule]["notification_payload"]=form.get("notification_payload","")
-    config.hermes["rules"][editrule]["notification_trigger"]=form.get("notification_trigger","receive")
+    config.hermes["rules"][editrule]["notification_trigger_reception"]=form.get("notification_trigger_reception","False")
+    config.hermes["rules"][editrule]["notification_trigger_completion"]=form.get("notification_trigger_completion","False")
+    config.hermes["rules"][editrule]["notification_trigger_error"]=form.get("notification_trigger_error","False")
 
     try: 
         config.save_config()

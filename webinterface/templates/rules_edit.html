@@ -110,7 +110,7 @@
                                 <select name="priority" id="priority">
                                     <option value="normal" {% if rules[rule]['priority']=='normal' %}selected{% endif%}>
                                         Normal</option>
-                                    <option value="high" {% if rules[rule]['priority']=='high' %}selected{% endif%}>
+                                    <option value="urgent" {% if rules[rule]['priority']=='urgent' %}selected{% endif%}>
                                         Urgent</option>
                                     <option value="offpeak"
                                         {% if rules[rule]['priority']=='offpeak' %}selected{% endif%}>Off-Peak</option>
@@ -213,17 +213,17 @@
                     </div>
                     <div class="field">
                         <input id="notification_trigger_reception" type="checkbox" name="notification_trigger_reception"
-                            class="switch is-rounded is-dark" checked="checked">
+                            class="switch is-rounded is-dark" value="True" {% if rules[rule]['notification_trigger_reception']=="True" %}checked="checked"{% endif%}>
                         <label for="notification_trigger_reception">Reception</label>
                     </div>
                     <div class="field">
                         <input id="notification_trigger_completion" type="checkbox" name="notification_trigger_completion"
-                            class="switch is-rounded is-dark" checked="checked">
+                            class="switch is-rounded is-dark" value="True" {% if rules[rule]['notification_trigger_completion']=="True" %}checked="checked"{% endif%}>
                         <label for="notification_trigger_completion">Completion</label>
                     </div>
                     <div class="field">
                         <input id="notification_trigger_error" type="checkbox" name="notification_trigger_error"
-                            class="switch is-rounded is-dark" checked="checked">
+                            class="switch is-rounded is-dark" value="True" {% if rules[rule]['notification_trigger_error']=="True" %}checked="checked"{% endif%}>
                         <label for="notification_trigger_error">Error</label>
                     </div>
                 </div>
