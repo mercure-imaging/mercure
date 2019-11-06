@@ -414,11 +414,11 @@
         });
 
         $('#template_slack').click(function () {
-            $('#notification_payload').val("YOYO, Slack");
+            $('#notification_payload').val('"channel": "YOUR_CHANNEL_ID",\n"text": "Hello, world"');
         });
 
         $('#template_webex').click(function () {
-            $('#notification_payload').val("YOYO, WebEx");
+            $('#notification_payload').val('"text": "Hello, world"');
         });
     });
 
