@@ -45,6 +45,9 @@ import common.rule_evaluation as rule_evaluation
 import webinterface.users as users
 import webinterface.tagslist as tagslist
 import webinterface.services as services
+import webinterface.modules as modules
+from webinterface.common import templates
+from webinterface.common import get_user_information
 
 
 ###################################################################################
@@ -100,7 +103,6 @@ SECRET_KEY  = webgui_config('SECRET_KEY', cast=Secret, default="PutSomethingRand
 WEBGUI_PORT = webgui_config('PORT',  cast=int, default=8000)
 WEBGUI_HOST = webgui_config('HOST',  default='0.0.0.0')
 DEBUG_MODE  = webgui_config('DEBUG', cast=bool, default=True)
-templates   = Jinja2Templates(directory='webinterface/templates')
 
 app = Starlette(debug=DEBUG_MODE)
 # Don't check the existence of the static folder because the wrong parent folder is used if the 
@@ -108,11 +110,7 @@ app = Starlette(debug=DEBUG_MODE)
 app.mount('/static', StaticFiles(directory='webinterface/statics', check_dir=False), name='static')
 app.add_middleware(AuthenticationMiddleware, backend=SessionAuthBackend())
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY, session_cookie="hermes_session")
-
-
-def get_user_information(request):
-    """Returns dictionary of values that should always be passed to the templates when the user is logged in."""
-    return { "logged_in": request.user.is_authenticated, "user": request.user.display_name, "is_admin": request.user.is_admin }
+app.mount("/modules", modules.modules_app)
 
 
 async def async_run(cmd):
@@ -522,25 +520,6 @@ async def targets_test_post(request):
                 cecho_response="True"
     
     return JSONResponse('{"ping": "'+ping_response+'", "c-echo": "'+cecho_response+'" }')
-
-
-###################################################################################
-## Modules endpoints
-###################################################################################
-
-@app.route('/modules', methods=["GET"])
-@requires('authenticated', redirect='login')
-async def show_modules(request):
-    """Shows all configured targets."""
-    try: 
-        config.read_config()
-    except:
-        return PlainTextResponse('Configuration is being updated. Try again in a minute.')
-
-    template = "modules.html"
-    context = {"request": request, "hermes_version": version.hermes_version, "page": "modules"}
-    context.update(get_user_information(request))
-    return templates.TemplateResponse(template, context)
 
 
 ###################################################################################

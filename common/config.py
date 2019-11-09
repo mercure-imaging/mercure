@@ -11,6 +11,7 @@ configuration_filename  = os.path.realpath(os.path.dirname(os.path.realpath(__fi
 
 hermes_defaults = {
     'appliance_name'           : 'Hermes Router',
+    'port'                     :             104,
     'incoming_folder'          :    './incoming',
     'outgoing_folder'          :    './outgoing',
     'success_folder'           :     './success',
@@ -29,7 +30,8 @@ hermes_defaults = {
     'offpeak_start'            :         '22:00',
     'offpeak_end'              :         '06:00',
     'targets'                  :              {},
-    'rules'                    :              {}
+    'rules'                    :              {},
+    'modules'                  :              {}
 }
 
 hermes = {}

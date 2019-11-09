@@ -8,7 +8,7 @@ It is recommended to install Hermes on a Linux machine running Ubuntu Server 18.
 Installing Hermes
 -----------------
 
-After finishing the Ubuntu installation procedure, the Offis DICOM toolkit (DCMTK) and gcc compiler need to be installed. A user called "hermes" should be created (the adduser command will ask for a password), and the Hermes installation file should be cloned using the shown Git command. By default, Hermes should be installed into the home directory of the user hermes. 
+After finishing the Ubuntu installation procedure, the Offis DICOM toolkit (DCMTK), gcc compiler, and jq need to be installed. A user called "hermes" should be created (the adduser command will ask for a password), and the Hermes installation file should be cloned using the shown Git command. By default, Hermes should be installed into the home directory of the user hermes. 
 
 Afterwards, the installation script should be executed. This will install the required Python runtime environment (Python 3.6 or higher) and create configuration files from the templates that are shipped with Hermes. Finally, the included ".service" files for running the Hermes modules as daemons need to be copied to the systemd folder and enabled via the "systemctl enable" command.
 
@@ -18,6 +18,7 @@ You can perform these steps by copying the commands listed below into a bash she
 
     sudo apt install build-essential -y
     sudo apt install dcmtk -y
+    sudo apt install jq -y
     sudo adduser hermes
     ssh hermes@localhost
     git clone https://github.com/hermes-router/hermes.git

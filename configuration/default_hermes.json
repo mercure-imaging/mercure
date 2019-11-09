@@ -1,5 +1,6 @@
 {
     "appliance_name"          : "Hermes Router",
+    "port"                    :     104,
     "incoming_folder"         : "/home/hermes/hermes-data/incoming",
     "outgoing_folder"         : "/home/hermes/hermes-data/outgoing",
     "success_folder"          : "/home/hermes/hermes-data/success",
@@ -20,5 +21,7 @@
     "targets": {
     },
     "rules": {
+    },
+    "modules": {
     }
 }
