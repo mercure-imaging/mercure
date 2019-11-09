@@ -16,22 +16,9 @@ if [ ! -f $config ]; then
 fi
 
 # Now read the needed values
-port=$(cat $config | jq '.port')
 incoming=$(cat $config | jq -r '.incoming_folder')
+port=$(cat $config | jq '.port')
 bookkeeper=$(cat $config | jq -r '.bookkeeper')
-
-# Make sure that the port has been set (value could be missing or empty)
-if [ $port = '""' ]
-then
-    port="null"
-fi
-if [ $port = "null" ]
-then
-    echo "ERROR: Port information is missing"
-    echo "ERROR: Terminating"
-    exit 1
-fi
-echo "Port: $port"
 
 # Check if incoming folder exists
 if [ ! -d "$incoming" ]; then
@@ -40,6 +27,18 @@ if [ ! -d "$incoming" ]; then
     exit 1
 fi
 echo "Incoming: $incoming"
+
+# Make sure that the port has been set (value could be missing or empty)
+if [ $port = '""' ]
+then
+    port="null"
+fi
+if [ $port = "null" ]
+then
+    echo "Port information is missing. Using default value"
+    port=104
+fi
+echo "Port: $port"
 
 # Check if the bookkeeper has been set
 if [ -z "$bookkeeper" ]
