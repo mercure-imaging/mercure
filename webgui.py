@@ -265,7 +265,7 @@ async def rules_edit(request):
     rule=request.path_params["rule"]
     template = "rules_edit.html"
     context = {"request": request, "hermes_version": version.hermes_version, "page": "rules", "rules": config.hermes["rules"], 
-               "targets": config.hermes["targets"], "rule": rule, 
+               "targets": config.hermes["targets"], "modules": config.hermes["modules"], "rule": rule, 
                "alltags": tagslist.alltags, "sortedtags": tagslist.sortedtags}
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)    

@@ -38,7 +38,13 @@ async def show_modules(request):
     except:
         return PlainTextResponse('Configuration is being updated. Try again in a minute.')
 
+    used_modules = {}
+    for rule in config.hermes["rules"]:
+        used_module=config.hermes["rules"][rule].get("processing_module","NONE")
+        used_modules[used_module]=rule
+
     template = "modules.html"
-    context = {"request": request, "hermes_version": version.hermes_version, "page": "modules"}
+    context = {"request": request, "hermes_version": version.hermes_version, "page": "modules", 
+               "modules": config.hermes["modules"], "used_modules": used_modules}
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)

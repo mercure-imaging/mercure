@@ -139,8 +139,10 @@
                             <div class="select">
                                 <div class="control">
                                     <select name="processing_module">
-                                        <option value="name1">Anonymizer</option>
-                                        <option value="name2">Prostate Volume</option>
+                                        {% for t in modules %}
+                                        <option value="{{t}}" {% if rules[rule]['processing_module']==t %}selected{% endif%}>{{ t }}
+                                        </option>
+                                        {% endfor %}
                                     </select>
                                 </div>
                             </div>

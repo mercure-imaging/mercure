@@ -38,7 +38,7 @@
                 <col width="150">
                 <tr><td>Rule:</td><td>{{ rules[x]['rule'] }}</td></tr>
                 {% if (rules[x]['action']=='process') or (rules[x]['action']=='both') %}
-                <tr><td>Module:</td><td>{{ rules[x]['module'] }}</td></tr>
+                <tr><td>Module:</td><td>{{ rules[x]['processing_module'] }}</td></tr>
                 {% endif %}
                 {% if (rules[x]['action']=='route') or (rules[x]['action']=='both') %}
                 <tr><td>Target:</td><td>{{ rules[x]['target'] }}</td></tr>
