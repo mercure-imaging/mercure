@@ -46,6 +46,7 @@ import webinterface.users as users
 import webinterface.tagslist as tagslist
 import webinterface.services as services
 import webinterface.modules as modules
+import webinterface.queue as queue
 from webinterface.common import templates
 from webinterface.common import get_user_information
 
@@ -111,7 +112,7 @@ app.mount('/static', StaticFiles(directory='webinterface/statics', check_dir=Fal
 app.add_middleware(AuthenticationMiddleware, backend=SessionAuthBackend())
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY, session_cookie="hermes_session")
 app.mount("/modules", modules.modules_app)
-
+app.mount("/queue", queue.queue_app)
 
 async def async_run(cmd):
     """Executes the given command in a way compatible with ayncio."""

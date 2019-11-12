@@ -138,7 +138,7 @@ body {
 
 
 ::selection {
-    background-color: #FFF;
+    background-color: rgba(255,255,255,0);
     color: rgb(54, 54, 54);
 }
 
@@ -151,3 +151,5 @@ body {
     margin-left: 5px;
     margin-right: 0px;    
 }
+
+

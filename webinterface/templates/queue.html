@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block content %}
+<main role="main">
+    <div class="container">
+        <h1 class="title">Queue</h1>
+    </div>
+</main>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        let cardToggles = document.getElementsByClassName('card-toggle');
+        for (let i = 0; i < cardToggles.length; i++) {
+            cardToggles[i].addEventListener('click', e => {
+                e.currentTarget.parentElement.parentElement.childNodes[3].classList.toggle('is-hidden');
+            });
+        }
+    });
+</script>
+
+{% endblock %}

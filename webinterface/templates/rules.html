@@ -7,17 +7,14 @@
     {% for x in rules %}
     <div class="card rulecard">
         <header class="card-header has-background-light" >
-            <p class="card-header-title card-toggle">
-                <span class="icon {% if rules[x]['disabled']!='True' %}has-text-success{% else %}has-text-grey-light{% endif %}">
-                    <i class="
-                    {% if rules[x]['action']=='route' %}fas fa-directions
-                    {% elif rules[x]['action']=='both' %}fas fa-layer-group
-                    {% elif rules[x]['action']=='process' %}fas fa-microchip
-                    {% elif rules[x]['action']=='notification' %}fas fa-bullhorn
-                    {% elif rules[x]['action']=='discard' %}fas fa-ban                   
-                    {% else %}fas fa-robot
-                    {% endif %}
-                    fa-lg"></i>
+            <p class="card-header-title card-toggle {% if rules[x]['disabled']=='True' %}has-text-grey-light{% endif %}">
+                <span class="icon {% if rules[x]['disabled']!='True' %}has-text-success{% else %}has-text-grey-light{% endif %} has-tooltip-left" data-tooltip=
+                    {% if rules[x]['action']=='route' %}"Routing Only"><i class="fas fa-directions
+                    {% elif rules[x]['action']=='both' %}"Processing & Routing"><i class="fas fa-layer-group
+                    {% elif rules[x]['action']=='process' %}"Processing Only"><i class="fas fa-microchip
+                    {% elif rules[x]['action']=='notification' %}"Notification Only"><i class="fas fa-bullhorn
+                    {% elif rules[x]['action']=='discard' %}"Force Discard"><i class="fas fa-ban                   
+                    {% else %}""><i class="fas fa-robot{% endif %}fa-lg"></i>
                 </span>&nbsp;&nbsp;{{ x }}<span style="margin-left: auto;"></span>
                 {% if rules[x]['priority']=='urgent' %}
                 <i class="fas fa-shipping-fast ruleicon"></i>
