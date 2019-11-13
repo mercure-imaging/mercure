@@ -7,6 +7,10 @@
         "name": "Router",
         "systemd_service": "hermes_router.service"
     },
+    "processor": {
+        "name": "Processor",
+        "systemd_service": "hermes_processor.service"
+    },
     "dispatcher": {
         "name": "Dispatcher",
         "systemd_service": "hermes_dispatcher.service"

@@ -3,7 +3,41 @@
 {% block content %}
 <main role="main">
     <div class="container">
-        <h1 class="title">Queue</h1>
+        <h1 class="title">Job Queue</h1>
+
+        <div class="columns">
+            <div class="column" style="width: 100% !important;">
+                <div class="tabs " id="tabs">
+                    <ul>
+                        <li data-tab="processing" class="is-active">
+                            <a>
+                                <span class="icon"><i class="fa fa-microchip"></i></span>
+                                <span>Processing</span>
+                            </a>
+                        </li>
+                        <li data-tab="routing">
+                            <a>
+                                <span class="icon"><i class="fas fa-directions"></i></span>
+                                <span>Routing</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                <div id="tab-content">
+                    <div class="panel is-active" data-content="processing">
+                        <div class="box" style="padding: 14px;">
+                            <div class="field">
+                                <input id="processing_control" type="checkbox" name="processing_control"
+                                    class="switch is-rounded is-danger" value="True">
+                                <label for="processing_control">Halt Processing Queue</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="panel" data-content="routing">
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </main>
 
@@ -16,6 +50,20 @@
             });
         }
     });
+
+    $(document).ready(function () {
+        $('#tabs li').on('click', function () {
+            var tab = $(this).data('tab');
+
+            $('#tabs li').removeClass('is-active');
+            $(this).addClass('is-active');
+
+            $('#tab-content div.panel').removeClass('is-active');
+            $('div.panel[data-content="' + tab + '"]').addClass('is-active');
+        });
+    });
+
+
 </script>
 
 {% endblock %}

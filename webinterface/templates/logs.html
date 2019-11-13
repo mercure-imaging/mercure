@@ -23,7 +23,7 @@
   </div>  
   <div class="columns">  
     <div class="column" style="width: 100% !important;">
-      <div class="logtabs tabs is-boxed">
+      <div class="logtabs tabs">
         <ul>
           {% for service in service_logs %}
           <li title="{{service_logs[service]["systemd"]}}" {% if service_logs[service]["id"]==log_id %}class="is-active"{% endif %}><a href="/logs/{{service_logs[service]["id"]}}">{{ service_logs[service]["name"] }}</a></li>
