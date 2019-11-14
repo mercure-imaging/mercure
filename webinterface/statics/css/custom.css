@@ -152,4 +152,6 @@ body {
     margin-right: 0px;    
 }
 
-
+.switch[type=checkbox]+label::before, .switch[type=checkbox]+label:before {
+    background-color: #dbdbdb;
+}

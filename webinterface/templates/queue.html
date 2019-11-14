@@ -3,41 +3,98 @@
 {% block content %}
 <main role="main">
     <div class="container">
-        <h1 class="title">Job Queue</h1>
-
         <div class="columns">
-            <div class="column" style="width: 100% !important;">
-                <div class="tabs " id="tabs">
-                    <ul>
-                        <li data-tab="processing" class="is-active">
-                            <a>
-                                <span class="icon"><i class="fa fa-microchip"></i></span>
-                                <span>Processing</span>
-                            </a>
-                        </li>
-                        <li data-tab="routing">
-                            <a>
-                                <span class="icon"><i class="fas fa-directions"></i></span>
-                                <span>Routing</span>
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-                <div id="tab-content">
-                    <div class="panel is-active" data-content="processing">
-                        <div class="box" style="padding: 14px;">
-                            <div class="field">
-                                <input id="processing_control" type="checkbox" name="processing_control"
-                                    class="switch is-rounded is-danger" value="True">
-                                <label for="processing_control">Halt Processing Queue</label>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="panel" data-content="routing">
+            <div class="column">
+                <h1 class="title">Queue Management</h1>
+            </div>
+            <div class="column">
+                <div class="container">
+                    <div class="field is-grouped is-pulled-right">
+                        <button class="button is-dark is-small" onclick="">
+                            <i class="fas fa-sync"></i></button>
                     </div>
                 </div>
             </div>
         </div>
+        <h5 class="title is-5 configtitle" style="margin-top: 20px;"><i
+                class="fas fa-power-off has-text-success"></i>&nbsp;&nbsp;Control</h5>
+        <div class="columns">
+            <div class="column" style="width: 100% !important;">
+                <table class="table is-fullwidth">
+                    <tr>
+                        <td><span class="icon"><i class="fa fa-microchip"></i></span> Processing</td>
+                        <td>
+                            <div class="control">
+                                <div class="tags has-addons">
+                                    <span class="tag is-dark">Status</span>
+                                    <span class="tag is-success">IDLE</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="field">
+                                <input id="processing_control" type="checkbox" name="processing_control"
+                                    class="switch is-rounded is-danger" value="True">
+                                <label for="processing_control">Suspend Queue</label>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><span class="icon"><i class="fa fa-directions"></i></span> Routing</td>
+                        <td>
+                            <div class="control">
+                                <div class="tags has-addons">
+                                    <span class="tag is-dark">Status</span>
+                                    <span class="tag is-success">IDLE</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="field">
+                                <input id="routing_control" type="checkbox" name="routing_control"
+                                    class="switch is-rounded is-danger" value="True">
+                                <label for="routing_control">Suspend Queue</label>
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    <h5 class="title is-5 configtitle" style="margin-top: 50px;"><i
+            class="fas fa-list has-text-success"></i>&nbsp;&nbsp;Job List</h5>
+    <div class="columns">
+        <div class="column" style="width: 100% !important;">
+            <div class="tabs is-centered" id="tabs">
+                <ul>
+                    <li data-tab="processing" class="is-active">
+                        <a>
+                            <span class="icon"><i class="fa fa-microchip"></i></span>
+                            <span>Processing</span>
+                        </a>
+                    </li>
+                    <li data-tab="routing">
+                        <a>
+                            <span class="icon"><i class="fas fa-directions"></i></span>
+                            <span>Routing</span>
+                        </a>
+                    </li>
+                    <li data-tab="archive">
+                        <a>
+                            <span class="icon"><i class="fas fa-archive"></i></span>
+                            <span>Archive</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+            <div id="tab-content">
+                <div class="panel is-active" data-content="processing">
+                </div>
+                <div class="panel" data-content="routing">
+                </div>
+            </div>
+        </div>
+    </div>
     </div>
 </main>
 
