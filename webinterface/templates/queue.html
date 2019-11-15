@@ -10,7 +10,7 @@
             <div class="column">
                 <div class="container">
                     <div class="field is-grouped is-pulled-right">
-                        <button class="button is-dark is-small" onclick="">
+                        <button class="button is-dark is-small has-tooltip-left has-tooltip-success" onclick="" data-tooltip="Refresh Now">
                             <i class="fas fa-sync"></i></button>
                     </div>
                 </div>
@@ -61,11 +61,11 @@
             </div>
         </div>
     </div>
-    <h5 class="title is-5 configtitle" style="margin-top: 50px;"><i
+    <h5 class="title is-5 configtitle" style="margin-top: 60px;"><i
             class="fas fa-list has-text-success"></i>&nbsp;&nbsp;Job List</h5>
     <div class="columns">
         <div class="column" style="width: 100% !important;">
-            <div class="tabs is-centered" id="tabs">
+            <div class="tabs is-centered is-toggle is-toggle-rounded jobstabs" id="tabs">
                 <ul>
                     <li data-tab="processing" class="is-active">
                         <a>
@@ -89,6 +89,40 @@
             </div>
             <div id="tab-content">
                 <div class="panel is-active" data-content="processing">
+                    <table class="table is-narrow is-hoverable is-fullwidth jobtable">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Module</th>
+                                <th>ACC</th>
+                                <th>MRN</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="is-selected">
+                                <td>3234-2341-2344-2342</td>
+                                <td>Anonymizer</td>
+                                <td>123123123</td>
+                                <td>A23452332</td>
+                                <td>Processing</td>
+                            </tr>
+                            <tr>
+                                <td>2342-2341-2344-2342</td>
+                                <td>Anonymizer</td>
+                                <td>123123123</td>
+                                <td>A53452332</td>
+                                <td>Scheduled</td>
+                            </tr>
+                            <tr>
+                                <td>5342-2341-1344-8342</td>
+                                <td>AI-Module</td>
+                                <td>553123123</td>
+                                <td>A23452332</td>
+                                <td>Scheduled</td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
                 <div class="panel" data-content="routing">
                 </div>

@@ -8,7 +8,7 @@
     <div class="card rulecard">
         <header class="card-header has-background-light" >
             <p class="card-header-title card-toggle {% if rules[x]['disabled']=='True' %}has-text-grey-light{% endif %}">
-                <span class="icon {% if rules[x]['disabled']!='True' %}has-text-success{% else %}has-text-grey-light{% endif %} has-tooltip-left" data-tooltip=
+                <span class="icon {% if rules[x]['disabled']!='True' %}has-text-success{% else %}has-text-grey-light{% endif %} has-tooltip-left has-tooltip-success" data-tooltip=
                     {% if rules[x]['action']=='route' %}"Routing Only"><i class="fas fa-directions
                     {% elif rules[x]['action']=='both' %}"Processing & Routing"><i class="fas fa-layer-group
                     {% elif rules[x]['action']=='process' %}"Processing Only"><i class="fas fa-microchip

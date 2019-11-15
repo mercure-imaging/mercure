@@ -155,3 +155,15 @@ body {
 .switch[type=checkbox]+label::before, .switch[type=checkbox]+label:before {
     background-color: #dbdbdb;
 }
+
+.jobtable td {
+    width: 2000px;
+}
+
+.jobtable tr.is-selected {
+    background-color: hsl(141, 71%, 48%);
+}
+
+.jobstabs a {
+    width: 160px;
+}

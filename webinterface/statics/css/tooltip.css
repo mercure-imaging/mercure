@@ -280,7 +280,7 @@
 }
 
 [data-tooltip]:not(.is-loading).has-tooltip-success.has-tooltip-left::after,[data-tooltip]:not(.is-disabled).has-tooltip-success.has-tooltip-left::after,[data-tooltip]:not([disabled]).has-tooltip-success.has-tooltip-left::after {
-    border-color: transparent transparent transparent rgba(35,209,96,0.9)
+    border-color: transparent transparent transparent rgba(35,209,96,0.9) !important
 }
 
 [data-tooltip]:not(.is-loading).has-tooltip-success.has-tooltip-right::after,[data-tooltip]:not(.is-disabled).has-tooltip-success.has-tooltip-right::after,[data-tooltip]:not([disabled]).has-tooltip-success.has-tooltip-right::after {
