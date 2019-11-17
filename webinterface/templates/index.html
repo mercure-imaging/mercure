@@ -6,28 +6,36 @@
   <div class="container">
     <h1 class="title">System Status</h1>
 
+    <h5 class="title is-5 configtitle" style="margin-top: 34px; margin-bottom: 4px !important;"><i
+        class="fas fa-sitemap has-text-success"></i>&nbsp;&nbsp;Services</h5>
     <div class="columns">
-      <div class="column">    
-        <div class="field is-grouped is-grouped-multiline">
+      <div class="column">
+        <div class="field is-grouped is-grouped-multiline" style="margin-top: 16px;">
           {% for service in service_status %}
           <div class="control">
             <div class="tags has-addons">
               <span class="tag is-dark">{{ service_status[service]["name"] }}</span>
-              <span {% if service_status[service]["running"]=="True" %} class="tag is-success">UP{% else %} class="tag is-danger">DOWN{% endif %}</span>
+              <span {% if service_status[service]["running"]=="True" %} class="tag is-success">UP{% else %} class="tag
+                is-danger">DOWN{% endif %}</span>
             </div>
           </div>
           {% endfor %}
         </div>
-        <div class="columns" style="margin-top: 10px;">
-          <div class="column is-one-third">    
+        <h5 class="title is-5 configtitle" style="margin-top: 40px; margin-bottom: 0px !important;"><i
+            class="fas fa-heartbeat has-text-success"></i>&nbsp;&nbsp;Server Health</h5>
+        <div class="columns" style="margin-top: 0px;">
+          <div class="column is-one-third">
             <label class="label">Diskspace:</label>
-            <progress class="progress {% if used_space|int < 60 %}is-success{% else %}{% if used_space|int > 80 %} is-danger{% else %}is-warning{% endif %}{% endif %}" value="{{used_space}}" max="100"></progress>{{free_space}} / {{total_space}} GB available
+            <progress
+              class="progress {% if used_space|int < 60 %}is-success{% else %}{% if used_space|int > 80 %} is-danger{% else %}is-warning{% endif %}{% endif %}"
+              value="{{used_space}}" max="100"></progress>{{free_space}} / {{total_space}} GB available
           </div>
         </div>
         {% if is_admin %}
-        <div class="columns" style="margin-top: 10px;">
+        <div class="columns" style="margin-top: 20px;">
           <div class="column is-one-third">
-            <button class="button" id="servicecontrol" value="" onclick="showControlModal()"><i class="fas fa-wrench"></i>&nbsp;Service Control</button>
+            <button class="button" id="servicecontrol" value="" onclick="showControlModal()"><i
+                class="fas fa-wrench"></i>&nbsp;Service Control</button>
           </div>
         </div>
         {% endif %}
@@ -40,30 +48,31 @@
     <div class="modal-card">
       <header class="modal-card-head">
         <p class="modal-card-title">Service Control</p>
-      </header>            
+      </header>
       <section class="modal-card-body">
         <div class="field">
           <label class="label">Selected Services</label>
           <div class="control select is-multiple is-fullwidth">
             <select name='services[]' multiple size="5" id="controlserviceselector">
               {% for service in service_status %}
-              <option {% if loop.index > 1 %}selected{% endif %} value="{{service}}">{{service_status[service]["name"]}}</option>
+              <option {% if loop.index > 1 %}selected{% endif %} value="{{service}}">{{service_status[service]["name"]}}
+              </option>
               {% endfor %}
-            </select>          
+            </select>
           </div>
-        </div>    
+        </div>
         <div class="field">
-            <label class="label">Action</label>
-            <div class="select">
-                <div class="control">
-                    <select name="action" id="controlserviceaction">
-                        <option value="start">Start</option>
-                        <option value="stop">Stop</option>
-                        <option value="restart">Restart</option>
-                        <option value="kill">Kill</option>                        
-                    </select>
-                </div>
+          <label class="label">Action</label>
+          <div class="select">
+            <div class="control">
+              <select name="action" id="controlserviceaction">
+                <option value="start">Start</option>
+                <option value="stop">Stop</option>
+                <option value="restart">Restart</option>
+                <option value="kill">Kill</option>
+              </select>
             </div>
+          </div>
         </div>
         <div class="field">
           <p class="control" style="margin-top: 20px;">
@@ -78,35 +87,37 @@
 </main>
 
 <script>
-  function showControlModal(val) {     
+  function showControlModal(val) {
     $("#controlmodal").addClass("is-active");
     $("#controlserviceselector").focus();
   }
 
   $(function () {
-    $('#closecontrolmodal').click(function () { 
-      $("#controlmodal").removeClass("is-active");  
-    })   
+    $('#closecontrolmodal').click(function () {
+      $("#controlmodal").removeClass("is-active");
+    })
   });
 
-  $('#confirmcontrolmodal').click(function () { 
+  $('#confirmcontrolmodal').click(function () {
     $("#controlpageloader").addClass('is-active');
-    $("#controlmodal").removeClass("is-active");          
+    $("#controlmodal").removeClass("is-active");
     $.ajax({
       type: 'POST',
       url: '/services/control',
-      data: { "services": $("#controlserviceselector").val().join(), 
-              "action": $("#controlserviceaction").val() },
+      data: {
+        "services": $("#controlserviceselector").val().join(),
+        "action": $("#controlserviceaction").val()
+      },
       dataType: 'json',
       success: function (data) {
-        var pageloaderTimeout = setTimeout( function() {
+        var pageloaderTimeout = setTimeout(function () {
           $("#controlpageloader").removeClass('is-active');
           clearTimeout(pageloaderTimeout);
           location.reload();
-        }, 2000 );                   
+        }, 2000);
       }
-    });  
-  })           
+    });
+  })
 
 </script>
 

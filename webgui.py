@@ -16,6 +16,7 @@ import asyncio
 import datetime
 import logging
 import daiquiri
+import html
 from pathlib import Path
 
 from starlette.applications import Starlette
@@ -189,12 +190,12 @@ async def show_log(request):
     log_content=""
 
     if run_result[0]==0:
-        log_content=str(run_result[1].decode())
+        log_content=html.escape(str(run_result[1].decode()))
         line_list=log_content.split('\n')
         if len(line_list) and (not line_list[-1]):
             del line_list[-1]
 
-        log_content='<br>'.join(line_list)
+        log_content='<br />'.join(line_list)
     else:
         log_content="Error reading log information."
         if start_date or end_date:
