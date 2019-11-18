@@ -187,8 +187,12 @@ body {
     background-color: #dbdbdb;
 }
 
+.jobtable {
+    table-layout: fixed;
+}
+
 .jobtable td {
-    width: 2000px;
+    width: 20%;
 }
 
 .jobtable tr.is-selected {

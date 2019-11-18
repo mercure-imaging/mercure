@@ -10,7 +10,8 @@
             <div class="column">
                 <div class="container">
                     <div class="field is-grouped is-pulled-right">
-                        <button class="button is-dark is-small has-tooltip-left has-tooltip-success" onclick="" data-tooltip="Refresh Now">
+                        <button class="button is-dark is-small has-tooltip-left has-tooltip-success" onclick="update()"
+                            data-tooltip="Refresh Now" id="refreshbtn">
                             <i class="fas fa-sync"></i></button>
                     </div>
                 </div>
@@ -89,7 +90,7 @@
             </div>
             <div id="tab-content">
                 <div class="panel is-active" data-content="processing">
-                    <table class="table is-narrow is-hoverable is-fullwidth jobtable">
+                    <table class="table is-narrow is-hoverable is-fullwidth jobtable" id="jobs_processing">
                         <thead>
                             <tr>
                                 <th>ID</th>
@@ -133,6 +134,36 @@
 </main>
 
 <script>
+
+    function update() {
+        update_jobs();
+        $("#refreshbtn").blur();
+    }
+
+    function update_jobs() {
+        $.ajax({
+            type: 'GET',
+            url: '/queue/jobs/processing',
+            data: {},
+            dataType: 'json',
+            success: function (data) {
+                //var jsondata = JSON.parse(data);
+
+                $("#jobs_processing tbody tr").remove();
+
+                if (!Object.keys(data).length) {
+                    $("#jobs_processing").find('tbody').append("<tr><td>No jobs</td><td></td><td></td><td></td><td></td></tr>");
+                }
+                else {
+                    Object.keys(data).forEach(function (key) {
+                        console.table('Key : ' + key + ', Value : ' + data[key])
+                    })
+                }
+            }
+        });
+    }
+
+
     document.addEventListener('DOMContentLoaded', function () {
         let cardToggles = document.getElementsByClassName('card-toggle');
         for (let i = 0; i < cardToggles.length; i++) {
@@ -152,8 +183,8 @@
             $('#tab-content div.panel').removeClass('is-active');
             $('div.panel[data-content="' + tab + '"]').addClass('is-active');
         });
-    });
 
+    });
 
 </script>
 

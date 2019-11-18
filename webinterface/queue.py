@@ -42,3 +42,12 @@ async def show_queues(request):
     context = {"request": request, "hermes_version": version.hermes_version, "page": "queue"}
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
+
+@queue_app.route('/jobs/processing', methods=["GET"])
+@requires('authenticated', redirect='login')
+async def show_jobs_processing(request):
+
+    job_list={ }
+
+    return JSONResponse(job_list)
+
