@@ -101,27 +101,6 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <tr class="is-selected">
-                                <td>3234-2341-2344-2342</td>
-                                <td>Anonymizer</td>
-                                <td>123123123</td>
-                                <td>A23452332</td>
-                                <td>Processing</td>
-                            </tr>
-                            <tr>
-                                <td>2342-2341-2344-2342</td>
-                                <td>Anonymizer</td>
-                                <td>123123123</td>
-                                <td>A53452332</td>
-                                <td>Scheduled</td>
-                            </tr>
-                            <tr>
-                                <td>5342-2341-1344-8342</td>
-                                <td>AI-Module</td>
-                                <td>553123123</td>
-                                <td>A23452332</td>
-                                <td>Scheduled</td>
-                            </tr>
                         </tbody>
                     </table>
                 </div>
@@ -147,22 +126,23 @@
             data: {},
             dataType: 'json',
             success: function (data) {
-                //var jsondata = JSON.parse(data);
-
                 $("#jobs_processing tbody tr").remove();
-
                 if (!Object.keys(data).length) {
                     $("#jobs_processing").find('tbody').append("<tr><td>No jobs</td><td></td><td></td><td></td><td></td></tr>");
                 }
                 else {
                     Object.keys(data).forEach(function (key) {
-                        console.table('Key : ' + key + ', Value : ' + data[key])
+                        var processingStyle = "";
+                        if (data[key]["Status"] == "Processing") {
+                            processingStyle = " class=\"is-selected\"";
+                        }
+                        addedRow = `<tr${processingStyle}><td>${key}</td><td>${data[key]["Module"]}</td><td>${data[key]["ACC"]}</td><td>${data[key]["MRN"]}</td><td>${data[key]["Status"]}</td></tr>`;
+                        $("#jobs_processing").find('tbody').append(addedRow);
                     })
                 }
             }
         });
     }
-
 
     document.addEventListener('DOMContentLoaded', function () {
         let cardToggles = document.getElementsByClassName('card-toggle');

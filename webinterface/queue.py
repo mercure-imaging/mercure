@@ -47,7 +47,10 @@ async def show_queues(request):
 @requires('authenticated', redirect='login')
 async def show_jobs_processing(request):
 
-    job_list={ }
+    job_list={}
+    job_list["1234-1234-1234-1234"]={"Module": "Test", "ACC": "ACC1234", "MRN": "MRN1234", "Status": "Processing"}
+    job_list["1334-1244-2234-1233"]={"Module": "Anonymizer", "ACC": "ACC1234", "MRN": "MRN1234", "Status": "Scheduled"}
+    job_list["4234-1234-1434-1234"]={"Module": "Anonymizer", "ACC": "ACC1234", "MRN": "MRN1234", "Status": "Scheduled"}
 
     return JSONResponse(job_list)
 
