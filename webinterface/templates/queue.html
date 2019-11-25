@@ -17,6 +17,9 @@
                 </div>
             </div>
         </div>
+        <div class="notification is-danger" id="erroralert" style="display: none;">
+            <i class="fas fa-sync-alt"></i>&nbsp;&nbsp;Error: Unable to update queue status.
+        </div>        
         <h5 class="title is-5 configtitle" style="margin-top: 22px;"><i
                 class="fas fa-power-off has-text-success"></i>&nbsp;&nbsp;Control</h5>
         <div class="columns">
@@ -35,7 +38,7 @@
                         <td>
                             <div class="field">
                                 <input id="processing_control" type="checkbox" name="processing_control"
-                                    class="switch is-rounded is-danger" value="True">
+                                    class="switch is-rounded is-danger" onchange="suspendQueue()">
                                 <label for="processing_control">Suspend Queue</label>
                             </div>
                         </td>
@@ -53,7 +56,7 @@
                         <td>
                             <div class="field">
                                 <input id="routing_control" type="checkbox" name="routing_control"
-                                    class="switch is-rounded is-danger" value="True">
+                                    class="switch is-rounded is-danger" onchange="suspendQueue()">
                                 <label for="routing_control">Suspend Queue</label>
                             </div>
                         </td>
@@ -125,7 +128,12 @@
             url: '/queue/jobs/processing',
             data: {},
             dataType: 'json',
+            error: function() {
+                $('#erroralert').show();
+                $("#jobs_processing tbody tr").remove();
+            },            
             success: function (data) {
+                $('#erroralert').hide();
                 $("#jobs_processing tbody tr").remove();
                 if (!Object.keys(data).length) {
                     $("#jobs_processing").find('tbody').append("<tr><td>No jobs</td><td></td><td></td><td></td><td></td></tr>");
@@ -140,8 +148,21 @@
                         $("#jobs_processing").find('tbody').append(addedRow);
                     })
                 }
-            }
+            },
+            timeout: 3000 
         });
+    }
+
+    function suspendQueue() {
+        var processing_state=$('#processing_control').is(':checked');
+        var routing_state=$('#routing_control').is(':checked');
+
+        console.log("---")
+        if (processing_state)
+        {console.log("Processing Suspend");}
+        if (routing_state)
+        {console.log("Routing Suspend");}
+        console.log("---")
     }
 
     document.addEventListener('DOMContentLoaded', function () {
@@ -164,6 +185,8 @@
             $('div.panel[data-content="' + tab + '"]').addClass('is-active');
         });
 
+        var updateTimer = setInterval(update, 60000);
+        update();
     });
 
 </script>
