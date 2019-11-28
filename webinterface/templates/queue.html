@@ -31,7 +31,7 @@
                             <div class="control">
                                 <div class="tags has-addons">
                                     <span class="tag is-dark">Status</span>
-                                    <span class="tag is-success">IDLE</span>
+                                    <span class="tag tagback" id="processing_status"></span>
                                 </div>
                             </div>
                         </td>
@@ -49,7 +49,7 @@
                             <div class="control">
                                 <div class="tags has-addons">
                                     <span class="tag is-dark">Status</span>
-                                    <span class="tag is-success">IDLE</span>
+                                    <span class="tagback tag" id="routing_status"></span>
                                 </div>
                             </div>
                         </td>
@@ -125,6 +125,7 @@
 
     function update() {
         update_jobs();
+        update_status();
         $("#refreshbtn").blur();
     }
 
@@ -154,6 +155,37 @@
                         $("#jobs_processing").find('tbody').append(addedRow);
                     })
                 }
+            },
+            timeout: 3000 
+        });
+    }
+
+    function update_status() {
+        $.ajax({
+            type: 'GET',
+            url: '/queue/status',
+            data: {},
+            dataType: 'json',
+            error: function() {
+                $('#erroralert').show();
+                $("#jobs_processing tbody tr").remove();
+            },            
+            success: function (data) {
+                $('#erroralert').hide();
+
+                $('#processing_status').removeClass("is-success is-danger is-warning");
+                $('#processing_status').text("IDLE");
+                $('#routing_status').removeClass("is-success is-danger is-warning");
+                $('#routing_status').text("IDLE");
+
+                //$('#processing_status').addClass("is-danger");
+                //$('#processing_status').text("HALTED");
+                $('#processing_status').text("PROCESSING");
+                $('#processing_status').addClass("is-success");
+                //$('#routing_status').text("SUSPENDING");
+                //$('#routing_status').addClass("is-warning");
+
+                //TODO
             },
             timeout: 3000 
         });

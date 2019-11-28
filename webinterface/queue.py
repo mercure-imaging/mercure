@@ -43,6 +43,7 @@ async def show_queues(request):
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
 
+
 @queue_app.route('/jobs/processing', methods=["GET"])
 @requires('authenticated', redirect='login')
 async def show_jobs_processing(request):
@@ -53,4 +54,18 @@ async def show_jobs_processing(request):
     job_list["4234-1234-1434-1234"]={"Module": "Anonymizer", "ACC": "ACC1234", "MRN": "MRN1234", "Status": "Scheduled"}
 
     return JSONResponse(job_list)
+
+
+@queue_app.route('/status', methods=["GET"])
+@requires('authenticated', redirect='login')
+async def show_queues_status(request):
+
+    queue_status={ 
+        "processing_status": "Idle", 
+        "processing_suspended": "False",
+        "routing_status": "Idle", 
+        "routing_suspended": "False"
+        }
+
+    return JSONResponse(queue_status)
 
