@@ -182,8 +182,9 @@ if __name__ == '__main__':
         logger.info(f'Sending events to graphite server: {config.hermes["graphite_ip"]}')
         graphyte.init(config.hermes['graphite_ip'], config.hermes['graphite_port'], prefix=graphite_prefix)
 
-    logger.info(f'Incoming folder: {config.hermes["incoming_folder"]}')
-    logger.info(f'Outgoing folder: {config.hermes["outgoing_folder"]}')
+    logger.info(f'Incoming folder:   {config.hermes["incoming_folder"]}')
+    logger.info(f'Outgoing folder:   {config.hermes["outgoing_folder"]}')
+    logger.info(f'Processing folder: {config.hermes["processing_folder"]}')
 
     # Start the timer that will periodically trigger the scan of the incoming folder
     global main_loop

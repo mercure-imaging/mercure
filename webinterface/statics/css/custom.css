@@ -162,10 +162,9 @@ body {
     outline: none !important;
 }
 
-
 ::selection {
-    background-color: rgba(255,255,255,0);
-    color: rgb(54, 54, 54);
+    color: none;
+    background: none;
 }
 
 .textarea::selection, .input::selection {
@@ -206,3 +205,4 @@ body {
 .tagback:not(body) {
     background-color: #dbdbdb;
 }
+

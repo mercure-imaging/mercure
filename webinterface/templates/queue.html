@@ -25,6 +25,9 @@
         <div class="columns">
             <div class="column" style="width: 100% !important;">
                 <table class="table is-fullwidth">
+                    <col width="30%">
+                    <col width="30%">
+                    <col width="40%">
                     <tr>
                         <td><span class="icon"><i class="fa fa-microchip"></i></span> Processing</td>
                         <td>
@@ -38,7 +41,7 @@
                         <td>
                             <div class="field">
                                 <input id="processing_control" type="checkbox" name="processing_control"
-                                    class="switch is-rounded is-danger" onchange="suspendQueue()">
+                                    class="switch is-rounded is-danger" onchange="suspendQueue()" {% if processing_suspended==True %}checked{% endif %}>
                                 <label for="processing_control">Suspend Queue</label>
                             </div>
                         </td>
@@ -56,7 +59,7 @@
                         <td>
                             <div class="field">
                                 <input id="routing_control" type="checkbox" name="routing_control"
-                                    class="switch is-rounded is-danger" onchange="suspendQueue()">
+                                    class="switch is-rounded is-danger" onchange="suspendQueue()" {% if routing_suspended==True %}checked{% endif %}>
                                 <label for="routing_control">Suspend Queue</label>
                             </div>
                         </td>
@@ -216,22 +219,39 @@
                         $('#routing_status').text("UNKNOWN");
                 }
                 
-                //TODO
+                if (data["processing_suspended"]=="True") {
+                    $('#processing_control').prop('checked', true);
+                } else {
+                    $('#processing_control').prop('checked', false);
+                }
+
+                if (data["routing_suspended"]=="True") {
+                    $('#routing_control').prop('checked', true);
+                } else {
+                    $('#routing_control').prop('checked', false);
+                }
             },
             timeout: 3000 
         });
     }
 
     function suspendQueue() {
-        var processing_state=$('#processing_control').is(':checked');
-        var routing_state=$('#routing_control').is(':checked');
-
-        console.log("---")
-        if (processing_state)
-        {console.log("Processing Suspend");}
-        if (routing_state)
-        {console.log("Routing Suspend");}
-        console.log("---")
+        var suspend_processing=$('#processing_control').is(':checked');
+        var suspend_routing=$('#routing_control').is(':checked');
+        $.ajax({
+            type: 'POST',
+            url: '/queue/status',
+            data: { "suspend_processing": suspend_processing, "suspend_routing": suspend_routing },
+            dataType: 'json',
+            error: function() {
+                $('#erroralert').show();
+            },            
+            success: function (data) {
+                $('#erroralert').hide();
+                update();
+            },
+            timeout: 3000 
+        });
     }
 
     document.addEventListener('DOMContentLoaded', function () {

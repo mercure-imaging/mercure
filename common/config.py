@@ -136,7 +136,7 @@ def write_configfile(json_content):
 
 def checkFolders():
     """Checks if all required folders for handling the DICOM files exist."""
-    for entry in ['incoming_folder','outgoing_folder','success_folder','error_folder','discard_folder']:
+    for entry in ['incoming_folder','outgoing_folder','success_folder','error_folder','discard_folder', 'processing_folder']:
         if not Path(hermes[entry]).exists():
             logger.error(f"Folder not found {hermes[entry]}")
             monitor.send_event(monitor.h_events.CONFIG_UPDATE, monitor.severity.CRITICAL, "Folders are missing")

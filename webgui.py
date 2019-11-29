@@ -911,16 +911,13 @@ async def server_error(request, exc):
 
 async def emergency_response(request):
     """Shows emergency message about invalid configuration."""
-    return PlainTextResponse('Webgui configuration is invalid. Check configuration and restart service.')
+    return PlainTextResponse('ERROR: Hermes configuration is invalid. Check configuration and restart webgui service.')
 
 def launch_emergency_app():
     """Launches a minimal application to inform the user about the incorrect configuration"""
     emergency_app = Starlette(debug=True)
     emergency_app = Router([
-        Route('/', endpoint=emergency_response, methods=['GET','POST']),
-        Route('/{any1}', endpoint=emergency_response, methods=['GET','POST']),
-        Route('/{any1}/{any2}', endpoint=emergency_response, methods=['GET','POST']),
-        Route('/{any1}/{any2}/{any3}', endpoint=emergency_response, methods=['GET','POST'])
+        Route('/{whatever:path}', endpoint=emergency_response, methods=['GET','POST']),
     ])
     uvicorn.run(emergency_app, host=WEBGUI_HOST, port=WEBGUI_PORT)
 
