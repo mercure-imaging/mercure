@@ -63,7 +63,7 @@ async def show_queues_status(request):
     queue_status={ 
         "processing_status": "Idle", 
         "processing_suspended": "False",
-        "routing_status": "Idle", 
+        "routing_status": "Processing", 
         "routing_suspended": "False"
         }
 

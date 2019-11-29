@@ -31,7 +31,7 @@
                             <div class="control">
                                 <div class="tags has-addons">
                                     <span class="tag is-dark">Status</span>
-                                    <span class="tag tagback" id="processing_status"></span>
+                                    <span class="tag tagback" id="processing_status">IDLE</span>
                                 </div>
                             </div>
                         </td>
@@ -49,7 +49,7 @@
                             <div class="control">
                                 <div class="tags has-addons">
                                     <span class="tag is-dark">Status</span>
-                                    <span class="tagback tag" id="routing_status"></span>
+                                    <span class="tagback tag" id="routing_status">IDLE</span>
                                 </div>
                             </div>
                         </td>
@@ -174,17 +174,48 @@
                 $('#erroralert').hide();
 
                 $('#processing_status').removeClass("is-success is-danger is-warning");
-                $('#processing_status').text("IDLE");
                 $('#routing_status').removeClass("is-success is-danger is-warning");
-                $('#routing_status').text("IDLE");
 
-                //$('#processing_status').addClass("is-danger");
-                //$('#processing_status').text("HALTED");
-                $('#processing_status').text("PROCESSING");
-                $('#processing_status').addClass("is-success");
-                //$('#routing_status').text("SUSPENDING");
-                //$('#routing_status').addClass("is-warning");
+                switch (data["processing_status"]) {
+                    case "Idle":
+                        $('#processing_status').text("IDLE");
+                        break;
+                    case "Processing":
+                        $('#processing_status').text("PROCESSING");
+                        $('#processing_status').addClass("is-success");
+                        break;
+                    case "Halted":
+                        $('#processing_status').text("HALTED");
+                        $('#processing_status').addClass("is-danger");
+                        break;
+                    case "Suspending":
+                        $('#processing_status').text("SUSPENDING");
+                        $('#processing_status').addClass("is-warning");
+                        break;
+                    default:
+                        $('#processing_status').text("UNKNOWN");
+                }
 
+                switch (data["routing_status"]) {
+                    case "Idle":
+                        $('#routing_status').text("IDLE");
+                        break;
+                    case "Processing":
+                        $('#routing_status').text("PROCESSING");
+                        $('#routing_status').addClass("is-success");
+                        break;
+                    case "Halted":
+                        $('#routing_status').text("HALTED");
+                        $('#routing_status').addClass("is-danger");
+                        break;
+                    case "Suspending":
+                        $('#routing_status').text("SUSPENDING");
+                        $('#routing_status').addClass("is-warning");
+                        break;
+                    default:
+                        $('#routing_status').text("UNKNOWN");
+                }
+                
                 //TODO
             },
             timeout: 3000 
