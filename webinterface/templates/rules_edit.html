@@ -2,96 +2,287 @@
 
 {% block content %}
 <main role="main">
-  <div class="container">
-    <h1 class="title">Edit Rule - {{rule}}</h1>
+    <div class="container">
+        <h1 class="title">Edit Rule - {{rule}}</h1>
 
-    <form method="post">
-        <div class="field">
-            <label class="label">Routing Rule</label>
-            <div class="field has-addons">
-                <div class="control">
-                    <button class="button" type="button" onclick="showTestRule()" title="Test rule">
-                        <i class="fas fa-cogs "></i>
-                    </button>
-                </div>        
-                <div class="control is-expanded">
-                    <input name="rule" id="rule" pattern="[^{}\x22]+" class="input" autocomplete='off' type="text" placeholder="Routing rule" value="{{rules[rule]['rule']}}">
-                </div>
-            </div>
-        </div>   
-        <div class="field">
-            <label class="label">Target</label>
-            <div class="select">
-                <div class="control">
-                    <select name="target">
-                        {% for t in targets %}
-                        <option value="{{t}}" {% if rules[rule]['target']==t %}selected{% endif%}>{{ t }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-            </div>
-        </div>                
-        <div class="field">
-            <label class="label">Disabled</label>
-            <div class="select">
-                <div class="control">
-                    <select name="disabled">
-                        <option value="False" {% if rules[rule]['disabled']!='True' %}selected{% endif%}>False</option>
-                        <option value="True" {% if rules[rule]['disabled']=='True' %}selected{% endif%}>True</option>
-                    </select>
-                </div>
-            </div>
-        </div>      
-        <div class="field">
-            <label class="label">Contact Email</label>
-            <div class="control">
-                <input name="contact" class="input" autocomplete='off' type="email" placeholder="Email address" value="{{rules[rule]['contact']}}">
-            </div>
-        </div>            
-        <div class="field">
-            <label class="label">Comment</label>
-            <div class="control">
-                <textarea name="comment" class="textarea" autocomplete='off' placeholder="Rule description">{{rules[rule]['comment']}}</textarea>
-            </div>
+        <div class="notification is-danger" id="erroralert" style="display: none;">
+            <i class="fas fa-bug"></i>&nbsp;&nbsp;Error in configuration detected. Please check input fields for correct
+            syntax.
         </div>
-        <div class="field">
-            <div class="control buttons is-expanded" style="margin-top: 30px;">
-                <button type="submit" class="button is-success" value="default action">
-                    <i class="fas fa-save"></i>&nbsp;Save
-                </button>
-                <a class="button" href="/rules"><i class="fas fa-ban"></i>&nbsp;Cancel</a>
-                <div style="margin-left: auto; margin-right: auto;">&nbsp;</div>
-                <button class="button" type="button" data-show="quickview" data-target="quickviewDefault" style="margin: 0px;">
-                    <i class="fas fa-tags"></i>&nbsp;Show Tags
-                </button>
+
+        <div class="tabs is-centered is-toggle is-toggle-rounded" id="tabs">
+            <ul>
+                <li data-tab="filtering" class="is-active">
+                    <a>
+                        <span class="icon"><i class="fas fa-filter"></i></span>
+                        <span>Filtering</span>
+                    </a>
+                </li>
+                <li data-tab="processing">
+                    <a>
+                        <span class="icon"><i class="fa fa-microchip"></i></span>
+                        <span>Processing</span>
+                    </a>
+                </li>
+                <li data-tab="routing">
+                    <a>
+                        <span class="icon"><i class="fa fa-directions"></i></span>
+                        <span>Routing</span>
+                    </a>
+                </li>
+                <li data-tab="notification">
+                    <a>
+                        <span class="icon"><i class="fa fa-bullhorn"></i></span>
+                        <span>Notification</span>
+                    </a>
+                </li>
+                <li data-tab="information">
+                    <a>
+                        <span class="icon"><i class="fa fa-info-circle"></i></span>
+                        <span>Information</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <form method="post" onsubmit="return validate()">
+            <div id="tab-content">
+                <div class="panel is-active" data-content="filtering">
+                    <div class="field">
+                        <label class="label">Selection Rule</label>
+                        <div class="field has-addons">
+                            <div class="control">
+                                <button class="button" type="button" onclick="showTestRule()" title="Test rule">
+                                    <i class="fas fa-cogs "></i>
+                                </button>
+                            </div>
+                            <div class="control is-expanded">
+                                <input name="rule" id="rule" pattern="[^{}\x22]+" class="input" autocomplete='off'
+                                    type="text" placeholder="Routing rule" value="{{rules[rule]['rule']}}">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="field  is-grouped is-grouped-right">
+                        <button class="button" type="button" data-show="quickview" data-target="quickviewDefault"
+                            style="margin: 0px;">
+                            <i class="fas fa-tags"></i>&nbsp;Available Tags
+                        </button>
+                    </div>
+                    <div class="field">
+                        <label class="label">Action</label>
+                        <div class="select">
+                            <div class="control">
+                                <select name="action" id="action">
+                                    <option value="route" {% if rules[rule]['action']=='route' %}selected{% endif%}>
+                                        Routing</option>
+                                    <option value="both" {% if rules[rule]['action']=='both' %}selected{% endif%}>
+                                        Processing & Routing</option>
+                                    <option value="process" {% if rules[rule]['action']=='process' %}selected{% endif%}>
+                                        Processing Only</option>
+                                    <option value="notification"
+                                        {% if rules[rule]['action']=='notification' %}selected{% endif%}>Notification
+                                        Only</option>
+                                    <option value="discard" {% if rules[rule]['action']=='discard' %}selected{% endif%}>
+                                        Force Discard</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label class="label">Trigger</label>
+                        <div class="select">
+                            <div class="control">
+                                <select name="action_trigger" id="action_trigger">
+                                    <option value="series"
+                                        {% if rules[rule]['action_trigger']=='series' %}selected{% endif%}>Completed
+                                        Series</option>
+                                    <option value="study"
+                                        {% if rules[rule]['action_trigger']=='study' %}selected{% endif%}>Completed
+                                        Study</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label class="label">Priority</label>
+                        <div class="select">
+                            <div class="control">
+                                <select name="priority" id="priority">
+                                    <option value="normal" {% if rules[rule]['priority']=='normal' %}selected{% endif%}>
+                                        Normal</option>
+                                    <option value="urgent" {% if rules[rule]['priority']=='urgent' %}selected{% endif%}>
+                                        Urgent</option>
+                                    <option value="offpeak"
+                                        {% if rules[rule]['priority']=='offpeak' %}selected{% endif%}>Off-Peak</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label class="label">Status</label>
+                        <div class="select">
+                            <div class="control">
+                                <select name="disabled">
+                                    <option value="False" {% if rules[rule]['disabled']=='False' %}selected{% endif%}>
+                                        Enabled</option>
+                                    <option value="True" {% if rules[rule]['disabled']=='True' %}selected{% endif%}>
+                                        Disabled</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="panel" data-content="processing">
+                    <div class="field">
+                        <div class="field">
+                            <label class="label">Module</label>
+                            <div class="select">
+                                <div class="control">
+                                    <select name="processing_module">
+                                        {% for t in modules %}
+                                        <option value="{{t}}" {% if rules[rule]['processing_module']==t %}selected{% endif%}>{{ t }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label class="label">Settings</label>
+                        <div class="control">
+                            <textarea name="processing_settings" id="processing_settings" class="textarea"
+                                autocomplete='off'
+                                placeholder="Rule-specific module settings">{{rules[rule]['processing_settings']}}</textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="panel" data-content="routing">
+                    <div class="field">
+                        <label class="label">Target</label>
+                        <div class="select">
+                            <div class="control">
+                                <select name="target">
+                                    {% for t in targets %}
+                                    <option value="{{t}}" {% if rules[rule]['target']==t %}selected{% endif%}>{{ t }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="panel" data-content="notification">
+                    <div class="field">
+                        <label class="label">Webhook URL</label>
+                        <div class="control">
+                            <input name="notification_webhook" class="input" autocomplete='off' type="url"
+                                pattern="https://.*" placeholder="REST endpoint"
+                                value="{{rules[rule]['notification_webhook']}}">
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label class="label">Payload</label>
+                        <div class="control">
+                            <textarea name="notification_payload" id="notification_payload" class="textarea"
+                                autocomplete='off'
+                                placeholder="Data for body of REST call">{{rules[rule]['notification_payload']}}</textarea>
+                        </div>
+                    </div>
+                    <div class="field is-grouped is-grouped-right">
+                        <div class="dropdown is-right">
+                            <div class="dropdown-trigger">
+                                <button class="button" type="button" aria-haspopup="true" aria-controls="dropdown-menu">
+                                    <span><i class="fas fa-code"></i>&nbsp;Insert Template</span>
+                                    <span class="icon is-small"><i class="fas fa-angle-down"
+                                            aria-hidden="true"></i></span>
+                                </button>
+                            </div>
+                            <div class="dropdown-menu" id="dropdown-menu" role="menu">
+                                <div class="dropdown-content">
+                                    <a href="#" id="template_slack" class="dropdown-item">
+                                        Slack
+                                    </a>
+                                    <a href="#" id="template_webex" class="dropdown-item">
+                                        WebEx Teams
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label class="label">Trigger</label>
+                    </div>
+                    <div class="field">
+                        <input id="notification_trigger_reception" type="checkbox" name="notification_trigger_reception"
+                            class="switch is-rounded is-dark" value="True" {% if rules[rule]['notification_trigger_reception']=="True" %}checked="checked"{% endif%}>
+                        <label for="notification_trigger_reception">Reception</label>
+                    </div>
+                    <div class="field">
+                        <input id="notification_trigger_completion" type="checkbox" name="notification_trigger_completion"
+                            class="switch is-rounded is-dark" value="True" {% if rules[rule]['notification_trigger_completion']=="True" %}checked="checked"{% endif%}>
+                        <label for="notification_trigger_completion">Completion</label>
+                    </div>
+                    <div class="field">
+                        <input id="notification_trigger_error" type="checkbox" name="notification_trigger_error"
+                            class="switch is-rounded is-dark" value="True" {% if rules[rule]['notification_trigger_error']=="True" %}checked="checked"{% endif%}>
+                        <label for="notification_trigger_error">Error</label>
+                    </div>
+                </div>
+                <div class="panel" data-content="information">
+                    <div class="field">
+                        <label class="label">Contact Email</label>
+                        <div class="control">
+                            <input name="contact" class="input" autocomplete='off' type="email"
+                                placeholder="Email address" value="{{rules[rule]['contact']}}">
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label class="label">Comment</label>
+                        <div class="control">
+                            <textarea name="comment" class="textarea" autocomplete='off'
+                                placeholder="Rule description">{{rules[rule]['comment']}}</textarea>
+                        </div>
+                    </div>
+                </div>
             </div>
-        </div>        
-    </form>
-  </div>
+            <div class="field">
+                <div class="control buttons is-expanded" style="margin-top: 50px;">
+                    <button type="submit" class="button is-success" value="default action">
+                        <i class="fas fa-save"></i>&nbsp;Save
+                    </button>
+                    <a class="button" href="/rules"><i class="fas fa-ban"></i>&nbsp;Cancel</a>
+                </div>
+            </div>
+        </form>
+    </div>
 </main>
 
 <div class="modal" id="testrule">
     <div class="modal-background"></div>
     <div class="modal-card" style="width: 768px;">
         <header class="modal-card-head">
-        <p class="modal-card-title">Test Rule</p>
+            <p class="modal-card-title">Test Rule</p>
         </header>
         <section class="modal-card-body">
             <div class="container">
                 <div class="field">
                     <label class="label">Result:</label>
                     <div id="testresult" style="height: 3em;"></div>
-                </div>    
+                </div>
                 <div class="field">
                     <label class="label">Test Values:</label>
                     <div class="control">
-                        <textarea class="textarea has-fixed-size" rows="8" placeholder="Testing tags" id="testvalues" name="testvalues">{{alltags|tojson(indent=4)}}</textarea>
+                        <textarea class="textarea has-fixed-size" rows="8" placeholder="Testing tags" id="testvalues"
+                            name="testvalues">{{alltags|tojson(indent=4)}}</textarea>
                     </div>
                 </div>
             </div>
         </section>
         <footer class="modal-card-foot buttons is-right">
-            <button class="button is-dark" default autofocus id="evaltestrule" ic-post-to="/rules/test" ic-include="#testvalues" ic-global-include="#rule" ic-target="#testresult"><i class="fas fa-cogs"></i>&nbsp;Test</button>
+            <button class="button is-dark" default autofocus id="evaltestrule" ic-post-to="/rules/test"
+                ic-include="#testvalues" ic-global-include="#rule" ic-target="#testresult"><i
+                    class="fas fa-cogs"></i>&nbsp;Test</button>
             <button class="button" type="button" id="closetestrule" onclick="closeTestRule()">Close</button>
         </footer>
     </div>
@@ -99,70 +290,139 @@
 
 <div id="quickviewDefault" class="quickview">
     <header class="quickview-header quickviewtitle">
-      <p class="title">Rule Notation</p>
-      <span class="delete" data-dismiss="quickview"></span>
+        <p class="title">Rule Notation</p>
+        <span class="delete" data-dismiss="quickview"></span>
     </header>
     <div class="quickview-body">
-      <div class="quickview-block" style="margin-left: 20px; margin-right: 20px; margin-top: 20px;">
+        <div class="quickview-block" style="margin-left: 20px; margin-right: 20px; margin-top: 20px;">
             <div class="table-container">
-            <label class="label">Examples:</label>
-            <table class="table is-fullwidth is-hoverable is-bordered">
-                <tr><td>(@Modality@ == 'MR') and ('GRASP' in @StudyDescription@)</td></tr>
-                <tr><td>(float(@SeriesNumber@) > 100) or (@ScanningSequence@.lower()=='gr')</td></tr>
-            </table>
+                <label class="label">Examples:</label>
+                <table class="table is-fullwidth is-hoverable is-bordered">
+                    <tr>
+                        <td>(@Modality@ == 'MR') and ('GRASP' in @StudyDescription@)</td>
+                    </tr>
+                    <tr>
+                        <td>(float(@SeriesNumber@) > 100) or (@ScanningSequence@.lower()=='gr')</td>
+                    </tr>
+                </table>
+            </div>
+            <div class="table-container">
+                <label class="label">Available Tags:</label>
+                <table class="table is-fullwidth is-hoverable is-bordered">
+                    {% for tag in sortedtags %}
+                    <tr>
+                        <td><button class="button is-small is-dark" value="@{{tag}}@"
+                                onclick="copyTag(this.value)">Copy</button> &nbsp;&nbsp;@{{tag}}@</td>
+                    </tr>
+                    {% endfor %}
+                </table>
+            </div>
+            <input type="text" id="copyinput" value="test" style="display: none;">
         </div>
-        <div class="table-container">
-        <label class="label">Available Tags:</label>
-        <table class="table is-fullwidth is-hoverable is-bordered">
-            {% for tag in sortedtags %}
-           <tr><td><button class="button is-small is-dark" value="@{{tag}}@" onclick="copyTag(this.value)">Copy</button> &nbsp;&nbsp;@{{tag}}@</td></tr>
-            {% endfor %}
-        </table>
     </div>
-    <input type="text" id="copyinput" value="test" style="display: none;">
-</div>
-    </div>
-    <footer class="quickview-footer is-centered buttons">  
+    <footer class="quickview-footer is-centered buttons">
         <button class="button" type="button" data-dismiss="quickview">Close</button>
     </footer>
 </div>
-    
+
 <script>
+    function validate() {
+        var field = "";
+        try {
+            field = "Processing > Settings";
+            var str = '{' + $('#processing_settings').val() + '}';
+            JSON.parse(str);
+            field = "Notification > Payload";
+            str = '{' + $('#notification_payload').val() + '}';
+            JSON.parse(str);
+        } catch (e) {
+            $('#erroralert').html('<i class="fas fa-bug"></i>&nbsp;&nbsp;Invalid content in field "' + field + '". Please check for correct syntax.');
+            $('#erroralert').show();
+            return false;
+        }
+        return true;
+    }
 
-function showTestRule() {
-    $("#testresult").html("Rule not yet tested");
-    $("#testrule").addClass("is-active");
-    $("#evaltestrule").focus();
-    $("#evaltestrule").click();
-}
+    function showTestRule() {
+        $("#testresult").html("Rule not yet tested");
+        $("#testrule").addClass("is-active");
+        $("#evaltestrule").focus();
+        $("#evaltestrule").click();
+    }
 
-function closeTestRule() { 
-    $("#testrule").removeClass("is-active");  
-}
+    function closeTestRule() {
+        $("#testrule").removeClass("is-active");
+    }
 
-function copyTag(value) { 
-    $("#copyinput").val(value);
-    $("#copyinput").css("display","block");
+    function copyTag(value) {
+        $("#copyinput").val(value);
+        $("#copyinput").css("display", "block");
 
-    var copyText = document.getElementById("copyinput");
-    copyText.select();
-    document.execCommand("copy");
+        var copyText = document.getElementById("copyinput");
+        copyText.select();
+        document.execCommand("copy");
 
-    //$("#taglist").removeClass("is-active");  
-    $("#copyinput").css("display","none");
-}
+        $("#copyinput").css("display", "none");
+    }
 
-$(function(){
-  $('#rule').keypress(function(e){
-    var chr = String.fromCharCode(e.which);
-    if ("{}\"".indexOf(chr) >= 0)
-        return false;
-  });
-});
+    $(function () {
+        $('#rule').keypress(function (e) {
+            var chr = String.fromCharCode(e.which);
+            if ("{}\"".indexOf(chr) >= 0)
+                return false;
+        });
+    });
 
-$(document).ready(function(){
-    var quickviews = bulmaQuickview.attach();
-});
+    $(document).ready(function () {
+        var quickviews = bulmaQuickview.attach();
+
+        $('#tabs li').on('click', function () {
+            var tab = $(this).data('tab');
+
+            $('#tabs li').removeClass('is-active');
+            $(this).addClass('is-active');
+
+            $('#tab-content div.panel').removeClass('is-active');
+            $('div.panel[data-content="' + tab + '"]').addClass('is-active');
+        });
+
+        $('#action').change(function () {
+            var action = $(this).children("option:selected").val();
+
+            if (action == 'route') {
+                $('#tabs li[data-tab="processing"]').addClass('is-disabled');
+                $('#tabs li[data-tab="routing"]').removeClass('is-disabled');
+            }
+            if (action == 'both') {
+                $('#tabs li[data-tab="processing"]').removeClass('is-disabled');
+                $('#tabs li[data-tab="routing"]').removeClass('is-disabled');
+            }
+            if (action == 'process') {
+                $('#tabs li[data-tab="processing"]').removeClass('is-disabled');
+                $('#tabs li[data-tab="routing"]').addClass('is-disabled');
+            }
+            if ((action == 'discard') || (action == 'notification')) {
+                $('#tabs li[data-tab="processing"]').addClass('is-disabled');
+                $('#tabs li[data-tab="routing"]').addClass('is-disabled');
+            }
+        });
+
+        $("#action").trigger('change');
+
+        var dropdown = document.querySelector('.dropdown');
+        dropdown.addEventListener('click', function (event) {
+            event.stopPropagation();
+            dropdown.classList.toggle('is-active');
+        });
+
+        $('#template_slack').click(function () {
+            $('#notification_payload').val('"channel": "YOUR_CHANNEL_ID",\n"text": "Hello, world"');
+        });
+
+        $('#template_webex').click(function () {
+            $('#notification_payload').val('"text": "Hello, world"');
+        });
+    });
 
 </script>
 

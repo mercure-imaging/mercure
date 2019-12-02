@@ -16,6 +16,7 @@ import asyncio
 import datetime
 import logging
 import daiquiri
+import html
 from pathlib import Path
 
 from starlette.applications import Starlette
@@ -45,6 +46,10 @@ import common.rule_evaluation as rule_evaluation
 import webinterface.users as users
 import webinterface.tagslist as tagslist
 import webinterface.services as services
+import webinterface.modules as modules
+import webinterface.queue as queue
+from webinterface.common import templates
+from webinterface.common import get_user_information
 
 
 ###################################################################################
@@ -96,23 +101,19 @@ webgui_config = Config("configuration/webgui.env")
 # Note: PutSomethingRandomHere is the default value in the shipped configuration file.
 #       The app will not start with this value, forcing the users to set their onw secret 
 #       key. Therefore, the value is used as default here as well.
-SECRET_KEY = webgui_config('SECRET_KEY', cast=Secret, default="PutSomethingRandomHere")
-WEBGUI_PORT = webgui_config('PORT', cast=int, default=8000)
-WEBGUI_HOST = webgui_config('HOST', default='0.0.0.0')
-templates = Jinja2Templates(directory='webinterface/templates')
+SECRET_KEY  = webgui_config('SECRET_KEY', cast=Secret, default="PutSomethingRandomHere")
+WEBGUI_PORT = webgui_config('PORT',  cast=int, default=8000)
+WEBGUI_HOST = webgui_config('HOST',  default='0.0.0.0')
+DEBUG_MODE  = webgui_config('DEBUG', cast=bool, default=True)
 
-app = Starlette(debug=True)
+app = Starlette(debug=DEBUG_MODE)
 # Don't check the existence of the static folder because the wrong parent folder is used if the 
 # source code is parsed by sphinx. This would raise an exception and lead to failure of sphix.
 app.mount('/static', StaticFiles(directory='webinterface/statics', check_dir=False), name='static')
 app.add_middleware(AuthenticationMiddleware, backend=SessionAuthBackend())
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY, session_cookie="hermes_session")
-
-
-def get_user_information(request):
-    """Returns dictionary of values that should always be passed to the templates when the user is logged in."""
-    return { "logged_in": request.user.is_authenticated, "user": request.user.display_name, "is_admin": request.user.is_admin }
-
+app.mount("/modules", modules.modules_app)
+app.mount("/queue", queue.queue_app)
 
 async def async_run(cmd):
     """Executes the given command in a way compatible with ayncio."""
@@ -189,12 +190,12 @@ async def show_log(request):
     log_content=""
 
     if run_result[0]==0:
-        log_content=str(run_result[1].decode())
+        log_content=html.escape(str(run_result[1].decode()))
         line_list=log_content.split('\n')
         if len(line_list) and (not line_list[-1]):
             del line_list[-1]
 
-        log_content='<br>'.join(line_list)
+        log_content='<br />'.join(line_list)
     else:
         log_content="Error reading log information."
         if start_date or end_date:
@@ -266,7 +267,7 @@ async def rules_edit(request):
     rule=request.path_params["rule"]
     template = "rules_edit.html"
     context = {"request": request, "hermes_version": version.hermes_version, "page": "rules", "rules": config.hermes["rules"], 
-               "targets": config.hermes["targets"], "rule": rule, 
+               "targets": config.hermes["targets"], "modules": config.hermes["modules"], "rule": rule, 
                "alltags": tagslist.alltags, "sortedtags": tagslist.sortedtags}
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)    
@@ -287,11 +288,21 @@ async def rules_edit_post(request):
     if not editrule in config.hermes["rules"]:
         return PlainTextResponse('Rule does not exist anymore.')
 
-    config.hermes["rules"][editrule]["rule"]=form["rule"]
-    config.hermes["rules"][editrule]["target"]=form["target"]
-    config.hermes["rules"][editrule]["disabled"]=form["disabled"]
-    config.hermes["rules"][editrule]["contact"]=form["contact"]
-    config.hermes["rules"][editrule]["comment"]=form["comment"]
+    config.hermes["rules"][editrule]["rule"]=form.get("rule","False")
+    config.hermes["rules"][editrule]["target"]=form.get("target","")
+    config.hermes["rules"][editrule]["disabled"]=form.get("disabled","False")
+    config.hermes["rules"][editrule]["contact"]=form.get("contact","")
+    config.hermes["rules"][editrule]["comment"]=form.get("comment","")
+    config.hermes["rules"][editrule]["action"]=form.get("action","route")
+    config.hermes["rules"][editrule]["action_trigger"]=form.get("action_trigger","series")
+    config.hermes["rules"][editrule]["priority"]=form.get("priority","normal")
+    config.hermes["rules"][editrule]["processing_module"]=form.get("processing_module","")
+    config.hermes["rules"][editrule]["processing_settings"]=form.get("processing_settings","")
+    config.hermes["rules"][editrule]["notification_webhook"]=form.get("notification_webhook","")
+    config.hermes["rules"][editrule]["notification_payload"]=form.get("notification_payload","")
+    config.hermes["rules"][editrule]["notification_trigger_reception"]=form.get("notification_trigger_reception","False")
+    config.hermes["rules"][editrule]["notification_trigger_completion"]=form.get("notification_trigger_completion","False")
+    config.hermes["rules"][editrule]["notification_trigger_error"]=form.get("notification_trigger_error","False")
 
     try: 
         config.save_config()
@@ -900,16 +911,13 @@ async def server_error(request, exc):
 
 async def emergency_response(request):
     """Shows emergency message about invalid configuration."""
-    return PlainTextResponse('Webgui configuration is invalid. Check configuration and restart service.')
+    return PlainTextResponse('ERROR: Hermes configuration is invalid. Check configuration and restart webgui service.')
 
 def launch_emergency_app():
     """Launches a minimal application to inform the user about the incorrect configuration"""
     emergency_app = Starlette(debug=True)
     emergency_app = Router([
-        Route('/', endpoint=emergency_response, methods=['GET','POST']),
-        Route('/{any1}', endpoint=emergency_response, methods=['GET','POST']),
-        Route('/{any1}/{any2}', endpoint=emergency_response, methods=['GET','POST']),
-        Route('/{any1}/{any2}/{any3}', endpoint=emergency_response, methods=['GET','POST'])
+        Route('/{whatever:path}', endpoint=emergency_response, methods=['GET','POST']),
     ])
     uvicorn.run(emergency_app, host=WEBGUI_HOST, port=WEBGUI_PORT)
 

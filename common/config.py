@@ -11,6 +11,7 @@ configuration_filename  = os.path.realpath(os.path.dirname(os.path.realpath(__fi
 
 hermes_defaults = {
     'appliance_name'           : 'Hermes Router',
+    'port'                     :             104,
     'incoming_folder'          :    './incoming',
     'outgoing_folder'          :    './outgoing',
     'success_folder'           :     './success',
@@ -29,7 +30,8 @@ hermes_defaults = {
     'offpeak_start'            :         '22:00',
     'offpeak_end'              :         '06:00',
     'targets'                  :              {},
-    'rules'                    :              {}
+    'rules'                    :              {},
+    'modules'                  :              {}
 }
 
 hermes = {}
@@ -134,7 +136,7 @@ def write_configfile(json_content):
 
 def checkFolders():
     """Checks if all required folders for handling the DICOM files exist."""
-    for entry in ['incoming_folder','outgoing_folder','success_folder','error_folder','discard_folder']:
+    for entry in ['incoming_folder','outgoing_folder','success_folder','error_folder','discard_folder', 'processing_folder']:
         if not Path(hermes[entry]).exists():
             logger.error(f"Folder not found {hermes[entry]}")
             monitor.send_event(monitor.h_events.CONFIG_UPDATE, monitor.severity.CRITICAL, "Folders are missing")

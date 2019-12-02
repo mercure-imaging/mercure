@@ -84,18 +84,125 @@ body {
 
 .configtitle {
     margin-bottom: 10px !important;
+    margin-top: 10px;
+}
+
+.configtable {
+    margin-bottom: 15px;
 }
 
 .logviewer {
     font-family: monospace;
-    overflow-x: scroll;
-    overflow-y: scroll;
     display: inline-block;
     white-space: nowrap;
+    overflow-x: scroll;
+    overflow-y: scroll;
     width: 100%;
     height: 100%;
+    background-color: #0a0a0a;
+    color: #FFF;
+    padding: 8px;
+}
+
+.logviewer::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+  
+.logviewer::-webkit-scrollbar-track, .logviewer::-webkit-scrollbar-corner {
+    background-color: #0a0a0a;
+}
+   
+.logviewer::-webkit-scrollbar-thumb {
+    background: hsl(141, 71%, 48%);
+    border-radius: 10px;
+}
+  
+.logviewer::-webkit-scrollbar-thumb:hover {
+    background: #22c65b;
 }
 
 .logview {
     height: 70vh;
 }
+
+#tab-content div.panel {
+    display: none;
+}
+  
+#tab-content div.panel.is-active {
+    display: block;
+}
+
+.tabs li.is-active a {
+    border-bottom-color: hsl(141, 71%, 48%);
+    color: hsl(141, 71%, 48%);
+}
+
+.tabs.is-toggle li.is-active a {
+    background-color: #2f2f2f;
+    border-color: #2f2f2f;
+}
+
+.tabs li.is-disabled {
+    display: none;
+}
+
+.tabs li.is-disabled a:hover {
+    background-color: #FFF;
+}
+
+.switch[type='checkbox'] + label::before,
+.switch[type='checkbox']:checked + label:before {
+    outline: none !important;
+}
+
+.switch[type='checkbox'] + label::after,
+.switch[type='checkbox']:checked + label:after {
+    outline: none !important;
+}
+
+::selection {
+    color: none;
+    background: none;
+}
+
+.textarea::selection, .input::selection {
+    background-color: rgb(50, 115, 220);
+    color: #FFF;
+}
+
+.logviewer::selection {
+    background-color: rgb(50, 115, 220);
+    color: #FFF;
+}
+
+.ruleicon {
+    margin-left: 5px;
+    margin-right: 0px;    
+}
+
+.switch[type=checkbox]+label::before, .switch[type=checkbox]+label:before {
+    background-color: #dbdbdb;
+}
+
+.jobtable {
+    table-layout: fixed;
+}
+
+.jobtable td {
+    width: 20%;
+}
+
+.jobtable tr.is-selected {
+    background-color: hsl(141, 71%, 48%);
+}
+
+.jobstabs a {
+    width: 160px;
+}
+
+.tagback:not(body) {
+    background-color: #dbdbdb;
+}
+

@@ -1,0 +1,283 @@
+{% extends "base.html" %}
+
+{% block content %}
+<main role="main">
+    <div class="container">
+        <div class="columns">
+            <div class="column">
+                <h1 class="title">Queue Management</h1>
+            </div>
+            <div class="column">
+                <div class="container">
+                    <div class="field is-grouped is-pulled-right">
+                        <button class="button is-dark is-small has-tooltip-left has-tooltip-success" onclick="update()"
+                            data-tooltip="Refresh Now" id="refreshbtn">
+                            <i class="fas fa-sync"></i></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="notification is-danger" id="erroralert" style="display: none;">
+            <i class="fas fa-sync-alt"></i>&nbsp;&nbsp;Error: Unable to update queue status.
+        </div>        
+        <h5 class="title is-5 configtitle" style="margin-top: 22px;"><i
+                class="fas fa-power-off has-text-success"></i>&nbsp;&nbsp;Control</h5>
+        <div class="columns">
+            <div class="column" style="width: 100% !important;">
+                <table class="table is-fullwidth">
+                    <col width="30%">
+                    <col width="30%">
+                    <col width="40%">
+                    <tr>
+                        <td><span class="icon"><i class="fa fa-microchip"></i></span> Processing</td>
+                        <td>
+                            <div class="control">
+                                <div class="tags has-addons">
+                                    <span class="tag is-dark">Status</span>
+                                    <span class="tag tagback" id="processing_status">IDLE</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="field">
+                                <input id="processing_control" type="checkbox" name="processing_control"
+                                    class="switch is-rounded is-danger" onchange="suspendQueue()" {% if processing_suspended==True %}checked{% endif %}>
+                                <label for="processing_control">Suspend Queue</label>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><span class="icon"><i class="fa fa-directions"></i></span> Routing</td>
+                        <td>
+                            <div class="control">
+                                <div class="tags has-addons">
+                                    <span class="tag is-dark">Status</span>
+                                    <span class="tagback tag" id="routing_status">IDLE</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="field">
+                                <input id="routing_control" type="checkbox" name="routing_control"
+                                    class="switch is-rounded is-danger" onchange="suspendQueue()" {% if routing_suspended==True %}checked{% endif %}>
+                                <label for="routing_control">Suspend Queue</label>
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    <h5 class="title is-5 configtitle" style="margin-top: 60px;"><i
+            class="fas fa-list has-text-success"></i>&nbsp;&nbsp;Job List</h5>
+    <div class="columns">
+        <div class="column" style="width: 100% !important;">
+            <div class="tabs is-centered is-toggle is-toggle-rounded jobstabs" id="tabs">
+                <ul>
+                    <li data-tab="processing" class="is-active">
+                        <a>
+                            <span class="icon"><i class="fa fa-microchip"></i></span>
+                            <span>Processing</span>
+                        </a>
+                    </li>
+                    <li data-tab="routing">
+                        <a>
+                            <span class="icon"><i class="fas fa-directions"></i></span>
+                            <span>Routing</span>
+                        </a>
+                    </li>
+                    <li data-tab="fail">
+                        <a>
+                            <span class="icon"><i class="fas fa-bug"></i></span>
+                            <span>Failure</span>
+                        </a>
+                    </li>
+                    <li data-tab="archive">
+                        <a>
+                            <span class="icon"><i class="fas fa-archive"></i></span>
+                            <span>Archive</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+            <div id="tab-content">
+                <div class="panel is-active" data-content="processing">
+                    <table class="table is-narrow is-hoverable is-fullwidth jobtable" id="jobs_processing">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Module</th>
+                                <th>ACC</th>
+                                <th>MRN</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="panel" data-content="routing">
+                </div>
+            </div>
+        </div>
+    </div>
+    </div>
+</main>
+
+<script>
+
+    function update() {
+        update_jobs();
+        update_status();
+        $("#refreshbtn").blur();
+    }
+
+    function update_jobs() {
+        $.ajax({
+            type: 'GET',
+            url: '/queue/jobs/processing',
+            data: {},
+            dataType: 'json',
+            error: function() {
+                $('#erroralert').show();
+                $("#jobs_processing tbody tr").remove();
+            },            
+            success: function (data) {
+                $('#erroralert').hide();
+                $("#jobs_processing tbody tr").remove();
+                if (!Object.keys(data).length) {
+                    $("#jobs_processing").find('tbody').append("<tr><td>No jobs</td><td></td><td></td><td></td><td></td></tr>");
+                }
+                else {
+                    Object.keys(data).forEach(function (key) {
+                        var processingStyle = "";
+                        if (data[key]["Status"] == "Processing") {
+                            processingStyle = " class=\"is-selected\"";
+                        }
+                        addedRow = `<tr${processingStyle}><td>${key}</td><td>${data[key]["Module"]}</td><td>${data[key]["ACC"]}</td><td>${data[key]["MRN"]}</td><td>${data[key]["Status"]}</td></tr>`;
+                        $("#jobs_processing").find('tbody').append(addedRow);
+                    })
+                }
+            },
+            timeout: 3000 
+        });
+    }
+
+    function update_status() {
+        $.ajax({
+            type: 'GET',
+            url: '/queue/status',
+            data: {},
+            dataType: 'json',
+            error: function() {
+                $('#erroralert').show();
+                $("#jobs_processing tbody tr").remove();
+            },            
+            success: function (data) {
+                $('#erroralert').hide();
+
+                $('#processing_status').removeClass("is-success is-danger is-warning");
+                $('#routing_status').removeClass("is-success is-danger is-warning");
+
+                switch (data["processing_status"]) {
+                    case "Idle":
+                        $('#processing_status').text("IDLE");
+                        break;
+                    case "Processing":
+                        $('#processing_status').text("PROCESSING");
+                        $('#processing_status').addClass("is-success");
+                        break;
+                    case "Halted":
+                        $('#processing_status').text("HALTED");
+                        $('#processing_status').addClass("is-danger");
+                        break;
+                    case "Suspending":
+                        $('#processing_status').text("SUSPENDING");
+                        $('#processing_status').addClass("is-warning");
+                        break;
+                    default:
+                        $('#processing_status').text("UNKNOWN");
+                }
+
+                switch (data["routing_status"]) {
+                    case "Idle":
+                        $('#routing_status').text("IDLE");
+                        break;
+                    case "Processing":
+                        $('#routing_status').text("PROCESSING");
+                        $('#routing_status').addClass("is-success");
+                        break;
+                    case "Halted":
+                        $('#routing_status').text("HALTED");
+                        $('#routing_status').addClass("is-danger");
+                        break;
+                    case "Suspending":
+                        $('#routing_status').text("SUSPENDING");
+                        $('#routing_status').addClass("is-warning");
+                        break;
+                    default:
+                        $('#routing_status').text("UNKNOWN");
+                }
+                
+                if (data["processing_suspended"]=="True") {
+                    $('#processing_control').prop('checked', true);
+                } else {
+                    $('#processing_control').prop('checked', false);
+                }
+
+                if (data["routing_suspended"]=="True") {
+                    $('#routing_control').prop('checked', true);
+                } else {
+                    $('#routing_control').prop('checked', false);
+                }
+            },
+            timeout: 3000 
+        });
+    }
+
+    function suspendQueue() {
+        var suspend_processing=$('#processing_control').is(':checked');
+        var suspend_routing=$('#routing_control').is(':checked');
+        $.ajax({
+            type: 'POST',
+            url: '/queue/status',
+            data: { "suspend_processing": suspend_processing, "suspend_routing": suspend_routing },
+            dataType: 'json',
+            error: function() {
+                $('#erroralert').show();
+            },            
+            success: function (data) {
+                $('#erroralert').hide();
+                update();
+            },
+            timeout: 3000 
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        let cardToggles = document.getElementsByClassName('card-toggle');
+        for (let i = 0; i < cardToggles.length; i++) {
+            cardToggles[i].addEventListener('click', e => {
+                e.currentTarget.parentElement.parentElement.childNodes[3].classList.toggle('is-hidden');
+            });
+        }
+    });
+
+    $(document).ready(function () {
+        $('#tabs li').on('click', function () {
+            var tab = $(this).data('tab');
+
+            $('#tabs li').removeClass('is-active');
+            $(this).addClass('is-active');
+
+            $('#tab-content div.panel').removeClass('is-active');
+            $('div.panel[data-content="' + tab + '"]').addClass('is-active');
+        });
+
+        var updateTimer = setInterval(update, 60000);
+        update();
+    });
+
+</script>
+
+{% endblock %}

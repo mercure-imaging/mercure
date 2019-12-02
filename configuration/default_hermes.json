@@ -1,10 +1,12 @@
 {
     "appliance_name"          : "Hermes Router",
+    "port"                    :     104,
     "incoming_folder"         : "/home/hermes/hermes-data/incoming",
     "outgoing_folder"         : "/home/hermes/hermes-data/outgoing",
     "success_folder"          : "/home/hermes/hermes-data/success",
     "error_folder"            : "/home/hermes/hermes-data/error",
     "discard_folder"          : "/home/hermes/hermes-data/discard",
+    "processing_folder"       : "/home/hermes/hermes-data/processing",
     "bookkeeper"              : "0.0.0.0:8080",
     "graphite_ip"             :      "",
     "graphite_port"           :    2003,
@@ -20,5 +22,7 @@
     "targets": {
     },
     "rules": {
+    },
+    "modules": {
     }
 }

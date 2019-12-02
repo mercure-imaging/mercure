@@ -3,12 +3,27 @@
 {% block content %}
 <main role="main">
   <div class="container">
-    <h1 class="title">Routing Rules</h1>
+    <h1 class="title">DICOM Rules</h1>
     {% for x in rules %}
     <div class="card rulecard">
         <header class="card-header has-background-light" >
-            <p class="card-header-title card-toggle">
-                <span class="icon {% if rules[x]['disabled']!='True' %}has-text-success{% else %}has-text-grey-light{% endif %}"><i class="fas fa-share fa-lg"></i></span>&nbsp;&nbsp;{{ x }}
+            <p class="card-header-title card-toggle {% if rules[x]['disabled']=='True' %}has-text-grey-light{% endif %}">
+                <span class="icon {% if rules[x]['disabled']!='True' %}has-text-success{% else %}has-text-grey-light{% endif %} has-tooltip-left has-tooltip-success" data-tooltip=
+                    {% if rules[x]['action']=='route' %}"Routing Only"><i class="fas fa-directions
+                    {% elif rules[x]['action']=='both' %}"Processing & Routing"><i class="fas fa-layer-group
+                    {% elif rules[x]['action']=='process' %}"Processing Only"><i class="fas fa-microchip
+                    {% elif rules[x]['action']=='notification' %}"Notification Only"><i class="fas fa-bullhorn
+                    {% elif rules[x]['action']=='discard' %}"Force Discard"><i class="fas fa-ban                   
+                    {% else %}""><i class="fas fa-robot{% endif %}fa-lg"></i>
+                </span>&nbsp;&nbsp;{{ x }}<span style="margin-left: auto;"></span>
+                {% if rules[x]['priority']=='urgent' %}
+                <i class="fas fa-shipping-fast ruleicon"></i>
+                {% elif rules[x]['priority']=='offpeak' %}
+                <i class="fas fa-bed ruleicon"></i>
+                {% endif %}
+                {% if rules[x]['notification_webhook']!='' %}
+                <i class="fas fa-bell ruleicon"></i>
+                {% endif %}
             </p>
             <a class="card-header-icon card-toggle">
                 <i class="fa fa-angle-down"></i>
@@ -19,8 +34,12 @@
                 <table class="table is-narrow" style="margin-bottom: 8px;">
                 <col width="150">
                 <tr><td>Rule:</td><td>{{ rules[x]['rule'] }}</td></tr>
+                {% if (rules[x]['action']=='process') or (rules[x]['action']=='both') %}
+                <tr><td>Module:</td><td>{{ rules[x]['processing_module'] }}</td></tr>
+                {% endif %}
+                {% if (rules[x]['action']=='route') or (rules[x]['action']=='both') %}
                 <tr><td>Target:</td><td>{{ rules[x]['target'] }}</td></tr>
-                <tr><td>Disabled:</td><td>{{ rules[x]['disabled'] }}</td></tr>
+                {% endif %}
                 <tr><td>Contact:</td><td>{{ rules[x]['contact'] }}</td></tr>
                 <tr><td>Comment:</td><td>{{ rules[x]['comment'] }}</td></tr>
                 </table>

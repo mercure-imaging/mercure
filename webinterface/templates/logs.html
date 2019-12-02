@@ -4,56 +4,62 @@
 <main role="main">
   <div class="columns">
     <div class="column">
-        <h1 class="title">Logs</h1>
+      <h1 class="title">Logs</h1>
     </div>
     <div class="column">
       <div class="container">
         <div class="field is-grouped is-pulled-right">
           <label class="label">From:&nbsp;</label>
-          <div class="control" style="margin-right: 2px;"><input class="input is-small" type="date" id="startdate" value="{{start_date}}"></div>
+          <div class="control" style="margin-right: 2px;"><input class="input is-small" type="date" id="startdate"
+              value="{{start_date}}"></div>
           <div class="control"><input class="input is-small" type="time" id="starttime" value="{{start_time}}"></div>
           <label class="label">To:&nbsp;</label>
-          <div class="control" style="margin-right: 2px;"><input class="input is-small" type="date" id="enddate" value="{{end_date}}"></div>
+          <div class="control" style="margin-right: 2px;"><input class="input is-small" type="date" id="enddate"
+              value="{{end_date}}"></div>
           <div class="control"><input class="input is-small" type="time" id="endtime" value="{{end_time}}"></div>
           <button class="button is-dark is-small" onclick="refreshDate()">
-          <i class="fas fa-sync"></i></button>
+            <i class="fas fa-sync"></i></button>
         </div>
       </div>
     </div>
-  </div>  
-  <div class="columns">  
+  </div>
+  <div class="columns">
     <div class="column" style="width: 100% !important;">
-      <div class="logtabs tabs is-boxed">
+      <div class="logtabs tabs">
         <ul>
           {% for service in service_logs %}
-          <li title="{{service_logs[service]["systemd"]}}" {% if service_logs[service]["id"]==log_id %}class="is-active"{% endif %}><a href="/logs/{{service_logs[service]["id"]}}">{{ service_logs[service]["name"] }}</a></li>
+          <li title="{{service_logs[service]["systemd"]}}" {% if service_logs[service]["id"]==log_id %}class="is-active"
+            {% endif %}><a href="/logs/{{service_logs[service]["id"]}}">{{ service_logs[service]["name"] }}</a></li>
           {% endfor %}
         </ul>
-      </div>    
-      <div class="logview" >
-        <p class="logviewer is-full" id="logviewdiv">
-          {{log_content|safe}}
+      </div>
+      <div class="logview">
+        <p class="logviewer" id="logviewdiv">
+            {{log_content|safe}}
         </p>
       </div>
-    </div>    
-  </div>        
+    </div>
+  </div>
 </main>
 
 <script>
-function refreshDate(val) { 
-  var url = window.location.href.split('?')[0];
+  function refreshDate(val) {
+    var url = window.location.href.split('?')[0];
 
-  startDate=$("#startdate").val();
-  startTime=$("#starttime").val();
-  endDate=$("#enddate").val();
-  endTime=$("#endtime").val();
+    startDate = $("#startdate").val();
+    startTime = $("#starttime").val();
+    endDate = $("#enddate").val();
+    endTime = $("#endtime").val();
 
-  url += "?from="+startDate+"&from_time="+startTime+"&to="+endDate+"&to_time="+endTime
+    url += "?from=" + startDate + "&from_time=" + startTime + "&to=" + endDate + "&to_time=" + endTime
 
-  window.location.href = url;
-}
+    window.location.href = url;
+  }
 
-$("#logviewdiv").scrollTop($("#logviewdiv")[0].scrollHeight);
+  $(document).ready(function () {
+    $("#logviewdiv").scrollTop($("#logviewdiv")[0].scrollHeight);
+  });
+
 </script>
 
 {% endblock %}
