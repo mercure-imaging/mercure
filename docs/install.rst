@@ -22,6 +22,8 @@ You can perform these steps by copying the commands listed below into a bash she
     sudo adduser hermes
     ssh hermes@localhost
     git clone https://github.com/hermes-router/hermes.git
+    cd hermes
+    git checkout -b 0.1a
     cd ~/hermes/installation
     ./install.sh
     exit
