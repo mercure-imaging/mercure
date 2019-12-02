@@ -66,6 +66,7 @@ def dispatch(args):
     retry_max = config.hermes["retry_max"]
     retry_delay = config.hermes["retry_delay"]
 
+    # TODO: Sort list so that the oldest DICOMs get dispatched first
     with os.scandir(config.hermes["outgoing_folder"]) as it:
         for entry in it:
             if (

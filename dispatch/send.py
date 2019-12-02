@@ -74,7 +74,13 @@ def execute(
         # otherwise the dispatcher would pick it up again if the transfer is
         # still going on
         lock_file = Path(source_folder) / ".sending"
-        lock_file.touch()
+        try:
+            lock_file.touch()            
+        except:
+            send_event(h_events.PROCESSING, severity.ERROR, f"Error sending {series_uid} to {target_name}")
+            send_series_event(s_events.ERROR, series_uid, 0, target_name, "Unable to create lock file")
+            logger.exception(f"Unable to create lock file {lock_file.name}")            
+            return
 
         command = _create_command(target_info, source_folder)
         logger.debug(f"Running command {command}")

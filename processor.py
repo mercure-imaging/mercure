@@ -46,30 +46,15 @@ def terminate_process(signalNumber, frame):
     helper.trigger_terminate()
 
 
-def run_processor(args):
-    """Main processing function that is called every second."""
-    if helper.is_terminated():
-        return
-
+def search_folder(counter):
     helper.g_log('events.run', 1)
 
-    try:
-        config.read_config()
-    except Exception:
-        logger.exception("Unable to update configuration. Skipping processing.")
-        monitor.send_event(monitor.h_events.CONFIG_UPDATE,monitor.severity.WARNING,"Unable to update configuration (possibly locked)")
-        return
-
-    jobcount=0
     tasks={}
 
-    # Check the incoming folder for completed series. To this end, generate a map of all
-    # series in the folder with the timestamp of the latest DICOM file as value
     for entry in os.scandir(config.hermes['processing_folder']):        
         if entry.is_dir() and is_ready_for_processing(entry.path):
-            jobcount += 1
-            modificationTime=entry.stat().st_mtime
-            tasks[entry.path]=modificationTime
+            modification_time=entry.stat().st_mtime
+            tasks[entry.path]=modification_time
 
     #logger.info(f'Files found     = {filecount}')
     #logger.info(f'Series found    = {len(series)}')
@@ -79,15 +64,43 @@ def run_processor(args):
 
     # Process all complete series
 
+    if not len(tasks):
+        return False
+
     # TODO: Add priority sorting
-    for entry in sorted(tasks):
-        try:
-            process_series(entry)
-            pass
-        except Exception:
-            logger.exception(f'Problems while processing series {entry}')
-            monitor.send_series_event(monitor.s_events.ERROR, entry, 0, "", "Exception while processing")
-            monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, "Exception while processing series")
+
+    # Only process one case at a time because the processing might take a while and
+    # another instance might have processed the other entries already. So the folder
+    # needs to be refreshed each time
+    sorted_tasks=sorted(tasks)
+    task=sorted_tasks[0]
+
+    try:
+        process_series(task)
+        return True
+    except Exception:
+        logger.exception(f'Problems while processing series {task}')
+        monitor.send_series_event(monitor.s_events.ERROR, entry, 0, "", "Exception while processing")
+        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, "Exception while processing series")
+        return False
+
+
+def run_processor(args):
+    """Main processing function that is called every second."""
+    if helper.is_terminated():
+        return  
+
+    try:
+        config.read_config()
+    except Exception:
+        logger.exception("Unable to update configuration. Skipping processing.")
+        monitor.send_event(monitor.h_events.CONFIG_UPDATE,monitor.severity.WARNING,"Unable to update configuration (possibly locked)")
+        return
+
+    call_counter=0
+
+    while (search_folder(call_counter)):
+        call_counter += 1
         # If termination is requested, stop processing series after the active one has been completed
         if helper.is_terminated():
             return
