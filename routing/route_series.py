@@ -33,7 +33,7 @@ class FileLock:
             self.lockCreated=False
 
 
-def process_series(series_UID):
+def route_series(series_UID):
     """Processes the series with the given series UID from the incoming folder."""
     lock_file=Path(config.hermes['incoming_folder'] + '/' + str(series_UID) + '.lock')
 
@@ -272,7 +272,7 @@ def push_series_outgoing(fileList,series_UID,transfer_targets):
             return
 
 
-def process_error_files():
+def route_error_files():
     """
     Looks for error files, moves these files and the corresponding DICOM files to the error folder, 
     and sends an alert to the bookkeeper instance.

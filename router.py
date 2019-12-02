@@ -17,8 +17,8 @@ import common.helper as helper
 import common.config as config
 import common.monitor as monitor
 import common.version as version
-from routing.process_series import process_series
-from routing.process_series import process_error_files
+from routing.route_series import route_series
+from routing.route_series import route_error_files
 
 
 # NOTES: Currently, the router only implements series-level rules, i.e. the proxy rules will be executed
@@ -117,7 +117,7 @@ def runRouter(args):
     # Process all complete series
     for entry in sorted(completeSeries):
         try:
-            process_series(entry)
+            route_series(entry)
         except Exception:
             logger.exception(f'Problems while processing series {entry}')
             monitor.send_series_event(monitor.s_events.ERROR, entry, 0, "", "Exception while processing")
@@ -127,7 +127,7 @@ def runRouter(args):
             return
 
     if error_files_found:
-        process_error_files()
+        route_error_files()
 
 
 def exitRouter(args):
