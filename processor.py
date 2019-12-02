@@ -1,0 +1,146 @@
+"""
+processor.py
+============
+Hermes' processor that executes processing modules on DICOM series filtered for processing. 
+"""
+# Standard python includes
+import time
+import signal
+import os
+import sys
+import graphyte
+import logging
+import daiquiri
+
+# App-specific includes
+import common.helper as helper
+import common.config as config
+import common.monitor as monitor
+import common.version as version
+
+from process.status import is_ready_for_processing
+
+daiquiri.setup(
+    level=logging.INFO,
+    outputs=(
+        daiquiri.output.Stream(
+            formatter=daiquiri.formatter.ColorFormatter(
+                fmt="%(color)s%(levelname)-8.8s "
+                "%(name)s: %(message)s%(color_stop)s"
+            )
+        ),
+    ),
+)
+logger = daiquiri.getLogger("processor")
+
+
+def terminateProcess(signalNumber, frame):
+    """Triggers the shutdown of the service."""
+    helper.g_log('events.shutdown', 1)
+    logger.info('Shutdown requested')
+    monitor.send_event(monitor.h_events.SHUTDOWN_REQUEST, monitor.severity.INFO)
+    # Note: main_loop can be read here because it has been declared as global variable
+    if 'main_loop' in globals() and main_loop.is_running:
+        main_loop.stop()
+    helper.triggerTerminate()
+
+
+def runProcessor(args):
+    """Main processing function that is called every second."""
+    if helper.isTerminated():
+        return
+
+    helper.g_log('events.run', 1)
+
+    try:
+        config.read_config()
+    except Exception:
+        logger.exception("Unable to update configuration. Skipping processing.")
+        monitor.send_event(monitor.h_events.CONFIG_UPDATE,monitor.severity.WARNING,"Unable to update configuration (possibly locked)")
+        return
+
+    jobcount=0
+    tasks={}
+
+    # Check the incoming folder for completed series. To this end, generate a map of all
+    # series in the folder with the timestamp of the latest DICOM file as value
+    for entry in os.scandir(config.hermes['processing_folder']):
+        if entry.is_dir() and is_ready_for_processing(entry.path):
+            jobcount += 1
+            modificationTime=entry.stat().st_mtime
+            tasks[entry.path]=modificationTime
+
+    #logger.info(f'Files found     = {filecount}')
+    #logger.info(f'Series found    = {len(series)}')
+    #logger.info(f'Complete series = {len(completeSeries)}')
+    #helper.g_log('incoming.files', filecount)
+    #helper.g_log('incoming.series', len(series))
+
+    # Process all complete series
+    for entry in sorted(tasks):
+        try:
+            #process_series(entry)
+            pass
+        except Exception:
+            logger.exception(f'Problems while processing series {entry}')
+            monitor.send_series_event(monitor.s_events.ERROR, entry, 0, "", "Exception while processing")
+            monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, "Exception while processing series")
+        # If termination is requested, stop processing series after the active one has been completed
+        if helper.isTerminated():
+            return
+
+
+def exitProcessor(args):
+    """Callback function that is triggered when the process terminates. Stops the asyncio event loop."""
+    helper.loop.call_soon_threadsafe(helper.loop.stop)
+
+
+if __name__ == '__main__':
+    logger.info("")
+    logger.info(f"Hermes DICOM Processor ver {version.hermes_version}")
+    logger.info("-------------------------------")
+    logger.info("")
+
+    # Register system signals to be caught
+    signal.signal(signal.SIGINT,   terminateProcess)
+    signal.signal(signal.SIGTERM,  terminateProcess)
+
+    instance_name="main"
+
+    if len(sys.argv)>1:
+        instance_name=sys.argv[1]
+
+    logger.info(sys.version)
+    logger.info(f'Instance name = {instance_name}')
+    logger.info(f'Instance PID = {os.getpid()}')
+
+    # Read the configuration file and terminate if it cannot be read
+    try:
+        config.read_config()
+    except Exception:
+        logger.exception("Cannot start service. Going down.")
+        sys.exit(1)
+
+    monitor.configure('processor',instance_name,config.hermes['bookkeeper'])
+    monitor.send_event(monitor.h_events.BOOT,monitor.severity.INFO,f'PID = {os.getpid()}')
+
+    graphite_prefix='hermes.processor.'+instance_name
+    if len(config.hermes['graphite_ip']) > 0:
+        logger.info(f'Sending events to graphite server: {config.hermes["graphite_ip"]}')
+        graphyte.init(config.hermes['graphite_ip'], config.hermes['graphite_port'], prefix=graphite_prefix)
+
+    logger.info(f'Processing folder: {config.hermes["processing_folder"]}')
+
+    # Start the timer that will periodically trigger the scan of the incoming folder
+    global main_loop
+    main_loop = helper.RepeatedTimer(config.hermes['dispatcher_scan_interval'], runProcessor, exitProcessor, {})
+    main_loop.start()
+
+    helper.g_log('events.boot', 1)
+
+    # Start the asyncio event loop for asynchronous function calls
+    helper.loop.run_forever()
+
+    # Process will exit here once the asyncio loop has been stopped
+    monitor.send_event(monitor.h_events.SHUTDOWN, monitor.severity.INFO)
+    logger.info('Going down now')
