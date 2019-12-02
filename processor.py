@@ -19,6 +19,7 @@ import common.monitor as monitor
 import common.version as version
 
 from process.status import is_ready_for_processing
+from process.process_series import process_series
 
 daiquiri.setup(
     level=logging.INFO,
@@ -34,7 +35,7 @@ daiquiri.setup(
 logger = daiquiri.getLogger("processor")
 
 
-def terminateProcess(signalNumber, frame):
+def terminate_process(signalNumber, frame):
     """Triggers the shutdown of the service."""
     helper.g_log('events.shutdown', 1)
     logger.info('Shutdown requested')
@@ -42,12 +43,12 @@ def terminateProcess(signalNumber, frame):
     # Note: main_loop can be read here because it has been declared as global variable
     if 'main_loop' in globals() and main_loop.is_running:
         main_loop.stop()
-    helper.triggerTerminate()
+    helper.trigger_terminate()
 
 
-def runProcessor(args):
+def run_processor(args):
     """Main processing function that is called every second."""
-    if helper.isTerminated():
+    if helper.is_terminated():
         return
 
     helper.g_log('events.run', 1)
@@ -64,7 +65,7 @@ def runProcessor(args):
 
     # Check the incoming folder for completed series. To this end, generate a map of all
     # series in the folder with the timestamp of the latest DICOM file as value
-    for entry in os.scandir(config.hermes['processing_folder']):
+    for entry in os.scandir(config.hermes['processing_folder']):        
         if entry.is_dir() and is_ready_for_processing(entry.path):
             jobcount += 1
             modificationTime=entry.stat().st_mtime
@@ -77,20 +78,22 @@ def runProcessor(args):
     #helper.g_log('incoming.series', len(series))
 
     # Process all complete series
+
+    # TODO: Add priority sorting
     for entry in sorted(tasks):
         try:
-            #process_series(entry)
+            process_series(entry)
             pass
         except Exception:
             logger.exception(f'Problems while processing series {entry}')
             monitor.send_series_event(monitor.s_events.ERROR, entry, 0, "", "Exception while processing")
             monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, "Exception while processing series")
         # If termination is requested, stop processing series after the active one has been completed
-        if helper.isTerminated():
+        if helper.is_terminated():
             return
 
 
-def exitProcessor(args):
+def exit_processor(args):
     """Callback function that is triggered when the process terminates. Stops the asyncio event loop."""
     helper.loop.call_soon_threadsafe(helper.loop.stop)
 
@@ -102,8 +105,8 @@ if __name__ == '__main__':
     logger.info("")
 
     # Register system signals to be caught
-    signal.signal(signal.SIGINT,   terminateProcess)
-    signal.signal(signal.SIGTERM,  terminateProcess)
+    signal.signal(signal.SIGINT,   terminate_process)
+    signal.signal(signal.SIGTERM,  terminate_process)
 
     instance_name="main"
 
@@ -133,7 +136,7 @@ if __name__ == '__main__':
 
     # Start the timer that will periodically trigger the scan of the incoming folder
     global main_loop
-    main_loop = helper.RepeatedTimer(config.hermes['dispatcher_scan_interval'], runProcessor, exitProcessor, {})
+    main_loop = helper.RepeatedTimer(config.hermes['dispatcher_scan_interval'], run_processor, exit_processor, {})
     main_loop.start()
 
     helper.g_log('events.boot', 1)

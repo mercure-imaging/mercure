@@ -45,13 +45,8 @@ daiquiri.setup(
 )
 logger = daiquiri.getLogger("router")
 
-def receiveSignal(signalNumber, frame):
-    """Function for testing purpose only. Should be removed."""
-    logger.info(f'Received: {signalNumber}')
-    return
 
-
-def terminateProcess(signalNumber, frame):
+def terminate_process(signalNumber, frame):
     """Triggers the shutdown of the service."""
     helper.g_log('events.shutdown', 1)
     logger.info('Shutdown requested')
@@ -59,12 +54,12 @@ def terminateProcess(signalNumber, frame):
     # Note: main_loop can be read here because it has been declared as global variable
     if 'main_loop' in globals() and main_loop.is_running:
         main_loop.stop()
-    helper.triggerTerminate()
+    helper.trigger_terminate()
 
 
-def runRouter(args):
+def run_router(args):
     """Main processing function that is called every second."""
-    if helper.isTerminated():
+    if helper.is_terminated():
         return
 
     helper.g_log('events.run', 1)
@@ -123,14 +118,14 @@ def runRouter(args):
             monitor.send_series_event(monitor.s_events.ERROR, entry, 0, "", "Exception while processing")
             monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, "Exception while processing series")
         # If termination is requested, stop processing series after the active one has been completed
-        if helper.isTerminated():
+        if helper.is_terminated():
             return
 
     if error_files_found:
         route_error_files()
 
 
-def exitRouter(args):
+def exit_router(args):
     """Callback function that is triggered when the process terminates. Stops the asyncio event loop."""
     helper.loop.call_soon_threadsafe(helper.loop.stop)
 
@@ -142,21 +137,8 @@ if __name__ == '__main__':
     logger.info("")
 
     # Register system signals to be caught
-    signal.signal(signal.SIGINT,   terminateProcess)
-    signal.signal(signal.SIGQUIT,  receiveSignal)
-    signal.signal(signal.SIGILL,   receiveSignal)
-    signal.signal(signal.SIGTRAP,  receiveSignal)
-    signal.signal(signal.SIGABRT,  receiveSignal)
-    signal.signal(signal.SIGBUS,   receiveSignal)
-    signal.signal(signal.SIGFPE,   receiveSignal)
-    signal.signal(signal.SIGUSR1,  receiveSignal)
-    signal.signal(signal.SIGSEGV,  receiveSignal)
-    signal.signal(signal.SIGUSR2,  receiveSignal)
-    signal.signal(signal.SIGPIPE,  receiveSignal)
-    signal.signal(signal.SIGALRM,  receiveSignal)
-    signal.signal(signal.SIGTERM,  terminateProcess)
-    #signal.signal(signal.SIGHUP,  readConfiguration)
-    #signal.signal(signal.SIGKILL, receiveSignal)
+    signal.signal(signal.SIGINT,   terminate_process)
+    signal.signal(signal.SIGTERM,  terminate_process)
 
     instance_name="main"
 
@@ -188,7 +170,7 @@ if __name__ == '__main__':
 
     # Start the timer that will periodically trigger the scan of the incoming folder
     global main_loop
-    main_loop = helper.RepeatedTimer(config.hermes['router_scan_interval'], runRouter, exitRouter, {})
+    main_loop = helper.RepeatedTimer(config.hermes['router_scan_interval'], run_router, exit_router, {})
     main_loop.start()
 
     helper.g_log('events.boot', 1)

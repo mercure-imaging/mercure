@@ -10,7 +10,7 @@ import common.config as config
 import common.rule_evaluation as rule_evaluation
 import common.monitor as monitor
 
-logger = daiquiri.getLogger("process_series")
+logger = daiquiri.getLogger("route_series")
 
 
 class FileLock:

@@ -38,13 +38,7 @@ daiquiri.setup(
 logger = daiquiri.getLogger("cleaner")
 
 
-def receiveSignal(signalNumber, frame):
-    """Function for testing purpose only. Should be removed."""
-    logger.info("Received:", signalNumber)
-    return
-
-
-def terminateProcess(signalNumber, frame):
+def terminate_process(signalNumber, frame):
     """Triggers the shutdown of the service."""
     helper.g_log("events.shutdown", 1)
     logger.info("Shutdown requested")
@@ -52,12 +46,12 @@ def terminateProcess(signalNumber, frame):
     # Note: main_loop can be read here because it has been declared as global variable
     if "main_loop" in globals() and main_loop.is_running:
         main_loop.stop()
-    helper.triggerTerminate()
+    helper.trigger_terminate()
 
 
 def clean(args):
     """ Main entry function. """
-    if helper.isTerminated():
+    if helper.is_terminated():
         return
 
     helper.g_log("events.run", 1)
@@ -161,19 +155,8 @@ if __name__ == "__main__":
     logger.info("")
 
     # Register system signals to be caught
-    signal.signal(signal.SIGINT, terminateProcess)
-    signal.signal(signal.SIGQUIT, receiveSignal)
-    signal.signal(signal.SIGILL, receiveSignal)
-    signal.signal(signal.SIGTRAP, receiveSignal)
-    signal.signal(signal.SIGABRT, receiveSignal)
-    signal.signal(signal.SIGBUS, receiveSignal)
-    signal.signal(signal.SIGFPE, receiveSignal)
-    signal.signal(signal.SIGUSR1, receiveSignal)
-    signal.signal(signal.SIGSEGV, receiveSignal)
-    signal.signal(signal.SIGUSR2, receiveSignal)
-    signal.signal(signal.SIGPIPE, receiveSignal)
-    signal.signal(signal.SIGALRM, receiveSignal)
-    signal.signal(signal.SIGTERM, terminateProcess)
+    signal.signal(signal.SIGINT, terminate_process)
+    signal.signal(signal.SIGTERM, terminate_process)
 
     instance_name = "main"
 

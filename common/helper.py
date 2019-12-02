@@ -9,18 +9,18 @@ terminate = False
 loop = asyncio.get_event_loop()
 
 
-def triggerTerminate():
+def trigger_terminate():
     """Trigger that the processing loop should terminate after finishing the currently active task."""
     global terminate
     terminate = True
 
 
-def isTerminated():
+def is_terminated():
     """Checks if the process will terminate after the current task."""
     return terminate
 
 
-async def sendToGraphite(*args, **kwargs):
+async def send_to_graphite(*args, **kwargs):
     """Wrapper for asynchronous graphite call to avoid wait time of main loop."""
     if graphyte.default_sender == None:
         return
@@ -29,7 +29,7 @@ async def sendToGraphite(*args, **kwargs):
 
 def g_log(*args, **kwargs):
     """Sends diagnostic information to graphite (if configured)."""
-    asyncio.run_coroutine_threadsafe(sendToGraphite(*args, **kwargs), loop)
+    asyncio.run_coroutine_threadsafe(send_to_graphite(*args, **kwargs), loop)
 
 
 class RepeatedTimer(object):
