@@ -10,28 +10,31 @@ configuration_timestamp = 0
 configuration_filename  = os.path.realpath(os.path.dirname(os.path.realpath(__file__))+'/../configuration/hermes.json')
 
 hermes_defaults = {
-    'appliance_name'           : 'Hermes Router',
-    'port'                     :             104,
-    'incoming_folder'          :    './incoming',
-    'outgoing_folder'          :    './outgoing',
-    'success_folder'           :     './success',
-    'error_folder'             :       './error',
-    'discard_folder'           :     './discard',
-    'router_scan_interval'     :               1, # in seconds
-    'dispatcher_scan_interval' :               1, # in seconds
-    'cleaner_scan_interval'    :              60, # in seconds
-    'retention'                :          259200, # in seconds (3 days)
-    'retry_delay'              :             900, # in seconds (15 min)
-    'retry_max'                :               5,
-    'series_complete_trigger'  :              60, # in seconds
-    'graphite_ip'              :              '',
-    'graphite_port'            :            2003,
-    'bookkeeper'               :  '0.0.0.0:8080',
-    'offpeak_start'            :         '22:00',
-    'offpeak_end'              :         '06:00',
-    'targets'                  :              {},
-    'rules'                    :              {},
-    'modules'                  :              {}
+    'appliance_name'             : 'Hermes Router',
+    'port'                       :             104,
+    'incoming_folder'            :    './incoming',
+    'outgoing_folder'            :    './outgoing',
+    'success_folder'             :     './success',
+    'error_folder'               :       './error',
+    'discard_folder'             :     './discard',
+    'processing_folder'          :  './processing',
+    'router_scan_interval'       :               1, # in seconds
+    'dispatcher_scan_interval'   :               1, # in seconds
+    'cleaner_scan_interval'      :              60, # in seconds
+    'retention'                  :          259200, # in seconds (3 days)
+    'retry_delay'                :             900, # in seconds (15 min)
+    'retry_max'                  :               5,
+    'series_complete_trigger'    :              60, # in seconds
+    'study_complete_trigger'     :             300, # in seconds
+    'study_forcecomplete_trigger':            5400, # in seconds
+    'graphite_ip'                :              '',
+    'graphite_port'              :            2003,
+    'bookkeeper'                 :  '0.0.0.0:8080',
+    'offpeak_start'              :         '22:00',
+    'offpeak_end'                :         '06:00',
+    'targets'                    :              {},
+    'rules'                      :              {},
+    'modules'                    :              {}
 }
 
 hermes = {}

@@ -57,11 +57,13 @@
             <h5 class="title is-5 configtitle"><i class="fas fa-hourglass-end has-text-success"></i>&nbsp;&nbsp;Thresholds</h5>
             <table class="table is-narrow is-hoverable is-fullwidth configtable">
                 <col width="200px">
+                <tr><td>Series Completion:</td><td>{{config["series_complete_trigger"]}} sec</td></tr>
+                <tr><td>Study Completion:</td><td>{{config["study_complete_trigger"]}} sec</td></tr>                
+                <tr><td>Force Study Completion:</td><td>{{config["study_forcecomplete_trigger"]}} sec</td></tr>                
+                <tr><td>Retention Period:</td><td>{{config["retention"]}} sec</td></tr>
                 <tr><td>Router Interval:</td><td>{{config["router_scan_interval"]}} sec</td></tr>
-                <tr><td>Series Complete:</td><td>{{config["series_complete_trigger"]}} sec</td></tr>
                 <tr><td>Dispatcher Interval:</td><td>{{config["dispatcher_scan_interval"]}} sec</td></tr>
                 <tr><td>Cleaner Interval:</td><td>{{config["cleaner_scan_interval"]}} sec</td></tr>
-                <tr><td>Retention Period:</td><td>{{config["retention"]}} sec</td></tr>
             </table>            
         </div>
     </div>        
@@ -72,6 +74,7 @@
                 <col width="200px">
                 <tr><td>Incoming:</td><td>{{config["incoming_folder"]}}</td></tr>
                 <tr><td>Outgoing:</td><td>{{config["outgoing_folder"]}}</td></tr>
+                <tr><td>Processing:</td><td>{{config["processing_folder"]}}</td></tr>
                 <tr><td>Success:</td><td>{{config["success_folder"]}}</td></tr>
                 <tr><td>Error:</td><td>{{config["error_folder"]}}</td></tr>
                 <tr><td>Discard:</td><td>{{config["discard_folder"]}}</td></tr>

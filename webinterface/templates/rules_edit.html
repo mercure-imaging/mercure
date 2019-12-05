@@ -103,6 +103,25 @@
                             </div>
                         </div>
                     </div>
+                    <div class="field" id="study_trigger_field">
+                        <label class="label">Completion Criteria</label>
+                        <div class="field has-addons">
+                            <div class="select">
+                                <select name="study_trigger" id="study_trigger">
+                                    <option value="timeout"
+                                        {% if rules[rule]['study_trigger_condition']=='timeout' %}selected{% endif%}>Timeout Reached
+                                    </option>
+                                    <option value="received_series"
+                                        {% if rules[rule]['study_trigger_condition']=='received_series' %}selected{% endif%}>Specified Series Received
+                                    </option>
+                                </select>
+                            </div>
+                            <div class="control is-expanded" style="margin-left: 10px;">
+                                <input name="study_trigger_input" id="study_trigger_input" pattern="[^{}\x22]+" class="input" autocomplete='off'
+                                    type="text" placeholder="Series required for completion" value="">
+                            </div>    
+                        </div>
+                    </div>                    
                     <div class="field">
                         <label class="label">Priority</label>
                         <div class="select">
@@ -407,7 +426,29 @@
             }
         });
 
+        $('#action_trigger').change(function () {
+            var action_trigger = $(this).children("option:selected").val();
+
+            if (action_trigger == 'series') {
+                $('#study_trigger_field').hide();
+            } else {
+                $('#study_trigger_field').show();
+            }            
+        });
+
+        $('#study_trigger').change(function () {
+            var study_trigger = $(this).children("option:selected").val();
+
+            if (study_trigger == 'timeout') {
+                $('#study_trigger_input').hide();
+            } else {
+                $('#study_trigger_input').show();
+            }            
+        });
+        
         $("#action").trigger('change');
+        $("#action_trigger").trigger('change');
+        $("#study_trigger").trigger('change');
 
         var dropdown = document.querySelector('.dropdown');
         dropdown.addEventListener('click', function (event) {

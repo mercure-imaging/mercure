@@ -17,12 +17,12 @@
                     {% else %}""><i class="fas fa-robot{% endif %}fa-lg"></i>
                 </span>&nbsp;&nbsp;{{ x }}<span style="margin-left: auto;"></span>
                 {% if rules[x]['priority']=='urgent' %}
-                <i class="fas fa-shipping-fast ruleicon"></i>
+                <span class="has-tooltip-right has-tooltip-success" data-tooltip="Urgent Processing"><i class="fas fa-shipping-fast ruleicon"></i></span>
                 {% elif rules[x]['priority']=='offpeak' %}
-                <i class="fas fa-bed ruleicon"></i>
+                <span class="has-tooltip-right has-tooltip-success" data-tooltip="Off-Peak Processing"><i class="fas fa-bed ruleicon"></i></span>
                 {% endif %}
                 {% if rules[x]['notification_webhook']!='' %}
-                <i class="fas fa-bell ruleicon"></i>
+                <span class="has-tooltip-right has-tooltip-success" data-tooltip="Sending Notification"><i class="fas fa-bell ruleicon"></i></span>
                 {% endif %}
             </p>
             <a class="card-header-icon card-toggle">
