@@ -10,7 +10,7 @@ configuration_timestamp = 0
 configuration_filename  = os.path.realpath(os.path.dirname(os.path.realpath(__file__))+'/../configuration/hermes.json')
 
 hermes_defaults = {
-    'appliance_name'             : 'Hermes Router',
+    'appliance_name'             :        'master',
     'port'                       :             104,
     'incoming_folder'            :    './incoming',
     'outgoing_folder'            :    './outgoing',

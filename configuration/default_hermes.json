@@ -1,5 +1,5 @@
 {
-    "appliance_name"          : "Hermes Router",
+    "appliance_name"          : "master",
     "port"                    :     104,
     "incoming_folder"         : "/home/hermes/hermes-data/incoming",
     "outgoing_folder"         : "/home/hermes/hermes-data/outgoing",

@@ -11,6 +11,7 @@ import sys
 import graphyte
 import logging
 import daiquiri
+from pathlib import Path
 
 # App-specific includes
 import common.helper as helper
@@ -46,7 +47,13 @@ def terminate_process(signalNumber, frame):
     helper.trigger_terminate()
 
 
+processor_lockfile=Path("")
+processor_is_locked=False
+
 def search_folder(counter):
+    global processor_lockfile
+    global processor_is_locked
+
     helper.g_log('events.run', 1)
 
     tasks={}
@@ -55,6 +62,16 @@ def search_folder(counter):
         if entry.is_dir() and is_ready_for_processing(entry.path):
             modification_time=entry.stat().st_mtime
             tasks[entry.path]=modification_time
+
+    if processor_lockfile.exists():
+        if not processor_is_locked:
+            processor_is_locked=True
+            logger.info("Processing halted")
+        return False
+    else:
+        if processor_is_locked:
+            processor_is_locked=False
+            logger.info("Processing resumed")
 
     #logger.info(f'Files found     = {filecount}')
     #logger.info(f'Series found    = {len(series)}')
@@ -126,10 +143,6 @@ if __name__ == '__main__':
     if len(sys.argv)>1:
         instance_name=sys.argv[1]
 
-    logger.info(sys.version)
-    logger.info(f'Instance name = {instance_name}')
-    logger.info(f'Instance PID = {os.getpid()}')
-
     # Read the configuration file and terminate if it cannot be read
     try:
         config.read_config()
@@ -137,15 +150,23 @@ if __name__ == '__main__':
         logger.exception("Cannot start service. Going down.")
         sys.exit(1)
 
+    appliance_name=config.hermes['appliance_name']
+
+    logger.info(f'Appliance name = {appliance_name}')
+    logger.info(f'Instance  name = {instance_name}')
+    logger.info(f'Instance  PID  = {os.getpid()}')
+    logger.info(sys.version)
+
     monitor.configure('processor',instance_name,config.hermes['bookkeeper'])
     monitor.send_event(monitor.h_events.BOOT,monitor.severity.INFO,f'PID = {os.getpid()}')
 
-    graphite_prefix='hermes.processor.'+instance_name
+    graphite_prefix='hermes.'+appliance_name+'.processor.'+instance_name
     if len(config.hermes['graphite_ip']) > 0:
         logger.info(f'Sending events to graphite server: {config.hermes["graphite_ip"]}')
         graphyte.init(config.hermes['graphite_ip'], config.hermes['graphite_port'], prefix=graphite_prefix)
 
     logger.info(f'Processing folder: {config.hermes["processing_folder"]}')
+    processor_lockfile=Path(config.hermes['processing_folder'] + '/HALT')
 
     # Start the timer that will periodically trigger the scan of the incoming folder
     global main_loop

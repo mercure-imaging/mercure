@@ -67,7 +67,7 @@ daiquiri.setup(
         ),
     ),
 )
-logger = daiquiri.getLogger("router")
+logger = daiquiri.getLogger("webgui")
 
 
 class ExtendedUser(SimpleUser):
