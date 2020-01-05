@@ -63,6 +63,7 @@ def search_folder(counter):
             modification_time=entry.stat().st_mtime
             tasks[entry.path]=modification_time
 
+    # Check if processing has been suspended via the UI
     if processor_lockfile.exists():
         if not processor_is_locked:
             processor_is_locked=True
@@ -73,27 +74,22 @@ def search_folder(counter):
             processor_is_locked=False
             logger.info("Processing resumed")
 
-    #logger.info(f'Files found     = {filecount}')
-    #logger.info(f'Series found    = {len(series)}')
-    #logger.info(f'Complete series = {len(completeSeries)}')
-    #helper.g_log('incoming.files', filecount)
-    #helper.g_log('incoming.series', len(series))
-
-    # Process all complete series
-
+    # Return if no tasks have been found
     if not len(tasks):
         return False
 
-    # TODO: Add priority sorting
+    sorted_tasks=sorted(tasks)
+    # TODO: Add priority sorting. However, do not honor the priority flag for every third run
+    #       so that stagnation of cases is avoided
 
     # Only process one case at a time because the processing might take a while and
     # another instance might have processed the other entries already. So the folder
     # needs to be refreshed each time
-    sorted_tasks=sorted(tasks)
     task=sorted_tasks[0]
 
     try:
         process_series(task)
+        # Return true, so that the parent function will trigger another search of the folder
         return True
     except Exception:
         logger.exception(f'Problems while processing series {task}')

@@ -2,6 +2,7 @@ import json
 import os
 from pathlib import Path
 import common.monitor as monitor
+import common.helper as helper
 import daiquiri
 
 logger = daiquiri.getLogger("config")
@@ -107,6 +108,11 @@ def save_config():
     if lock_file.exists():
         raise ResourceWarning(f"Configuration file locked: {lock_file}")
 
+    try:
+        lock=helper.FileLock(lock_file)
+    except:
+        raise ResourceWarning(f"Unable to lock configuration file: {lock_file}")   
+
     with open(configuration_file, "w") as json_file:
         json.dump(hermes,json_file, indent=4)
 
@@ -119,6 +125,14 @@ def save_config():
     monitor.send_event(monitor.h_events.CONFIG_UPDATE, monitor.severity.INFO, "Saved new configuration.")
     logger.info(f"Stored configuration into: {configuration_file}")
 
+    try:
+        lock.free()
+    except:
+        # Can't delete lock file, so something must be seriously wrong
+        logger.error(f'Unable to remove lock file {lock_file}')
+        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Unable to remove lock file {lock_file}')
+        return
+
 
 def write_configfile(json_content):
     """Rewrites the config file using the JSON data passed as argument. Used by the config editor of the webgui."""
@@ -130,11 +144,24 @@ def write_configfile(json_content):
     if lock_file.exists():
         raise ResourceWarning(f"Configuration file locked: {lock_file}")
 
+    try:
+        lock=helper.FileLock(lock_file)
+    except:
+        raise ResourceWarning(f"Unable to lock configuration file: {lock_file}")   
+
     with open(configuration_file, "w") as json_file:
         json.dump(json_content, json_file, indent=4)
 
     monitor.send_event(monitor.h_events.CONFIG_UPDATE, monitor.severity.INFO, "Wrote configuration file.")
     logger.info(f"Wrote configuration into: {configuration_file}")
+
+    try:
+        lock.free()
+    except:
+        # Can't delete lock file, so something must be seriously wrong
+        logger.error(f'Unable to remove lock file {lock_file}')
+        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Unable to remove lock file {lock_file}')
+        return
 
 
 def checkFolders():

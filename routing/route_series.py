@@ -9,28 +9,9 @@ import daiquiri
 import common.config as config
 import common.rule_evaluation as rule_evaluation
 import common.monitor as monitor
+import common.helper as helper
 
 logger = daiquiri.getLogger("route_series")
-
-
-class FileLock:
-    """Helper class that implements a file lock. The lock file will be removed also from the destructor so that
-       no spurious lock files remain if exceptions are raised."""
-    def __init__(self, path_for_lockfile):
-        self.lockCreated=True
-        self.lockfile=path_for_lockfile
-        self.lockfile.touch()
-
-    # Destructor to ensure that the lock file gets deleted
-    # if the calling function is left somewhere as result
-    # of an unhandled exception
-    def __del__(self):
-        self.free()
-
-    def free(self):
-        if self.lockCreated:
-            self.lockfile.unlink()
-            self.lockCreated=False
 
 
 def route_series(series_UID):
@@ -42,7 +23,7 @@ def route_series(series_UID):
         return
 
     try:
-        lock=FileLock(lock_file)
+        lock=helper.FileLock(lock_file)
     except:
         # Can't create lock file, so something must be seriously wrong
         logger.error(f'Unable to create lock file {lock_file}')
@@ -149,7 +130,7 @@ def push_series_discard(fileList,series_UID):
     # the DICOM series in the incoming folder has already been locked in the parent function.
     try:
         lock_file=Path(discard_path + '/lock')
-        lock=FileLock(lock_file)
+        lock=helper.FileLock(lock_file)
     except:
         # Can't create lock file, so something must be seriously wrong
         logger.error(f'Unable to create lock file {lock_file}')
@@ -218,7 +199,7 @@ def push_series_outgoing(fileList,series_UID,transfer_targets):
 
         try:
             lock_file=Path(folder_name + '/lock')
-            lock=FileLock(lock_file)
+            lock=helper.FileLock(lock_file)
         except:
             # Can't create lock file, so something must be seriously wrong
             logger.error(f'Unable to create lock file {lock_file}')
@@ -286,7 +267,7 @@ def route_error_files():
             if lock_file.exists():
                 continue
             try:
-                lock=FileLock(lock_file)
+                lock=helper.FileLock(lock_file)
             except:
                 continue
 

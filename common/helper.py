@@ -69,3 +69,23 @@ class RepeatedTimer(object):
         self._timer.cancel()
         self.is_running = False
         self.exit_function(*self.args, **self.kwargs)
+
+
+class FileLock:
+    """Helper class that implements a file lock. The lock file will be removed also from the destructor so that
+       no spurious lock files remain if exceptions are raised."""
+    def __init__(self, path_for_lockfile):
+        self.lockCreated=True
+        self.lockfile=path_for_lockfile
+        self.lockfile.touch()
+
+    # Destructor to ensure that the lock file gets deleted
+    # if the calling function is left somewhere as result
+    # of an unhandled exception
+    def __del__(self):
+        self.free()
+
+    def free(self):
+        if self.lockCreated:
+            self.lockfile.unlink()
+            self.lockCreated=False
