@@ -15,10 +15,10 @@ def replace_tags(rule,tags):
     # Run the substitue operation manually instead of using
     # the standard string function to enforce that the values
     # read from the tags are treated as strings by default
-    logger.info(rule)
-
-    while len(rule)>0:
-        opening=rule.find("@")
+    tags_found = []  
+    i=0
+    while i < len(rule):
+        opening=rule.find("@",i)
         if opening<0:
             break
         closing=rule.find("@",opening+1)
@@ -26,10 +26,12 @@ def replace_tags(rule,tags):
             break
         tagstring=rule[opening+1:closing]
         if tagstring in tags:
-            tagvalue=tags[tagstring]    
-        else:
-            tagvalue="MissingTag"
-        rule=rule.replace("@"+tagstring+"@","'"+tagvalue+"'")
+            tags_found.append(tagstring)
+        i=closing+1
+
+    for tag in tags_found:
+        rule=rule.replace("@"+tag+"@","'"+tags[tag]+"'")
+
     return rule
 
 
@@ -70,8 +72,13 @@ def test_rule(rule,tags):
 
 
 #if __name__ == "__main__":
-#    result=parse_rule(sys.argv[1],{ "ManufacturerModelName": "Trio" })
-#    logger.info(result)
-#    sys.exit(result)
+#    tags = { "Tag1": "One", "TestTag": "Two", "AnotherTag": "Three" }
+#    result = "('Tr' in @Tag1@) | (@Tag1@ == 'Trio') @Three@ @AnotherTag@"
+#    parsed=replace_tags(result,tags)
+#    print(result)
+#    print(parsed)
+
+    #result=parse_rule(sys.argv[1],{ "ManufacturerModelName": "Trio" })
+    #sys.exit(result)
 
 # Example: "('Tr' in @ManufacturerModelName@) | (@ManufacturerModelName@ == 'Trio')"
