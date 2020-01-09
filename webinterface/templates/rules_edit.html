@@ -56,9 +56,9 @@
                                     <i class="fas fa-cogs "></i>
                                 </button>
                             </div>
-                            <div class="control is-expanded">
-                                <input name="rule" id="rule" pattern="[^{}\x22]+" class="input" autocomplete='off'
-                                    type="text" placeholder="Routing rule" value="{{rules[rule]['rule']}}">
+                            <div class="control is-expanded">                                
+                                <textarea rows="1" name="rule" id="rule" class="textarea" autocomplete='off' onkeyup="this.value = this.value.replace(/[{}\x22\n]/g, '')"
+                                    type="text" placeholder="Routing rule" style="border-top-left-radius: 0px; border-bottom-left-radius: 0px; padding-top: 5px; padding-bottom: 5px; min-height: 36px;">{{rules[rule]['rule']}}</textarea>
                             </div>
                         </div>
                     </div>
@@ -392,8 +392,14 @@
         });
     });
 
+    $('textarea').on('input', function() {
+        $(this).outerHeight(36).outerHeight(this.scrollHeight+2);
+    });
+
     $(document).ready(function () {
         var quickviews = bulmaQuickview.attach();
+
+        $('#rule').outerHeight($('#rule').prop('scrollHeight')+2);
 
         $('#tabs li').on('click', function () {
             var tab = $(this).data('tab');
