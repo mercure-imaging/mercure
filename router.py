@@ -132,8 +132,8 @@ def exit_router(args):
 
 if __name__ == '__main__':
     logger.info("")
-    logger.info(f"Hermes DICOM Router ver {version.hermes_version}")
-    logger.info("----------------------------")
+    logger.info(f"mercure DICOM Router ver {version.mercure_version}")
+    logger.info("-----------------------------")
     logger.info("")
 
     # Register system signals to be caught

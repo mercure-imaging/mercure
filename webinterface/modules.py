@@ -44,7 +44,7 @@ async def show_modules(request):
         used_modules[used_module]=rule
 
     template = "modules.html"
-    context = {"request": request, "hermes_version": version.hermes_version, "page": "modules", 
+    context = {"request": request, "mercure_version": version.mercure_version, "page": "modules", 
                "modules": config.hermes["modules"], "used_modules": used_modules}
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)

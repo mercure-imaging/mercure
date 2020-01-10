@@ -1,8 +1,8 @@
 #!/bin/bash
 
-## Startup script for Hermes' DICOM receive service
-echo "Hermes DICOM receiver"
-echo "---------------------"
+## Startup script for mercure's DICOM receive service
+echo "mercure DICOM receiver"
+echo "----------------------"
 echo ""
 
 binary=bin/getdcmtags

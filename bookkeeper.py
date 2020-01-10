@@ -329,8 +329,8 @@ async def post_series_event(request):
 
 if __name__ == '__main__':
     logger.info("")
-    logger.info(f"Hermes Bookkeeper ver {version.hermes_version}")
-    logger.info("----------------------------")
+    logger.info(f"mercure Bookkeeper ver {version.mercure_version}")
+    logger.info("-----------------------------")
     logger.info("")
 
     uvicorn.run(app, host=BOOKKEEPER_HOST, port=BOOKKEEPER_PORT)

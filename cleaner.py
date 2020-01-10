@@ -150,8 +150,8 @@ def exit_cleaner(args):
 
 if __name__ == "__main__":
     logger.info("")
-    logger.info(f"Hermes DICOM Cleaner ver {version.hermes_version}")
-    logger.info("----------------------------")
+    logger.info(f"mercure DICOM Cleaner ver {version.mercure_version}")
+    logger.info("-----------------------------")
     logger.info("")
 
     # Register system signals to be caught

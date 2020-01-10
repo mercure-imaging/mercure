@@ -53,7 +53,7 @@ async def show_queues(request):
         routing_suspended=True    
 
     template = "queue.html"
-    context = {"request": request, "hermes_version": version.hermes_version, "page": "queue",
+    context = {"request": request, "mercure_version": version.mercure_version, "page": "queue",
                "processing_suspended": processing_suspended, "routing_suspended": routing_suspended }
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)

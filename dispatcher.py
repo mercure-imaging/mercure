@@ -90,8 +90,8 @@ def exit_dispatcher(args):
 
 if __name__ == "__main__":
     logger.info("")
-    logger.info(f"Hermes DICOM Dispatcher ver {version.hermes_version}")
-    logger.info("----------------------------")
+    logger.info(f"mercure DICOM Dispatcher ver {version.mercure_version}")
+    logger.info("-----------------------------")
     logger.info("")
 
     # Register system signals to be caught

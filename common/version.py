@@ -1,1 +1,1 @@
-hermes_version = "0.2a"
+mercure_version = "0.2a"

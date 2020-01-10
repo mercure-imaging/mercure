@@ -126,8 +126,8 @@ def exit_processor(args):
 
 if __name__ == '__main__':
     logger.info("")
-    logger.info(f"Hermes DICOM Processor ver {version.hermes_version}")
-    logger.info("-------------------------------")
+    logger.info(f"mercure DICOM Processor ver {version.mercure_version}")
+    logger.info("--------------------------------")
     logger.info("")
 
     # Register system signals to be caught
@@ -156,7 +156,7 @@ if __name__ == '__main__':
     monitor.configure('processor',instance_name,config.hermes['bookkeeper'])
     monitor.send_event(monitor.h_events.BOOT,monitor.severity.INFO,f'PID = {os.getpid()}')
 
-    graphite_prefix='hermes.'+appliance_name+'.processor.'+instance_name
+    graphite_prefix='mercure.'+appliance_name+'.processor.'+instance_name
     if len(config.hermes['graphite_ip']) > 0:
         logger.info(f'Sending events to graphite server: {config.hermes["graphite_ip"]}')
         graphyte.init(config.hermes['graphite_ip'], config.hermes['graphite_port'], prefix=graphite_prefix)
