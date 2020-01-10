@@ -144,7 +144,7 @@ bool writeTagsFile(OFString dcmFile, OFString originalFile)
     INSERTTAG("ProtocolName",                  tagProtocolName,                  "COR T1 PIT(POST)");
     INSERTTAG("RetrieveAETitle",               tagRetrieveAETitle,               "STORESCP");
     INSERTTAG("StationAETitle",                tagStationAETitle,                "ANY-SCP");
-    INSERTTAG("Manufacturer",                  tagManufacturer,                  "HERMES");
+    INSERTTAG("Manufacturer",                  tagManufacturer,                  "mercure");
     INSERTTAG("ManufacturerModelName",         tagManufacturerModelName,         "Router");
     INSERTTAG("StudyDescription",              tagStudyDescription,              "NEURO^HEAD");
     INSERTTAG("CodeValue",                     tagCodeValue,                     "IMG11291");
@@ -172,7 +172,7 @@ bool writeTagsFile(OFString dcmFile, OFString originalFile)
     INSERTTAG("StationName",                   tagStationName,                   "MR20492");
     INSERTTAG("DeviceSerialNumber",            tagDeviceSerialNumber,            "12345");
     INSERTTAG("DeviceUID",                     tagDeviceUID,                     "1.2.276.0.7230010.3.1.4.8323329.22517.1564764826.40200");
-    INSERTTAG("SoftwareVersions",              tagSoftwareVersions,              "hermes MR A10");
+    INSERTTAG("SoftwareVersions",              tagSoftwareVersions,              "mercure MR A10");
     INSERTTAG("ContrastBolusAgent",            tagContrastBolusAgent,            "8.0 ML JUICE");
     INSERTTAG("ImageComments",                 tagImageComments,                 "Comment on image");
     INSERTTAG("SliceThickness",                tagSliceThickness,                "3");

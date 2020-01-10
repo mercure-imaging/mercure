@@ -16,7 +16,7 @@ logger = daiquiri.getLogger("route_series")
 
 def route_series(series_UID):
     """Processes the series with the given series UID from the incoming folder."""
-    lock_file=Path(config.hermes['incoming_folder'] + '/' + str(series_UID) + '.lock')
+    lock_file=Path(config.mercure['incoming_folder'] + '/' + str(series_UID) + '.lock')
 
     if lock_file.exists():
         # Series is locked, so another instance might be working on it
@@ -36,7 +36,7 @@ def route_series(series_UID):
     seriesPrefix=series_UID+"#"
 
     # Collect all files belonging to the series
-    for entry in os.scandir(config.hermes['incoming_folder']):
+    for entry in os.scandir(config.mercure['incoming_folder']):
             if entry.name.endswith(".tags") and entry.name.startswith(seriesPrefix) and not entry.is_dir():
                 stemName=entry.name[:-5]
                 fileList.append(stemName)
@@ -44,7 +44,7 @@ def route_series(series_UID):
     logger.info("DICOM files found: "+str(len(fileList)))
 
     # Use the tags file from the first slice for evaluating the routing rules
-    tagsMasterFile=Path(config.hermes['incoming_folder'] + '/' + fileList[0] + ".tags")
+    tagsMasterFile=Path(config.mercure['incoming_folder'] + '/' + fileList[0] + ".tags")
     if not tagsMasterFile.exists():
         logger.error(f'Missing file! {tagsMasterFile.name}')
         monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Missing file {tagsMasterFile.name}')
@@ -85,14 +85,14 @@ def get_routing_targets(tagList):
     """Evaluates the routing rules and returns a list with the desired targets."""
     selected_targets = {}
 
-    for current_rule in config.hermes["rules"]:
+    for current_rule in config.mercure["rules"]:
         try:
-            if config.hermes["rules"][current_rule].get("disabled","False")=="True":
+            if config.mercure["rules"][current_rule].get("disabled","False")=="True":
                 continue
             if current_rule in selected_targets:
                 continue
-            if rule_evaluation.parse_rule(config.hermes["rules"][current_rule].get("rule","False"),tagList):
-                target=config.hermes["rules"][current_rule].get("target","")
+            if rule_evaluation.parse_rule(config.mercure["rules"][current_rule].get("rule","False"),tagList):
+                target=config.mercure["rules"][current_rule].get("target","")
                 if target:
                     selected_targets[target]=current_rule
         except Exception as e:
@@ -110,9 +110,9 @@ def push_series_discard(fileList,series_UID):
     """Discards the series by moving all files into the "discard" folder, which is periodically cleared."""
     # Define the source and target folder. Use UUID as name for the target folder in the 
     # discard directory to avoid collisions
-    discard_path  =config.hermes['discard_folder']  + '/' + str(uuid.uuid1())
+    discard_path  =config.mercure['discard_folder']  + '/' + str(uuid.uuid1())
     discard_folder=discard_path + '/'
-    source_folder =config.hermes['incoming_folder'] + '/'
+    source_folder =config.mercure['incoming_folder'] + '/'
 
     # Create subfolder in the discard directory and validate that is has been created
     try:
@@ -162,7 +162,7 @@ def push_series_discard(fileList,series_UID):
 
 def push_series_outgoing(fileList,series_UID,transfer_targets):
     """Move the DICOM files of the series to a separate subfolder for each target in the outgoing folder."""
-    source_folder=config.hermes['incoming_folder'] + '/'
+    source_folder=config.mercure['incoming_folder'] + '/'
 
     total_targets=len(transfer_targets)
     current_target=0
@@ -171,7 +171,7 @@ def push_series_outgoing(fileList,series_UID,transfer_targets):
 
         current_target=current_target+1
 
-        if not target in config.hermes["targets"]:
+        if not target in config.mercure["targets"]:
             logger.error(f"Invalid target selected {target}")
             monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Invalid target selected {target}")
             continue
@@ -182,7 +182,7 @@ def push_series_outgoing(fileList,series_UID,transfer_targets):
         if current_target==total_targets:
             move_operation=True
 
-        folder_name=config.hermes['outgoing_folder'] + '/' + str(uuid.uuid1())
+        folder_name=config.mercure['outgoing_folder'] + '/' + str(uuid.uuid1())
         target_folder=folder_name+"/"
 
         try:
@@ -209,10 +209,10 @@ def push_series_outgoing(fileList,series_UID,transfer_targets):
         # Generate target file target.json
         target_filename = target_folder + "target.json"
         target_json = {}
-        target_json["target_ip"]        =config.hermes["targets"][target]["ip"]
-        target_json["target_port"]      =config.hermes["targets"][target]["port"]
-        target_json["target_aet_target"]=config.hermes["targets"][target].get("aet_target","ANY-SCP")
-        target_json["target_aet_source"]=config.hermes["targets"][target].get("aet_source","HERMES")
+        target_json["target_ip"]        =config.mercure["targets"][target]["ip"]
+        target_json["target_port"]      =config.mercure["targets"][target]["port"]
+        target_json["target_aet_target"]=config.mercure["targets"][target].get("aet_target","ANY-SCP")
+        target_json["target_aet_source"]=config.mercure["targets"][target].get("aet_source","mercure")
         target_json["target_name"]      =target
         target_json["applied_rule"]     =transfer_targets[target]
         target_json["series_uid"]       =series_UID
@@ -260,10 +260,10 @@ def route_error_files():
     """
     error_files_found = 0
 
-    for entry in os.scandir(config.hermes['incoming_folder']):
+    for entry in os.scandir(config.mercure['incoming_folder']):
         if entry.name.endswith(".error") and not entry.is_dir():
             # Check if a lock file exists. If not, create one.
-            lock_file=Path(config.hermes['incoming_folder'] + '/' + entry.name + '.lock')
+            lock_file=Path(config.mercure['incoming_folder'] + '/' + entry.name + '.lock')
             if lock_file.exists():
                 continue
             try:
@@ -274,14 +274,14 @@ def route_error_files():
             logger.error(f'Found incoming error file {entry.name}')
             error_files_found += 1
 
-            shutil.move(config.hermes['incoming_folder'] + '/' + entry.name,
-                        config.hermes['error_folder'] + '/' + entry.name)
+            shutil.move(config.mercure['incoming_folder'] + '/' + entry.name,
+                        config.mercure['error_folder'] + '/' + entry.name)
 
             dicom_filename = entry.name[:-6]
-            dicom_file = Path(config.hermes['incoming_folder'] + '/' + dicom_filename)
+            dicom_file = Path(config.mercure['incoming_folder'] + '/' + dicom_filename)
             if dicom_file.exists():
-                shutil.move(config.hermes['incoming_folder'] + '/' + dicom_filename,
-                            config.hermes['error_folder'] + '/' + dicom_filename)
+                shutil.move(config.mercure['incoming_folder'] + '/' + dicom_filename,
+                            config.mercure['error_folder'] + '/' + dicom_filename)
 
             lock.free()
 

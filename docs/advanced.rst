@@ -4,14 +4,14 @@ Advanced Topics
 Configuration files
 -------------------
 
-Hermes stores the configuration in multiple files in the subfolder /configuration. If you want to backup the configuration or install Hermes on another machine, you need to copy all files inside this folder.
+mercure stores the configuration in multiple files in the subfolder /configuration. If you want to backup the configuration or install mercure on another machine, you need to copy all files inside this folder.
 
 ============== ================
 File           Meaning
 ============== ================
 bookkeeper.env Contains the IP, port, and DB password for the bookkeeper
-hermes.json    Configured targets, rules, storage location, and other Hermes settings
-services.json  Customizable list of used Hermes services
+mercure.json    Configured targets, rules, storage location, and other mercure settings
+services.json  Customizable list of used mercure services
 users.json     User information for the webgui
 webgui.env     Contains the IP, port, and secret key for the webgui
 ============== ================
@@ -24,11 +24,11 @@ Advanced settings can be reviewed and adjusted on the Configuration page of the 
 
 .. important:: Make sure to preserve correct JSON formatting of the settings. The webgui will automatically check the syntax before saving the file.
 
-Alternatively to using the webgui, the changes can also be made by directly editing the file hermes.json with a Linux text editor, e.g. nano.
+Alternatively to using the webgui, the changes can also be made by directly editing the file mercure.json with a Linux text editor, e.g. nano.
 
-.. important:: When editing the configuration file directly, it is required to shutdown all Hermes services prior to making any changes (via the webgui or systemctl command).
+.. important:: When editing the configuration file directly, it is required to shutdown all mercure services prior to making any changes (via the webgui or systemctl command).
 
-The following settings can be customized (default values can be found in default_hermes.json):
+The following settings can be customized (default values can be found in default_mercure.json):
 
 ======================== ===========================================================================
 Key                      Meaning

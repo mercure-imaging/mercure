@@ -39,12 +39,12 @@ async def show_modules(request):
         return PlainTextResponse('Configuration is being updated. Try again in a minute.')
 
     used_modules = {}
-    for rule in config.hermes["rules"]:
-        used_module=config.hermes["rules"][rule].get("processing_module","NONE")
+    for rule in config.mercure["rules"]:
+        used_module=config.mercure["rules"][rule].get("processing_module","NONE")
         used_modules[used_module]=rule
 
     template = "modules.html"
     context = {"request": request, "mercure_version": version.mercure_version, "page": "modules", 
-               "modules": config.hermes["modules"], "used_modules": used_modules}
+               "modules": config.mercure["modules"], "used_modules": used_modules}
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)

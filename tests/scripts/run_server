@@ -1,6 +1,6 @@
 #!/bin/bash
-incoming=/home/hermes/testing/incoming
-binary=/home/hermes/hermes/bin/getdcmtags
+incoming=/home/mercure/testing/incoming
+binary=/home/mercure/mercure/bin/getdcmtags
 bookkeeper=0.0.0.0:8080
 testport=4242
 

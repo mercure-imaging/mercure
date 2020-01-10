@@ -1,18 +1,18 @@
-What is Hermes?
+What is mercure?
 ===============
 
 .. image:: scheme.png
    :width: 550px
    :align: center
 
-Hermes is a solution for routing medical images (DICOM series) to different targets based on routing rules that can be defined using Hermes' web-based user interface. There are various situations when such a "DICOM proxy" or "DICOM router" is needed:
+mercure is a solution for routing medical images (DICOM series) to different targets based on routing rules that can be defined using mercure' web-based user interface. There are various situations when such a "DICOM proxy" or "DICOM router" is needed:
 
 * It is often necessary to send certain studies to special image-analysis software (e.g., all cardiac MR studies to dedicated CMR software). Setting up the corresponding DICOM nodes on every scanner and keeping settings up-to-date is time-consuming and prone to errors
 * Manual transfer of studies to application-specific processing tools requires instructing staff which series to send to which analysis software. This can be challenging in larger departments, especially when new software tools or prototypes are installed frequently
 * Many scanners only allow configuring a limited number of destination nodes (sometimes only three), which can be insufficient for integrating all required analysis tools
 * Sometimes the same series should be sent to multiple destinations (e.g., to compare tools), or the incoming series should be distributed to multiple server instances ("load balancing")
 
-Hermes can automate all of these tasks. While other commercial DICOM routing solutions exist (often with a hefty price tag), Hermes provides a number of unique features that make it attractive especially in research-focused environments:
+mercure can automate all of these tasks. While other commercial DICOM routing solutions exist (often with a hefty price tag), mercure provides a number of unique features that make it attractive especially in research-focused environments:
 
 * Simple-to-use interface with personal accounts for managing routing rules and targets
 * Powerful, yet intuitive language for defining routing rules
@@ -20,13 +20,13 @@ Hermes can automate all of these tasks. While other commercial DICOM routing sol
 * Extensive monitoring capabilities
 * Completely free
 
-.. note:: Hermes has been released as open-source package under the `GPL-3.0 license <https://www.gnu.org/licenses/gpl-3.0.en.html>`_ This means that it can be installed and used without paying any charges. Moreover, the source code can be downloaded and modified if specific functionality is required. Hermes has been written in the Python language and is easily customizable.
+.. note:: mercure has been released as open-source package under the `GPL-3.0 license <https://www.gnu.org/licenses/gpl-3.0.en.html>`_ This means that it can be installed and used without paying any charges. Moreover, the source code can be downloaded and modified if specific functionality is required. mercure has been written in the Python language and is easily customizable.
 
 
 Architecture
 ------------
 
-The Hermes DICOM router consists of multiple service modules that interact with each other. The modularized architecture ensures high reliability of the routing system. For example, in the (unlikely) event that one of the modules crashes or needs to be restarted, the other modules continue to function (e.g., the router continues to receive images from the scanners). Moreover, all modules have been designed such that instances can be scaled-up if higher processing power is needed (e.g., the router can be configured to send out two or more series at the same time). Lastly, the modularized design makes it easy to extend the router's capabilities by replacing individual modules with customized versions.
+The mercure DICOM router consists of multiple service modules that interact with each other. The modularized architecture ensures high reliability of the routing system. For example, in the (unlikely) event that one of the modules crashes or needs to be restarted, the other modules continue to function (e.g., the router continues to receive images from the scanners). Moreover, all modules have been designed such that instances can be scaled-up if higher processing power is needed (e.g., the router can be configured to send out two or more series at the same time). Lastly, the modularized design makes it easy to extend the router's capabilities by replacing individual modules with customized versions.
 
 .. topic:: Receiver
 

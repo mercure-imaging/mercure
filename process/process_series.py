@@ -51,12 +51,12 @@ def process_series(folder):
     lock.free()
 
     if not processing_success:
-        move_folder(folder, config.hermes['error_folder'])        
+        move_folder(folder, config.mercure['error_folder'])        
     else:
         if needs_dispatching:
-            move_folder(folder, config.hermes['outgoing_folder'])   
+            move_folder(folder, config.mercure['outgoing_folder'])   
         else:
-            move_folder(folder, config.hermes['success_folder'])   
+            move_folder(folder, config.mercure['success_folder'])   
 
     logger.info(f'Done processing case')
     return

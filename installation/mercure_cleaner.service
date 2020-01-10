@@ -1,0 +1,16 @@
+[Unit]
+Description=mercure Cleaner
+Documentation=https://mercure-router.github.io/
+After=network.target
+Requires=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/mercure/mercure
+ExecStart=/home/mercure/mercure-env/bin/python /home/mercure/mercure/cleaner.py
+
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

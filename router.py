@@ -1,7 +1,7 @@
 """
 router.py
 =========
-Hermes' central router module that evaluates the routing rules and decides which series should be sent to which target. 
+mercure' central router module that evaluates the routing rules and decides which series should be sent to which target. 
 """
 # Standard python includes
 import time
@@ -82,7 +82,7 @@ def run_router(args):
 
     # Check the incoming folder for completed series. To this end, generate a map of all
     # series in the folder with the timestamp of the latest DICOM file as value
-    for entry in os.scandir(config.hermes['incoming_folder']):
+    for entry in os.scandir(config.mercure['incoming_folder']):
         if entry.name.endswith(".tags") and not entry.is_dir():
             filecount += 1
             seriesString=entry.name.split('#',1)[0]
@@ -100,7 +100,7 @@ def run_router(args):
 
     # Check if any of the series exceeds the "series complete" threshold
     for entry in series:
-        if ((time.time()-series[entry]) > config.hermes['series_complete_trigger']):
+        if ((time.time()-series[entry]) > config.mercure['series_complete_trigger']):
             completeSeries[entry]=series[entry]
 
     #logger.info(f'Files found     = {filecount}')
@@ -156,21 +156,21 @@ if __name__ == '__main__':
         logger.exception("Cannot start service. Going down.")
         sys.exit(1)
 
-    monitor.configure('router',instance_name,config.hermes['bookkeeper'])
+    monitor.configure('router',instance_name,config.mercure['bookkeeper'])
     monitor.send_event(monitor.h_events.BOOT,monitor.severity.INFO,f'PID = {os.getpid()}')
 
-    graphite_prefix='hermes.router.'+instance_name
-    if len(config.hermes['graphite_ip']) > 0:
-        logger.info(f'Sending events to graphite server: {config.hermes["graphite_ip"]}')
-        graphyte.init(config.hermes['graphite_ip'], config.hermes['graphite_port'], prefix=graphite_prefix)
+    graphite_prefix='mercure.router.'+instance_name
+    if len(config.mercure['graphite_ip']) > 0:
+        logger.info(f'Sending events to graphite server: {config.mercure["graphite_ip"]}')
+        graphyte.init(config.mercure['graphite_ip'], config.mercure['graphite_port'], prefix=graphite_prefix)
 
-    logger.info(f'Incoming folder:   {config.hermes["incoming_folder"]}')
-    logger.info(f'Outgoing folder:   {config.hermes["outgoing_folder"]}')
-    logger.info(f'Processing folder: {config.hermes["processing_folder"]}')
+    logger.info(f'Incoming folder:   {config.mercure["incoming_folder"]}')
+    logger.info(f'Outgoing folder:   {config.mercure["outgoing_folder"]}')
+    logger.info(f'Processing folder: {config.mercure["processing_folder"]}')
 
     # Start the timer that will periodically trigger the scan of the incoming folder
     global main_loop
-    main_loop = helper.RepeatedTimer(config.hermes['router_scan_interval'], run_router, exit_router, {})
+    main_loop = helper.RepeatedTimer(config.mercure['router_scan_interval'], run_router, exit_router, {})
     main_loop.start()
 
     helper.g_log('events.boot', 1)

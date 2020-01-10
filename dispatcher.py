@@ -1,7 +1,7 @@
 """
 dispatcher.py
 =============
-The dispatcher service of Hermes that executes the DICOM transfer to the different targets.
+The dispatcher service of mercure that executes the DICOM transfer to the different targets.
 """
 import logging
 import os
@@ -61,13 +61,13 @@ def dispatch(args):
         )
         return
 
-    success_folder = Path(config.hermes["success_folder"])
-    error_folder = Path(config.hermes["error_folder"])
-    retry_max = config.hermes["retry_max"]
-    retry_delay = config.hermes["retry_delay"]
+    success_folder = Path(config.mercure["success_folder"])
+    error_folder = Path(config.mercure["error_folder"])
+    retry_max = config.mercure["retry_max"]
+    retry_delay = config.mercure["retry_delay"]
 
     # TODO: Sort list so that the oldest DICOMs get dispatched first
-    with os.scandir(config.hermes["outgoing_folder"]) as it:
+    with os.scandir(config.mercure["outgoing_folder"]) as it:
         for entry in it:
             if (
                 entry.is_dir()
@@ -112,28 +112,28 @@ if __name__ == "__main__":
         logger.exception("Cannot start service. Going down.")
         sys.exit(1)
 
-    monitor.configure("dispatcher", instance_name, config.hermes["bookkeeper"])
+    monitor.configure("dispatcher", instance_name, config.mercure["bookkeeper"])
     monitor.send_event(
         monitor.h_events.BOOT, monitor.severity.INFO, f"PID = {os.getpid()}"
     )
 
-    graphite_prefix = "hermes.dispatcher." + instance_name
+    graphite_prefix = "mercure.dispatcher." + instance_name
 
-    if len(config.hermes["graphite_ip"]) > 0:
+    if len(config.mercure["graphite_ip"]) > 0:
         logging.info(
-            f'Sending events to graphite server: {config.hermes["graphite_ip"]}'
+            f'Sending events to graphite server: {config.mercure["graphite_ip"]}'
         )
         graphyte.init(
-            config.hermes["graphite_ip"],
-            config.hermes["graphite_port"],
+            config.mercure["graphite_ip"],
+            config.mercure["graphite_port"],
             prefix=graphite_prefix,
         )
 
-    logger.info(f"Dispatching folder: {config.hermes['outgoing_folder']}")
+    logger.info(f"Dispatching folder: {config.mercure['outgoing_folder']}")
 
     global main_loop
     main_loop = helper.RepeatedTimer(
-        config.hermes["dispatcher_scan_interval"], dispatch, exit_dispatcher, {}
+        config.mercure["dispatcher_scan_interval"], dispatch, exit_dispatcher, {}
     )
     main_loop.start()
 

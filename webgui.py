@@ -1,7 +1,7 @@
 """
 webgui.py
 =========
-The web-based graphical user interface of Hermes.
+The web-based graphical user interface of mercure.
 """
 import uvicorn
 import base64
@@ -111,7 +111,7 @@ app = Starlette(debug=DEBUG_MODE)
 # source code is parsed by sphinx. This would raise an exception and lead to failure of sphix.
 app.mount('/static', StaticFiles(directory='webinterface/statics', check_dir=False), name='static')
 app.add_middleware(AuthenticationMiddleware, backend=SessionAuthBackend())
-app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY, session_cookie="hermes_session")
+app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY, session_cookie="mercure_session")
 app.mount("/modules", modules.modules_app)
 app.mount("/queue", queue.queue_app)
 
@@ -223,7 +223,7 @@ async def show_rules(request):
         return PlainTextResponse('Configuration is being updated. Try again in a minute.')
 
     template = "rules.html"
-    context = {"request": request, "mercure_version": version.mercure_version, "page": "rules", "rules": config.hermes["rules"]}
+    context = {"request": request, "mercure_version": version.mercure_version, "page": "rules", "rules": config.mercure["rules"]}
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
 
@@ -240,10 +240,10 @@ async def add_rule(request):
     form = dict(await request.form())
     
     newrule=form.get("name","")
-    if newrule in config.hermes["rules"]:
+    if newrule in config.mercure["rules"]:
         return PlainTextResponse('Rule already exists.')
     
-    config.hermes["rules"][newrule]={ "rule": "False" }
+    config.mercure["rules"][newrule]={ "rule": "False" }
 
     try: 
         config.save_config()
@@ -266,8 +266,8 @@ async def rules_edit(request):
 
     rule=request.path_params["rule"]
     template = "rules_edit.html"
-    context = {"request": request, "mercure_version": version.mercure_version, "page": "rules", "rules": config.hermes["rules"], 
-               "targets": config.hermes["targets"], "modules": config.hermes["modules"], "rule": rule, 
+    context = {"request": request, "mercure_version": version.mercure_version, "page": "rules", "rules": config.mercure["rules"], 
+               "targets": config.mercure["targets"], "modules": config.mercure["modules"], "rule": rule, 
                "alltags": tagslist.alltags, "sortedtags": tagslist.sortedtags}
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)    
@@ -285,24 +285,24 @@ async def rules_edit_post(request):
     editrule=request.path_params["rule"]
     form = dict(await request.form())
 
-    if not editrule in config.hermes["rules"]:
+    if not editrule in config.mercure["rules"]:
         return PlainTextResponse('Rule does not exist anymore.')
 
-    config.hermes["rules"][editrule]["rule"]=form.get("rule","False")
-    config.hermes["rules"][editrule]["target"]=form.get("target","")
-    config.hermes["rules"][editrule]["disabled"]=form.get("disabled","False")
-    config.hermes["rules"][editrule]["contact"]=form.get("contact","")
-    config.hermes["rules"][editrule]["comment"]=form.get("comment","")
-    config.hermes["rules"][editrule]["action"]=form.get("action","route")
-    config.hermes["rules"][editrule]["action_trigger"]=form.get("action_trigger","series")
-    config.hermes["rules"][editrule]["priority"]=form.get("priority","normal")
-    config.hermes["rules"][editrule]["processing_module"]=form.get("processing_module","")
-    config.hermes["rules"][editrule]["processing_settings"]=form.get("processing_settings","")
-    config.hermes["rules"][editrule]["notification_webhook"]=form.get("notification_webhook","")
-    config.hermes["rules"][editrule]["notification_payload"]=form.get("notification_payload","")
-    config.hermes["rules"][editrule]["notification_trigger_reception"]=form.get("notification_trigger_reception","False")
-    config.hermes["rules"][editrule]["notification_trigger_completion"]=form.get("notification_trigger_completion","False")
-    config.hermes["rules"][editrule]["notification_trigger_error"]=form.get("notification_trigger_error","False")
+    config.mercure["rules"][editrule]["rule"]=form.get("rule","False")
+    config.mercure["rules"][editrule]["target"]=form.get("target","")
+    config.mercure["rules"][editrule]["disabled"]=form.get("disabled","False")
+    config.mercure["rules"][editrule]["contact"]=form.get("contact","")
+    config.mercure["rules"][editrule]["comment"]=form.get("comment","")
+    config.mercure["rules"][editrule]["action"]=form.get("action","route")
+    config.mercure["rules"][editrule]["action_trigger"]=form.get("action_trigger","series")
+    config.mercure["rules"][editrule]["priority"]=form.get("priority","normal")
+    config.mercure["rules"][editrule]["processing_module"]=form.get("processing_module","")
+    config.mercure["rules"][editrule]["processing_settings"]=form.get("processing_settings","")
+    config.mercure["rules"][editrule]["notification_webhook"]=form.get("notification_webhook","")
+    config.mercure["rules"][editrule]["notification_payload"]=form.get("notification_payload","")
+    config.mercure["rules"][editrule]["notification_trigger_reception"]=form.get("notification_trigger_reception","False")
+    config.mercure["rules"][editrule]["notification_trigger_completion"]=form.get("notification_trigger_completion","False")
+    config.mercure["rules"][editrule]["notification_trigger_error"]=form.get("notification_trigger_error","False")
 
     try: 
         config.save_config()
@@ -325,8 +325,8 @@ async def rules_delete_post(request):
     
     deleterule=request.path_params["rule"]    
    
-    if deleterule in config.hermes["rules"]:
-        del config.hermes["rules"][deleterule]
+    if deleterule in config.mercure["rules"]:
+        del config.mercure["rules"][deleterule]
 
     try: 
         config.save_config()
@@ -374,12 +374,12 @@ async def show_targets(request):
         return PlainTextResponse('Configuration is being updated. Try again in a minute.')
 
     used_targets = {}
-    for rule in config.hermes["rules"]:
-        used_target=config.hermes["rules"][rule].get("target","NONE")
+    for rule in config.mercure["rules"]:
+        used_target=config.mercure["rules"][rule].get("target","NONE")
         used_targets[used_target]=rule
 
     template = "targets.html"
-    context = {"request": request, "mercure_version": version.mercure_version, "page": "targets", "targets": config.hermes["targets"], "used_targets": used_targets}
+    context = {"request": request, "mercure_version": version.mercure_version, "page": "targets", "targets": config.mercure["targets"], "used_targets": used_targets}
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
 
@@ -396,10 +396,10 @@ async def add_target(request):
     form = dict(await request.form())
     
     newtarget=form.get("name","")
-    if newtarget in config.hermes["targets"]:
+    if newtarget in config.mercure["targets"]:
         return PlainTextResponse('Target already exists.')
     
-    config.hermes["targets"][newtarget]={ "ip": "", "port": "" }
+    config.mercure["targets"][newtarget]={ "ip": "", "port": "" }
 
     try: 
         config.save_config()
@@ -422,11 +422,11 @@ async def targets_edit(request):
 
     edittarget=request.path_params["target"]
 
-    if not edittarget in config.hermes["targets"]:
+    if not edittarget in config.mercure["targets"]:
         return RedirectResponse(url='/targets', status_code=303) 
 
     template = "targets_edit.html"
-    context = {"request": request, "mercure_version": version.mercure_version, "page": "targets", "targets": config.hermes["targets"], "edittarget": edittarget}
+    context = {"request": request, "mercure_version": version.mercure_version, "page": "targets", "targets": config.mercure["targets"], "edittarget": edittarget}
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)    
 
@@ -443,14 +443,14 @@ async def targes_edit_post(request):
     edittarget=request.path_params["target"]
     form = dict(await request.form())
 
-    if not edittarget in config.hermes["targets"]:
+    if not edittarget in config.mercure["targets"]:
         return PlainTextResponse('Target does not exist anymore.')
 
-    config.hermes["targets"][edittarget]["ip"]=form["ip"]
-    config.hermes["targets"][edittarget]["port"]=form["port"]
-    config.hermes["targets"][edittarget]["aet_target"]=form["aet_target"]
-    config.hermes["targets"][edittarget]["aet_source"]=form["aet_source"]
-    config.hermes["targets"][edittarget]["contact"]=form["contact"]
+    config.mercure["targets"][edittarget]["ip"]=form["ip"]
+    config.mercure["targets"][edittarget]["port"]=form["port"]
+    config.mercure["targets"][edittarget]["aet_target"]=form["aet_target"]
+    config.mercure["targets"][edittarget]["aet_source"]=form["aet_source"]
+    config.mercure["targets"][edittarget]["contact"]=form["contact"]
 
     try: 
         config.save_config()
@@ -473,8 +473,8 @@ async def targets_delete_post(request):
     
     deletetarget=request.path_params["target"]
 
-    if deletetarget in config.hermes["targets"]:
-        del config.hermes["targets"][deletetarget]
+    if deletetarget in config.mercure["targets"]:
+        del config.mercure["targets"][deletetarget]
 
     try: 
         config.save_config()
@@ -505,10 +505,10 @@ async def targets_test_post(request):
     target_aet="ECHOSCU"
 
     try:
-        target_ip=config.hermes["targets"][testtarget]["ip"]
-        target_port=config.hermes["targets"][testtarget]["port"]
-        target_aec=config.hermes["targets"][testtarget]["aet_target"]
-        target_aet=config.hermes["targets"][testtarget]["aet_source"]
+        target_ip=config.mercure["targets"][testtarget]["ip"]
+        target_port=config.mercure["targets"][testtarget]["port"]
+        target_aec=config.mercure["targets"][testtarget]["aet_target"]
+        target_aet=config.mercure["targets"][testtarget]["aet_source"]
     except:
         pass
 
@@ -680,7 +680,7 @@ async def users_delete_post(request):
 @app.route('/configuration')
 @requires(['authenticated','admin'], redirect='homepage')
 async def configuration(request):
-    """Shows the current configuration of the hermes appliance."""
+    """Shows the current configuration of the mercure appliance."""
     try: 
         config.read_config()
     except:
@@ -689,7 +689,7 @@ async def configuration(request):
     config_edited=int(request.query_params.get("edited",0))
     os_info=distro.linux_distribution()
     os_string=f"{os_info[0]} Version {os_info[1]} ({os_info[2]})"
-    context = {"request": request, "mercure_version": version.mercure_version, "page": "configuration", "config": config.hermes, "os_string": os_string, "config_edited": config_edited}
+    context = {"request": request, "mercure_version": version.mercure_version, "page": "configuration", "config": config.mercure, "os_string": os_string, "config_edited": config_edited}
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
 
@@ -737,7 +737,7 @@ async def configuration_edit_post(request):
     except ValueError:
         return PlainTextResponse('Unable to write config file. Might be locked.')
 
-    logger.info(f'Updates hermes configuration file.')     
+    logger.info(f'Updates mercure configuration file.')     
     monitor.send_webgui_event(monitor.w_events.CONFIG_EDIT, request.user.display_name, "")
 
     return RedirectResponse(url='/configuration?edited=1', status_code=303)
@@ -752,7 +752,7 @@ async def login(request):
     """Shows the login page."""
     request.session.clear()
     template = "login.html"
-    context = {"request": request, "mercure_version": version.mercure_version, "appliance_name": config.hermes.get('appliance_name','Hermes Router') }
+    context = {"request": request, "mercure_version": version.mercure_version, "appliance_name": config.mercure.get('appliance_name','mercure Router') }
     return templates.TemplateResponse(template, context)
 
 
@@ -787,7 +787,7 @@ async def login_post(request):
         monitor.send_webgui_event(monitor.w_events.LOGIN_FAIL, form["username"], source_ip)
 
         template = "login.html"
-        context = {"request": request, "invalid_password": 1, "mercure_version": version.mercure_version, "appliance_name": config.hermes.get('appliance_name','Hermes Router') }
+        context = {"request": request, "invalid_password": 1, "mercure_version": version.mercure_version, "appliance_name": config.mercure.get('appliance_name','mercure Router') }
         return templates.TemplateResponse(template, context)
 
 
@@ -812,7 +812,7 @@ async def homepage(request):
     total_space=0
 
     try:
-        disk_total, disk_used, disk_free = shutil.disk_usage(config.hermes["incoming_folder"])
+        disk_total, disk_used, disk_free = shutil.disk_usage(config.mercure["incoming_folder"])
 
         if (disk_total==0):
             disk_total=1
@@ -941,7 +941,7 @@ if __name__ == "__main__":
         logger.info("Going down.")
         sys.exit(1)
 
-    monitor.configure('webgui','main',config.hermes['bookkeeper'])
+    monitor.configure('webgui','main',config.mercure['bookkeeper'])
     monitor.send_event(monitor.h_events.BOOT,monitor.severity.INFO,f'PID = {os.getpid()}')    
 
     try:

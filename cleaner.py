@@ -1,7 +1,7 @@
 """
 cleaner.py
 ==========
-The cleaner service of Hermes. Responsible for deleting processed data after
+The cleaner service of mercure. Responsible for deleting processed data after
 retention time has passed and if it is offpeak time. Offpeak is the time
 period when the cleaning has to be done, because cleaning I/O should be kept
 to minimum when receiving and sending exams.
@@ -70,13 +70,13 @@ def clean(args):
     # TODO: Adaptively reduce the retention time if the disk space is running low
 
     if _is_offpeak(
-        config.hermes["offpeak_start"],
-        config.hermes["offpeak_end"],
+        config.mercure["offpeak_start"],
+        config.mercure["offpeak_end"],
         datetime.now().time(),
     ):
-        success_folder = config.hermes["success_folder"]
-        discard_folder = config.hermes["discard_folder"]
-        retention = timedelta(seconds=config.hermes["retention"])
+        success_folder = config.mercure["success_folder"]
+        discard_folder = config.mercure["discard_folder"]
+        retention = timedelta(seconds=config.mercure["retention"])
         clean_dir(success_folder, retention)
         clean_dir(discard_folder, retention)
 
@@ -173,26 +173,26 @@ if __name__ == "__main__":
         logger.exception("Cannot start service. Going down.")
         sys.exit(1)
 
-    monitor.configure("cleaner", instance_name, config.hermes["bookkeeper"])
+    monitor.configure("cleaner", instance_name, config.mercure["bookkeeper"])
     monitor.send_event(
         monitor.h_events.BOOT, monitor.severity.INFO, f"PID = {os.getpid()}"
     )
 
-    graphite_prefix = "hermes.cleaner." + instance_name
+    graphite_prefix = "mercure.cleaner." + instance_name
 
-    if len(config.hermes["graphite_ip"]) > 0:
+    if len(config.mercure["graphite_ip"]) > 0:
         logger.info(
-            f"Sending events to graphite server: {config.hermes['graphite_ip']}"
+            f"Sending events to graphite server: {config.mercure['graphite_ip']}"
         )
         graphyte.init(
-            config.hermes["graphite_ip"],
-            config.hermes["graphite_port"],
+            config.mercure["graphite_ip"],
+            config.mercure["graphite_port"],
             prefix=graphite_prefix,
         )
 
     global main_loop
     main_loop = helper.RepeatedTimer(
-        config.hermes["cleaner_scan_interval"], clean, exit_cleaner, {}
+        config.mercure["cleaner_scan_interval"], clean, exit_cleaner, {}
     )
     main_loop.start()
 

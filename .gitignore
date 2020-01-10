@@ -121,7 +121,7 @@ build-getdcmtags-Desktop-Release/main.o
 configuration/users.json
 getdcmtags/getdcmtags.pro.user
 configuration/bookkeeper.env
-configuration/hermes.json
+configuration/mercure.json
 configuration/services.json
 configuration/webgui.env
 tests/scripts/sent.txt

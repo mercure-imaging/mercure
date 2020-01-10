@@ -7,7 +7,7 @@ sys.path.insert(0, os.path.abspath('..'))
 
 # -- Project information -----------------------------------------------------
 
-project = 'Hermes'
+project = 'mercure'
 copyright = '2019, Kai Tobias Block, Joshy Cyriac'
 author = 'Kai Tobias Block, Joshy Cyriac'
 
@@ -94,5 +94,5 @@ html_css_files = ['custom.css']
 #
 # html_sidebars = {}
 html_theme = 'sphinx_rtd_theme'
-html_logo = 'hermes_logo_w.png'
+html_logo = 'mercure_logo_w.png'
 html_show_sourcelink = False

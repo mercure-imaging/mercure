@@ -1,7 +1,7 @@
 """
 bookkeeper.py
 =============
-The bookkeeper service of Hermes, which receives notifications from all Hermes services
+The bookkeeper service of mercure, which receives notifications from all mercure services
 and stores the information in a Postgres database.
 """
 # Standard python includes
@@ -48,7 +48,7 @@ logger = daiquiri.getLogger("bookkeeper")
 bookkeeper_config = Config("configuration/bookkeeper.env")
 BOOKKEEPER_PORT   = bookkeeper_config('PORT', cast=int, default=8080)
 BOOKKEEPER_HOST   = bookkeeper_config('HOST', default='0.0.0.0')
-DATABASE_URL      = bookkeeper_config('DATABASE_URL', default='postgresql://hermes@localhost')
+DATABASE_URL      = bookkeeper_config('DATABASE_URL', default='postgresql://mercure@localhost')
 
 database = databases.Database(DATABASE_URL)
 app = Starlette(debug=True)
@@ -62,8 +62,8 @@ metadata = sqlalchemy.MetaData()
 engine = sqlalchemy.create_engine(DATABASE_URL)
 connection = None
 
-hermes_events = sqlalchemy.Table(
-    "hermes_events",
+mercure_events = sqlalchemy.Table(
+    "mercure_events",
     metadata,
     sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
     sqlalchemy.Column("time", sqlalchemy.DateTime),
@@ -202,16 +202,16 @@ async def test_endpoint(request):
     return JSONResponse({'ok': ''})
 
 
-@app.route('/hermes-event', methods=["POST"])
-async def post_hermes_event(request):
-    """Endpoint for receiving Hermes system events."""
+@app.route('/mercure-event', methods=["POST"])
+async def post_mercure_event(request):
+    """Endpoint for receiving mercure system events."""
     payload     = dict(await request.form())
     sender      = payload.get("sender","Unknown")
     event       = payload.get("event",monitor.h_events.UNKNOWN)
     severity    = int(payload.get("severity",monitor.severity.INFO))    
     description = payload.get("description","")       
 
-    query = hermes_events.insert().values(
+    query = mercure_events.insert().values(
         sender=sender, event=event, severity=severity, description=description, time=datetime.datetime.now()
     )
     tasks = BackgroundTasks()

@@ -3,7 +3,7 @@ Dashboard Gallery
 
 .. highlight:: SQL
 
-Using Redash and Graphite, various custom dashboards can be created that visualize and analyze the data collected by the Hermes router. Below are examples for dashboards that we created for our installation (the corresponding Redash queries are shown in SQL syntax, so that the dashboards can be reproduced).
+Using Redash and Graphite, various custom dashboards can be created that visualize and analyze the data collected by the mercure router. Below are examples for dashboards that we created for our installation (the corresponding Redash queries are shown in SQL syntax, so that the dashboards can be reproduced).
 
 .. contents::
     :local:
@@ -16,9 +16,9 @@ Using Redash and Graphite, various custom dashboards can be created that visuali
 Router Health
 -------------
 
-The health of the Hermes router can be monitored using Graphite for data collection and Grafana for dashboard creation and alerting. Shown below is an exemplary dashboard that we are using to monitor our router, which combines data provided by the collectd service running on the server, by the collectd service running on a different server (for measuring the ping response), and directly by the different Hermes services. 
+The health of the mercure router can be monitored using Graphite for data collection and Grafana for dashboard creation and alerting. Shown below is an exemplary dashboard that we are using to monitor our router, which combines data provided by the collectd service running on the server, by the collectd service running on a different server (for measuring the ping response), and directly by the different mercure services. 
 
-The diagram shown in the top-left utilizes the data transmitted by the Hermes services during each run. If one of the colored blocks disappears for a longer period of time, it indicates that the process might be hanging. Useful are also the other diagrams in the top row, showing pending files and series in the incoming folder as reported by the router module, which can indicate if the server is not able to keep up with the load created by the scanners.
+The diagram shown in the top-left utilizes the data transmitted by the mercure services during each run. If one of the colored blocks disappears for a longer period of time, it indicates that the process might be hanging. Useful are also the other diagrams in the top row, showing pending files and series in the incoming folder as reported by the router module, which can indicate if the server is not able to keep up with the load created by the scanners.
 
 .. image:: dashboards_graphite.png
    :width: 550px
@@ -272,7 +272,7 @@ It uses the following queries (upper query: left table, middle query: right-top,
     severity as Severity,
     description as Description
     from 
-    hermes_events
+    mercure_events
     order by time desc
     limit 1000;
 
@@ -285,7 +285,7 @@ It uses the following queries (upper query: left table, middle query: right-top,
     severity as Severity,
     description as Description
     from 
-    hermes_events
+    mercure_events
     where severity > 0
     order by time desc
     limit 1000;

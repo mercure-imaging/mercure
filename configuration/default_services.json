@@ -1,26 +1,26 @@
 {
     "receiver": {
         "name": "Receiver",
-        "systemd_service": "hermes_receiver.service"
+        "systemd_service": "mercure_receiver.service"
     },
     "router": {
         "name": "Router",
-        "systemd_service": "hermes_router.service"
+        "systemd_service": "mercure_router.service"
     },
     "processor": {
         "name": "Processor",
-        "systemd_service": "hermes_processor.service"
+        "systemd_service": "mercure_processor.service"
     },
     "dispatcher": {
         "name": "Dispatcher",
-        "systemd_service": "hermes_dispatcher.service"
+        "systemd_service": "mercure_dispatcher.service"
     },
     "cleaner": {
         "name": "Cleaner",
-        "systemd_service": "hermes_cleaner.service"
+        "systemd_service": "mercure_cleaner.service"
     },    
     "bookkeeper": {
         "name": "Bookkeeper",
-        "systemd_service": "hermes_bookkeeper.service"
+        "systemd_service": "mercure_bookkeeper.service"
     }
 }

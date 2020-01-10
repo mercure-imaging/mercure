@@ -9,9 +9,9 @@ Web interface
    :align: center
    :class: border
 
-Hermes can be conveniently configured and controlled using the web-based user interface. To access it, use a modern web browser (e.g., Chrome or Firefox) and enter the IP of your Hermes server as URL. Depending on the port that you have selected during the installation (by default 8000), you need to add ":8000" to the URL.
+mercure can be conveniently configured and controlled using the web-based user interface. To access it, use a modern web browser (e.g., Chrome or Firefox) and enter the IP of your mercure server as URL. Depending on the port that you have selected during the installation (by default 8000), you need to add ":8000" to the URL.
 
-During the installation, Hermes creates a "seed account" that you need to use for the first login. You will be asked to change the password after the first login.
+During the installation, mercure creates a "seed account" that you need to use for the first login. You will be asked to change the password after the first login.
 
 .. note:: The login credentials for the first login are: Username = admin, Password = router
 
@@ -27,7 +27,7 @@ User management
 
 Users can be created, modified, and deleted on the "Users" page. There are two types of users: Normal users, who can view the router configuration and status but not change anything, and administrators, who have full access. Users with administration rights are indicated by an icon with a shield in the user list.
 
-.. tip:: You should create separate accounts for every person using the router. This will allow you to review which user made changes to the router configuration, as Hermes is keeping track of all configuration changes.
+.. tip:: You should create separate accounts for every person using the router. This will allow you to review which user made changes to the router configuration, as mercure is keeping track of all configuration changes.
 
 
 System status and control
@@ -38,7 +38,7 @@ System status and control
    :align: center
    :class: border
 
-You can see the status of the different Hermes service components on the "Overview" page. If a service is running, it will be shown in green, otherwise in red. In normal operation, everything should be green. 
+You can see the status of the different mercure service components on the "Overview" page. If a service is running, it will be shown in green, otherwise in red. In normal operation, everything should be green. 
 
 .. image:: ui_status_control.png
    :width: 550px
@@ -49,9 +49,9 @@ You can start, stop, and restart services by clicking the "Service Control" butt
 
 .. note:: If you stop a service, it might take a short moment until the service goes down. This is because the services have been designed to finish the active series before terminating. 
 
-If you followed the Hermes installation instructions, then only the bookkeeper service has been started so far. All other services should be red when you login for the first time. Therefore, you should now go ahead and start all services.
+If you followed the mercure installation instructions, then only the bookkeeper service has been started so far. All other services should be red when you login for the first time. Therefore, you should now go ahead and start all services.
 
-.. tip:: If you don't want to use the web interface, you can also manually control the Hermes services from the command line. This can be done with the command "systemctl start -u hermes_router.service" (in this example for the routing service). You can find the names of the individual services in the files "/configuration/services.json".
+.. tip:: If you don't want to use the web interface, you can also manually control the mercure services from the command line. This can be done with the command "systemctl start -u mercure_router.service" (in this example for the routing service). You can find the names of the individual services in the files "/configuration/services.json".
 
 The Overview page also shows you the disk space available in the folder for buffering the incoming DICOM files. If this bar turns yellow or red, make sure to free up disk space as the router will not be able to receiver images if the disk is completely full.
 
@@ -73,7 +73,7 @@ Click the "Add New" button to create a new target. This can be done during norma
    :align: center
    :class: border
 
-After choosing a name for the target, you can enter the settings of the DICOM connection settings. Here, you need to enter the IP address, port, the target AET (application entity title) that should be called on the receiver side, and the source AET with which Hermes identifies itself to the target.
+After choosing a name for the target, you can enter the settings of the DICOM connection settings. Here, you need to enter the IP address, port, the target AET (application entity title) that should be called on the receiver side, and the source AET with which mercure identifies itself to the target.
 
 .. tip:: Some DICOM nodes require that you set a specific target AET, while other systems ignore this setting. Likewise, some DICOM nodes only accept images from a sender who's source AET is known, while others ignore the value. Please check with the vendor/operator of your DICOM node which values are required.
 
@@ -90,7 +90,7 @@ Defining routing rules
    :align: center
    :class: border
 
-When you have configured a target, you can add routing rules that define which DICOM series should be forwarded to that target. This can be done on the "Rules" page. Again, it is not necessary to stop Hermes while defining new rules. The different Hermes services will automatically load the new configuration once the rule has been saved. Click the "Add New" button to create a new rule, or click on any of the existing rules and select "Edit" to modify it.
+When you have configured a target, you can add routing rules that define which DICOM series should be forwarded to that target. This can be done on the "Rules" page. Again, it is not necessary to stop mercure while defining new rules. The different mercure services will automatically load the new configuration once the rule has been saved. Click the "Add New" button to create a new rule, or click on any of the existing rules and select "Edit" to modify it.
 
 .. image:: ui_rules_edit.png
    :width: 550px

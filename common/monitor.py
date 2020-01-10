@@ -9,7 +9,7 @@ bookkeeper_address=""
 
 
 class h_events:
-    """Event types for general Hermes monitoring."""
+    """Event types for general mercure monitoring."""
     UNKNOWN          = "UNKNOWN"
     BOOT             = "BOOT"
     SHUTDOWN         = "SHUTDOWN"
@@ -51,7 +51,7 @@ class s_events:
 
 
 class severity:
-    """Severity level associated to the Hermes events."""
+    """Severity level associated to the mercure events."""
     INFO             = 0
     WARNING          = 1
     ERROR            = 2
@@ -68,12 +68,12 @@ def configure(module,instance,address):
 
 
 def send_event(event, severity = severity.INFO, description = ""):
-    """Sends information about general Hermes events to the bookkeeper (e.g., during module start)."""
+    """Sends information about general mercure events to the bookkeeper (e.g., during module start)."""
     if not bookkeeper_address:
         return
     try:
         payload = {'sender': sender_name, 'event': event, 'severity': severity, 'description': description }
-        requests.post(bookkeeper_address+"/hermes-event", data=payload, timeout=1)
+        requests.post(bookkeeper_address+"/mercure-event", data=payload, timeout=1)
     except requests.exceptions.RequestException:
         logger.error("Failed request to bookkeeper")
 

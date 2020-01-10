@@ -8,9 +8,9 @@ import daiquiri
 logger = daiquiri.getLogger("config")
 
 configuration_timestamp = 0
-configuration_filename  = os.path.realpath(os.path.dirname(os.path.realpath(__file__))+'/../configuration/hermes.json')
+configuration_filename  = os.path.realpath(os.path.dirname(os.path.realpath(__file__))+'/../configuration/mercure.json')
 
-hermes_defaults = {
+mercure_defaults = {
     'appliance_name'             :        'master',
     'port'                       :             104,
     'incoming_folder'            :    './incoming',
@@ -38,14 +38,14 @@ hermes_defaults = {
     'modules'                    :              {}
 }
 
-hermes = {}
+mercure = {}
 
 
 def read_config():
     """Reads the configuration settings (rules, targets, general settings) from the configuration file. The configuration will
        only be updated if the file has changed compared the the last function call. If the configuration file is locked by
        another process, an exception will be raised."""
-    global hermes
+    global mercure
     global configuration_timestamp
     configuration_file = Path(configuration_filename)
 
@@ -66,7 +66,7 @@ def read_config():
         # Check if the configuration file is newer than the version
         # loaded into memory. If not, return
         if timestamp <= configuration_timestamp:
-            return hermes
+            return mercure
 
         logger.info(f"Reading configuration from: {configuration_filename}")
 
@@ -74,9 +74,9 @@ def read_config():
             loaded_config=json.load(json_file)
             # Reset configuration to default values (to ensure all needed
             # keys are present in the configuration)
-            hermes=hermes_defaults
+            mercure=mercure_defaults
             # Now merge with values loaded from configuration file
-            hermes.update(loaded_config)
+            mercure.update(loaded_config)
 
             # TODO: Check configuration for errors (esp targets and rules)
 
@@ -86,12 +86,12 @@ def read_config():
 
             #logger.info("")
             #logger.info("Active configuration: ")
-            #logger.info(json.dumps(hermes, indent=4))
+            #logger.info(json.dumps(mercure, indent=4))
             #logger.info("")
 
             configuration_timestamp=timestamp
             monitor.send_event(monitor.h_events.CONFIG_UPDATE, monitor.severity.INFO, "Configuration updated")
-            return hermes
+            return mercure
     else:
         raise FileNotFoundError(f"Configuration file not found: {configuration_file}")
 
@@ -114,7 +114,7 @@ def save_config():
         raise ResourceWarning(f"Unable to lock configuration file: {lock_file}")   
 
     with open(configuration_file, "w") as json_file:
-        json.dump(hermes,json_file, indent=4)
+        json.dump(mercure,json_file, indent=4)
 
     try:
         stat = os.stat(configuration_file)
@@ -167,8 +167,8 @@ def write_configfile(json_content):
 def checkFolders():
     """Checks if all required folders for handling the DICOM files exist."""
     for entry in ['incoming_folder','outgoing_folder','success_folder','error_folder','discard_folder', 'processing_folder']:
-        if not Path(hermes[entry]).exists():
-            logger.error(f"Folder not found {hermes[entry]}")
+        if not Path(mercure[entry]).exists():
+            logger.error(f"Folder not found {mercure[entry]}")
             monitor.send_event(monitor.h_events.CONFIG_UPDATE, monitor.severity.CRITICAL, "Folders are missing")
             return False
     return True

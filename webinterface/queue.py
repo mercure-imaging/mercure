@@ -43,12 +43,12 @@ async def show_queues(request):
         return PlainTextResponse('Configuration is being updated. Try again in a minute.')
 
     processing_suspended=False
-    processing_halt_file=Path(config.hermes['processing_folder'] + '/HALT')
+    processing_halt_file=Path(config.mercure['processing_folder'] + '/HALT')
     if processing_halt_file.exists():
         processing_suspended=True    
 
     routing_suspended=False
-    routing_halt_file=Path(config.hermes['outgoing_folder'] + '/HALT')
+    routing_halt_file=Path(config.mercure['outgoing_folder'] + '/HALT')
     if routing_halt_file.exists():
         routing_suspended=True    
 
@@ -86,12 +86,12 @@ async def show_queues_status(request):
         return PlainTextResponse('Configuration is being updated. Try again in a minute.')
 
     processing_suspended=False
-    processing_halt_file=Path(config.hermes['processing_folder'] + '/HALT')
+    processing_halt_file=Path(config.mercure['processing_folder'] + '/HALT')
     if processing_halt_file.exists():
         processing_suspended=True    
 
     routing_suspended=False
-    routing_halt_file=Path(config.hermes['outgoing_folder'] + '/HALT')
+    routing_halt_file=Path(config.mercure['outgoing_folder'] + '/HALT')
     if routing_halt_file.exists():
         routing_suspended=True    
 
@@ -123,8 +123,8 @@ async def set_queues_status(request):
     except:
         return PlainTextResponse('Configuration is being updated. Try again in a minute.')
 
-    processing_halt_file=Path(config.hermes['processing_folder'] + '/HALT')
-    routing_halt_file=Path(config.hermes['outgoing_folder'] + '/HALT')
+    processing_halt_file=Path(config.mercure['processing_folder'] + '/HALT')
+    routing_halt_file=Path(config.mercure['outgoing_folder'] + '/HALT')
 
     form = dict(await request.form())
     print(form)

@@ -1,0 +1,16 @@
+[Unit]
+Description=mercure Bookkeeper
+Documentation=https://mercure-router.github.io/
+After=network.target postgresql.service
+Requires=network.target postgresql.service
+
+[Service]
+Type=simple
+WorkingDirectory=/home/mercure/mercure
+ExecStart=/home/mercure/mercure-env/bin/python /home/mercure/mercure/bookkeeper.py
+
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

@@ -1,17 +1,17 @@
-Hermes DICOM Router
-===================
+mercure DICOM Orchestrator
+==========================
 
 .. image:: scheme.png
    :width: 550px
    :align: center
 
-Hermes is a flexible open-source DICOM routing solution with a simple-to-use web interface and extensive monitoring options.
+mercure is a flexible open-source DICOM orchestration solution with a simple-to-use web interface and extensive monitoring options.
 
 .. toctree::
    :hidden:
    :maxdepth: 2
 
-   github.com/hermes-router/hermes <https://github.com/hermes-router/hermes>
+   github.com/mercure-imaging/mercure <https://github.com/mercure-imaging/mercure>
 
 .. toctree::
    :caption: User Guide

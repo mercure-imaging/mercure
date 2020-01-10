@@ -6,7 +6,7 @@ echo "----------------------"
 echo ""
 
 binary=bin/getdcmtags
-config=./configuration/hermes.json
+config=./configuration/mercure.json
 
 # Check if the configuration is accessible
 if [ ! -f $config ]; then

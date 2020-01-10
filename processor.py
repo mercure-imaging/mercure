@@ -1,7 +1,7 @@
 """
 processor.py
 ============
-Hermes' processor that executes processing modules on DICOM series filtered for processing. 
+mercure' processor that executes processing modules on DICOM series filtered for processing. 
 """
 # Standard python includes
 import time
@@ -58,7 +58,7 @@ def search_folder(counter):
 
     tasks={}
 
-    for entry in os.scandir(config.hermes['processing_folder']):        
+    for entry in os.scandir(config.mercure['processing_folder']):        
         if entry.is_dir() and is_ready_for_processing(entry.path):
             modification_time=entry.stat().st_mtime
             tasks[entry.path]=modification_time
@@ -146,27 +146,27 @@ if __name__ == '__main__':
         logger.exception("Cannot start service. Going down.")
         sys.exit(1)
 
-    appliance_name=config.hermes['appliance_name']
+    appliance_name=config.mercure['appliance_name']
 
     logger.info(f'Appliance name = {appliance_name}')
     logger.info(f'Instance  name = {instance_name}')
     logger.info(f'Instance  PID  = {os.getpid()}')
     logger.info(sys.version)
 
-    monitor.configure('processor',instance_name,config.hermes['bookkeeper'])
+    monitor.configure('processor',instance_name,config.mercure['bookkeeper'])
     monitor.send_event(monitor.h_events.BOOT,monitor.severity.INFO,f'PID = {os.getpid()}')
 
     graphite_prefix='mercure.'+appliance_name+'.processor.'+instance_name
-    if len(config.hermes['graphite_ip']) > 0:
-        logger.info(f'Sending events to graphite server: {config.hermes["graphite_ip"]}')
-        graphyte.init(config.hermes['graphite_ip'], config.hermes['graphite_port'], prefix=graphite_prefix)
+    if len(config.mercure['graphite_ip']) > 0:
+        logger.info(f'Sending events to graphite server: {config.mercure["graphite_ip"]}')
+        graphyte.init(config.mercure['graphite_ip'], config.mercure['graphite_port'], prefix=graphite_prefix)
 
-    logger.info(f'Processing folder: {config.hermes["processing_folder"]}')
-    processor_lockfile=Path(config.hermes['processing_folder'] + '/HALT')
+    logger.info(f'Processing folder: {config.mercure["processing_folder"]}')
+    processor_lockfile=Path(config.mercure['processing_folder'] + '/HALT')
 
     # Start the timer that will periodically trigger the scan of the incoming folder
     global main_loop
-    main_loop = helper.RepeatedTimer(config.hermes['dispatcher_scan_interval'], run_processor, exit_processor, {})
+    main_loop = helper.RepeatedTimer(config.mercure['dispatcher_scan_interval'], run_processor, exit_processor, {})
     main_loop.start()
 
     helper.g_log('events.boot', 1)

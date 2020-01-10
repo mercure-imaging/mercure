@@ -1,16 +1,16 @@
 Installation
 ============
 
-It is recommended to install Hermes on a Linux machine running Ubuntu Server 18.04 LTS 64bit (or newer). The installer for the Ubuntu operating system can be downloaded at https://ubuntu.com/download/server
+It is recommended to install mercure on a Linux machine running Ubuntu Server 18.04 LTS 64bit (or newer). The installer for the Ubuntu operating system can be downloaded at https://ubuntu.com/download/server
 
-.. note:: Hermes might run on other Linux flavors as well, but the installation instructions listed on this page will likely not be applicable without modification.
+.. note:: mercure might run on other Linux flavors as well, but the installation instructions listed on this page will likely not be applicable without modification.
 
-Installing Hermes
+Installing mercure
 -----------------
 
-After finishing the Ubuntu installation procedure, the Offis DICOM toolkit (DCMTK), gcc compiler, and jq need to be installed. A user called "hermes" should be created (the adduser command will ask for a password), and the Hermes installation file should be cloned using the shown Git command. By default, Hermes should be installed into the home directory of the user hermes. 
+After finishing the Ubuntu installation procedure, the Offis DICOM toolkit (DCMTK), gcc compiler, and jq need to be installed. A user called "mercure" should be created (the adduser command will ask for a password), and the mercure installation file should be cloned using the shown Git command. By default, mercure should be installed into the home directory of the user mercure. 
 
-Afterwards, the installation script should be executed. This will install the required Python runtime environment (Python 3.6 or higher) and create configuration files from the templates that are shipped with Hermes. Finally, the included ".service" files for running the Hermes modules as daemons need to be copied to the systemd folder and enabled via the "systemctl enable" command.
+Afterwards, the installation script should be executed. This will install the required Python runtime environment (Python 3.6 or higher) and create configuration files from the templates that are shipped with mercure. Finally, the included ".service" files for running the mercure modules as daemons need to be copied to the systemd folder and enabled via the "systemctl enable" command.
 
 You can perform these steps by copying the commands listed below into a bash shell. It is assumed that you are logged in as user with sudo rights.
 
@@ -19,58 +19,58 @@ You can perform these steps by copying the commands listed below into a bash she
     sudo apt install build-essential -y
     sudo apt install dcmtk -y
     sudo apt install jq -y
-    sudo adduser hermes
-    ssh hermes@localhost
-    git clone https://github.com/hermes-router/hermes.git
-    cd hermes
+    sudo adduser mercure
+    ssh mercure@localhost
+    git clone https://github.com/mercure-router/mercure.git
+    cd mercure
     git checkout -b 0.1a
-    cd ~/hermes/installation
+    cd ~/mercure/installation
     ./install.sh
     exit
-    cd /home/hermes/hermes/installation
+    cd /home/mercure/mercure/installation
     sudo cp *.service /etc/systemd/system
-    sudo systemctl enable hermes_bookkeeper.service
-    sudo systemctl enable hermes_cleaner.service
-    sudo systemctl enable hermes_dispatcher.service
-    sudo systemctl enable hermes_receiver.service
-    sudo systemctl enable hermes_router.service
-    sudo systemctl enable hermes_ui.service
+    sudo systemctl enable mercure_bookkeeper.service
+    sudo systemctl enable mercure_cleaner.service
+    sudo systemctl enable mercure_dispatcher.service
+    sudo systemctl enable mercure_receiver.service
+    sudo systemctl enable mercure_router.service
+    sudo systemctl enable mercure_ui.service
 
 
 Creating data storage
 ---------------------
 
-By default, the received DICOM files are buffered in subfolders of the directory "/home/hermes/hermes-data". The commands listed below will create the required folders in this location.
+By default, the received DICOM files are buffered in subfolders of the directory "/home/mercure/mercure-data". The commands listed below will create the required folders in this location.
 
 ::
 
-    ssh hermes@localhost
-    mkdir hermes-data; cd hermes-data
+    ssh mercure@localhost
+    mkdir mercure-data; cd mercure-data
     mkdir incoming; mkdir outgoing; mkdir success; mkdir error; mkdir discard;
 
-.. note:: The storage location for buffering the DICOM files can also be changed. This is necessary, e.g., if a dedicated hard-drive should be used for the file buffering. In this case, the storage location needs to be updated in the configuration file hermes.json, as described below.
+.. note:: The storage location for buffering the DICOM files can also be changed. This is necessary, e.g., if a dedicated hard-drive should be used for the file buffering. In this case, the storage location needs to be updated in the configuration file mercure.json, as described below.
 
 
 Installing PostgreSQL
 ---------------------
 
-The bookkeeper service uses a PostgreSQL database to store all recorded data. Several steps are necessary to install and configure PostgreSQL. It is possible to use Hermes also without the bookkeeper service. However, it's highly recommended to use bookkeeper, as it makes Hermes much more powerful and easy to maintain. 
+The bookkeeper service uses a PostgreSQL database to store all recorded data. Several steps are necessary to install and configure PostgreSQL. It is possible to use mercure also without the bookkeeper service. However, it's highly recommended to use bookkeeper, as it makes mercure much more powerful and easy to maintain. 
 
-.. note:: The commands below create a database for the Hermes data and already prepare the database for use with the Redash visualization software, as described on the Monitoring page. If Redash should not be used, all commands containing the word "redash" can be omitted. 
+.. note:: The commands below create a database for the mercure data and already prepare the database for use with the Redash visualization software, as described on the Monitoring page. If Redash should not be used, all commands containing the word "redash" can be omitted. 
 
-Keep in mind that '[hermes pwd]' in the command below needs to be replaced with the password that was entered when creating user hermes (and redash, respectively).
+Keep in mind that '[mercure pwd]' in the command below needs to be replaced with the password that was entered when creating user mercure (and redash, respectively).
 
 ::
 
     sudo apt install postgresql postgresql-contrib -y
     sudo -i -u postgres
-    createuser -P hermes
+    createuser -P mercure
     createuser -P redash
-    createdb hermes
+    createdb mercure
     psql
-    ALTER USER hermes WITH PASSWORD '[hermes pwd]';
+    ALTER USER mercure WITH PASSWORD '[mercure pwd]';
     ALTER USER redash WITH PASSWORD '[redash pwd]';
-    GRANT ALL PRIVILEGES ON DATABASE hermes to hermes;
+    GRANT ALL PRIVILEGES ON DATABASE mercure to mercure;
     \q
     exit
     ------
@@ -87,22 +87,22 @@ Keep in mind that '[hermes pwd]' in the command below needs to be replaced with 
     sudo service postgresql restart
 
 
-.. note:: The commands above assign read/write rights to the user "hermes", enabling the bookkeeper service to create the required database tables and store received monitoring information in the database. However, when working with the database for data analysis, an account with read-only rights should be used to prevent accidental data modification during the analysis. This applies in particular to the created user "redash".
+.. note:: The commands above assign read/write rights to the user "mercure", enabling the bookkeeper service to create the required database tables and store received monitoring information in the database. However, when working with the database for data analysis, an account with read-only rights should be used to prevent accidental data modification during the analysis. This applies in particular to the created user "redash".
 
-Read-only permissions can only be granted if the database tables already exist. The tables are automatically created when the bookkeeper service is started for the first time. Therefore, we first need to complete the Hermes configuration before we can grant read-only permissions.
+Read-only permissions can only be granted if the database tables already exist. The tables are automatically created when the bookkeeper service is started for the first time. Therefore, we first need to complete the mercure configuration before we can grant read-only permissions.
 
 
-Basic Hermes configuration
+Basic mercure configuration
 --------------------------
 
-Before Hermes can be started for the first time, several basic configuration steps are required.
+Before mercure can be started for the first time, several basic configuration steps are required.
 
 First, you need to edit "webgui.env" and change the SECRET_KEY for the webgui. 
 
 ::
 
-    ssh hermes@localhost
-    cd ~/hermes/configuration
+    ssh mercure@localhost
+    cd ~/mercure/configuration
     nano webgui.env
 
 By default, the SECRET_KEY is set to "PutSomethingRandomHere" and you need to change it to something random (it doesn't matter what exactly, just keep it a secret).
@@ -111,22 +111,22 @@ By default, the SECRET_KEY is set to "PutSomethingRandomHere" and you need to ch
 
 By default, the webgui runs on port 8080. Thus, you need to enter "http://x.x.x.x:8000" into your webbrowser. If you want to run it on a different port, you can change the port in the file "webgui.env" as well.
 
-.. note:: The Redash installation script automatically installs Redash on port :80. If you want to run the Hermes webgui on port :80 instead, you first need to change the port of Redash (see instructions in the Redash installation section).
+.. note:: The Redash installation script automatically installs Redash on port :80. If you want to run the mercure webgui on port :80 instead, you first need to change the port of Redash (see instructions in the Redash installation section).
 
-Next, you need to tell the bookkeeper the database password. This needs to be done in the file "bookkeeper.env" by replacing "ChangePasswordHere" with the password that you selected for the database user hermes:
+Next, you need to tell the bookkeeper the database password. This needs to be done in the file "bookkeeper.env" by replacing "ChangePasswordHere" with the password that you selected for the database user mercure:
 
 ::
 
     nano bookkeeper.env
 
-.. tip:: In this file, you can also change the port that the bookkeeper listens on (8080 by default), but that is normally not needed. If you need to change it, change it also in the file "hermes.json".
+.. tip:: In this file, you can also change the port that the bookkeeper listens on (8080 by default), but that is normally not needed. If you need to change it, change it also in the file "mercure.json".
 
-Finally, if you are using a different storage location than "/home/hermes/hermes-data", then you need to update the paths in the following two files:
+Finally, if you are using a different storage location than "/home/mercure/mercure-data", then you need to update the paths in the following two files:
 
 ::
 
     # Change paths in lines 3-7
-    nano hermes.env
+    nano mercure.env
     ------
     # Change line incoming=... (also change line binary=... if using other install folder)
     nano ../receiver.sh
@@ -134,24 +134,24 @@ Finally, if you are using a different storage location than "/home/hermes/hermes
     exit
 
 
-First start of Hermes
+First start of mercure
 ---------------------
 
-Now, you can start Hermes for the fist time. For now, start only the bookkeeper service, so that the database tables are created, and the webgui, so that the other services can later be started through the webgui.
+Now, you can start mercure for the fist time. For now, start only the bookkeeper service, so that the database tables are created, and the webgui, so that the other services can later be started through the webgui.
 
-The following commands need to be entered using a sudo account (i.e., not as user hermes):
+The following commands need to be entered using a sudo account (i.e., not as user mercure):
 
 ::
 
-    systemctl start hermes_bookkeeper.service
-    systemctl start hermes_ui.service
+    systemctl start mercure_bookkeeper.service
+    systemctl start mercure_ui.service
 
 You can validate if the two services started correctly with the following two commands:
 
 ::
 
-    journalctl -u hermes_bookkeeper.service
-    journalctl -u hermes_ui.service
+    journalctl -u mercure_bookkeeper.service
+    journalctl -u mercure_ui.service
 
 In addition, you should open a web browser and test if the login page appears if you enter the server ip (with port :8000 - or the port that you selected).
 
@@ -165,8 +165,8 @@ Now that the database tables have been created by the bookkeeper, you can grant 
 
     sudo -i -u postgres
     psql
-    \c hermes
-    GRANT CONNECT ON DATABASE hermes TO redash;
+    \c mercure
+    GRANT CONNECT ON DATABASE mercure TO redash;
     GRANT USAGE ON SCHEMA public TO redash;
     GRANT SELECT ON ALL TABLES IN SCHEMA public TO redash;
     ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO redash;
@@ -179,7 +179,7 @@ Now that the database tables have been created by the bookkeeper, you can grant 
 Installing Redash
 -----------------
 
-Redash is a powerful open-source web application for analyzing and visualizing data stored in SQL databases, like the data collected by the bookkeeper service. Instead of integrating limited analysis functions into Hermes' own webgui, we decided to utilize Redash instead, which provides much greater flexibility. You can learn more about Redash at http://redash.io
+Redash is a powerful open-source web application for analyzing and visualizing data stored in SQL databases, like the data collected by the bookkeeper service. Instead of integrating limited analysis functions into mercure' own webgui, we decided to utilize Redash instead, which provides much greater flexibility. You can learn more about Redash at http://redash.io
 
 Redash provides a convenient installation script that uses Docker for the Redash deployment. It is highly recommended to use this script, unless you are very familiar with Redash. 
 
@@ -200,12 +200,12 @@ After setting up your Redash administrator password, click the top-right configu
 ::
 
     Type: Postgres
-    Name: Hermes
+    Name: mercure
     Host: 172.17.0.1
     Port: 5432
     User: redash
     Password: [as selected above]
-    Database Name: hermes
+    Database Name: mercure
 
 Afterwards, click "Save" and validate the database connection by clicking the button "Test Connection". If you see a green "Success" notification on the bottom-right, everything works.
 
@@ -215,4 +215,4 @@ Afterwards, click "Save" and validate the database connection by clicking the bu
 Congratulations
 ---------------
 
-If you have made it to here, then you have mastered the installation of Hermes. Everything that follows from here will be much easier.
+If you have made it to here, then you have mastered the installation of mercure. Everything that follows from here will be much easier.

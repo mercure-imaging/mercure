@@ -1,5 +1,5 @@
 #!/bin/bash
-testdata=/home/hermes/testdata
+testdata=/home/mercure/testdata
 testnode=127.0.0.1
 testport=4242
 
