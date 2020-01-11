@@ -7,7 +7,7 @@
   <meta name="description" content="">
   <meta name="author" content="">
 
-  <title>mercure</title>
+  <title>mercure{% if self.title() %} &mid; {% endif %}{% block title %}{% endblock %}</title>
 
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.7.5/css/bulma.min.css">
   <script defer src="https://use.fontawesome.com/releases/v5.9.0/js/all.js"></script>
@@ -78,7 +78,7 @@
           <div class="navbar-item has-dropdown is-hoverable">
             <a class="navbar-link">User: {{ user }}</a>
             <div class="navbar-dropdown">
-              <a class="navbar-item" href="https://mercure-router.github.io" target="_blank">
+              <a class="navbar-item" href="https://mercure-imaging.github.io" target="_blank">
                 Help
               </a>
               <a class="navbar-item" href="/settings">
@@ -104,7 +104,7 @@
   <footer class="footer">
     <div class="content has-text-centered">
       <p>mercure DICOM Orchestrator &minus; Version {{mercure_version}}<br />
-        <a href="https://mercure-router.github.io" target="_blank">https://mercure-router.github.io</a>
+        <a href="https://mercure-imaging.github.io" target="_blank">https://mercure-imaging.github.io</a>
       </p>
     </div>
   </footer>

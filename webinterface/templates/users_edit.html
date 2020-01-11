@@ -1,5 +1,7 @@
 {% extends "base.html" %}
 
+{% block title %}Users{% endblock %}
+
 {% block content %}
 <main role="main">
     <div class="container">
@@ -12,43 +14,53 @@
         <form method="post" action="/users/edit/{{edituser}}">
             {% if own_settings is defined %}
             <input type="hidden" name="own_settings" value="True">
-            {% endif %}        
+            {% endif %}
             <div class="field">
                 <label class="label">Email</label>
                 <div class="control">
-                    <input name="email" class="input" autocomplete='off' type="email" placeholder="Email address" value="{{edituser_info['email']}}" autofocus>
+                    <input name="email" class="input" autocomplete='off' type="email" placeholder="Email address"
+                        value="{{edituser_info['email']}}" autofocus>
                 </div>
-            </div>    
+            </div>
             {% if not own_settings is defined %}
             <div class="field">
                 <label class="label">Administrator</label>
                 <div class="select">
                     <div class="control">
                         <select name="is_admin" {% if user==edituser %}disabled{% endif %}>
-                            <option value="False" {% if edituser_info['is_admin']!='True' %}selected{% endif%}>No</option>
-                            <option value="True" {% if edituser_info['is_admin']=='True' %}selected{% endif%}>Yes</option>
+                            <option value="False" {% if edituser_info['is_admin']!='True' %}selected{% endif%}>No
+                            </option>
+                            <option value="True" {% if edituser_info['is_admin']=='True' %}selected{% endif%}>Yes
+                            </option>
                         </select>
                     </div>
                 </div>
                 {% if user==edituser %}
                 <p class="help has-text-grey-light">You cannot change your own status.</p>
                 {% endif %}
-            </div> 
+            </div>
+            <div class="field">
+                <label class="label">Permissions</label>
+                <div class="control" style="min-height: 40px;">
+                    <input class="input" type="tags" placeholder="Add Group" value="">
+                </div>
+            </div>
             {% endif %}
             <div class="field">
                 <label class="label">New Password</label>
                 <div class="control">
-                    <input name="password" class="input" autocomplete='off' type="password" placeholder="Leave empty to keep current password" value="">
+                    <input name="password" class="input" autocomplete='off' type="password"
+                        placeholder="Leave empty to keep current password" value="">
                 </div>
-            </div>                               
+            </div>
             <div class="field">
                 <p class="control buttons" style="margin-top: 30px;">
-                <button type="submit" class="button is-success" value="default action">
-                    <i class="fas fa-save"></i>&nbsp;Save
-                </button>
-                {% if not own_settings is defined %}
-                <a class="button" href="/users"><i class="fas fa-ban"></i>&nbsp;Cancel</a>
-                {% endif %}
+                    <button type="submit" class="button is-success" value="default action">
+                        <i class="fas fa-save"></i>&nbsp;Save
+                    </button>
+                    {% if not own_settings is defined %}
+                    <a class="button" href="/users"><i class="fas fa-ban"></i>&nbsp;Cancel</a>
+                    {% endif %}
                 </p>
             </div>
         </form>
@@ -59,13 +71,19 @@
                 <div class="column  is-full">
                     <div class="notification is-info">
                         <i class="fas fa-lock"></i>&nbsp;&nbsp;Please change your password now
-                    </div>   
+                    </div>
                 </div>
             </div>
         </div>
         {% endif %}
 
-    </div>  
+    </div>
 </main>
+
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/bulma-tagsinput@2.0.0/dist/js/bulma-tagsinput.min.js">
+</script>
+<script>
+  bulmaTagsinput.attach();
+</script>
 
 {% endblock %}
