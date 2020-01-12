@@ -22,6 +22,10 @@
                 <col width="150">
                 <tr><td>E-Mail:</td><td>{{ users[x]['email'] }}</td></tr>
                 <tr><td>Administrator:</td><td>{{ users[x]['is_admin'] }}</td></tr>
+                {% if (users[x]['permissions'] is defined) and (users[x]['permissions'] != '') %}
+                {% set permlist = users[x]['permissions'].split(',') %}
+                <tr><td>Permissions:</td><td>{% for perm in permlist %}<span class="tag is-dark">{{ perm }}</span> {% endfor %}</td></tr>
+                {% endif %}
                 </table>
                 <div class="buttons is-right">                        
                     {% if is_admin %}

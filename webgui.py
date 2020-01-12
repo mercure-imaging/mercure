@@ -636,6 +636,9 @@ async def users_edit_post(request):
     if (request.user.is_admin) and (request.user.display_name != edituser):
         users.users_list[edituser]["is_admin"]=form["is_admin"]
 
+    if (request.user.is_admin):
+        users.users_list[edituser]["permissions"]=form["permissions"]
+
     try: 
         users.save_users()
     except:

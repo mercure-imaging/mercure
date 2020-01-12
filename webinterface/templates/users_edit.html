@@ -22,6 +22,13 @@
                         value="{{edituser_info['email']}}" autofocus>
                 </div>
             </div>
+            <div class="field">
+                <label class="label">Password</label>
+                <div class="control">
+                    <input name="password" class="input" autocomplete='off' type="password"
+                        placeholder="Leave empty to keep current password" value="">
+                </div>
+            </div>
             {% if not own_settings is defined %}
             <div class="field">
                 <label class="label">Administrator</label>
@@ -42,17 +49,10 @@
             <div class="field">
                 <label class="label">Permissions</label>
                 <div class="control" style="min-height: 40px;">
-                    <input class="input" type="tags" placeholder="Add Group" value="">
+                    <input id="permissions" name="permissions" class="input" type="tags" placeholder="Add permission group" value="{{edituser_info['permissions']}}" style="height: 36px !important; font-size: 13.33px !important;">
                 </div>
             </div>
             {% endif %}
-            <div class="field">
-                <label class="label">New Password</label>
-                <div class="control">
-                    <input name="password" class="input" autocomplete='off' type="password"
-                        placeholder="Leave empty to keep current password" value="">
-                </div>
-            </div>
             <div class="field">
                 <p class="control buttons" style="margin-top: 30px;">
                     <button type="submit" class="button is-success" value="default action">
@@ -80,7 +80,7 @@
     </div>
 </main>
 
-<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/bulma-tagsinput@2.0.0/dist/js/bulma-tagsinput.min.js">
+<script type="text/javascript" src="{{ url_for('static', path='/js/bulma-tagsinput.min.js') }}">
 </script>
 <script>
   bulmaTagsinput.attach();

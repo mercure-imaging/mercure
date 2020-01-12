@@ -206,16 +206,17 @@ body {
     background-color: #dbdbdb;
 }
 
-.tag:not(body) {
+.tagsinput .tag:not(body) {
     background-color: #363636;
     color:#fff;
 }
+
 .tagsinput .tag.is-active {
     background-color: #363636;
     color:#fff;
 }
 
-.tag:not(body).is-delete:hover {
+.tagsinput .tag:not(body).is-delete:hover {
     background-color: #2f2f2f;
 }
 
@@ -227,3 +228,6 @@ body {
     margin-bottom: 0px !important;
 }
 
+.tagsinput.field {
+    min-height: 36px !important;
+}
