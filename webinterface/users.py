@@ -5,6 +5,9 @@ from pathlib import Path
 from passlib.apps import custom_app_context as pwd_context
 import daiquiri
 
+from common.constants import mercure_names
+
+
 daiquiri.setup(level=logging.INFO)
 logger = daiquiri.getLogger("users")
 
@@ -22,7 +25,7 @@ def read_users():
     users_file = Path(users_filename)
 
     # Check for existence of lock file
-    lock_file=Path(users_file.parent/users_file.stem).with_suffix(".lock")
+    lock_file=Path(users_file.parent/users_file.stem).with_suffix(mercure_names.LOCK)
 
     if lock_file.exists():
         raise ResourceWarning(f"Users file locked: {lock_file}")
@@ -65,7 +68,7 @@ def save_users():
     users_file = Path(users_filename)
 
     # Check for existence of lock file
-    lock_file=Path(users_file.parent/users_file.stem).with_suffix(".lock")
+    lock_file=Path(users_file.parent/users_file.stem).with_suffix(mercure_names.LOCK)
 
     if lock_file.exists():
         raise ResourceWarning(f"Users file locked: {lock_file}")

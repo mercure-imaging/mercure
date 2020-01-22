@@ -42,6 +42,7 @@ import common.helper as helper
 import common.config as config
 import common.monitor as monitor
 import common.version as version
+from common.constants import mercure_names
 import common.rule_evaluation as rule_evaluation
 import webinterface.users as users
 import webinterface.tagslist as tagslist
@@ -704,7 +705,7 @@ async def configuration_edit(request):
 
     # Check for existence of lock file
     cfg_file = Path(config.configuration_filename)
-    cfg_lock=Path(cfg_file.parent/cfg_file.stem).with_suffix(".lock")
+    cfg_lock=Path(cfg_file.parent/cfg_file.stem).with_suffix(mercure_names.LOCK)
     if cfg_lock.exists():
         return PlainTextResponse('Configuration is being updated. Try again in a minute.')
     

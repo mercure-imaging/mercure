@@ -1,9 +1,12 @@
 import json
 import os
 from pathlib import Path
+import daiquiri
+
 import common.monitor as monitor
 import common.helper as helper
-import daiquiri
+from common.constants import mercure_names
+
 
 logger = daiquiri.getLogger("config")
 
@@ -50,7 +53,7 @@ def read_config():
     configuration_file = Path(configuration_filename)
 
     # Check for existence of lock file
-    lock_file=Path(configuration_file.parent/configuration_file.stem).with_suffix(".lock")
+    lock_file=Path(configuration_file.parent/configuration_file.stem).with_suffix(mercure_names.LOCK)
 
     if lock_file.exists():
         raise ResourceWarning(f"Configuration file locked: {lock_file}")
@@ -103,7 +106,7 @@ def save_config():
     configuration_file = Path(configuration_filename)
 
     # Check for existence of lock file
-    lock_file=Path(configuration_file.parent/configuration_file.stem).with_suffix(".lock")
+    lock_file=Path(configuration_file.parent/configuration_file.stem).with_suffix(mercure_names.LOCK)
 
     if lock_file.exists():
         raise ResourceWarning(f"Configuration file locked: {lock_file}")
@@ -139,7 +142,7 @@ def write_configfile(json_content):
     configuration_file = Path(configuration_filename)
 
     # Check for existence of lock file
-    lock_file=Path(configuration_file.parent/configuration_file.stem).with_suffix(".lock")
+    lock_file=Path(configuration_file.parent/configuration_file.stem).with_suffix(mercure_names.LOCK)
 
     if lock_file.exists():
         raise ResourceWarning(f"Configuration file locked: {lock_file}")

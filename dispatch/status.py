@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 from common.monitor import s_events, send_series_event
+from common.constants import mercure_names
 
 
 def is_ready_for_sending(folder):
@@ -14,9 +15,9 @@ def is_ready_for_sending(folder):
     """
     path = Path(folder)
     folder_status = (
-        not (path / ".lock").exists()
-        and not (path / ".error").exists()
-        and not (path / ".sending").exists()
+        not (path / mercure_names.LOCK).exists()
+        and not (path / mercure_names.ERROR).exists()
+        and not (path / mercure_names.PROCESSING).exists()
         and len(list(path.glob("*.dcm"))) > 0
     )
     content = is_target_json_valid(folder)
@@ -27,7 +28,7 @@ def is_ready_for_sending(folder):
 
 def has_been_send(folder):
     """Checks if the given folder has already been sent."""
-    return (Path(folder) / "sent.txt").exists()
+    return (Path(folder) / mercure_names.SENDLOG).exists()
 
 
 def is_target_json_valid(folder):

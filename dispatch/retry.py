@@ -2,6 +2,8 @@ import json
 import time
 from pathlib import Path
 
+from common.constants import mercure_names
+
 
 def increase_retry(source_folder, retry_max, retry_delay):
     """ Increases the retries counter and set the wait counter to a new time

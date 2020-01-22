@@ -6,11 +6,12 @@ import json
 import shutil
 import daiquiri
 import time
+from datetime import datetime
 
 import common.monitor as monitor
 import common.helper as helper
 import common.config as config
-from datetime import datetime
+from common.constants import mercure_names
 
 
 logger = daiquiri.getLogger("process_series")
@@ -19,9 +20,9 @@ logger = daiquiri.getLogger("process_series")
 def process_series(folder):    
     logger.info(f'Now processing = {folder}')
 
-    lock_file=Path(folder + '/.processing')
+    lock_file=Path(folder / mercure_names.PROCESSING)
     if lock_file.exists():
-        logger.warning(f"Folder already contains lockfile {folder}/.processing")
+        logger.warning(f"Folder already contains lockfile {folder}/"+mercure_names.PROCESSING)
         return
 
     try:
@@ -35,13 +36,14 @@ def process_series(folder):
     processing_success=True
     needs_dispatching=False
 
+    # Debug
     time.sleep(10)
 
     # TODO: Error handling
 
     # Create a new lock file to ensure that no other process picks up the folder while copying
     try:
-        lock_file=lock_file=Path(folder + '/.lock')
+        lock_file=lock_file=Path(folder / mercure_names.LOCK_EXTENSION)
         lock_file.touch()
     except:
         logger.info(f"Error locking folder to be moved {folder}")        
@@ -74,7 +76,7 @@ def move_folder(source_folder_str, destination_folder_str):
     logger.debug(f"Moving {source_folder} to {target_folder}")
     try:
         shutil.move(source_folder, target_folder)        
-        lockfile=target_folder / ".lock"
+        lockfile=target_folder / mercure_names.LOCK
         lockfile.unlink()
     except:
         logger.info(f"Error moving folder {source_folder} to {destination_folder}")        

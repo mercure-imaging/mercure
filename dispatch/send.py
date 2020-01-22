@@ -16,6 +16,8 @@ import daiquiri
 from common.monitor import s_events, send_series_event, send_event, h_events, severity
 from dispatch.retry import increase_retry
 from dispatch.status import is_ready_for_sending
+from common.constants import mercure_names
+
 
 logger = daiquiri.getLogger("send")
 
@@ -38,7 +40,7 @@ def _create_command(target_info, folder):
     target_port = target_info["target_port"]
     target_aet_target = target_info["target_aet_target"]
     target_aet_source = target_info.get("target_aet_source", "")
-    dcmsend_status_file = Path(folder) / "sent.txt"
+    dcmsend_status_file = Path(folder) / mercure_names.SENDLOG
     command = f"""dcmsend {target_ip} {target_port} +sd {folder}
             -aet {target_aet_source} -aec {target_aet_target} -nuc
             +sp '*.dcm' -to 60 +crf {dcmsend_status_file}"""
@@ -73,7 +75,7 @@ def execute(
         # Create a .sending file to indicate that this folder is being sent,
         # otherwise the dispatcher would pick it up again if the transfer is
         # still going on
-        lock_file = Path(source_folder) / ".sending"
+        lock_file = Path(source_folder) / mercure_names.PROCESSING
         try:
             lock_file.touch()            
         except:
@@ -134,13 +136,13 @@ def _move_sent_directory(source_folder, destination_folder):
             )
             logger.debug(f"Moving {source_folder} to {target_folder}")
             shutil.move(source_folder, target_folder, copy_function=shutil.copy2)
-            (Path(target_folder) / ".sending").unlink()
+            (Path(target_folder) / mercure_names.PROCESSING).unlink()
         else:
             logger.debug(
                 f"Moving {source_folder} to {destination_folder / source_folder.name}"
             )
             shutil.move(source_folder, destination_folder / source_folder.name)
-            (destination_folder / source_folder.name / ".sending").unlink()
+            (destination_folder / source_folder.name / mercure_names.PROCESSING).unlink()
     except:
         logger.info(f"Error moving folder {source_folder} to {destination_folder}")        
         send_event(h_events.PROCESSING, severity.ERROR, f"Error moving {source_folder} to {destination_folder}")
