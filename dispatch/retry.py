@@ -11,12 +11,15 @@ def increase_retry(source_folder, retry_max, retry_delay):
     :return True if increase has been successful or False if maximum retries
     has been reached
     """
-    target_json_path = Path(source_folder) / "target.json"
+    target_json_path = Path(source_folder) / mercure_names.TASKFILE
     with open(target_json_path, "r") as file:
         target_json = json.load(file)
 
-    target_json["retries"] = target_json.get("retries", 0) + 1
-    target_json["next_retry_at"] = time.time() + retry_delay
+    if not target_json.get("dispatch",None):
+        target_json["dispatch"]={}    
+
+    target_json["dispatch"]["retries"] = target_json.get("dispatch",{}).get("retries", 0) + 1
+    target_json["dispatch"]["next_retry_at"] = time.time() + retry_delay
 
     if target_json["retries"] >= retry_max:
         return False

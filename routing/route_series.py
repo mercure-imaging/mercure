@@ -10,13 +10,15 @@ import common.config as config
 import common.rule_evaluation as rule_evaluation
 import common.monitor as monitor
 import common.helper as helper
+from common.constants import mercure_names
+
 
 logger = daiquiri.getLogger("route_series")
 
 
 def route_series(series_UID):
     """Processes the series with the given series UID from the incoming folder."""
-    lock_file=Path(config.mercure['incoming_folder'] + '/' + str(series_UID) + '.lock')
+    lock_file=Path(config.mercure['incoming_folder'] + '/' + str(series_UID) + mercure_names.LOCK)
 
     if lock_file.exists():
         # Series is locked, so another instance might be working on it
@@ -37,14 +39,14 @@ def route_series(series_UID):
 
     # Collect all files belonging to the series
     for entry in os.scandir(config.mercure['incoming_folder']):
-            if entry.name.endswith(".tags") and entry.name.startswith(seriesPrefix) and not entry.is_dir():
+            if entry.name.endswith(mercure_names.TAGS) and entry.name.startswith(seriesPrefix) and not entry.is_dir():
                 stemName=entry.name[:-5]
                 fileList.append(stemName)
 
     logger.info("DICOM files found: "+str(len(fileList)))
 
     # Use the tags file from the first slice for evaluating the routing rules
-    tagsMasterFile=Path(config.mercure['incoming_folder'] + '/' + fileList[0] + ".tags")
+    tagsMasterFile=Path(config.mercure['incoming_folder'] + '/' + fileList[0] + mercure_names.TAGS)
     if not tagsMasterFile.exists():
         logger.error(f'Missing file! {tagsMasterFile.name}')
         monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Missing file {tagsMasterFile.name}')
@@ -129,7 +131,7 @@ def push_series_discard(fileList,series_UID):
     # Create lock file in destination folder (to prevent the cleaner module to work on the folder). Note that 
     # the DICOM series in the incoming folder has already been locked in the parent function.
     try:
-        lock_file=Path(discard_path + '/lock')
+        lock_file=Path(discard_path / mercure_names.LOCK)
         lock=helper.FileLock(lock_file)
     except:
         # Can't create lock file, so something must be seriously wrong
@@ -141,8 +143,8 @@ def push_series_discard(fileList,series_UID):
 
     for entry in fileList:
         try:
-            shutil.move(source_folder+entry+'.dcm',discard_folder+entry+'.dcm')
-            shutil.move(source_folder+entry+'.tags',discard_folder+entry+'.tags')
+            shutil.move(source_folder+entry+mercure_names.DCM,discard_folder+entry+mercure_names.DCM)
+            shutil.move(source_folder+entry+mercure_names.TAGS,discard_folder+entry+mercure_names.TAGS)
         except Exception:
             logger.exception(f'Problem while discarding file {entry}')
             logger.exception(f'Source folder {source_folder}')
@@ -198,7 +200,7 @@ def push_series_outgoing(fileList,series_UID,transfer_targets):
             return
 
         try:
-            lock_file=Path(folder_name + '/lock')
+            lock_file=Path(folder_name / mercure_names.LOCK)
             lock=helper.FileLock(lock_file)
         except:
             # Can't create lock file, so something must be seriously wrong
@@ -206,16 +208,17 @@ def push_series_outgoing(fileList,series_UID,transfer_targets):
             monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Unable to create lock file {lock_file}')
             return
 
-        # Generate target file target.json
-        target_filename = target_folder + "target.json"
+        # Generate task file with dispatch information
+        target_filename = target_folder + mercure_names.TASKFILE
         target_json = {}
-        target_json["target_ip"]        =config.mercure["targets"][target]["ip"]
-        target_json["target_port"]      =config.mercure["targets"][target]["port"]
-        target_json["target_aet_target"]=config.mercure["targets"][target].get("aet_target","ANY-SCP")
-        target_json["target_aet_source"]=config.mercure["targets"][target].get("aet_source","mercure")
-        target_json["target_name"]      =target
-        target_json["applied_rule"]     =transfer_targets[target]
-        target_json["series_uid"]       =series_UID
+        target_json["dispatch"]= {}
+        target_json["dispatch"]["target_ip"]        =config.mercure["targets"][target]["ip"]
+        target_json["dispatch"]["target_port"]      =config.mercure["targets"][target]["port"]
+        target_json["dispatch"]["target_aet_target"]=config.mercure["targets"][target].get("aet_target","ANY-SCP")
+        target_json["dispatch"]["target_aet_source"]=config.mercure["targets"][target].get("aet_source","mercure")
+        target_json["dispatch"]["target_name"]      =target
+        target_json["dispatch"]["applied_rule"]     =transfer_targets[target]
+        target_json["dispatch"]["series_uid"]       =series_UID
 
         try:
             with open(target_filename, 'w') as target_file:
@@ -234,8 +237,8 @@ def push_series_outgoing(fileList,series_UID,transfer_targets):
 
         for entry in fileList:
             try:
-                operation(source_folder+entry+'.dcm', target_folder+entry+'.dcm')
-                operation(source_folder+entry+'.tags',target_folder+entry+'.tags')
+                operation(source_folder+entry+mercure_names.DCM, target_folder+entry+mercure_names.DCM)
+                operation(source_folder+entry+mercure_names.TAGS,target_folder+entry+mercure_names.TAGS)
             except Exception:
                 logger.exception(f'Problem while pushing file to outgoing {entry}')
                 logger.exception(f'Source folder {source_folder}')
@@ -263,7 +266,7 @@ def route_error_files():
     for entry in os.scandir(config.mercure['incoming_folder']):
         if entry.name.endswith(".error") and not entry.is_dir():
             # Check if a lock file exists. If not, create one.
-            lock_file=Path(config.mercure['incoming_folder'] + '/' + entry.name + '.lock')
+            lock_file=Path(config.mercure['incoming_folder'] + / + entry.name + mercure_names.LOCK)
             if lock_file.exists():
                 continue
             try:

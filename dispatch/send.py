@@ -36,14 +36,17 @@ DCMSEND_ERROR_CODES = {
 
 def _create_command(target_info, folder):
     """Composes the command for calling the dcmsend tool from DCMTK, which is used for sending out the DICOMS."""
-    target_ip = target_info["target_ip"]
-    target_port = target_info["target_port"]
-    target_aet_target = target_info["target_aet_target"]
-    target_aet_source = target_info.get("target_aet_source", "")
+    target_ip         = target_info.get("dispatch",[]).get("target_ip","")
+    target_port       = target_info.get("dispatch",[]).get("target_port","")
+    target_aet_target = target_info.get("dispatch",[]).get("target_aet_target","")
+    target_aet_source = target_info.get("dispatch",[]).get("target_aet_source","")
+    
     dcmsend_status_file = Path(folder) / mercure_names.SENDLOG
+
     command = f"""dcmsend {target_ip} {target_port} +sd {folder}
             -aet {target_aet_source} -aec {target_aet_target} -nuc
             +sp '*.dcm' -to 60 +crf {dcmsend_status_file}"""
+    
     return command
 
 
@@ -61,13 +64,13 @@ def execute(
     Folder with .error files are _not_ ready for sending.
     """
     target_info = is_ready_for_sending(source_folder)
-    delay = target_info.get("next_retry_at", 0)
+    delay = target_info.get("dispatch",[]).get("next_retry_at", 0)
 
     if target_info and time.time() >= delay:
         logger.info(f"Folder {source_folder} is ready for sending")
 
-        series_uid=target_info.get("series_uid", "series_uid-missing") 
-        target_name=target_info.get("target_name", "target_name-missing")
+        series_uid=target_info.get("dispatch",[]).get("series_uid", "series_uid-missing") 
+        target_name=target_info.get("dispatch",[]).get("target_name", "target_name-missing")
 
         if (series_uid=="series_uid-missing") or (target_name=="target_name-missing"):
             send_event(h_events.PROCESSING, severity.WARNING, f"Missing information for folder {source_folder}")    
@@ -92,7 +95,7 @@ def execute(
                 f"Folder {source_folder} successfully sent, moving to {success_folder}"
             )
             # Send bookkeeper notification
-            file_count = len(list(Path(source_folder).glob("*.dcm")))
+            file_count = len(list(Path(source_folder).glob(mercure_names.DCMFILTER)))
             send_series_event(
                 s_events.DISPATCH,
                 target_info.get("series_uid", "series_uid-missing"),

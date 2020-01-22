@@ -10,7 +10,7 @@ def is_ready_for_sending(folder):
 
     No lock file (.lock) should be in sending folder and no error file (.error),
     if there is one copy/move is not done yet. Also at least some dicom files
-    should be there for sending. Also checks for a target.json file and if it is
+    should be there for sending. Also checks for a mercure.json file and if it is
     valid.
     """
     path = Path(folder)
@@ -18,7 +18,7 @@ def is_ready_for_sending(folder):
         not (path / mercure_names.LOCK).exists()
         and not (path / mercure_names.ERROR).exists()
         and not (path / mercure_names.PROCESSING).exists()
-        and len(list(path.glob("*.dcm"))) > 0
+        and len(list(path.glob(mercure_names.DCMFILTER))) > 0
     )
     content = is_target_json_valid(folder)
     if folder_status and content:
@@ -33,10 +33,11 @@ def has_been_send(folder):
 
 def is_target_json_valid(folder):
     """
-    Checks if the target.json file exists and is also valid. Mandatory
-    keys are target_ip, target_port and target_aet_target.
+    Checks if the mercure.json file exists and is also valid. Mandatory
+    subkeys are target_ip, target_port and target_aet_target under the
+    dispatch key
     """
-    path = Path(folder) / "target.json"
+    path = Path(folder) / mercure_names.TASKFILE
     if not path.exists():
         return None
 
@@ -44,14 +45,14 @@ def is_target_json_valid(folder):
         target = json.load(f)
 
     if not all(
-        [key in target for key in ["target_ip", "target_port", "target_aet_target"]]
+        [key in target.get("dispatch",{}) for key in ["target_ip", "target_port", "target_aet_target"]]
     ):
         send_series_event(
             s_events.ERROR,
-            target.get("series_uid", None),
+            target.get("series_uid", "None"),
             0,
-            target.get("target_name", None),
-            f"target.json is missing a mandatory key {target}",
+            target.get("target_name", "None"),
+            f"mercure.json is missing a mandatory key {target}",
         )
         return None
     return target
