@@ -26,7 +26,7 @@ The dispatcher module runs periodically and checks
 * if at least one DICOM file is available
 
 If the conditions are true, the information about the DICOM target node is read from the 
-`target.json` file and the images are sent the this node. After the transfer, the files
+`task.json` file and the images are sent the this node. After the transfer, the files
 are moved to either the `success` or `error` folder.
 
 ## Cleaner

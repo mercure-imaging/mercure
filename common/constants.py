@@ -5,7 +5,7 @@ class mercure_names:
     ERROR      = ".error"
     TAGS       = ".tags"
     HALT       = "HALT"
-    TASKFILE   = "mercure.json"
+    TASKFILE   = "task.json"
     SENDLOG    = "sent.txt"
     DCM        = ".dcm"
     DCMFILTER  = "*.dcm"

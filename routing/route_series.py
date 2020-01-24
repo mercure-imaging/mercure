@@ -266,7 +266,7 @@ def route_error_files():
     for entry in os.scandir(config.mercure['incoming_folder']):
         if entry.name.endswith(".error") and not entry.is_dir():
             # Check if a lock file exists. If not, create one.
-            lock_file=Path(config.mercure['incoming_folder'] + / + entry.name + mercure_names.LOCK)
+            lock_file=Path(config.mercure['incoming_folder'] / entry.name + mercure_names.LOCK)
             if lock_file.exists():
                 continue
             try:

@@ -10,7 +10,7 @@ def is_ready_for_sending(folder):
 
     No lock file (.lock) should be in sending folder and no error file (.error),
     if there is one copy/move is not done yet. Also at least some dicom files
-    should be there for sending. Also checks for a mercure.json file and if it is
+    should be there for sending. Also checks for a task.json file and if it is
     valid.
     """
     path = Path(folder)
@@ -33,7 +33,7 @@ def has_been_send(folder):
 
 def is_target_json_valid(folder):
     """
-    Checks if the mercure.json file exists and is also valid. Mandatory
+    Checks if the task.json file exists and is also valid. Mandatory
     subkeys are target_ip, target_port and target_aet_target under the
     dispatch key
     """
@@ -52,7 +52,7 @@ def is_target_json_valid(folder):
             target.get("series_uid", "None"),
             0,
             target.get("target_name", "None"),
-            f"mercure.json is missing a mandatory key {target}",
+            f"task.json is missing a mandatory key {target}",
         )
         return None
     return target
