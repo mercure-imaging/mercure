@@ -49,10 +49,10 @@ def is_target_json_valid(folder):
     ):
         send_series_event(
             s_events.ERROR,
-            target.get("series_uid", "None"),
+            target.get("dispatch",{}).get("series_uid", "None"),
             0,
-            target.get("target_name", "None"),
+            target.get("dispatch",{}).get("target_name", "None"),
             f"task.json is missing a mandatory key {target}",
         )
         return None
-    return target
+    return target["dispatch"]

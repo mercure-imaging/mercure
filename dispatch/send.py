@@ -64,13 +64,13 @@ def execute(
     Folder with .error files are _not_ ready for sending.
     """
     target_info = is_ready_for_sending(source_folder)
-    delay = target_info.get("dispatch",[]).get("next_retry_at", 0)
+    delay = target_info.get("next_retry_at", 0)
 
     if target_info and time.time() >= delay:
         logger.info(f"Folder {source_folder} is ready for sending")
 
-        series_uid=target_info.get("dispatch",[]).get("series_uid", "series_uid-missing") 
-        target_name=target_info.get("dispatch",[]).get("target_name", "target_name-missing")
+        series_uid=target_info.get("series_uid", "series_uid-missing") 
+        target_name=target_info.get("target_name", "target_name-missing")
 
         if (series_uid=="series_uid-missing") or (target_name=="target_name-missing"):
             send_event(h_events.PROCESSING, severity.WARNING, f"Missing information for folder {source_folder}")    

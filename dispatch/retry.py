@@ -21,7 +21,7 @@ def increase_retry(source_folder, retry_max, retry_delay):
     target_json["dispatch"]["retries"] = target_json.get("dispatch",{}).get("retries", 0) + 1
     target_json["dispatch"]["next_retry_at"] = time.time() + retry_delay
 
-    if target_json["retries"] >= retry_max:
+    if target_json["dispatch"]["retries"] >= retry_max:
         return False
 
     with open(target_json_path, "w") as file:
