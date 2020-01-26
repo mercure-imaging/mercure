@@ -6,6 +6,9 @@ applications that handle different steps of the routing procedure.
 Installation instructions and usage information can be found on the project homepage:
 https://hermes-router.github.io
 
+**Important:** mercure (formerly called Hermes) is currently undergoing significant development work towards version 0.2. Make sure to checkout the branch *stable-v0.1* for a stable version.
+
+
 ## Receiver
 The receiver listens on a tcp port for incoming DICOM files. Received files are run through
 a preprocessing procedure during which DICOM tag information is extracted and stored in a json
