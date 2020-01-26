@@ -4,7 +4,7 @@ A flexible DICOM routing solution based on DCMTK toolkit. It consists of multipl
 applications that handle different steps of the routing procedure.
 
 Installation instructions and usage information can be found on the project homepage:
-https://mercure-router.github.io
+https://hermes-router.github.io
 
 ## Receiver
 The receiver listens on a tcp port for incoming DICOM files. Received files are run through
