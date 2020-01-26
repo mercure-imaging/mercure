@@ -145,10 +145,6 @@ if __name__ == '__main__':
     if len(sys.argv)>1:
         instance_name=sys.argv[1]
 
-    logger.info(sys.version)
-    logger.info(f'Instance name = {instance_name}')
-    logger.info(f'Instance PID = {os.getpid()}')
-
     # Read the configuration file and terminate if it cannot be read
     try:
         config.read_config()
@@ -156,10 +152,18 @@ if __name__ == '__main__':
         logger.exception("Cannot start service. Going down.")
         sys.exit(1)
 
+    appliance_name=config.mercure['appliance_name']
+
+    logger.info(f'Appliance name = {appliance_name}')
+    logger.info(f'Instance  name = {instance_name}')
+    logger.info(f'Instance  PID  = {os.getpid()}')
+    logger.info(sys.version)
+
     monitor.configure('router',instance_name,config.mercure['bookkeeper'])
     monitor.send_event(monitor.h_events.BOOT,monitor.severity.INFO,f'PID = {os.getpid()}')
 
-    graphite_prefix='mercure.router.'+instance_name
+    graphite_prefix='mercure.'+appliance_name+'.router.'+instance_name
+
     if len(config.mercure['graphite_ip']) > 0:
         logger.info(f'Sending events to graphite server: {config.mercure["graphite_ip"]}')
         graphyte.init(config.mercure['graphite_ip'], config.mercure['graphite_port'], prefix=graphite_prefix)
