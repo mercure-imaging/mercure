@@ -162,10 +162,9 @@ if __name__ == '__main__':
     monitor.configure('router',instance_name,config.mercure['bookkeeper'])
     monitor.send_event(monitor.h_events.BOOT,monitor.severity.INFO,f'PID = {os.getpid()}')
 
-    graphite_prefix='mercure.'+appliance_name+'.router.'+instance_name
-
     if len(config.mercure['graphite_ip']) > 0:
         logger.info(f'Sending events to graphite server: {config.mercure["graphite_ip"]}')
+        graphite_prefix='mercure.'+appliance_name+'.router.'+instance_name
         graphyte.init(config.mercure['graphite_ip'], config.mercure['graphite_port'], prefix=graphite_prefix)
 
     logger.info(f'Incoming folder:   {config.mercure["incoming_folder"]}')
