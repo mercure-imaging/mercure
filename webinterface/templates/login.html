@@ -42,19 +42,16 @@
             </p>
           </div>
         </form>       
-        </div>   
+        </div>
+        {% if invalid_password %}        
+        <footer class="card-footer">
+          <div class="card-footer-item notification is-danger" style="padding-top: 15px; padding-bottom: 15px; border-radius: 0px !important; box-shadow: 0 2px 3px rgba(10,10,10,.1), 0 0 0 1px rgba(10,10,10,.1);">
+            <i class="fas fa-lock"></i>&nbsp;&nbsp;Invalid credentials
+          </div>   
+        </footer>       
+        {% endif %}    
       </div>    
     </div>
-
-    {% if invalid_password %}
-    <div class="columns is-centered">
-      <div class="column is-one-third" style="padding: 0px; margin-top: 1px;">
-        <div class="notification is-danger" style="padding-top: 15px; padding-bottom: 15px; border-radius: 0px !important; box-shadow: 0 2px 3px rgba(10,10,10,.1), 0 0 0 1px rgba(10,10,10,.1);">
-          <i class="fas fa-lock"></i>&nbsp;&nbsp;Invalid credentials
-        </div>   
-      </div>
-    </div>
-    {% endif %}                
 
   </div> <!-- /container -->
 
