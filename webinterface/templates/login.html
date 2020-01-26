@@ -7,8 +7,16 @@
 
   <div class="container">   
     <h1 class="title">Login</h1>
-    <div class="columns is-centered" style="margin-top: 40px;">    
-      <div class="column is-one-third card" style="padding: 40px; padding-top: 48px; padding-bottom: 44px; border-top: solid 4px #23d160;">
+    <div class="columns is-centered" style="margin-top: 60px;">    
+      <div class="column is-one-third card is-centered is-success" style="padding: 0; border-top: solid 4px #23d160;">
+        {% if appliance_name != 'master' %}
+        <header class="card-header">
+          <p class="card-header-title is-centered">
+            <i class="fas fa-box-open has-text-success"></i>&nbsp;&nbsp;{{appliance_name}}
+          </p>
+        </header>
+        {% endif %}
+        <div style="padding: 40px; padding-top: 44px; padding-bottom: 44px; ">
         <form method="post">
           <div class="field">
             <p class="control has-icons-left has-icons-right">
@@ -33,7 +41,8 @@
               </button>
             </p>
           </div>
-        </form>          
+        </form>       
+        </div>   
       </div>    
     </div>
 

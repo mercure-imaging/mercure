@@ -22,6 +22,7 @@ import common.version as version
 from process.status import is_ready_for_processing
 from process.process_series import process_series
 
+
 daiquiri.setup(
     level=logging.INFO,
     outputs=(
@@ -36,19 +37,9 @@ daiquiri.setup(
 logger = daiquiri.getLogger("processor")
 
 
-def terminate_process(signalNumber, frame):
-    """Triggers the shutdown of the service."""
-    helper.g_log('events.shutdown', 1)
-    logger.info('Shutdown requested')
-    monitor.send_event(monitor.h_events.SHUTDOWN_REQUEST, monitor.severity.INFO)
-    # Note: main_loop can be read here because it has been declared as global variable
-    if 'main_loop' in globals() and main_loop.is_running:
-        main_loop.stop()
-    helper.trigger_terminate()
-
-
 processor_lockfile=Path("")
 processor_is_locked=False
+
 
 def search_folder(counter):
     global processor_lockfile
@@ -122,6 +113,17 @@ def run_processor(args):
 def exit_processor(args):
     """Callback function that is triggered when the process terminates. Stops the asyncio event loop."""
     helper.loop.call_soon_threadsafe(helper.loop.stop)
+
+
+def terminate_process(signalNumber, frame):
+    """Triggers the shutdown of the service."""
+    helper.g_log('events.shutdown', 1)
+    logger.info('Shutdown requested')
+    monitor.send_event(monitor.h_events.SHUTDOWN_REQUEST, monitor.severity.INFO)
+    # Note: main_loop can be read here because it has been declared as global variable
+    if 'main_loop' in globals() and main_loop.is_running:
+        main_loop.stop()
+    helper.trigger_terminate()
 
 
 if __name__ == '__main__':

@@ -36,7 +36,7 @@ def process_series(folder):
     processing_success=True
     needs_dispatching=False
 
-    # Debug
+    # TODO: Perform the processing
     time.sleep(10)
 
     # TODO: Error handling

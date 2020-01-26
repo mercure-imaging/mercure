@@ -756,7 +756,7 @@ async def login(request):
     """Shows the login page."""
     request.session.clear()
     template = "login.html"
-    context = {"request": request, "mercure_version": version.mercure_version, "appliance_name": config.mercure.get('appliance_name','mercure Router') }
+    context = {"request": request, "mercure_version": version.mercure_version, "appliance_name": config.mercure.get('appliance_name','master') }
     return templates.TemplateResponse(template, context)
 
 
