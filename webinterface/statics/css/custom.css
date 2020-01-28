@@ -28,8 +28,8 @@
 }
 
 .footer {
-    margin-top: 96px;
-    padding-bottom: 48px;
+    margin-top: 64px;
+    padding: 32px;
     background-color: hsl(0, 0%, 21%);
     border-top: 3px solid hsl(141, 71%, 48%);
     color: hsl(0, 0%, 96%);

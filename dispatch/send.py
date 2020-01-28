@@ -36,10 +36,10 @@ DCMSEND_ERROR_CODES = {
 
 def _create_command(target_info, folder):
     """Composes the command for calling the dcmsend tool from DCMTK, which is used for sending out the DICOMS."""
-    target_ip         = target_info.get("dispatch",[]).get("target_ip","")
-    target_port       = target_info.get("dispatch",[]).get("target_port","")
-    target_aet_target = target_info.get("dispatch",[]).get("target_aet_target","")
-    target_aet_source = target_info.get("dispatch",[]).get("target_aet_source","")
+    target_ip         = target_info.get("dispatch",{}).get("target_ip","")
+    target_port       = target_info.get("dispatch",{}).get("target_port","")
+    target_aet_target = target_info.get("dispatch",{}).get("target_aet_target","")
+    target_aet_source = target_info.get("dispatch",{}).get("target_aet_source","")
     
     dcmsend_status_file = Path(folder) / mercure_names.SENDLOG
 
