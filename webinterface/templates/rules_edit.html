@@ -265,6 +265,12 @@
                                 placeholder="Rule description">{{rules[rule]['comment']}}</textarea>
                         </div>
                     </div>
+                    <div class="field">
+                        <label class="label">Tags</label>
+                        <div class="control" style="min-height: 40px;">
+                            <input id="tags" name="tags" class="input" type="tags" placeholder="Add tags" value="{{rules[rule]['tags']}}" style="height: 36px !important; font-size: 13.33px !important;">
+                        </div>
+                    </div>                    
                 </div>
             </div>
             <div class="field">
@@ -473,6 +479,12 @@
         });
     });
 
+</script>
+
+<script type="text/javascript" src="{{ url_for('static', path='/js/bulma-tagsinput.min.js') }}">
+</script>
+<script>
+  bulmaTagsinput.attach();
 </script>
 
 {% endblock %}

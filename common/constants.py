@@ -9,3 +9,9 @@ class mercure_names:
     SENDLOG    = "sent.txt"
     DCM        = ".dcm"
     DCMFILTER  = "*.dcm"
+
+class mercure_sections:
+    INFO       = "info"
+    DISPATCH   = "dispatch"
+    PROCESS    = "process"
+    JOURNAL    = "journal"
