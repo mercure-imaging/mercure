@@ -15,3 +15,10 @@ class mercure_sections:
     DISPATCH   = "dispatch"
     PROCESS    = "process"
     JOURNAL    = "journal"
+
+class mercure_actions:
+    ROUTE        = "route"
+    BOTH         = "both"
+    PROCESS      = "process"
+    DISCARD      = "discard"
+    NOTIFICATION = "notification"

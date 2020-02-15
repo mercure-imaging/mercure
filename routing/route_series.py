@@ -10,7 +10,7 @@ import common.config as config
 import common.rule_evaluation as rule_evaluation
 import common.monitor as monitor
 import common.helper as helper
-from common.constants import mercure_names
+from common.constants import mercure_names, mercure_actions
 
 
 logger = daiquiri.getLogger("route_series")
@@ -64,15 +64,21 @@ def route_series(series_UID):
     monitor.send_register_series(tagsList)
     monitor.send_series_event(monitor.s_events.REGISTERED, series_UID, len(fileList), "", "")
 
-    # Now test the routing rules and decide to which targets the series should be sent to
-    transfer_targets = get_routing_targets(tagsList)
+    discard_series = ""
 
-    if len(transfer_targets)==0:
+    # Now test the routing rules and decide to which targets the series should be sent to
+    triggered_rules, discard_series = get_triggered_rules(tagsList)
+
+    if (len(triggered_rules)==0) or (discard_series):
         # If no routing rule has triggered, discard the series
-        push_series_discard(fileList,series_UID)
+        push_series_discard(fileList,series_UID,discard_series)        
     else:
-        # Otherwise, push the series to a different outgoing folder for every target
-        push_series_outgoing(fileList,series_UID,transfer_targets)
+        # Strategy: If only one triggered rule, move files. If multiple, copy files
+        push_series_studylevel(triggered_rules,fileList,series_UID,tagsList)
+        push_series_serieslevel(triggered_rules,fileList,series_UID,tagsList)
+        
+        if (len(triggered_rules)>1):
+            remove_series(fileList)
 
     try:
         lock.free()
@@ -83,32 +89,33 @@ def route_series(series_UID):
         return
 
 
-def get_routing_targets(tagList):
-    """Evaluates the routing rules and returns a list with the desired targets."""
-    selected_targets = {}
+def get_triggered_rules(tagList):
+    """Evaluates the routing rules and returns a list with trigger rules."""
+    triggered_rules = {}
+    discard_rule = ""
 
     for current_rule in config.mercure["rules"]:
         try:
             if config.mercure["rules"][current_rule].get("disabled","False")=="True":
                 continue
-            if current_rule in selected_targets:
-                continue
             if rule_evaluation.parse_rule(config.mercure["rules"][current_rule].get("rule","False"),tagList):
-                target=config.mercure["rules"][current_rule].get("target","")
-                if target:
-                    selected_targets[target]=current_rule
+                triggered_rules[current_rule]=current_rule
+                if config.mercure["rules"][current_rule].get("action","")==mercure_actions.DISCARD:
+                    discard_rule=current_rule
+                    break
+
         except Exception as e:
             logger.error(e)
             logger.error(f"Invalid rule found: {current_rule}")
             monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Invalid rule: {current_rule}")
             continue
 
-    logger.info("Selected routing:")
-    logger.info(selected_targets)
-    return selected_targets
+    logger.info("Triggered rules:")
+    logger.info(triggered_rules)
+    return triggered_rules, discard_rule
 
 
-def push_series_discard(fileList,series_UID):
+def push_series_discard(fileList,series_UID,discard_series):
     """Discards the series by moving all files into the "discard" folder, which is periodically cleared."""
     # Define the source and target folder. Use UUID as name for the target folder in the 
     # discard directory to avoid collisions
@@ -139,7 +146,10 @@ def push_series_discard(fileList,series_UID):
         monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Unable to create lock file in discard folder {lock_file}')
         return
 
-    monitor.send_series_event(monitor.s_events.DISCARD, series_UID, len(fileList), "", "")
+    info_text = ""
+    if discard_series:
+        info_text = "Discard by rule " + discard_series
+    monitor.send_series_event(monitor.s_events.DISCARD, series_UID, len(fileList), "", info_text)
 
     for entry in fileList:
         try:
@@ -162,6 +172,32 @@ def push_series_discard(fileList,series_UID):
         return
 
 
+def push_series_studylevel(triggered_rules,file_list,series_UID,tags_list):
+
+    # TODO: Move series into individual study-level folders
+
+    pass
+
+
+def push_series_serieslevel(triggered_rules,file_list,series_UID,tags_list):
+
+    # push_serieslevel_routing()
+    # push_serieslevel_processing()
+    # push_serieslevel_notification()
+
+    pass
+
+
+def remove_series(file_list):
+    pass
+
+
+def push_files(file_list, target_path, copy_files):
+    pass
+
+
+
+# TODO: Remove below function
 def push_series_outgoing(fileList,series_UID,transfer_targets):
     """Move the DICOM files of the series to a separate subfolder for each target in the outgoing folder."""
     source_folder=config.mercure['incoming_folder'] + '/'
