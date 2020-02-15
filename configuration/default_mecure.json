@@ -2,6 +2,7 @@
     "appliance_name"          : "master",
     "port"                    :     104,
     "incoming_folder"         : "/home/mercure/mercure-data/incoming",
+    "studies_folder"          : "/home/mercure/mercure-data/studies",
     "outgoing_folder"         : "/home/mercure/mercure-data/outgoing",
     "success_folder"          : "/home/mercure/mercure-data/success",
     "error_folder"            : "/home/mercure/mercure-data/error",

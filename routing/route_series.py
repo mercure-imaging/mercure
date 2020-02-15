@@ -173,28 +173,43 @@ def push_series_discard(fileList,series_UID,discard_series):
 
 
 def push_series_studylevel(triggered_rules,file_list,series_UID,tags_list):
-
+    """Prepeares study-level routing for the current series."""
     # TODO: Move series into individual study-level folders
-
     pass
 
 
 def push_series_serieslevel(triggered_rules,file_list,series_UID,tags_list):
+    """Prepeares all series-level routings for the current series."""
+    push_serieslevel_routing(triggered_rules,file_list,series_UID,tags_list)
+    push_serieslevel_processing(triggered_rules,file_list,series_UID,tags_list)
+    push_serieslevel_notification(triggered_rules,file_list,series_UID,tags_list)
 
-    # push_serieslevel_routing()
-    # push_serieslevel_processing()
-    # push_serieslevel_notification()
 
+def push_serieslevel_routing(triggered_rules,file_list,series_UID,tags_list):
+    # TODO
+    pass
+
+
+def push_serieslevel_processing(triggered_rules,file_list,series_UID,tags_list):
+    # TODO
+    pass
+
+
+def push_serieslevel_notification(triggered_rules,file_list,series_UID,tags_list):
+    # TODO
     pass
 
 
 def remove_series(file_list):
+    """Deletes the given files from the incoming folder."""
+    # TODO
     pass
 
 
 def push_files(file_list, target_path, copy_files):
+    """Copies or moves the given files to the target path. If copy_files is True, files are copied, otherwise moved."""
+    # TODO
     pass
-
 
 
 # TODO: Remove below function

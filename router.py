@@ -167,8 +167,9 @@ if __name__ == '__main__':
         graphite_prefix='mercure.'+appliance_name+'.router.'+instance_name
         graphyte.init(config.mercure['graphite_ip'], config.mercure['graphite_port'], prefix=graphite_prefix)
 
-    logger.info(f'Incoming folder:   {config.mercure["incoming_folder"]}')
-    logger.info(f'Outgoing folder:   {config.mercure["outgoing_folder"]}')
+    logger.info(f'Incoming   folder: {config.mercure["incoming_folder"]}')
+    logger.info(f'Studies    folder: {config.mercure["studies_folder"]}')
+    logger.info(f'Outgoing   folder: {config.mercure["outgoing_folder"]}')
     logger.info(f'Processing folder: {config.mercure["processing_folder"]}')
 
     # Start the timer that will periodically trigger the scan of the incoming folder
