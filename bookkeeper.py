@@ -24,7 +24,7 @@ import sqlalchemy
  
 # App-specific includes
 import common.monitor as monitor
-import common.version as version
+from common.constants import mercure_defs
 
 
 ###################################################################################
@@ -329,7 +329,7 @@ async def post_series_event(request):
 
 if __name__ == '__main__':
     logger.info("")
-    logger.info(f"mercure Bookkeeper ver {version.mercure_version}")
+    logger.info(f"mercure Bookkeeper ver {mercure_defs.VERSION}")
     logger.info("-----------------------------")
     logger.info("")
 

@@ -20,9 +20,8 @@ import graphyte
 import common.config as config
 import common.helper as helper
 import common.monitor as monitor
-import common.version as version
-from common.monitor import send_series_event
-from common.monitor import s_events
+from common.monitor import send_series_event, s_events
+from common.constants import mercure_defs
 
 
 daiquiri.setup(
@@ -150,7 +149,7 @@ def exit_cleaner(args):
 
 if __name__ == "__main__":
     logger.info("")
-    logger.info(f"mercure DICOM Cleaner ver {version.mercure_version}")
+    logger.info(f"mercure DICOM Cleaner ver {mercure_defs.VERSION}")
     logger.info("-----------------------------")
     logger.info("")
 

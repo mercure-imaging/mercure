@@ -17,7 +17,7 @@ from pathlib import Path
 import common.helper as helper
 import common.config as config
 import common.monitor as monitor
-import common.version as version
+from common.constants import mercure_defs
 
 from process.status import is_ready_for_processing
 from process.process_series import process_series
@@ -128,7 +128,7 @@ def terminate_process(signalNumber, frame):
 
 if __name__ == '__main__':
     logger.info("")
-    logger.info(f"mercure DICOM Processor ver {version.mercure_version}")
+    logger.info(f"mercure DICOM Processor ver {mercure_defs.VERSION}")
     logger.info("--------------------------------")
     logger.info("")
 

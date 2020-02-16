@@ -13,12 +13,13 @@ import logging
 import daiquiri
 
 # App-specific includes
+from common.constants import mercure_defs
 import common.helper as helper
 import common.config as config
 import common.monitor as monitor
 import common.version as version
-from routing.route_series import route_series
-from routing.route_series import route_error_files
+from routing.route_series import route_series, route_error_files
+from routing.route_studies import route_studies
 
 
 # NOTES: Currently, the router only implements series-level rules, i.e. the proxy rules will be executed
@@ -124,6 +125,9 @@ def run_router(args):
     if error_files_found:
         route_error_files()
 
+    # Now, check if studies in the studies folder are ready for routing/processing
+    route_studies()
+
 
 def exit_router(args):
     """Callback function that is triggered when the process terminates. Stops the asyncio event loop."""
@@ -132,7 +136,7 @@ def exit_router(args):
 
 if __name__ == '__main__':
     logger.info("")
-    logger.info(f"mercure DICOM Router ver {version.mercure_version}")
+    logger.info(f"mercure DICOM Router ver {mercure_defs.VERSION}")
     logger.info("-----------------------------")
     logger.info("")
 

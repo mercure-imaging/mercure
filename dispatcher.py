@@ -14,10 +14,10 @@ import graphyte
 import common.config as config
 import common.helper as helper
 import common.monitor as monitor
-import common.version as version
 from dispatch.status import has_been_send, is_ready_for_sending
 from dispatch.send import execute
-
+from common.config import mercure
+from common.constants import mercure_defs
 
 daiquiri.setup(
     level=logging.INFO,
@@ -90,7 +90,7 @@ def exit_dispatcher(args):
 
 if __name__ == "__main__":
     logger.info("")
-    logger.info(f"mercure DICOM Dispatcher ver {version.mercure_version}")
+    logger.info(f"mercure DICOM Dispatcher ver {mercure_defs.VERSION}")
     logger.info("-----------------------------")
     logger.info("")
 

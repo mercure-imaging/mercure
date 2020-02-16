@@ -41,8 +41,7 @@ from starlette.routing import Route, Router
 import common.helper as helper
 import common.config as config
 import common.monitor as monitor
-import common.version as version
-from common.constants import mercure_names
+from common.constants import mercure_defs, mercure_names
 import common.rule_evaluation as rule_evaluation
 import webinterface.users as users
 import webinterface.tagslist as tagslist
@@ -203,7 +202,7 @@ async def show_log(request):
             log_content=log_content+"<br /><br />Are the From/To settings valid?"
 
     template = "logs.html"
-    context = {"request": request, "mercure_version": version.mercure_version, "page": "logs", 
+    context = {"request": request, "mercure_version": mercure_defs.VERSION, "page": "logs", 
                "service_logs": service_logs, "log_id": requested_service, "log_content": log_content,
                "start_date": start_date, "start_time": start_time, "end_date": end_date, "end_time": end_time }
     context.update(get_user_information(request))
@@ -224,7 +223,7 @@ async def show_rules(request):
         return PlainTextResponse('Configuration is being updated. Try again in a minute.')
 
     template = "rules.html"
-    context = {"request": request, "mercure_version": version.mercure_version, "page": "rules", "rules": config.mercure["rules"]}
+    context = {"request": request, "mercure_version": mercure_defs.VERSION, "page": "rules", "rules": config.mercure["rules"]}
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
 
@@ -267,7 +266,7 @@ async def rules_edit(request):
 
     rule=request.path_params["rule"]
     template = "rules_edit.html"
-    context = {"request": request, "mercure_version": version.mercure_version, "page": "rules", "rules": config.mercure["rules"], 
+    context = {"request": request, "mercure_version": mercure_defs.VERSION, "page": "rules", "rules": config.mercure["rules"], 
                "targets": config.mercure["targets"], "modules": config.mercure["modules"], "rule": rule, 
                "alltags": tagslist.alltags, "sortedtags": tagslist.sortedtags}
     context.update(get_user_information(request))
@@ -381,7 +380,7 @@ async def show_targets(request):
         used_targets[used_target]=rule
 
     template = "targets.html"
-    context = {"request": request, "mercure_version": version.mercure_version, "page": "targets", "targets": config.mercure["targets"], "used_targets": used_targets}
+    context = {"request": request, "mercure_version": mercure_defs.VERSION, "page": "targets", "targets": config.mercure["targets"], "used_targets": used_targets}
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
 
@@ -428,7 +427,7 @@ async def targets_edit(request):
         return RedirectResponse(url='/targets', status_code=303) 
 
     template = "targets_edit.html"
-    context = {"request": request, "mercure_version": version.mercure_version, "page": "targets", "targets": config.mercure["targets"], "edittarget": edittarget}
+    context = {"request": request, "mercure_version": mercure_defs.VERSION, "page": "targets", "targets": config.mercure["targets"], "edittarget": edittarget}
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)    
 
@@ -540,7 +539,7 @@ async def show_users(request):
         return PlainTextResponse('Configuration is being updated. Try again in a minute.')
 
     template = "users.html"
-    context = {"request": request, "mercure_version": version.mercure_version, "page": "users", "users": users.users_list }
+    context = {"request": request, "mercure_version": mercure_defs.VERSION, "page": "users", "users": users.users_list }
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)    
 
@@ -588,7 +587,7 @@ async def users_edit(request):
         return RedirectResponse(url='/users', status_code=303) 
 
     template = "users_edit.html"
-    context = {"request": request, "mercure_version": version.mercure_version, "page": "users", 
+    context = {"request": request, "mercure_version": mercure_defs.VERSION, "page": "users", 
                "edituser": edituser, "edituser_info": users.users_list[edituser]}
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)    
@@ -606,7 +605,7 @@ async def settings_edit(request):
     own_name=request.user.display_name
 
     template = "users_edit.html"
-    context = {"request": request, "mercure_version": version.mercure_version, "page": "settings", 
+    context = {"request": request, "mercure_version": mercure_defs.VERSION, "page": "settings", 
                "edituser": own_name, "edituser_info": users.users_list[own_name], "own_settings": "True", 
                "change_password": users.users_list[own_name].get("change_password","False") }
     context.update(get_user_information(request))
@@ -694,7 +693,7 @@ async def configuration(request):
     config_edited=int(request.query_params.get("edited",0))
     os_info=distro.linux_distribution()
     os_string=f"{os_info[0]} Version {os_info[1]} ({os_info[2]})"
-    context = {"request": request, "mercure_version": version.mercure_version, "page": "configuration", "config": config.mercure, "os_string": os_string, "config_edited": config_edited}
+    context = {"request": request, "mercure_version": mercure_defs.VERSION, "page": "configuration", "config": config.mercure, "os_string": os_string, "config_edited": config_edited}
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
 
@@ -719,7 +718,7 @@ async def configuration_edit(request):
     config_content=json.dumps(config_content, indent=4, sort_keys=False)
 
     template = "configuration_edit.html"
-    context = {"request": request, "mercure_version": version.mercure_version, "page": "configuration", "config_content": config_content}
+    context = {"request": request, "mercure_version": mercure_defs.VERSION, "page": "configuration", "config_content": config_content}
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
 
@@ -757,7 +756,7 @@ async def login(request):
     """Shows the login page."""
     request.session.clear()
     template = "login.html"
-    context = {"request": request, "mercure_version": version.mercure_version, "appliance_name": config.mercure.get('appliance_name','master') }
+    context = {"request": request, "mercure_version": mercure_defs.VERSION, "appliance_name": config.mercure.get('appliance_name','master') }
     return templates.TemplateResponse(template, context)
 
 
@@ -792,7 +791,7 @@ async def login_post(request):
         monitor.send_webgui_event(monitor.w_events.LOGIN_FAIL, form["username"], source_ip)
 
         template = "login.html"
-        context = {"request": request, "invalid_password": 1, "mercure_version": version.mercure_version, "appliance_name": config.mercure.get('appliance_name','mercure Router') }
+        context = {"request": request, "invalid_password": 1, "mercure_version": mercure_defs.VERSION, "appliance_name": config.mercure.get('appliance_name','mercure Router') }
         return templates.TemplateResponse(template, context)
 
 
@@ -841,7 +840,7 @@ async def homepage(request):
         service_status[service]={ "id": service, "name": services.services_list[service]["name"], "running": running_status }
         
     template = "index.html"
-    context = {"request": request, "mercure_version": version.mercure_version, "page": "homepage", 
+    context = {"request": request, "mercure_version": mercure_defs.VERSION, "page": "homepage", 
                "used_space": used_space, "free_space": free_space, "total_space": total_space,
                "service_status": service_status }
     context.update(get_user_information(request))
@@ -896,7 +895,7 @@ async def not_found(request, exc):
     Return an HTTP 404 page.
     """
     template = "404.html"
-    context = {"request": request, "mercure_version": version.mercure_version }
+    context = {"request": request, "mercure_version": mercure_defs.VERSION }
     return templates.TemplateResponse(template, context, status_code=404)
 
 
@@ -906,7 +905,7 @@ async def server_error(request, exc):
     Return an HTTP 500 page.
     """
     template = "500.html"
-    context = {"request": request, "mercure_version": version.mercure_version }
+    context = {"request": request, "mercure_version": mercure_defs.VERSION }
     return templates.TemplateResponse(template, context, status_code=500)
 
 

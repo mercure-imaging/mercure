@@ -1,3 +1,6 @@
+class mercure_defs:
+    VERSION    = "0.2a"
+    SEPARATOR  = "#"
 
 class mercure_names:
     LOCK       = ".lock"
@@ -16,9 +19,37 @@ class mercure_sections:
     PROCESS    = "process"
     JOURNAL    = "journal"
 
+class mercure_config:
+    RULES       = "rules"
+
 class mercure_actions:
     ROUTE        = "route"
     BOTH         = "both"
     PROCESS      = "process"
     DISCARD      = "discard"
     NOTIFICATION = "notification"
+
+class mercure_rule:
+    RULE                            = "rule"
+    ACTION_TRIGGER                  = "action_trigger"
+    STUDY_TRIGGER_CONDITION         = "study_trigger_condition"
+    STUDY_TRIGGER                   = "study_trigger"
+    PRIORITY                        = "priority"
+    DISABLED                        = "disabled"
+    PROCESSING_MODULE               = "processing_module"
+    TARGET                          = "target"
+    NOTIFICATION_WEBHOOK            = "notification_webhook"
+    NOTIFICATION_PAYLOAD            = "notification_payload"
+    NOTIFICATION_TRIGGER_RECEPTION  = "notification_trigger_reception"
+    NOTIFICATION_TRIGGER_COMPLETION = "notification_trigger_completion"
+    NOTIFICATION_TRIGGER_ERROR      = "notification_trigger_error"
+
+class mercure_options:
+    TRUE                            = "True"
+    FALSE                           = "False"
+    SERIES                          = "series"
+    STUDY                           = "study"
+    NORMAL                          = "normal"
+    URGENT                          = "urgent"
+    OFFPEAK                         = "offpeak"
+

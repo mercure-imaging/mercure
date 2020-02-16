@@ -10,7 +10,7 @@ import common.config as config
 import common.rule_evaluation as rule_evaluation
 import common.monitor as monitor
 import common.helper as helper
-from common.constants import mercure_names, mercure_actions
+from common.constants import mercure_defs, mercure_names, mercure_actions, mercure_rule, mercure_config, mercure_options
 
 
 logger = daiquiri.getLogger("route_series")
@@ -175,7 +175,11 @@ def push_series_discard(fileList,series_UID,discard_series):
 def push_series_studylevel(triggered_rules,file_list,series_UID,tags_list):
     """Prepeares study-level routing for the current series."""
     # TODO: Move series into individual study-level folders
-    pass
+
+    for current_rule in triggered_rules:
+        if config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.ACTION_TRIGGER,mercure_options.SERIES)==mercure_options.STUDY:
+            folder_name=series_UID+mercure.SEPARATOR+current_rule
+            # TODO: Check if folder exists, if not create. Then copy series files
 
 
 def push_series_serieslevel(triggered_rules,file_list,series_UID,tags_list):
