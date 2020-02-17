@@ -5,6 +5,7 @@ class mercure_defs:
 class mercure_names:
     LOCK       = ".lock"
     PROCESSING = ".processing"
+    RUNNING    = ".running"
     ERROR      = ".error"
     TAGS       = ".tags"
     HALT       = "HALT"
@@ -31,6 +32,7 @@ class mercure_actions:
 
 class mercure_rule:
     RULE                            = "rule"
+    ACTION                          = "action"
     ACTION_TRIGGER                  = "action_trigger"
     STUDY_TRIGGER_CONDITION         = "study_trigger_condition"
     STUDY_TRIGGER                   = "study_trigger"

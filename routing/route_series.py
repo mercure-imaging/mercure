@@ -190,18 +190,24 @@ def push_series_serieslevel(triggered_rules,file_list,series_UID,tags_list):
 
 
 def push_serieslevel_routing(triggered_rules,file_list,series_UID,tags_list):
-    # TODO
-    pass
+    for current_rule in triggered_rules:
+        if config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.ACTION,"")==mercure_actions.ROUTE:
+            # TODO
+            pass
 
 
 def push_serieslevel_processing(triggered_rules,file_list,series_UID,tags_list):
-    # TODO
-    pass
+    for current_rule in triggered_rules:
+        if config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.ACTION,"")==mercure_actions.PROCESS:
+            # TODO
+            pass
 
 
 def push_serieslevel_notification(triggered_rules,file_list,series_UID,tags_list):
-    # TODO
-    pass
+    for current_rule in triggered_rules:
+        if config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.ACTION,"")==mercure_actions.NOTIFICATION:
+            # TODO
+            pass
 
 
 def remove_series(file_list):
