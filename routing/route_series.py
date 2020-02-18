@@ -10,7 +10,8 @@ import common.config as config
 import common.rule_evaluation as rule_evaluation
 import common.monitor as monitor
 import common.helper as helper
-from common.constants import mercure_defs, mercure_names, mercure_actions, mercure_rule, mercure_config, mercure_options
+from common.constants import mercure_defs, mercure_names, mercure_actions, mercure_rule, mercure_config, mercure_options, mercure_folders
+from routing.generate_taskfile import *
 
 
 logger = daiquiri.getLogger("route_series")
@@ -174,12 +175,19 @@ def push_series_discard(fileList,series_UID,discard_series):
 
 def push_series_studylevel(triggered_rules,file_list,series_UID,tags_list):
     """Prepeares study-level routing for the current series."""
-    # TODO: Move series into individual study-level folders
-
+    # Move series into individual study-level folder for every rule
     for current_rule in triggered_rules:
         if config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.ACTION_TRIGGER,mercure_options.SERIES)==mercure_options.STUDY:
-            folder_name=series_UID+mercure.SEPARATOR+current_rule
-            # TODO: Check if folder exists, if not create. Then copy series files
+            folder_name=series_UID+mercure_defs.SEPARATOR+current_rule
+            if (not os.path.exists(folder_name)):
+                try:
+                    os.mkdir(folder_name)
+                except:
+                    logger.error(f'Unable to create folder {folder_name}')
+                    monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Unable to create folder {folder_name}')
+                    continue
+
+            push_files(file_list, folder_name, (len(triggered_rules)>1))
 
 
 def push_series_serieslevel(triggered_rules,file_list,series_UID,tags_list):
@@ -190,10 +198,15 @@ def push_series_serieslevel(triggered_rules,file_list,series_UID,tags_list):
 
 
 def push_serieslevel_routing(triggered_rules,file_list,series_UID,tags_list):
+    selected_targets = {}
+
     for current_rule in triggered_rules:
         if config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.ACTION,"")==mercure_actions.ROUTE:
-            # TODO
-            pass
+            target=config.mercure["rules"][current_rule].get("target","")
+            if target:
+                selected_targets[target]=current_rule
+    
+    push_serieslevel_outgoing(triggered_rules,file_list,series_UID,tags_list,selected_targets)
 
 
 def push_serieslevel_processing(triggered_rules,file_list,series_UID,tags_list):
@@ -212,38 +225,57 @@ def push_serieslevel_notification(triggered_rules,file_list,series_UID,tags_list
 
 def remove_series(file_list):
     """Deletes the given files from the incoming folder."""
-    # TODO
-    pass
+    source_folder=config.mercure[mercure_folders.INCOMING] + '/'
+    for entry in file_list:
+        try:
+            os.remove(source_folder+entry+mercure_names.TAGS)
+            os.remove(source_folder+entry+mercure_names.DCM)
+        except Exception:
+            logger.exception(f'Error while removing file {entry}')
+            monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Error while removing file {entry}')
 
 
 def push_files(file_list, target_path, copy_files):
     """Copies or moves the given files to the target path. If copy_files is True, files are copied, otherwise moved."""
-    # TODO
-    pass
+    if (copy_files==False):
+        operation=shutil.move
+    else:
+        operation=shutil.copy
+
+    source_folder=config.mercure[mercure_folders.INCOMING] + '/'
+    target_folder=target_path + '/'
+    
+    # TODO: Secure operation with lock file
+
+    for entry in file_list:
+        try:
+            operation(source_folder+entry+mercure_names.DCM, target_folder+entry+mercure_names.DCM)
+            operation(source_folder+entry+mercure_names.TAGS,target_folder+entry+mercure_names.TAGS)
+        except Exception:
+            logger.exception(f'Problem while pushing file to outgoing {entry}')
+            logger.exception(f'Source folder {source_folder}')
+            logger.exception(f'Target folder {target_folder}')
+            monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Problem while pushing file to outgoing {entry}')
+            return False
+
+    return True
 
 
-# TODO: Remove below function
-def push_series_outgoing(fileList,series_UID,transfer_targets):
+def push_serieslevel_outgoing(triggered_rules,file_list,series_UID,tags_list,selected_targets):
     """Move the DICOM files of the series to a separate subfolder for each target in the outgoing folder."""
     source_folder=config.mercure['incoming_folder'] + '/'
 
-    total_targets=len(transfer_targets)
-    current_target=0
+    # Determine if the files should be copied or moved. If only one rule triggered, files can
+    # safely be moved, otherwise files will be moved and removed in the end
+    move_operation=False
+    if len(triggered_rules)==1:
+        move_operation=True
 
-    for target in transfer_targets:
-
-        current_target=current_target+1
-
+    for target in selected_targets:
         if not target in config.mercure["targets"]:
             logger.error(f"Invalid target selected {target}")
             monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Invalid target selected {target}")
             continue
-
-        # Determine if the files should be copied or moved. For the last
-        # target, the files should be moved to reduce IO overhead
-        move_operation=False
-        if current_target==total_targets:
-            move_operation=True
 
         folder_name=config.mercure['outgoing_folder'] + '/' + str(uuid.uuid1())
         target_folder=folder_name+"/"
@@ -270,33 +302,25 @@ def push_series_outgoing(fileList,series_UID,transfer_targets):
             return
 
         # Generate task file with dispatch information
-        target_filename = target_folder + mercure_names.TASKFILE
-        target_json = {}
-        target_json["dispatch"]= {}
-        target_json["dispatch"]["target_ip"]        =config.mercure["targets"][target]["ip"]
-        target_json["dispatch"]["target_port"]      =config.mercure["targets"][target]["port"]
-        target_json["dispatch"]["target_aet_target"]=config.mercure["targets"][target].get("aet_target","ANY-SCP")
-        target_json["dispatch"]["target_aet_source"]=config.mercure["targets"][target].get("aet_source","mercure")
-        target_json["dispatch"]["target_name"]      =target
-        target_json["dispatch"]["applied_rule"]     =transfer_targets[target]
-        target_json["dispatch"]["series_uid"]       =series_UID
+        task_filename = target_folder + mercure_names.TASKFILE
+        task_json = generate_taskfile_route(target,series_UID,selected_targets[target],tags_list)
 
         try:
-            with open(target_filename, 'w') as target_file:
-                json.dump(target_json, target_file)
+            with open(task_filename, 'w') as task_file:
+                json.dump(task_json, task_file)
         except:
-            logger.error(f"Unable to create target file {target_filename}")
-            monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Unable to create target file {target_filename}")
+            logger.error(f"Unable to create target file {task_filename}")
+            monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Unable to create target file {task_filename}")
             continue
 
-        monitor.send_series_event(monitor.s_events.ROUTE, series_UID, len(fileList), target, transfer_targets[target])
+        monitor.send_series_event(monitor.s_events.ROUTE, series_UID, len(file_list), target, selected_targets[target])
 
         if move_operation:
             operation=shutil.move
         else:
             operation=shutil.copy
 
-        for entry in fileList:
+        for entry in file_list:
             try:
                 operation(source_folder+entry+mercure_names.DCM, target_folder+entry+mercure_names.DCM)
                 operation(source_folder+entry+mercure_names.TAGS,target_folder+entry+mercure_names.TAGS)
@@ -306,7 +330,7 @@ def push_series_outgoing(fileList,series_UID,transfer_targets):
                 logger.exception(f'Target folder {target_folder}')
                 monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Problem while pushing file to outgoing {entry}')
 
-        monitor.send_series_event(monitor.s_events.MOVE, series_UID, len(fileList), folder_name, "")
+        monitor.send_series_event(monitor.s_events.MOVE, series_UID, len(file_list), folder_name, "")
 
         try:
             lock.free()

@@ -18,7 +18,7 @@ from starlette.routing import Route, Router
 import common.helper as helper
 import common.config as config
 import common.monitor as monitor
-import common.version as version
+from common.constants import mercure_defs
 from webinterface.common import get_user_information
 from webinterface.common import templates
 
@@ -44,7 +44,7 @@ async def show_modules(request):
         used_modules[used_module]=rule
 
     template = "modules.html"
-    context = {"request": request, "mercure_version": version.mercure_version, "page": "modules", 
+    context = {"request": request, "mercure_version": mercure_defs.VERSION, "page": "modules", 
                "modules": config.mercure["modules"], "used_modules": used_modules}
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)

@@ -1,27 +1,37 @@
 class mercure_defs:
-    VERSION    = "0.2a"
-    SEPARATOR  = "#"
+    VERSION      = "0.2a"
+    SEPARATOR    = "#"
 
 class mercure_names:
-    LOCK       = ".lock"
-    PROCESSING = ".processing"
-    RUNNING    = ".running"
-    ERROR      = ".error"
-    TAGS       = ".tags"
-    HALT       = "HALT"
-    TASKFILE   = "task.json"
-    SENDLOG    = "sent.txt"
-    DCM        = ".dcm"
-    DCMFILTER  = "*.dcm"
+    LOCK         = ".lock"
+    PROCESSING   = ".processing"
+    RUNNING      = ".running"
+    ERROR        = ".error"
+    TAGS         = ".tags"
+    HALT         = "HALT"
+    TASKFILE     = "task.json"
+    SENDLOG      = "sent.txt"
+    DCM          = ".dcm"
+    DCMFILTER    = "*.dcm"
 
 class mercure_sections:
-    INFO       = "info"
-    DISPATCH   = "dispatch"
-    PROCESS    = "process"
-    JOURNAL    = "journal"
+    INFO         = "info"
+    DISPATCH     = "dispatch"
+    PROCESS      = "process"
+    JOURNAL      = "journal"
 
 class mercure_config:
-    RULES       = "rules"
+    RULES        = "rules"
+    TARGETS      = "targets"
+
+class mercure_folders:
+    INCOMING     = "incoming_folder"
+    STUDIES      = "studies_folder"
+    OUTGOING     = "outgoing_folder"
+    SUCCESS      = "success_folder"
+    ERROR        = "error_folder"
+    DISCARD      = "discard_folder"
+    PROCESSING   = "processing_folder"
 
 class mercure_actions:
     ROUTE        = "route"

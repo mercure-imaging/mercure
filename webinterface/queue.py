@@ -21,7 +21,7 @@ from starlette.routing import Route, Router
 import common.helper as helper
 import common.config as config
 import common.monitor as monitor
-import common.version as version
+from common.constants import mercure_defs
 from webinterface.common import get_user_information
 from webinterface.common import templates
 
@@ -53,7 +53,7 @@ async def show_queues(request):
         routing_suspended=True    
 
     template = "queue.html"
-    context = {"request": request, "mercure_version": version.mercure_version, "page": "queue",
+    context = {"request": request, "mercure_version": mercure_defs.VERSION, "page": "queue",
                "processing_suspended": processing_suspended, "routing_suspended": routing_suspended }
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
