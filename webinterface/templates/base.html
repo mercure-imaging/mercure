@@ -7,7 +7,7 @@
   <meta name="description" content="">
   <meta name="author" content="">
 
-  <title>mercure{% if self.title() %} &mid; {% endif %}{% block title %}{% endblock %}</title>
+  <title>mercure{% if self.title() %} &middot; {% endif %}{% block title %}{% endblock %}</title>
 
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.7.5/css/bulma.min.css">
   <script defer src="https://use.fontawesome.com/releases/v5.9.0/js/all.js"></script>
@@ -20,21 +20,18 @@
 
   <link rel="stylesheet" href="{{ url_for('static', path='/css/bulma-extensions.min.css') }}">
   <link href="{{ url_for('static', path='/css/tooltip.css') }}" rel="stylesheet">
-
   <link href="{{ url_for('static', path='/css/custom.css') }}" rel="stylesheet">
-  <link rel="icon" type="image/png" href="{{ url_for('static', path='/favicon-32x32.png') }}" sizes="32x32" />
-  <link rel="icon" type="image/png" href="{{ url_for('static', path='/favicon-16x16.png') }}" sizes="16x16" />
-
   <script type="text/javascript" src="{{ url_for('static', path='/js/bulma-extensions.min.js') }}"></script>
+  <link rel="shortcut icon" href="{{ url_for('static', path='favicon.ico') }}">
 </head>
 
 <body>
   <nav class="navbar is-black" role="navigation" aria-label="main navigation">
     <div class="container">
-      <div class="navbar-brand">
-        <a class="navbar-item is-size-5 brand" href="/">
-          <strong><i class="fas fa-paper-plane"></i> mercure</strong>
-        </a>
+      <div class="navbar-brand" style="margin-right: 20px">
+        <a class="navbar-item is-size-5 brand" href="/"> 
+          <img src="{{ url_for('static', path='header_logo.png') }}" width="132" height="24"></img>
+        </a>        
         <a role="button" class="navbar-burger burger" aria-label="menu" aria-expanded="false"
           data-target="navbarMainMenu">
           <span aria-hidden="true"></span>
@@ -103,7 +100,7 @@
   </section>
   <footer class="footer">
     <div class="content has-text-centered">
-      <p>mercure Orchestrator &minus; Version {{mercure_version}}<br />
+      <p>mercure Orchestrator&nbsp;&minus;&nbsp;Version {{mercure_version}}<br />
         <a href="https://mercure-imaging.github.io" target="_blank">https://mercure-imaging.github.io</a>
       </p>
     </div>

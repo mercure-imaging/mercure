@@ -11,7 +11,7 @@ import common.rule_evaluation as rule_evaluation
 import common.monitor as monitor
 import common.helper as helper
 from common.constants import mercure_defs, mercure_names, mercure_actions, mercure_rule, mercure_config, mercure_options, mercure_folders
-from routing.generate_taskfile import *
+from routing.generate_taskfile import generate_taskfile_route
 
 
 logger = daiquiri.getLogger("route_series")
@@ -186,7 +186,6 @@ def push_series_studylevel(triggered_rules,file_list,series_UID,tags_list):
                     logger.error(f'Unable to create folder {folder_name}')
                     monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Unable to create folder {folder_name}')
                     continue
-
             push_files(file_list, folder_name, (len(triggered_rules)>1))
 
 
@@ -199,13 +198,11 @@ def push_series_serieslevel(triggered_rules,file_list,series_UID,tags_list):
 
 def push_serieslevel_routing(triggered_rules,file_list,series_UID,tags_list):
     selected_targets = {}
-
     for current_rule in triggered_rules:
         if config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.ACTION,"")==mercure_actions.ROUTE:
             target=config.mercure["rules"][current_rule].get("target","")
             if target:
                 selected_targets[target]=current_rule
-    
     push_serieslevel_outgoing(triggered_rules,file_list,series_UID,tags_list,selected_targets)
 
 
@@ -219,8 +216,11 @@ def push_serieslevel_processing(triggered_rules,file_list,series_UID,tags_list):
 def push_serieslevel_notification(triggered_rules,file_list,series_UID,tags_list):
     for current_rule in triggered_rules:
         if config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.ACTION,"")==mercure_actions.NOTIFICATION:
-            # TODO
-            pass
+            # If the current rule is "notification-only" and this is the only rule that 
+            # has been triggered, then remove the files (if more than one rule has been
+            # triggered, the parent function will take care of it)
+            if (len(triggered_rules==1)):
+                remove_series(file_list)
 
 
 def remove_series(file_list):

@@ -78,6 +78,7 @@ def read_config():
             loaded_config=json.load(json_file)
             # Reset configuration to default values (to ensure all needed
             # keys are present in the configuration)
+            mercure={}
             mercure=mercure_defaults
             # Now merge with values loaded from configuration file
             mercure.update(loaded_config)

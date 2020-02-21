@@ -688,7 +688,7 @@ async def configuration(request):
     try: 
         config.read_config()
     except:
-        pass
+        return PlainTextResponse('Error reading configuration file.')
     template = "configuration.html"
     config_edited=int(request.query_params.get("edited",0))
     os_info=distro.linux_distribution()
@@ -705,7 +705,7 @@ async def configuration_edit(request):
 
     # Check for existence of lock file
     cfg_file = Path(config.configuration_filename)
-    cfg_lock=Path(cfg_file.parent/cfg_file.stem).with_suffix(mercure_names.LOCK)
+    cfg_lock = Path(cfg_file.parent/cfg_file.stem).with_suffix(mercure_names.LOCK)
     if cfg_lock.exists():
         return PlainTextResponse('Configuration is being updated. Try again in a minute.')
     

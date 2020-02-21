@@ -19,6 +19,8 @@ class mercure_sections:
     DISPATCH     = "dispatch"
     PROCESS      = "process"
     JOURNAL      = "journal"
+    NOTIFICATION = "notification"
+
 
 class mercure_config:
     RULES        = "rules"
@@ -64,4 +66,5 @@ class mercure_options:
     NORMAL                          = "normal"
     URGENT                          = "urgent"
     OFFPEAK                         = "offpeak"
+    MISSING                         = "MISSING"
 
