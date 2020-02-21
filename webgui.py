@@ -754,6 +754,10 @@ async def configuration_edit_post(request):
 @app.route('/login', methods=["GET"])
 async def login(request):
     """Shows the login page."""
+    try: 
+        config.read_config()
+    except:
+        return PlainTextResponse('Error reading configuration file.')
     request.session.clear()
     template = "login.html"
     context = {"request": request, "mercure_version": mercure_defs.VERSION, "appliance_name": config.mercure.get('appliance_name','master') }
