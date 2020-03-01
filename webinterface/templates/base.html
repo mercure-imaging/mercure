@@ -1,30 +1,24 @@
 <!doctype html>
 <html lang="en">
-
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
   <meta name="description" content="">
   <meta name="author" content="">
-
   <title>mercure{% if self.title() %} &nbsp;&mid;&nbsp; {% endif %}{% block title %}{% endblock %}</title>
-
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.7.5/css/bulma.min.css">
-  <script defer src="https://use.fontawesome.com/releases/v5.9.0/js/all.js"></script>
+  <link rel="stylesheet" href="{{ url_for('static', path='/css/bulma.min.css') }}">
+  <script defer src="{{ url_for('static', path='/js/fontawesome-5.9.js') }}"></script>
   <script src="{{ url_for('static', path='/js/jquery-3.4.1.min.js') }}"></script>
   <script src="{{ url_for('static', path='/js/intercooler-1.2.2.js') }}"></script>
-
   {% if page == "rules" %}
   <script type="text/javascript" src="{{ url_for('static', path='/js/bulma-quickview.min.js') }}"></script>
   {% endif %}
-
   <link rel="stylesheet" href="{{ url_for('static', path='/css/bulma-extensions.min.css') }}">
   <link href="{{ url_for('static', path='/css/tooltip.css') }}" rel="stylesheet">
   <link href="{{ url_for('static', path='/css/custom.css') }}" rel="stylesheet">
   <script type="text/javascript" src="{{ url_for('static', path='/js/bulma-extensions.min.js') }}"></script>
   <link rel="shortcut icon" href="{{ url_for('static', path='favicon.ico') }}">
 </head>
-
 <body>
   <nav class="navbar is-black" role="navigation" aria-label="main navigation">
     <div class="container">

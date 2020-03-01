@@ -108,12 +108,13 @@ DEBUG_MODE  = webgui_config('DEBUG', cast=bool, default=True)
 
 app = Starlette(debug=DEBUG_MODE)
 # Don't check the existence of the static folder because the wrong parent folder is used if the 
-# source code is parsed by sphinx. This would raise an exception and lead to failure of sphix.
+# source code is parsed by sphinx. This would raise an exception and lead to failure of sphinx.
 app.mount('/static', StaticFiles(directory='webinterface/statics', check_dir=False), name='static')
 app.add_middleware(AuthenticationMiddleware, backend=SessionAuthBackend())
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY, session_cookie="mercure_session")
 app.mount("/modules", modules.modules_app)
 app.mount("/queue", queue.queue_app)
+
 
 async def async_run(cmd):
     """Executes the given command in a way compatible with ayncio."""

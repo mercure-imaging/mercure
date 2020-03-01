@@ -21,7 +21,6 @@ class mercure_sections:
     JOURNAL      = "journal"
     NOTIFICATION = "notification"
 
-
 class mercure_config:
     RULES        = "rules"
     TARGETS      = "targets"
@@ -68,3 +67,8 @@ class mercure_options:
     OFFPEAK                         = "offpeak"
     MISSING                         = "MISSING"
 
+class mercure_events:
+    RECEPTION  = 0
+    COMPLETION = 1
+    ERROR      = 2
+    

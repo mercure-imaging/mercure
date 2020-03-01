@@ -10,7 +10,8 @@ import common.config as config
 import common.rule_evaluation as rule_evaluation
 import common.monitor as monitor
 import common.helper as helper
-from common.constants import mercure_defs, mercure_names, mercure_actions, mercure_rule, mercure_config, mercure_options, mercure_folders
+import common.notification as notification
+from common.constants import mercure_defs, mercure_names, mercure_actions, mercure_rule, mercure_config, mercure_options, mercure_folders, mercure_events
 from routing.generate_taskfile import generate_taskfile_route
 
 
@@ -67,11 +68,12 @@ def route_series(series_UID):
 
     discard_series = ""
 
-    # Now test the routing rules and decide to which targets the series should be sent to
+    # Now test the routing rules and evaluate which rules have been triggered. If one of the triggered
+    # rules enforces discarding, discard_series will be True.
     triggered_rules, discard_series = get_triggered_rules(tagsList)
 
     if (len(triggered_rules)==0) or (discard_series):
-        # If no routing rule has triggered, discard the series
+        # If no routing rule has triggered or discarding has been enforced, discard the series
         push_series_discard(fileList,series_UID,discard_series)        
     else:
         # Strategy: If only one triggered rule, move files. If multiple, copy files
@@ -196,31 +198,46 @@ def push_series_serieslevel(triggered_rules,file_list,series_UID,tags_list):
     push_serieslevel_notification(triggered_rules,file_list,series_UID,tags_list)
 
 
+def trigger_serieslevel_notification_reception(current_rule,tags_list):
+
+    notification.send_webhook(config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.NOTIFICATION_WEBHOOK,""),
+                              config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.NOTIFICATION_PAYLOAD,""),
+                              mercure_events.RECEPTION)
+
+
 def push_serieslevel_routing(triggered_rules,file_list,series_UID,tags_list):
     selected_targets = {}
+    # Collect the dispatch-only targets to avoid that a series is sent twice to the
+    # same target due to multiple targets triggered
     for current_rule in triggered_rules:
-        if config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.ACTION,"")==mercure_actions.ROUTE:
-            target=config.mercure["rules"][current_rule].get("target","")
-            if target:
-                selected_targets[target]=current_rule
+        if config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.ACTION_TRIGGER,mercure_options.SERIES)==mercure_options.SERIES:
+            if config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.ACTION,"")==mercure_actions.ROUTE:
+                target=config.mercure["rules"][current_rule].get("target","")
+                if target:
+                    selected_targets[target]=current_rule
+                trigger_serieslevel_notification_reception(current_rule,tags_list)
     push_serieslevel_outgoing(triggered_rules,file_list,series_UID,tags_list,selected_targets)
 
 
 def push_serieslevel_processing(triggered_rules,file_list,series_UID,tags_list):
     for current_rule in triggered_rules:
-        if config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.ACTION,"")==mercure_actions.PROCESS:
-            # TODO
-            pass
+        if config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.ACTION_TRIGGER,mercure_options.SERIES)==mercure_options.SERIES:
+            if ((config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.ACTION,"")==mercure_actions.PROCESS) or
+                (config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.ACTION,"")==mercure_actions.BOTH)):
+                # TODO
+                trigger_serieslevel_notification_reception(current_rule,tags_list)
 
 
 def push_serieslevel_notification(triggered_rules,file_list,series_UID,tags_list):
     for current_rule in triggered_rules:
-        if config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.ACTION,"")==mercure_actions.NOTIFICATION:
-            # If the current rule is "notification-only" and this is the only rule that 
-            # has been triggered, then remove the files (if more than one rule has been
-            # triggered, the parent function will take care of it)
-            if (len(triggered_rules==1)):
-                remove_series(file_list)
+        if config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.ACTION_TRIGGER,mercure_options.SERIES)==mercure_options.SERIES:
+            if config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.ACTION,"")==mercure_actions.NOTIFICATION:
+                trigger_serieslevel_notification_reception(current_rule,tags_list)
+                # If the current rule is "notification-only" and this is the only rule that 
+                # has been triggered, then remove the files (if more than one rule has been
+                # triggered, the parent function will take care of it)
+                if (len(triggered_rules==1)):
+                    remove_series(file_list)
 
 
 def remove_series(file_list):
