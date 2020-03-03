@@ -224,7 +224,22 @@ def push_serieslevel_processing(triggered_rules,file_list,series_UID,tags_list):
         if config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.ACTION_TRIGGER,mercure_options.SERIES)==mercure_options.SERIES:
             if ((config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.ACTION,"")==mercure_actions.PROCESS) or
                 (config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.ACTION,"")==mercure_actions.BOTH)):
-                # TODO
+
+                # Determine if the files should be copied or moved. If only one rule triggered, files can
+                # safely be moved, otherwise files will be moved and removed in the end
+                copy_files=True
+                if len(triggered_rules)==1:
+                    copy_files=False
+
+                folder_name=config.mercure[mercure_folders.PROCESSING] + '/' + str(uuid.uuid1())
+                target_folder=folder_name+"/"
+
+                # TODO: Create folder
+
+                if (not push_files(file_list, target_folder, copy_files)):
+                    # TODO
+                    pass
+
                 trigger_serieslevel_notification_reception(current_rule,tags_list)
 
 
