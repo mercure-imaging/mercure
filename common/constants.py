@@ -20,6 +20,7 @@ class mercure_sections:
     PROCESS      = "process"
     JOURNAL      = "journal"
     NOTIFICATION = "notification"
+    FILES        = "files"
 
 class mercure_config:
     RULES        = "rules"

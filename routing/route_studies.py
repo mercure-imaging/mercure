@@ -13,7 +13,7 @@ import common.helper as helper
 from common.constants import mercure_defs, mercure_names, mercure_actions, mercure_rule, mercure_config, mercure_options
 
 
-logger = daiquiri.getLogger("route_series")
+logger = daiquiri.getLogger("route_studies")
 
 
 def route_studies():

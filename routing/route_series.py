@@ -12,7 +12,7 @@ import common.monitor as monitor
 import common.helper as helper
 import common.notification as notification
 from common.constants import mercure_defs, mercure_names, mercure_actions, mercure_rule, mercure_config, mercure_options, mercure_folders, mercure_events
-from routing.generate_taskfile import generate_taskfile_route
+from routing.generate_taskfile import generate_taskfile_route, generate_taskfile_process
 
 
 logger = daiquiri.getLogger("route_series")
@@ -199,7 +199,6 @@ def push_series_serieslevel(triggered_rules,file_list,series_UID,tags_list):
 
 
 def trigger_serieslevel_notification_reception(current_rule,tags_list):
-
     notification.send_webhook(config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.NOTIFICATION_WEBHOOK,""),
                               config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.NOTIFICATION_PAYLOAD,""),
                               mercure_events.RECEPTION)
@@ -208,7 +207,8 @@ def trigger_serieslevel_notification_reception(current_rule,tags_list):
 def push_serieslevel_routing(triggered_rules,file_list,series_UID,tags_list):
     selected_targets = {}
     # Collect the dispatch-only targets to avoid that a series is sent twice to the
-    # same target due to multiple targets triggered
+    # same target due to multiple targets triggered (note: this only makes sense for
+    # routing-only tasks)
     for current_rule in triggered_rules:
         if config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.ACTION_TRIGGER,mercure_options.SERIES)==mercure_options.SERIES:
             if config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.ACTION,"")==mercure_actions.ROUTE:
@@ -224,7 +224,6 @@ def push_serieslevel_processing(triggered_rules,file_list,series_UID,tags_list):
         if config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.ACTION_TRIGGER,mercure_options.SERIES)==mercure_options.SERIES:
             if ((config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.ACTION,"")==mercure_actions.PROCESS) or
                 (config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.ACTION,"")==mercure_actions.BOTH)):
-
                 # Determine if the files should be copied or moved. If only one rule triggered, files can
                 # safely be moved, otherwise files will be moved and removed in the end
                 copy_files=True
@@ -234,11 +233,45 @@ def push_serieslevel_processing(triggered_rules,file_list,series_UID,tags_list):
                 folder_name=config.mercure[mercure_folders.PROCESSING] + '/' + str(uuid.uuid1())
                 target_folder=folder_name+"/"
 
-                # TODO: Create folder
+                try:
+                    os.mkdir(folder_name)
+                except Exception:
+                    logger.exception(f'Unable to create outgoing folder {folder_name}')
+                    monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Unable to create processing folder {folder_name}')
+                    return
+
+                if not Path(folder_name).exists():
+                    logger.error(f'Creating folder not possible {folder_name}')
+                    monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Creating folder not possible {folder_name}')
+                    return
+
+                try:
+                    lock_file=Path(folder_name / mercure_names.LOCK)
+                    lock=helper.FileLock(lock_file)
+                except:
+                    # Can't create lock file, so something must be seriously wrong
+                    logger.error(f'Unable to create lock file {lock_file}')
+                    monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Unable to create lock file {lock_file}')
+                    return
+
+                # Generate task file with dispatch information
+                task_filename = target_folder + mercure_names.TASKFILE
+                task_json = generate_taskfile_process(series_UID, mercure_options.SERIES, current_rule, tags_list)
+
+                try:
+                    with open(task_filename, 'w') as task_file:
+                        json.dump(task_json, task_file)
+                except:
+                    logger.error(f"Unable to create task file {task_filename}")
+                    monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Unable to create task file {task_filename}")
+                    continue
 
                 if (not push_files(file_list, target_folder, copy_files)):
-                    # TODO
-                    pass
+                    logger.error(f'Unable to push files into processing folder {target_folder}')
+                    monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Unable to push files into processing folder {target_folder}')
+                    return
+
+                lock.free()
 
                 trigger_serieslevel_notification_reception(current_rule,tags_list)
 
@@ -335,14 +368,14 @@ def push_serieslevel_outgoing(triggered_rules,file_list,series_UID,tags_list,sel
 
         # Generate task file with dispatch information
         task_filename = target_folder + mercure_names.TASKFILE
-        task_json = generate_taskfile_route(target,series_UID,selected_targets[target],tags_list)
+        task_json = generate_taskfile_route(series_UID, mercure_options.SERIES, selected_targets[target], tags_list, target)
 
         try:
             with open(task_filename, 'w') as task_file:
                 json.dump(task_json, task_file)
         except:
-            logger.error(f"Unable to create target file {task_filename}")
-            monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Unable to create target file {task_filename}")
+            logger.error(f"Unable to create task file {task_filename}")
+            monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Unable to create task file {task_filename}")
             continue
 
         monitor.send_series_event(monitor.s_events.ROUTE, series_UID, len(file_list), target, selected_targets[target])
