@@ -26,6 +26,7 @@ def route_series(series_UID):
         # Series is locked, so another instance might be working on it
         return
 
+    # Create lock file in the incoming folder and prevent other instances from working on this series
     try:
         lock=helper.FileLock(lock_file)
     except:
@@ -35,7 +36,6 @@ def route_series(series_UID):
         return
 
     logger.info(f'Processing series {series_UID}')
-
     fileList = []
     seriesPrefix=series_UID+"#"
 
@@ -66,10 +66,9 @@ def route_series(series_UID):
     monitor.send_register_series(tagsList)
     monitor.send_series_event(monitor.s_events.REGISTERED, series_UID, len(fileList), "", "")
 
-    discard_series = ""
-
     # Now test the routing rules and evaluate which rules have been triggered. If one of the triggered
     # rules enforces discarding, discard_series will be True.
+    discard_series = ""
     triggered_rules, discard_series = get_triggered_rules(tagsList)
 
     if (len(triggered_rules)==0) or (discard_series):
@@ -99,11 +98,11 @@ def get_triggered_rules(tagList):
 
     for current_rule in config.mercure["rules"]:
         try:
-            if config.mercure["rules"][current_rule].get("disabled","False")=="True":
+            if config.mercure["rules"][current_rule].get(mercure_rule.DISABLED,"False")=="True":
                 continue
-            if rule_evaluation.parse_rule(config.mercure["rules"][current_rule].get("rule","False"),tagList):
+            if rule_evaluation.parse_rule(config.mercure["rules"][current_rule].get(mercure_rule.RULE,"False"),tagList):
                 triggered_rules[current_rule]=current_rule
-                if config.mercure["rules"][current_rule].get("action","")==mercure_actions.DISCARD:
+                if config.mercure["rules"][current_rule].get(mercure_rule.ACTION,"")==mercure_actions.DISCARD:
                     discard_rule=current_rule
                     break
 
@@ -180,6 +179,7 @@ def push_series_studylevel(triggered_rules,file_list,series_UID,tags_list):
     # Move series into individual study-level folder for every rule
     for current_rule in triggered_rules:
         if config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.ACTION_TRIGGER,mercure_options.SERIES)==mercure_options.STUDY:
+
             folder_name=series_UID+mercure_defs.SEPARATOR+current_rule
             if (not os.path.exists(folder_name)):
                 try:
@@ -188,7 +188,18 @@ def push_series_studylevel(triggered_rules,file_list,series_UID,tags_list):
                     logger.error(f'Unable to create folder {folder_name}')
                     monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Unable to create folder {folder_name}')
                     continue
+
+            try:
+                lock_file=Path(folder_name / mercure_names.LOCK)
+                lock=helper.FileLock(lock_file)
+            except:
+                # Can't create lock file, so something must be seriously wrong
+                logger.error(f'Unable to create lock file {lock_file}')
+                monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Unable to create lock file {lock_file}')
+                return
+
             push_files(file_list, folder_name, (len(triggered_rules)>1))
+            lock.free()
 
 
 def push_series_serieslevel(triggered_rules,file_list,series_UID,tags_list):
@@ -208,11 +219,11 @@ def push_serieslevel_routing(triggered_rules,file_list,series_UID,tags_list):
     selected_targets = {}
     # Collect the dispatch-only targets to avoid that a series is sent twice to the
     # same target due to multiple targets triggered (note: this only makes sense for
-    # routing-only tasks)
+    # routing-only tasks as study-level rules might have different completion criteria)
     for current_rule in triggered_rules:
         if config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.ACTION_TRIGGER,mercure_options.SERIES)==mercure_options.SERIES:
             if config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.ACTION,"")==mercure_actions.ROUTE:
-                target=config.mercure["rules"][current_rule].get("target","")
+                target=config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.TARGET,"")
                 if target:
                     selected_targets[target]=current_rule
                 trigger_serieslevel_notification_reception(current_rule,tags_list)
@@ -271,7 +282,13 @@ def push_serieslevel_processing(triggered_rules,file_list,series_UID,tags_list):
                     monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Unable to push files into processing folder {target_folder}')
                     return
 
-                lock.free()
+                try:
+                    lock.free()
+                except:
+                    # Can't delete lock file, so something must be seriously wrong
+                    logger.error(f'Unable to remove lock file {lock_file}')
+                    monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Unable to remove lock file {lock_file}')
+                    return
 
                 trigger_serieslevel_notification_reception(current_rule,tags_list)
 
@@ -284,46 +301,8 @@ def push_serieslevel_notification(triggered_rules,file_list,series_UID,tags_list
                 # If the current rule is "notification-only" and this is the only rule that 
                 # has been triggered, then remove the files (if more than one rule has been
                 # triggered, the parent function will take care of it)
-                if (len(triggered_rules==1)):
+                if len(triggered_rules==1):
                     remove_series(file_list)
-
-
-def remove_series(file_list):
-    """Deletes the given files from the incoming folder."""
-    source_folder=config.mercure[mercure_folders.INCOMING] + '/'
-    for entry in file_list:
-        try:
-            os.remove(source_folder+entry+mercure_names.TAGS)
-            os.remove(source_folder+entry+mercure_names.DCM)
-        except Exception:
-            logger.exception(f'Error while removing file {entry}')
-            monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Error while removing file {entry}')
-
-
-def push_files(file_list, target_path, copy_files):
-    """Copies or moves the given files to the target path. If copy_files is True, files are copied, otherwise moved."""
-    if (copy_files==False):
-        operation=shutil.move
-    else:
-        operation=shutil.copy
-
-    source_folder=config.mercure[mercure_folders.INCOMING] + '/'
-    target_folder=target_path + '/'
-    
-    # TODO: Secure operation with lock file
-
-    for entry in file_list:
-        try:
-            operation(source_folder+entry+mercure_names.DCM, target_folder+entry+mercure_names.DCM)
-            operation(source_folder+entry+mercure_names.TAGS,target_folder+entry+mercure_names.TAGS)
-        except Exception:
-            logger.exception(f'Problem while pushing file to outgoing {entry}')
-            logger.exception(f'Source folder {source_folder}')
-            logger.exception(f'Target folder {target_folder}')
-            monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Problem while pushing file to outgoing {entry}')
-            return False
-
-    return True
 
 
 def push_serieslevel_outgoing(triggered_rules,file_list,series_UID,tags_list,selected_targets):
@@ -404,6 +383,45 @@ def push_serieslevel_outgoing(triggered_rules,file_list,series_UID,tags_list,sel
             logger.error(f'Unable to remove lock file {lock_file}')
             monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Unable to remove lock file {lock_file}')
             return
+
+
+def push_files(file_list, target_path, copy_files):
+    """
+    Copies or moves the given files to the target path. If copy_files is True, files are copied, otherwise moved.
+    Note that this function does not create a lock file (this needs to be done by the calling function).
+    """
+    if (copy_files==False):
+        operation=shutil.move
+    else:
+        operation=shutil.copy
+
+    source_folder=config.mercure[mercure_folders.INCOMING] + '/'
+    target_folder=target_path + '/'  
+
+    for entry in file_list:
+        try:
+            operation(source_folder+entry+mercure_names.DCM, target_folder+entry+mercure_names.DCM)
+            operation(source_folder+entry+mercure_names.TAGS,target_folder+entry+mercure_names.TAGS)
+        except Exception:
+            logger.exception(f'Problem while pushing file to outgoing {entry}')
+            logger.exception(f'Source folder {source_folder}')
+            logger.exception(f'Target folder {target_folder}')
+            monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Problem while pushing file to outgoing {entry}')
+            return False
+
+    return True
+
+
+def remove_series(file_list):
+    """Deletes the given files from the incoming folder."""
+    source_folder=config.mercure[mercure_folders.INCOMING] + '/'
+    for entry in file_list:
+        try:
+            os.remove(source_folder+entry+mercure_names.TAGS)
+            os.remove(source_folder+entry+mercure_names.DCM)
+        except Exception:
+            logger.exception(f'Error while removing file {entry}')
+            monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Error while removing file {entry}')
 
 
 def route_error_files():

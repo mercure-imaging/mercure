@@ -76,7 +76,7 @@ def run_router(args):
 
     filecount=0
     series={}
-    completeSeries={}
+    complete_series={}
 
     error_files_found = False
 
@@ -101,16 +101,16 @@ def run_router(args):
     # Check if any of the series exceeds the "series complete" threshold
     for entry in series:
         if ((time.time()-series[entry]) > config.mercure['series_complete_trigger']):
-            completeSeries[entry]=series[entry]
+            complete_series[entry]=series[entry]
 
     #logger.info(f'Files found     = {filecount}')
     #logger.info(f'Series found    = {len(series)}')
-    #logger.info(f'Complete series = {len(completeSeries)}')
+    #logger.info(f'Complete series = {len(complete_series)}')
     helper.g_log('incoming.files', filecount)
     helper.g_log('incoming.series', len(series))
 
     # Process all complete series
-    for entry in sorted(completeSeries):
+    for entry in sorted(complete_series):
         try:
             route_series(entry)
         except Exception:
