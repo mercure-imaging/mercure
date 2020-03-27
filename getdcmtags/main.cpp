@@ -8,7 +8,7 @@
 #include "dcmtk/dcmdata/dcspchrs.h"
 #include "dcmtk/dcmdata/dctypes.h"
 
-#define VERSION "0.2a"
+#define VERSION "0.2b"
 
 static OFString tagSpecificCharacterSet="";
 static OFString tagPatientName="";
@@ -48,6 +48,8 @@ static OFString tagSoftwareVersions="";
 static OFString tagContrastBolusAgent="";
 static OFString tagImageComments="";
 static OFString tagSliceThickness="";
+static OFString tagInstanceNumber="";
+static OFString tagAcquisitionNumber="";
 
 static std::string bookkeeperAddress="";
 
@@ -176,6 +178,9 @@ bool writeTagsFile(OFString dcmFile, OFString originalFile)
     INSERTTAG("ContrastBolusAgent",            tagContrastBolusAgent,            "8.0 ML JUICE");
     INSERTTAG("ImageComments",                 tagImageComments,                 "Comment on image");
     INSERTTAG("SliceThickness",                tagSliceThickness,                "3");
+    INSERTTAG("InstanceNumber",                tagInstanceNumber,                "12");
+    INSERTTAG("AcquisitionNumber",             tagAcquisitionNumber,             "15");
+
 
     fprintf(fp, "\"Filename\": \"%s\"\n",originalFile.c_str());
     fprintf(fp, "}\n");
@@ -287,6 +292,8 @@ int main(int argc, char *argv[])
     READTAG(DCM_ContrastBolusAgent,            tagContrastBolusAgent);
     READTAG(DCM_ImageComments,                 tagImageComments);
     READTAG(DCM_SliceThickness,                tagSliceThickness);
+    READTAG(DCM_InstanceNumber,                tagInstanceNumber);
+    READTAG(DCM_AcquisitionNumber,             tagAcquisitionNumber);
 
     isConversionNeeded=true;
     if (tagSpecificCharacterSet.compare("ISO_IR 192")==0)
