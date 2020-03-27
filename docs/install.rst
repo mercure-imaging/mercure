@@ -23,7 +23,7 @@ You can perform these steps by copying the commands listed below into a bash she
     ssh mercure@localhost
     git clone https://github.com/mercure-router/mercure.git
     cd mercure
-    git checkout -b 0.1a
+    git checkout stable-v0.1
     cd ~/mercure/installation
     ./install.sh
     exit
@@ -185,7 +185,7 @@ Redash provides a convenient installation script that uses Docker for the Redash
 
 ::
 
-    wget https://raw.githubusercontent.com/getredash/redash/master/setup/setup.sh
+    wget https://raw.githubusercontent.com/getredash/setup/master/setup.sh
     chmod 700 setup.sh
     sudo ./setup.sh
 
