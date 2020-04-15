@@ -1,4 +1,6 @@
 #!/bin/bash
+set -euo pipefail
+
 echo "Installing Python runtime environment..."
 wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O "$HOME/miniconda.sh"
 bash ~/miniconda.sh -b -p ~/miniconda

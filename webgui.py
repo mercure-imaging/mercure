@@ -438,7 +438,7 @@ async def targets_edit(request):
 
 @app.route('/targets/edit/{target}', methods=["POST"])
 @requires(['authenticated','admin'], redirect='login')
-async def targes_edit_post(request):
+async def target_edit_post(request):
     """Updates the given target using the form values posted with the request."""
     try: 
         config.read_config()
