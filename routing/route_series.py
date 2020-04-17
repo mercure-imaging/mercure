@@ -20,7 +20,7 @@ logger = daiquiri.getLogger("route_series")
 
 def route_series(series_UID):
     """Processes the series with the given series UID from the incoming folder."""
-    lock_file=Path(config.mercure['incoming_folder'] + '/' + str(series_UID) + mercure_names.LOCK)
+    lock_file=Path(config.mercure[mercure_folders.INCOMING] + '/' + str(series_UID) + mercure_names.LOCK)
 
     if lock_file.exists():
         # Series is locked, so another instance might be working on it
@@ -40,7 +40,7 @@ def route_series(series_UID):
     seriesPrefix=series_UID+"#"
 
     # Collect all files belonging to the series
-    for entry in os.scandir(config.mercure['incoming_folder']):
+    for entry in os.scandir(config.mercure[mercure_folders.INCOMING]):
             if entry.name.endswith(mercure_names.TAGS) and entry.name.startswith(seriesPrefix) and not entry.is_dir():
                 stemName=entry.name[:-5]
                 fileList.append(stemName)
@@ -48,7 +48,7 @@ def route_series(series_UID):
     logger.info("DICOM files found: "+str(len(fileList)))
 
     # Use the tags file from the first slice for evaluating the routing rules
-    tagsMasterFile=Path(config.mercure['incoming_folder'] + '/' + fileList[0] + mercure_names.TAGS)
+    tagsMasterFile=Path(config.mercure[mercure_folders.INCOMING] + '/' + fileList[0] + mercure_names.TAGS)
     if not tagsMasterFile.exists():
         logger.error(f'Missing file! {tagsMasterFile.name}')
         monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Missing file {tagsMasterFile.name}')
@@ -121,9 +121,9 @@ def push_series_discard(fileList,series_UID,discard_series):
     """Discards the series by moving all files into the "discard" folder, which is periodically cleared."""
     # Define the source and target folder. Use UUID as name for the target folder in the 
     # discard directory to avoid collisions
-    discard_path  =config.mercure['discard_folder']  + '/' + str(uuid.uuid1())
+    discard_path  =config.mercure[mercure_folders.DISCARD]  + '/' + str(uuid.uuid1())
     discard_folder=discard_path + '/'
-    source_folder =config.mercure['incoming_folder'] + '/'
+    source_folder =config.mercure[mercure_folders.INCOMING] + '/'
 
     # Create subfolder in the discard directory and validate that is has been created
     try:
@@ -307,7 +307,7 @@ def push_serieslevel_notification(triggered_rules,file_list,series_UID,tags_list
 
 def push_serieslevel_outgoing(triggered_rules,file_list,series_UID,tags_list,selected_targets):
     """Move the DICOM files of the series to a separate subfolder for each target in the outgoing folder."""
-    source_folder=config.mercure['incoming_folder'] + '/'
+    source_folder=config.mercure[mercure_folders.INCOMING] + '/'
 
     # Determine if the files should be copied or moved. If only one rule triggered, files can
     # safely be moved, otherwise files will be moved and removed in the end
@@ -321,8 +321,8 @@ def push_serieslevel_outgoing(triggered_rules,file_list,series_UID,tags_list,sel
             monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Invalid target selected {target}")
             continue
 
-        folder_name=config.mercure['outgoing_folder'] + '/' + str(uuid.uuid1())
-        target_folder=folder_name+"/"
+        folder_name=config.mercure[mercure_folders.OUTGOING] + '/' + str(uuid.uuid1())
+        target_folder=folder_name + "/"
 
         try:
             os.mkdir(folder_name)
@@ -431,10 +431,10 @@ def route_error_files():
     """
     error_files_found = 0
 
-    for entry in os.scandir(config.mercure['incoming_folder']):
-        if entry.name.endswith(".error") and not entry.is_dir():
+    for entry in os.scandir(config.mercure[mercure_folders.INCOMING]):
+        if entry.name.endswith(mercure_names.ERROR) and not entry.is_dir():
             # Check if a lock file exists. If not, create one.
-            lock_file=Path(config.mercure['incoming_folder'] / entry.name + mercure_names.LOCK)
+            lock_file=Path(config.mercure[mercure_folders.INCOMING] / entry.name + mercure_names.LOCK)
             if lock_file.exists():
                 continue
             try:
@@ -445,14 +445,14 @@ def route_error_files():
             logger.error(f'Found incoming error file {entry.name}')
             error_files_found += 1
 
-            shutil.move(config.mercure['incoming_folder'] + '/' + entry.name,
-                        config.mercure['error_folder'] + '/' + entry.name)
+            shutil.move(config.mercure[mercure_folders.INCOMING] + '/' + entry.name,
+                        config.mercure[mercure_folders.ERROR] + '/' + entry.name)
 
             dicom_filename = entry.name[:-6]
-            dicom_file = Path(config.mercure['incoming_folder'] + '/' + dicom_filename)
+            dicom_file = Path(config.mercure[mercure_folders.INCOMING] + '/' + dicom_filename)
             if dicom_file.exists():
-                shutil.move(config.mercure['incoming_folder'] + '/' + dicom_filename,
-                            config.mercure['error_folder'] + '/' + dicom_filename)
+                shutil.move(config.mercure[mercure_folders.INCOMING] + '/' + dicom_filename,
+                            config.mercure[mercure_folders.ERROR] + '/' + dicom_filename)
 
             lock.free()
 

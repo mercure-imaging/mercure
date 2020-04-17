@@ -231,3 +231,15 @@ body {
 .tagsinput.field {
     min-height: 36px !important;
 }
+
+.is-frameless {
+    border: none;
+    color: rgb(54, 54, 54);
+    padding-left: 8px;
+    padding-right: 8px;
+}
+
+.is-frameless:hover {
+    border: none;
+    color: rgb(50, 115, 220);    
+}

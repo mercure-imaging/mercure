@@ -17,7 +17,7 @@ import common.monitor as monitor
 from dispatch.status import has_been_send, is_ready_for_sending
 from dispatch.send import execute
 from common.config import mercure
-from common.constants import mercure_defs
+from common.constants import mercure_defs, mercure_folders
 
 daiquiri.setup(
     level=logging.INFO,
@@ -61,13 +61,13 @@ def dispatch(args):
         )
         return
 
-    success_folder = Path(config.mercure["success_folder"])
-    error_folder = Path(config.mercure["error_folder"])
-    retry_max = config.mercure["retry_max"]
-    retry_delay = config.mercure["retry_delay"]
+    success_folder = Path(config.mercure[mercure_folders.SUCCESS])
+    error_folder   = Path(config.mercure[mercure_folders.ERROR])
+    retry_max      = config.mercure["retry_max"]
+    retry_delay    = config.mercure["retry_delay"]
 
     # TODO: Sort list so that the oldest DICOMs get dispatched first
-    with os.scandir(config.mercure["outgoing_folder"]) as it:
+    with os.scandir(config.mercure[mercure_folders.OUTGOING]) as it:
         for entry in it:
             if (
                 entry.is_dir()
@@ -131,7 +131,7 @@ if __name__ == "__main__":
             prefix=graphite_prefix,
         )
 
-    logger.info(f"Dispatching folder: {config.mercure['outgoing_folder']}")
+    logger.info(f"Dispatching folder: {config.mercure[mercure_folders.OUTGOING]}")
 
     global main_loop
     main_loop = helper.RepeatedTimer(

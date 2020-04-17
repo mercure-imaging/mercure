@@ -139,9 +139,9 @@
                             </div>
                         </div>
                     </div>
-                    <div class="field">
+                    <div class="field" style="margin-top: 40px;">
                         <label class="label">Status</label>
-                        <div class="select">
+                        <div class="select" style="display: none;">
                             <div class="control">
                                 <select name="disabled">
                                     <option value="False" {% if rules[rule]['disabled']=='False' %}selected{% endif%}>
@@ -151,6 +151,16 @@
                                 </select>
                             </div>
                         </div>
+                    </div>
+                    <div class="field">                        
+                        <input id="status_disabled" type="checkbox" name="status_disabled"
+                            class="switch is-danger is-rounded" value="True" {% if rules[rule]['disabled']=='True' %}checked="checked"{% endif%}>
+                        <label for="status_disabled">Disable Rule</label>
+                    </div>
+                    <div class="field">                        
+                        <input id="status_fallback" type="checkbox" name="status_fallback"
+                            class="switch is-dark is-rounded" value="True" {% if rules[rule]['fallback']=='True' %}checked="checked"{% endif%}>
+                        <label for="status_fallback">Fallback Rule</label>
                     </div>
                 </div>
                 <div class="panel" data-content="processing">
@@ -191,7 +201,21 @@
                                 </select>
                             </div>
                         </div>
+<!--                        
+                        <a class="button is-frameless has-tooltip-right has-tooltip-success" data-tooltip="Remove target">
+                            <span class="icon is-small">
+                            <i class="fas fa-times"></i>
+                            </span>
+                        </a>
+-->                        
                     </div>
+<!--
+                    <a class="button has-tooltip-right has-tooltip-success" data-tooltip="Add extra target">
+                        <span class="icon is-small">
+                            <i class="fas fa-plus"></i>
+                        </span>
+                    </a>
+-->    
                 </div>
                 <div class="panel" data-content="notification">
                     <div class="field">
@@ -478,11 +502,8 @@
             $('#notification_payload').val('"text": "Hello, world"');
         });
     });
-
 </script>
-
-<script type="text/javascript" src="{{ url_for('static', path='/js/bulma-tagsinput.min.js') }}">
-</script>
+<script type="text/javascript" src="{{ url_for('static', path='/js/bulma-tagsinput.min.js') }}"></script>
 <script>
   bulmaTagsinput.attach();
 </script>

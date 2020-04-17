@@ -21,7 +21,7 @@ import common.config as config
 import common.helper as helper
 import common.monitor as monitor
 from common.monitor import send_series_event, s_events
-from common.constants import mercure_defs
+from common.constants import mercure_defs, mercure_folders
 
 
 daiquiri.setup(
@@ -73,8 +73,8 @@ def clean(args):
         config.mercure["offpeak_end"],
         datetime.now().time(),
     ):
-        success_folder = config.mercure["success_folder"]
-        discard_folder = config.mercure["discard_folder"]
+        success_folder = config.mercure[mercure_folders.SUCCESS]
+        discard_folder = config.mercure[mercure_folders.DISCARD]
         retention = timedelta(seconds=config.mercure["retention"])
         clean_dir(success_folder, retention)
         clean_dir(discard_folder, retention)
@@ -138,7 +138,7 @@ def find_series_uid(work_dir):
     to_be_deleted_dir = Path(work_dir)
     for entry in to_be_deleted_dir.iterdir():
         if "#" in entry.name:
-            return entry.name.split("#")[0]
+            return entry.name.split(mercure_defs.SEPARATOR)[0]
         return "series_uid-not-found"
 
 

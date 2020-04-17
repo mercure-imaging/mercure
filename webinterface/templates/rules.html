@@ -18,6 +18,9 @@
                     {% elif rules[x]['action']=='discard' %}"Force Discard"><i class="fas fa-ban                   
                     {% else %}""><i class="fas fa-robot{% endif %}fa-lg"></i>
                 </span>&nbsp;&nbsp;{{ x }}<span style="margin-left: auto;"></span>
+                {% if rules[x]['fallback']=='True' %}
+                <span class="has-tooltip-right has-tooltip-success" data-tooltip="Fallback Rule"><i class="fas fa-magnet ruleicon"></i></span>
+                {% endif %}
                 {% if rules[x]['priority']=='urgent' %}
                 <span class="has-tooltip-right has-tooltip-success" data-tooltip="Urgent Processing"><i class="fas fa-shipping-fast ruleicon"></i></span>
                 {% elif rules[x]['priority']=='offpeak' %}

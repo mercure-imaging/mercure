@@ -291,7 +291,8 @@ async def rules_edit_post(request):
 
     config.mercure["rules"][editrule]["rule"]=form.get("rule","False")
     config.mercure["rules"][editrule]["target"]=form.get("target","")
-    config.mercure["rules"][editrule]["disabled"]=form.get("disabled","False")
+    config.mercure["rules"][editrule]["disabled"]=form.get("status_disabled","False")
+    config.mercure["rules"][editrule]["fallback"]=form.get("status_fallback","False")    
     config.mercure["rules"][editrule]["contact"]=form.get("contact","")
     config.mercure["rules"][editrule]["comment"]=form.get("comment","")
     config.mercure["rules"][editrule]["tags"]=form.get("tags","")
