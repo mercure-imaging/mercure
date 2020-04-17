@@ -1,6 +1,6 @@
 ![mercure](mercure.png)
 
-# mercure DICOM Router
+# mercure Orchestrator
 
 A flexible DICOM routing and processing solution using a Python application layer on top of the DCMTK toolkit. It consists of multiple separated modules that handle different steps of the processing chain.
 
