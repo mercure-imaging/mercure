@@ -12,7 +12,7 @@ import common.monitor as monitor
 import common.helper as helper
 import common.notification as notification
 from common.constants import mercure_defs, mercure_names, mercure_actions, mercure_rule, mercure_config, mercure_options, mercure_folders, mercure_events
-from routing.generate_taskfile import generate_taskfile_route, generate_taskfile_process
+from routing.generate_taskfile import generate_taskfile_route, generate_taskfile_process, create_study_task
 
 
 logger = daiquiri.getLogger("route_series")
@@ -184,6 +184,8 @@ def push_series_studylevel(triggered_rules,file_list,series_UID,tags_list):
             if (not os.path.exists(folder_name)):
                 try:
                     os.mkdir(folder_name)
+                    create_study_task(folder_name);
+                    # TODO: Create task file with information on complete criteria
                 except:
                     logger.error(f'Unable to create folder {folder_name}')
                     monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Unable to create folder {folder_name}')

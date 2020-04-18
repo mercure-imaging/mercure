@@ -58,3 +58,7 @@ def add_info(uid, uid_type, applied_rule, tags_list):
     info_section[mercure_sections.INFO]["mercure_appliance"]=config.mercure["appliance_name"]
     info_section[mercure_sections.INFO]["mercure_server"]=socket.gethostname() 
     return info_section
+
+
+def create_study_task(folder_name):
+    pass
