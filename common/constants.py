@@ -21,6 +21,7 @@ class mercure_sections:
     JOURNAL      = "journal"
     NOTIFICATION = "notification"
     FILES        = "files"
+    STUDY        = "study"
 
 class mercure_config:
     RULES        = "rules"

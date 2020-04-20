@@ -60,5 +60,22 @@ def add_info(uid, uid_type, applied_rule, tags_list):
     return info_section
 
 
-def create_study_task(folder_name):
-    pass
+def create_study_task(folder_name, applied_rule, study_UID, tags_list):
+
+    task_filename = folder_name + mercure_names.TASKFILE
+
+    study_info={}
+    study_info["study_uid"]=study_UID
+    #TODO: Add storage of complete criteria to webgui
+    #study_info["complete_criteria"]=config.mercure[mercure_config.RULES][applied_rule][""]
+
+    task_json = {}
+    task_json[mercure_sections.STUDY]=study_info
+    task_json.update(add_info(study_UID, mercure_options.STUDY, applied_rule, tags_list))
+    
+    try:
+        with open(task_filename, 'w') as task_file:
+            json.dump(task_json, task_file)
+    except:
+        logger.error(f"Unable to create task file {task_filename}")
+        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Unable to create task file {task_filename}")

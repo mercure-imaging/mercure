@@ -180,11 +180,13 @@ def push_series_studylevel(triggered_rules,file_list,series_UID,tags_list):
     for current_rule in triggered_rules:
         if config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.ACTION_TRIGGER,mercure_options.SERIES)==mercure_options.STUDY:
 
-            folder_name=series_UID+mercure_defs.SEPARATOR+current_rule
+            study_UID=tags_list["StudyInstanceUID"]
+
+            folder_name=study_UID+mercure_defs.SEPARATOR+current_rule
             if (not os.path.exists(folder_name)):
                 try:
                     os.mkdir(folder_name)
-                    create_study_task(folder_name);
+                    create_study_task(folder_name, current_rule, study_UID, tags_list)
                     # TODO: Create task file with information on complete criteria
                 except:
                     logger.error(f'Unable to create folder {folder_name}')
