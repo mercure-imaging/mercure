@@ -4,7 +4,8 @@ import uuid
 import json
 import shutil
 import daiquiri
-import socket 
+import socket
+from datetime import datetime
 
 # App-specific includes
 import common.config as config
@@ -28,7 +29,7 @@ def generate_taskfile_process(uid, uid_type, applied_rule, tags_list):
     task_json={}
     task_json.update(add_info(uid, uid_type, applied_rule, tags_list))
 
-    if (config.mercure[mercure_config.RULES][applied_rule].get(mercure_rule.ACTION,mercure_actions.PROCESS)==mercure_actions.PROCESS):
+    if (config.mercure[mercure_config.RULES][applied_rule].get(mercure_rule.ACTION,mercure_actions.PROCESS)==mercure_actions.BOTH):
         target=config.mercure[mercure_config.RULES][applied_rule].get(mercure_rule.TARGET,"")
         task_json.update(add_dispatching(applied_rule, tags_list, target))
 
@@ -65,9 +66,10 @@ def create_study_task(folder_name, applied_rule, study_UID, tags_list):
     task_filename = folder_name + mercure_names.TASKFILE
 
     study_info={}
-    study_info["study_uid"]=study_UID
-    #TODO: Add storage of complete criteria to webgui
-    #study_info["complete_criteria"]=config.mercure[mercure_config.RULES][applied_rule][""]
+    study_info["study_uid"]               =study_UID
+    study_info["complete_trigger"]        =config.mercure[mercure_config.RULES][applied_rule]["study_trigger_condition"]
+    study_info["complete_required_series"]=config.mercure[mercure_config.RULES][applied_rule]["study_trigger_series"]
+    study_info["creation_time"]           =datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
     task_json = {}
     task_json[mercure_sections.STUDY]=study_info

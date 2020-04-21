@@ -109,7 +109,7 @@
                         <label class="label">Completion Criteria</label>
                         <div class="field has-addons">
                             <div class="select">
-                                <select name="study_trigger" id="study_trigger">
+                                <select name="study_trigger_condition" id="study_trigger_condition">
                                     <option value="timeout"
                                         {% if rules[rule]['study_trigger_condition']=='timeout' %}selected{% endif%}>Timeout Reached
                                     </option>
@@ -119,8 +119,8 @@
                                 </select>
                             </div>
                             <div class="control is-expanded" style="margin-left: 10px;">
-                                <input name="study_trigger_input" id="study_trigger_input" pattern="[^{}\x22]+" class="input" autocomplete='off'
-                                    type="text" placeholder="Series required for completion" value="">
+                                <input name="study_trigger_series" id="study_trigger_series" pattern="[^{}\x22]+" class="input" autocomplete='off'
+                                    type="text" placeholder="Series required for completion" value="{{rules[rule]['study_trigger_series']}}">
                             </div>    
                         </div>
                     </div>                    
@@ -474,19 +474,19 @@
             }            
         });
 
-        $('#study_trigger').change(function () {
+        $('#study_trigger_condition').change(function () {
             var study_trigger = $(this).children("option:selected").val();
 
             if (study_trigger == 'timeout') {
-                $('#study_trigger_input').hide();
+                $('#study_trigger_series').hide();
             } else {
-                $('#study_trigger_input').show();
+                $('#study_trigger_series').show();
             }            
         });
         
         $("#action").trigger('change');
         $("#action_trigger").trigger('change');
-        $("#study_trigger").trigger('change');
+        $("#study_trigger_condition").trigger('change');
 
         var dropdown = document.querySelector('.dropdown');
         dropdown.addEventListener('click', function (event) {

@@ -298,6 +298,8 @@ async def rules_edit_post(request):
     config.mercure["rules"][editrule]["tags"]=form.get("tags","")
     config.mercure["rules"][editrule]["action"]=form.get("action","route")
     config.mercure["rules"][editrule]["action_trigger"]=form.get("action_trigger","series")
+    config.mercure["rules"][editrule]["study_trigger_condition"]=form.get("study_trigger_condition","timeout")
+    config.mercure["rules"][editrule]["study_trigger_series"]=form.get("study_trigger_series","")
     config.mercure["rules"][editrule]["priority"]=form.get("priority","normal")
     config.mercure["rules"][editrule]["processing_module"]=form.get("processing_module","")
     config.mercure["rules"][editrule]["processing_settings"]=form.get("processing_settings","")
