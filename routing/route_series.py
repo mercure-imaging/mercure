@@ -12,7 +12,7 @@ import common.monitor as monitor
 import common.helper as helper
 import common.notification as notification
 from common.constants import mercure_defs, mercure_names, mercure_actions, mercure_rule, mercure_config, mercure_options, mercure_folders, mercure_events
-from routing.generate_taskfile import generate_taskfile_route, generate_taskfile_process, create_study_task
+from routing.generate_taskfile import generate_taskfile_route, generate_taskfile_process, create_study_task, create_series_task_processing
 
 
 logger = daiquiri.getLogger("route_series")
@@ -176,18 +176,20 @@ def push_series_discard(fileList,series_UID,discard_series):
 
 def push_series_studylevel(triggered_rules,file_list,series_UID,tags_list):
     """Prepeares study-level routing for the current series."""
+
     # Move series into individual study-level folder for every rule
     for current_rule in triggered_rules:
         if config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.ACTION_TRIGGER,mercure_options.SERIES)==mercure_options.STUDY:
 
-            study_UID=tags_list["StudyInstanceUID"]
+            first_series=False
 
+            # Create folder to buffer the series until study completion
+            study_UID=tags_list["StudyInstanceUID"]
             folder_name=study_UID+mercure_defs.SEPARATOR+current_rule
             if (not os.path.exists(folder_name)):
                 try:
                     os.mkdir(folder_name)
-                    create_study_task(folder_name, current_rule, study_UID, tags_list)
-                    # TODO: Create task file with information on complete criteria
+                    first_series=True
                 except:
                     logger.error(f'Unable to create folder {folder_name}')
                     monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Unable to create folder {folder_name}')
@@ -200,8 +202,13 @@ def push_series_studylevel(triggered_rules,file_list,series_UID,tags_list):
                 # Can't create lock file, so something must be seriously wrong
                 logger.error(f'Unable to create lock file {lock_file}')
                 monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Unable to create lock file {lock_file}')
-                return
+                continue
 
+            # Create task file with information on complete criteria                    
+            if first_series:
+                create_study_task(folder_name, current_rule, study_UID, tags_list)
+
+            # Copy (or move) the files into the study folder
             push_files(file_list, folder_name, (len(triggered_rules)>1))
             lock.free()
 
@@ -253,12 +260,12 @@ def push_serieslevel_processing(triggered_rules,file_list,series_UID,tags_list):
                 except Exception:
                     logger.exception(f'Unable to create outgoing folder {folder_name}')
                     monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Unable to create processing folder {folder_name}')
-                    return
+                    return False
 
                 if not Path(folder_name).exists():
                     logger.error(f'Creating folder not possible {folder_name}')
                     monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Creating folder not possible {folder_name}')
-                    return
+                    return False
 
                 try:
                     lock_file=Path(folder_name / mercure_names.LOCK)
@@ -267,24 +274,16 @@ def push_serieslevel_processing(triggered_rules,file_list,series_UID,tags_list):
                     # Can't create lock file, so something must be seriously wrong
                     logger.error(f'Unable to create lock file {lock_file}')
                     monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Unable to create lock file {lock_file}')
-                    return
+                    return False
 
-                # Generate task file with dispatch information
-                task_filename = target_folder + mercure_names.TASKFILE
-                task_json = generate_taskfile_process(series_UID, mercure_options.SERIES, current_rule, tags_list)
-
-                try:
-                    with open(task_filename, 'w') as task_file:
-                        json.dump(task_json, task_file)
-                except:
-                    logger.error(f"Unable to create task file {task_filename}")
-                    monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Unable to create task file {task_filename}")
-                    continue
+                # Generate task file with processing information
+                if (not create_series_task_processing(target_folder, current_rule, series_UID, tags_list)):
+                    return False
 
                 if (not push_files(file_list, target_folder, copy_files)):
                     logger.error(f'Unable to push files into processing folder {target_folder}')
                     monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Unable to push files into processing folder {target_folder}')
-                    return
+                    return False
 
                 try:
                     lock.free()
@@ -292,9 +291,11 @@ def push_serieslevel_processing(triggered_rules,file_list,series_UID,tags_list):
                     # Can't delete lock file, so something must be seriously wrong
                     logger.error(f'Unable to remove lock file {lock_file}')
                     monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Unable to remove lock file {lock_file}')
-                    return
+                    return False
 
                 trigger_serieslevel_notification_reception(current_rule,tags_list)
+
+    return True
 
 
 def push_serieslevel_notification(triggered_rules,file_list,series_UID,tags_list):
@@ -307,6 +308,7 @@ def push_serieslevel_notification(triggered_rules,file_list,series_UID,tags_list
                 # triggered, the parent function will take care of it)
                 if len(triggered_rules==1):
                     remove_series(file_list)
+    return True
 
 
 def push_serieslevel_outgoing(triggered_rules,file_list,series_UID,tags_list,selected_targets):
@@ -349,6 +351,7 @@ def push_serieslevel_outgoing(triggered_rules,file_list,series_UID,tags_list,sel
             monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Unable to create lock file {lock_file}')
             return
 
+        # TODO: Move to generate_taskfile.py
         # Generate task file with dispatch information
         task_filename = target_folder + mercure_names.TASKFILE
         task_json = generate_taskfile_route(series_UID, mercure_options.SERIES, selected_targets[target], tags_list, target)

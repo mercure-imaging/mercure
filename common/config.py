@@ -30,7 +30,7 @@ mercure_defaults = {
     'retry_delay'                :                     900, # in seconds (15 min)
     'retry_max'                  :                       5,
     'series_complete_trigger'    :                      60, # in seconds
-    'study_complete_trigger'     :                     300, # in seconds
+    'study_complete_trigger'     :                     900, # in seconds
     'study_forcecomplete_trigger':                    5400, # in seconds
     'graphite_ip'                :                      '',
     'graphite_port'              :                    2003,

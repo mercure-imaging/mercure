@@ -62,6 +62,7 @@ def add_info(uid, uid_type, applied_rule, tags_list):
 
 
 def create_study_task(folder_name, applied_rule, study_UID, tags_list):
+    """Generate task file with information on the study"""
 
     task_filename = folder_name + mercure_names.TASKFILE
 
@@ -81,3 +82,24 @@ def create_study_task(folder_name, applied_rule, study_UID, tags_list):
     except:
         logger.error(f"Unable to create task file {task_filename}")
         monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Unable to create task file {task_filename}")
+        return False
+
+    return True
+
+
+def create_series_task_processing(folder_name, applied_rule, series_UID, tags_list):
+    """Generate task file with processing information for the series"""
+
+    task_filename = folder_name + mercure_names.TASKFILE
+    task_json = generate_taskfile_process(series_UID, mercure_options.SERIES, applied_rule, tags_list)
+
+    try:
+        with open(task_filename, 'w') as task_file:
+            json.dump(task_json, task_file)
+    except:
+        logger.error(f"Unable to create task file {task_filename}")
+        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Unable to create task file {task_filename}")
+        return False
+
+    return True
+        
