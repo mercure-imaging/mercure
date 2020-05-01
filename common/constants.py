@@ -26,6 +26,7 @@ class mercure_sections:
 class mercure_config:
     RULES        = "rules"
     TARGETS      = "targets"
+    MODULES      = "modules"
 
 class mercure_folders:
     INCOMING     = "incoming_folder"

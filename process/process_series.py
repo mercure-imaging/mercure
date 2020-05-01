@@ -7,11 +7,12 @@ import shutil
 import daiquiri
 import time
 from datetime import datetime
-
+import docker
 import common.monitor as monitor
 import common.helper as helper
 import common.config as config
 from common.constants import mercure_names
+import traceback
 
 
 logger = daiquiri.getLogger("process_series")
@@ -19,8 +20,9 @@ logger = daiquiri.getLogger("process_series")
 
 def process_series(folder):    
     logger.info(f'Now processing = {folder}')
-
-    lock_file=Path(folder / mercure_names.PROCESSING)
+    docker_client = docker.from_env()
+    
+    lock_file=Path(folder) / mercure_names.PROCESSING
     if lock_file.exists():
         logger.warning(f"Folder already contains lockfile {folder}/"+mercure_names.PROCESSING)
         return
@@ -30,6 +32,7 @@ def process_series(folder):
     except:
         # Can't create lock file, so something must be seriously wrong
         logger.error(f'Unable to create lock file {lock_file}')
+        logger.error(traceback.format_exc())
         monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Unable to create lock file in processing folder {lock_file}')
         return 
 
@@ -37,16 +40,30 @@ def process_series(folder):
     needs_dispatching=False
 
     # TODO: Perform the processing
-    time.sleep(10)
+    # time.sleep(10)
+    def get_task():
+        the_path = Path(folder) / mercure_names.TASKFILE
+        if not the_path.exists():
+            return None
+
+        with open(the_path, "r") as f:
+            return json.load(f)
+    task = get_task()
+    logger.info(task['process']['docker_tag'])
+
+    docker_client.containers.run(task['process']['docker_tag'], 
+        '--dicom-path /data',
+        volumes={folder:{'bind':'/data','mode':'rw'}})
 
     # TODO: Error handling
 
     # Create a new lock file to ensure that no other process picks up the folder while copying
+    lock_file=Path(folder) / mercure_names.LOCK
     try:
-        lock_file=lock_file=Path(folder / mercure_names.LOCK_EXTENSION)
         lock_file.touch()
     except:
         logger.info(f"Error locking folder to be moved {folder}")        
+        logger.error(traceback.format_exc())
         monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Error locking folder to be moved {folder}")
 
     # Remove the processing lock
@@ -80,6 +97,7 @@ def move_folder(source_folder_str, destination_folder_str):
         lockfile.unlink()
     except:
         logger.info(f"Error moving folder {source_folder} to {destination_folder}")        
+        logger.error(traceback.format_exc())
         monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Error moving {source_folder} to {destination_folder}")
 
 
