@@ -140,12 +140,12 @@ def push_series_discard(fileList,series_UID,discard_series):
     # Create lock file in destination folder (to prevent the cleaner module to work on the folder). Note that 
     # the DICOM series in the incoming folder has already been locked in the parent function.
     try:
-        lock_file=Path(discard_path / mercure_names.LOCK)
+        lock_file=Path(discard_path) / mercure_names.LOCK
         lock=helper.FileLock(lock_file)
     except:
         # Can't create lock file, so something must be seriously wrong
-        logger.error(f'Unable to create lock file {lock_file}')
-        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Unable to create lock file in discard folder {lock_file}')
+        logger.error(f'Unable to create lock file {discard_path}/{mercure_names.LOCK}')
+        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Unable to create lock file in discard folder {discard_path}/{mercure_names.LOCK}')
         return
 
     info_text = ""
@@ -267,8 +267,8 @@ def push_serieslevel_processing(triggered_rules,file_list,series_UID,tags_list):
                     monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Creating folder not possible {folder_name}')
                     return False
 
+                lock_file=Path(folder_name) / mercure_names.LOCK
                 try:
-                    lock_file=Path(folder_name / mercure_names.LOCK)
                     lock=helper.FileLock(lock_file)
                 except:
                     # Can't create lock file, so something must be seriously wrong
