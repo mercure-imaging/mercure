@@ -36,7 +36,7 @@ def process_series(folder):
         monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Unable to create lock file in processing folder {lock_file}')
         return 
 
-    processing_success=True
+    processing_success=False
     needs_dispatching=False
 
     # TODO: Perform the processing
@@ -48,15 +48,26 @@ def process_series(folder):
 
         with open(the_path, "r") as f:
             return json.load(f)
-    task = get_task()
-    logger.info(task['process']['docker_tag'])
-
-    docker_client.containers.run(task['process']['docker_tag'], 
-        '--dicom-path /data',
-        volumes={folder:{'bind':'/data','mode':'rw'}})
-
-    # TODO: Error handling
-
+    
+    try:
+        task = get_task()
+        docker_image = task['process']['docker_tag']
+        docker_client.containers.run(docker_image, 
+            '--dicom-path /data',
+            volumes={folder:{'bind':'/data','mode':'rw'}})
+        processing_success = True
+    except json.JSONDecodeError:
+        logger.error("Task not valid.")
+    except IndexError:
+        logger.error("docker_tag not configured.")
+    except docker.errors.ContainerError:
+        logger.error("container exited with non-zero exit code")
+        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Processing error: container exited with non-zero exit code.")
+    except docker.errors.ImageNotFound:
+        logger.error(f"Docker image {docker_image} not found")
+        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Docker image {docker_image} not found")
+    except:
+        logger.info(f"Unknown processing failure")
     # Create a new lock file to ensure that no other process picks up the folder while copying
     lock_file=Path(folder) / mercure_names.LOCK
     try:
