@@ -6,6 +6,7 @@ import shutil
 import daiquiri
 import json
 import requests
+import traceback
 
 # App-specific includes
 import common.config as config
@@ -18,21 +19,25 @@ logger = daiquiri.getLogger("notification")
 
 
 def send_webhook(url, payload, event):
-    if (url==False):
+    if not url:
         return
 
     # TODO: Replace macros in payload
 
-    if (event==mercure_events.RECEPTION):
+    if event == mercure_events.RECEPTION:
         pass
-    if (event==mercure_events.COMPLETION):
+    if event == mercure_events.COMPLETION:
         pass
-    if (event==mercure_events.ERROR):
+    if event == mercure_events.ERROR:
         pass
 
-    response = requests.post(url, data=json.dumps('{'+payload+'}'), headers={'Content-Type': 'application/json'})
-    if response.status_code != 200:
-        logger.error(f'ERROR: Webhook notification failed (status code {response.status_code})')
-        logger.error(f'ERROR: {response.text}')
-
+    try: 
+        response = requests.post(url, data=json.dumps('{'+payload+'}'), headers={'Content-Type': 'application/json'})
+        if response.status_code != 200:
+            logger.error(f'ERROR: Webhook notification failed (status code {response.status_code})')
+            logger.error(f'ERROR: {response.text}')
+    except:
+        logger.error(f'ERROR: Webhook notification failed')
+        logger.error(traceback.format_exc())
+        return
 

@@ -52,7 +52,7 @@ then
     bookkeeper=""
 else
     echo "Bookkeeper: $bookkeeper"
-    # If configured, add prececing space so that both that two arguments are passed
+    # If configured, add preceding space so that both that two arguments are passed
     bookkeeper=" $bookkeeper"
 fi
 

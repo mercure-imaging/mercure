@@ -21,6 +21,7 @@
                     <table class="table is-narrow" style="margin-bottom: 8px;">
                     <col width="150">
                     <tr><td>Git URL:</td><td>{{ modules[x]['url'] }}</td></tr>
+                    <tr><td>Docker tag:</td><td>{{ modules[x]['docker_tag'] }}</td></tr>
                     </table>
                     <div class="buttons is-right">                        
                         {% if is_admin %}
@@ -83,6 +84,12 @@
                                 placeholder="Git URL" name="url" autofocus>
                         </p>
                     </div>
+                    <div class="field">
+                        <p class="control">
+                            <input class="input" id="url" type="text" 
+                                placeholder="Docker tag" name="docker_tag">
+                        </p>
+                    </div>                    
                     <div class="field">
                         <p class="control" style="margin-top: 20px;">
                             <button id="confirmaddmodal" class="button is-success">Install</button>

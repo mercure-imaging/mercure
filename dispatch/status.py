@@ -41,8 +41,18 @@ def is_target_json_valid(folder):
     if not path.exists():
         return None
 
-    with open(path, "r") as f:
-        target = json.load(f)
+    try:
+        with open(path, "r") as f:
+            target = json.load(f)
+    except:
+        send_series_event(
+            s_events.ERROR,
+            target.get("dispatch",{}).get("series_uid", "None"),
+            0,
+            target.get("dispatch",{}).get("target_name", "None"),
+            f"task.json has invalid format",
+        )
+        return None
 
     if not all(
         [key in target.get("dispatch",{}) for key in ["target_ip", "target_port", "target_aet_target"]]
