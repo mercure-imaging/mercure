@@ -159,6 +159,10 @@ dicom_series_map = sqlalchemy.Table(
     sqlalchemy.Column("id_series", sqlalchemy.Integer)
 )
 
+series_sequence_data = sqlalchemy.Table('series_sequence_data', metadata,
+    sqlalchemy.Column('uid', sqlalchemy.String, primary_key=True),
+    sqlalchemy.Column('data', sqlalchemy.JSON)
+)
 
 ###################################################################################
 ## Event handlers
@@ -302,6 +306,21 @@ async def register_series(request):
     tasks.add_task(parse_and_submit_tags, payload=payload)    
     return JSONResponse({'ok': ''}, background=tasks)
 
+@app.route('/series-sequences', methods=["POST"])
+async def store_sequence_data(request):
+    """Store sequence details."""
+    payload = dict(await request.json()).get('event')
+    series_uid = payload.get("series_uid","")
+    data       = payload.get("data","")
+
+    logger.info("sequence data")
+    tasks = BackgroundTasks()
+    
+    query = series_sequence_data.insert().values(
+        uid=series_uid, data=data
+    )
+    tasks.add_task(execute_db_operation, operation=query)
+    return JSONResponse({'ok': ''}, background=tasks)
 
 @app.route('/series-event', methods=["POST"])
 async def post_series_event(request):

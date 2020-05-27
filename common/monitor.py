@@ -110,3 +110,16 @@ def send_series_event(event, series_uid, file_count, target, info):
         requests.post(bookkeeper_address+"/series-event", data=payload, timeout=1)
     except requests.exceptions.RequestException:
         logger.error("Failed request to bookkeeper")
+
+
+def send_series_sequence_data(series_UID, data):
+    """Send sequence details."""
+    if not bookkeeper_address:
+        return
+    try:
+        payload = {'sender': sender_name, 'event': dict(series_uid=series_UID, data=data) }
+        logger.info("Payload:")
+        #logger.info(payload)
+        requests.post(bookkeeper_address+"/series-sequences", json=payload, timeout=1)
+    except requests.exceptions.RequestException:
+        logger.error("Failed request to bookkeeper")

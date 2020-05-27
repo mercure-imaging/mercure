@@ -4,7 +4,7 @@ import uuid
 import json
 import shutil
 import daiquiri
-
+import traceback
 # App-specific includes
 import common.config as config
 import common.rule_evaluation as rule_evaluation
@@ -17,6 +17,52 @@ from routing.generate_taskfile import generate_taskfile_route, generate_taskfile
 
 logger = daiquiri.getLogger("route_series")
 
+
+import mmap, pprint
+import ast
+
+def get_ascconv(path):
+    with open(path, "r+b") as f:
+        # mmap lets us map the file in without reading the whole thing
+        mm = mmap.mmap(f.fileno(), 0) 
+        # There's no reason to expect it to be large, but why read in the image data at all?
+        # Let's just read enough for the header.
+        begin = mm.find(b'### ASCCONV BEGIN') 
+        if (begin < 0):
+            raise Exception()
+        end = mm.find(b'### ASCCONV END')
+        if (end < 0):
+            raise Exception()
+        mm.seek(begin)
+        mm.readline() # skip over the sentinal value
+        return mm.read(end-mm.tell()).decode('ascii') # well, it looks like ASCII, anyway
+
+def parse_ascconv(path):
+    params = get_ascconv(path)
+    data_dict = {}
+    for line in params.splitlines():
+        # the left half looks like foo.bar.baz, the right half looks like a number or string
+        key, value = line.split('\t = \t') 
+
+        cur_dict = data_dict
+        # Dive down into the data_dict and build intermediate dictionaries if necessary
+        keys = key.split('.')
+        for val in keys[:-1]:
+            if val not in cur_dict:
+                cur_dict[val] = {}
+            cur_dict = cur_dict[val]
+        
+        # Strings are double-quoted, so let's unwrap them
+        # this could be reaching inside and mangling a string that has internal quotes...
+        value = value.replace('""', '"') 
+        try: 
+            # evaluate it like a python value. This seems to work: values look like strings, ints, and floats
+            value = ast.literal_eval(value)
+        except: # if it fails just retain it as a string
+            pass
+        
+        cur_dict[keys[-1]] = value 
+    return data_dict
 
 def route_series(series_UID):
     """Processes the series with the given series UID from the incoming folder."""
@@ -46,6 +92,17 @@ def route_series(series_UID):
                 fileList.append(stemName)
 
     logger.info("DICOM files found: "+str(len(fileList)))
+
+    representative_dcm = Path(config.mercure[mercure_folders.INCOMING] + '/' + fileList[0] + mercure_names.DCM)
+    try: 
+        sequence_data = parse_ascconv(representative_dcm)
+        logger.info(f"Sequence info for {series_UID}")
+        logger.info(sequence_data)
+        logger.info(f"Sending sequence data...")
+        monitor.send_series_sequence_data(series_UID,sequence_data)
+    except:
+        logger.error(f"Unable to parse sequence details for {series_UID}")
+        logger.error(traceback.format_exc())
 
     # Use the tags file from the first slice for evaluating the routing rules
     tagsMasterFile=Path(config.mercure[mercure_folders.INCOMING] + '/' + fileList[0] + mercure_names.TAGS)
