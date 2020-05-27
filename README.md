@@ -1,3 +1,6 @@
+
+![Python application](https://github.com/mercure-imaging/mercure/workflows/Python%20application/badge.svg)
+
 ![mercure](mercure.png)
 
 # mercure Orchestrator
