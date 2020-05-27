@@ -49,7 +49,7 @@ bookkeeper_config = Config("configuration/bookkeeper.env")
 BOOKKEEPER_PORT   = bookkeeper_config('PORT', cast=int, default=8080)
 BOOKKEEPER_HOST   = bookkeeper_config('HOST', default='0.0.0.0')
 DATABASE_URL      = bookkeeper_config('DATABASE_URL', default='postgresql://mercure@localhost')
-
+DATABASE_SCHEMA   = bookkeeper_config('DATABASE_SCHEMA', default=None)
 database = databases.Database(DATABASE_URL)
 app = Starlette(debug=True)
 
@@ -58,7 +58,7 @@ app = Starlette(debug=True)
 ## Definition of database tables
 ###################################################################################
 
-metadata = sqlalchemy.MetaData()
+metadata = sqlalchemy.MetaData(schema = DATABASE_SCHEMA)
 engine = sqlalchemy.create_engine(DATABASE_URL)
 connection = None
 
