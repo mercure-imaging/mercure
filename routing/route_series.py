@@ -139,8 +139,8 @@ def push_series_discard(fileList,series_UID,discard_series):
 
     # Create lock file in destination folder (to prevent the cleaner module to work on the folder). Note that 
     # the DICOM series in the incoming folder has already been locked in the parent function.
-    try:
-        lock_file=Path(discard_path) / mercure_names.LOCK
+    lock_file=Path(discard_path) / mercure_names.LOCK
+    try:    
         lock=helper.FileLock(lock_file)
     except:
         # Can't create lock file, so something must be seriously wrong
@@ -195,8 +195,8 @@ def push_series_studylevel(triggered_rules,file_list,series_UID,tags_list):
                     monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Unable to create folder {folder_name}')
                     continue
 
+            lock_file=Path(folder_name) / mercure_names.LOCK
             try:
-                lock_file=Path(folder_name / mercure_names.LOCK)
                 lock=helper.FileLock(lock_file)
             except:
                 # Can't create lock file, so something must be seriously wrong
@@ -342,8 +342,8 @@ def push_serieslevel_outgoing(triggered_rules,file_list,series_UID,tags_list,sel
             monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Creating folder not possible {folder_name}')
             return
 
-        try:
-            lock_file=Path(folder_name / mercure_names.LOCK)
+        lock_file=Path(folder_name) / mercure_names.LOCK
+        try:            
             lock=helper.FileLock(lock_file)
         except:
             # Can't create lock file, so something must be seriously wrong
@@ -441,7 +441,7 @@ def route_error_files():
     for entry in os.scandir(config.mercure[mercure_folders.INCOMING]):
         if entry.name.endswith(mercure_names.ERROR) and not entry.is_dir():
             # Check if a lock file exists. If not, create one.
-            lock_file=Path(config.mercure[mercure_folders.INCOMING] / entry.name + mercure_names.LOCK)
+            lock_file=Path(config.mercure[mercure_folders.INCOMING] + '/' + entry.name + mercure_names.LOCK)
             if lock_file.exists():
                 continue
             try:
