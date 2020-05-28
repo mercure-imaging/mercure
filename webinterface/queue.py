@@ -21,7 +21,7 @@ from starlette.routing import Route, Router
 import common.helper as helper
 import common.config as config
 import common.monitor as monitor
-from common.constants import mercure_defs
+from common.constants import mercure_defs, mercure_names
 from webinterface.common import get_user_information
 from webinterface.common import templates
 
@@ -43,12 +43,12 @@ async def show_queues(request):
         return PlainTextResponse('Configuration is being updated. Try again in a minute.')
 
     processing_suspended=False
-    processing_halt_file=Path(config.mercure['processing_folder'] + '/HALT')
+    processing_halt_file=Path(config.mercure['processing_folder'] + '/' + mercure_names.HALT)
     if processing_halt_file.exists():
         processing_suspended=True    
 
     routing_suspended=False
-    routing_halt_file=Path(config.mercure['outgoing_folder'] + '/HALT')
+    routing_halt_file=Path(config.mercure['outgoing_folder'] + '/' + mercure_names.HALT)
     if routing_halt_file.exists():
         routing_suspended=True    
 
@@ -86,12 +86,12 @@ async def show_queues_status(request):
         return PlainTextResponse('Configuration is being updated. Try again in a minute.')
 
     processing_suspended=False
-    processing_halt_file=Path(config.mercure['processing_folder'] + '/HALT')
+    processing_halt_file=Path(config.mercure['processing_folder'] + '/' + mercure_names.HALT)
     if processing_halt_file.exists():
         processing_suspended=True    
 
     routing_suspended=False
-    routing_halt_file=Path(config.mercure['outgoing_folder'] + '/HALT')
+    routing_halt_file=Path(config.mercure['outgoing_folder'] + '/' + mercure_names.HALT)
     if routing_halt_file.exists():
         routing_suspended=True    
 
@@ -123,8 +123,8 @@ async def set_queues_status(request):
     except:
         return PlainTextResponse('Configuration is being updated. Try again in a minute.')
 
-    processing_halt_file=Path(config.mercure['processing_folder'] + '/HALT')
-    routing_halt_file=Path(config.mercure['outgoing_folder'] + '/HALT')
+    processing_halt_file=Path(config.mercure['processing_folder'] + '/' + mercure_names.HALT)
+    routing_halt_file=Path(config.mercure['outgoing_folder'] + '/' + mercure_names.HALT)
 
     form = dict(await request.form())
     print(form)

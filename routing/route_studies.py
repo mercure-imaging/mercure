@@ -10,7 +10,7 @@ import common.config as config
 import common.rule_evaluation as rule_evaluation
 import common.monitor as monitor
 import common.helper as helper
-from common.constants import mercure_defs, mercure_names, mercure_actions, mercure_rule, mercure_config, mercure_options, mercure_folders
+from common.constants import mercure_defs, mercure_names, mercure_actions, mercure_rule, mercure_config, mercure_options, mercure_folders, mercure_sections
 
 
 logger = daiquiri.getLogger("route_studies")
@@ -28,6 +28,26 @@ def is_study_locked(folder):
 
 def is_study_complete(folder):
     # TODO: Evaluate study completeness criteria
+
+    # Read stored task file to determine completeness criteria
+    try:
+        with open(Path(folder) / mercure_names.TASKFILE, "r") as json_file:
+            task=json.load(json_file)
+        
+        complete_trigger=task.get(mercure_sections.STUDY,{}).get("complete_trigger","")
+        complete_required_series=task.get(mercure_sections.STUDY,{}).get("complete_required_series","")
+        creation_time=task.get(mercure_sections.STUDY,{}).get("creation_time","")
+
+        if not complete_trigger:
+            return False
+
+        # TODO: Check for trigger condition
+
+    except Exception:
+        logger.exception(f"Invalid task file in study folder {folder}")
+        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Invalid task file in study folder {folder}")        
+        return False
+
     return False
 
 

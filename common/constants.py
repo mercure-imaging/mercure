@@ -59,6 +59,7 @@ class mercure_rule:
     NOTIFICATION_TRIGGER_RECEPTION  = "notification_trigger_reception"
     NOTIFICATION_TRIGGER_COMPLETION = "notification_trigger_completion"
     NOTIFICATION_TRIGGER_ERROR      = "notification_trigger_error"
+    PROCESSING_MODULE               = "processing_module"
 
 class mercure_options:
     TRUE                            = "True"

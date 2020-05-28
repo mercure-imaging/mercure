@@ -30,7 +30,7 @@ def generate_taskfile_process(uid, uid_type, applied_rule, tags_list):
     task_json.update(add_info(uid, uid_type, applied_rule, tags_list))
 
     if (config.mercure[mercure_config.RULES][applied_rule].get(mercure_rule.ACTION,mercure_actions.PROCESS) in (mercure_actions.PROCESS, mercure_actions.BOTH) ):
-        module = config.mercure[mercure_config.RULES][applied_rule].get('processing_module',"")
+        module = config.mercure[mercure_config.RULES][applied_rule].get(mercure_rule.PROCESSING_MODULE,"")
         task_json[mercure_sections.INFO].update({"module": module })
         task_json[mercure_sections.PROCESS] = config.mercure[mercure_config.MODULES].get(module,{})
 
