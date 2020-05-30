@@ -12,7 +12,7 @@ import common.monitor as monitor
 import common.helper as helper
 import common.notification as notification
 from common.constants import mercure_defs, mercure_names, mercure_actions, mercure_rule, mercure_config, mercure_options, mercure_folders, mercure_events
-from routing.generate_taskfile import generate_taskfile_route, generate_taskfile_process, create_study_task, create_series_task_processing
+from routing.generate_taskfile import compose_task, create_study_task, create_series_task
 
 
 logger = daiquiri.getLogger("route_series")
@@ -95,6 +95,8 @@ def get_triggered_rules(tagList):
     """Evaluates the routing rules and returns a list with trigger rules."""
     triggered_rules = {}
     discard_rule = ""
+
+    # TODO: Check for fallback rule
 
     for current_rule in config.mercure["rules"]:
         try:
@@ -277,7 +279,7 @@ def push_serieslevel_processing(triggered_rules,file_list,series_UID,tags_list):
                     return False
 
                 # Generate task file with processing information
-                if (not create_series_task_processing(target_folder, current_rule, series_UID, tags_list)):
+                if (not create_series_task(target_folder, current_rule, series_UID, tags_list, "")):
                     return False
 
                 if (not push_files(file_list, target_folder, copy_files)):
@@ -311,7 +313,7 @@ def push_serieslevel_notification(triggered_rules,file_list,series_UID,tags_list
     return True
 
 
-def push_serieslevel_outgoing(triggered_rules,file_list,series_UID,tags_list,selected_targets):
+def push_serieslevel_outgoing(triggered_rules, file_list, series_UID, tags_list, selected_targets):
     """Move the DICOM files of the series to a separate subfolder for each target in the outgoing folder."""
     source_folder=config.mercure[mercure_folders.INCOMING] + '/'
 
@@ -351,17 +353,8 @@ def push_serieslevel_outgoing(triggered_rules,file_list,series_UID,tags_list,sel
             monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Unable to create lock file {lock_file}')
             return
 
-        # TODO: Move to generate_taskfile.py
         # Generate task file with dispatch information
-        task_filename = target_folder + mercure_names.TASKFILE
-        task_json = generate_taskfile_route(series_UID, mercure_options.SERIES, selected_targets[target], tags_list, target)
-
-        try:
-            with open(task_filename, 'w') as task_file:
-                json.dump(task_json, task_file)
-        except:
-            logger.error(f"Unable to create task file {task_filename}")
-            monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Unable to create task file {task_filename}")
+        if not create_series_task(target_folder, triggered_rules, series_UID, tags_list, target):
             continue
 
         monitor.send_series_event(monitor.s_events.ROUTE, series_UID, len(file_list), target, selected_targets[target])
