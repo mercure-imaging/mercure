@@ -1,7 +1,7 @@
 """
 router.py
 =========
-mercure' central router module that evaluates the routing rules and decides which series should be sent to which target. 
+mercure's central router module that evaluates the routing rules and decides which series should be sent to which target. 
 """
 # Standard python includes
 import time

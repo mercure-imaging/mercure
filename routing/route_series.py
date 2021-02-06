@@ -75,7 +75,7 @@ def route_series(series_UID):
         # If no routing rule has triggered or discarding has been enforced, discard the series
         push_series_discard(fileList,series_UID,discard_series)        
     else:
-        # Strategy: If only one triggered rule, move files. If multiple, copy files
+        # File handling strategy: If only one triggered rule, move files (faster than copying). If multiple, copy files
         push_series_studylevel(triggered_rules,fileList,series_UID,tagsList)
         push_series_serieslevel(triggered_rules,fileList,series_UID,tagsList)
         
@@ -92,27 +92,38 @@ def route_series(series_UID):
 
 
 def get_triggered_rules(tagList):
-    """Evaluates the routing rules and returns a list with trigger rules."""
+    """Evaluates the routing rules and returns a list with triggered rules."""
     triggered_rules = {}
     discard_rule = ""
+    fallback_rule = ""
 
-    # TODO: Check for fallback rule
-
+    # Iterate over all defined processing rules
     for current_rule in config.mercure["rules"]:
         try:
+            # Check if the current rule has been disabled
             if config.mercure["rules"][current_rule].get(mercure_rule.DISABLED,"False")=="True":
                 continue
+            # If the current rule is flagged as fallback rule, remember the name (to avoid repeated iteration over the rules)
+            if config.mercure["rules"][current_rule].get(mercure_rule.FALLBACK,"False")=="True":
+                fallback_rule = current_rule
+            # Check if the current rule is triggered for the provided tag set
             if rule_evaluation.parse_rule(config.mercure["rules"][current_rule].get(mercure_rule.RULE,"False"),tagList):
                 triggered_rules[current_rule]=current_rule
                 if config.mercure["rules"][current_rule].get(mercure_rule.ACTION,"")==mercure_actions.DISCARD:
                     discard_rule=current_rule
+                    # If the triggered rule's action is to discard, stop further iteration over the rules
                     break
-
         except Exception as e:
             logger.error(e)
             logger.error(f"Invalid rule found: {current_rule}")
             monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Invalid rule: {current_rule}")
             continue
+
+    # If no rule has triggered but a fallback rule exists, then apply this rule
+    if (len(triggered_rules)==0) and (fallback_rule):
+        triggered_rules[fallback_rule]=fallback_rule
+        if config.mercure["rules"][fallback_rule].get(mercure_rule.ACTION,"")==mercure_actions.DISCARD:
+            discard_rule=fallback_rule
 
     logger.info("Triggered rules:")
     logger.info(triggered_rules)
@@ -231,8 +242,8 @@ def trigger_serieslevel_notification_reception(current_rule,tags_list):
 def push_serieslevel_routing(triggered_rules,file_list,series_UID,tags_list):
     selected_targets = {}
     # Collect the dispatch-only targets to avoid that a series is sent twice to the
-    # same target due to multiple targets triggered (note: this only makes sense for
-    # routing-only tasks as study-level rules might have different completion criteria)
+    # same target due to multiple targets triggered (note: this only makes sense for routing-only
+    # series tasks as study-level rules might have different completion criteria)
     for current_rule in triggered_rules:
         if config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.ACTION_TRIGGER,mercure_options.SERIES)==mercure_options.SERIES:
             if config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.ACTION,"")==mercure_actions.ROUTE:

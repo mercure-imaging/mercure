@@ -52,6 +52,7 @@ class mercure_rule:
     STUDY_TRIGGER                   = "study_trigger"
     PRIORITY                        = "priority"
     DISABLED                        = "disabled"
+    FALLBACK                        = "fallback"
     PROCESSING_MODULE               = "processing_module"
     TARGET                          = "target"
     NOTIFICATION_WEBHOOK            = "notification_webhook"
