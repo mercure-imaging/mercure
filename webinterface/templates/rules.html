@@ -9,31 +9,26 @@
         {% for x in rules %}
         <div class="card rulecard">
             <header class="card-header has-background-light">
-                <p
-                    class="card-header-title card-toggle {% if rules[x]['disabled']=='True' %}has-text-grey-light{% endif %}">
+                <p class="card-header-title card-toggle {% if rules[x]['disabled']=='True' %}has-text-grey-light{% endif %}">
                     <span
                         class="icon {% if rules[x]['disabled']!='True' %}has-text-success{% else %}has-text-grey-light{% endif %} has-tooltip-left has-tooltip-success"
                         data-tooltip={% if rules[x]['action']=='route' %}"Routing Only"><i class="fas fa-directions
-                    {% elif rules[x]['action']=='both' %}" Processing & Routing"><i class="fas fa-layer-group
-                    {% elif rules[x]['action']=='process' %}" Processing Only"><i class="fas fa-microchip
-                    {% elif rules[x]['action']=='notification' %}" Notification Only"><i class="fas fa-bullhorn
-                    {% elif rules[x]['action']=='discard' %}" Force Discard"><i class="fas fa-ban                   
+                    {% elif rules[x]['action']=='both' %}"Processing & Routing"><i class="fas fa-layer-group
+                    {% elif rules[x]['action']=='process' %}"Processing Only"><i class="fas fa-microchip
+                    {% elif rules[x]['action']=='notification' %}"Notification Only"><i class="fas fa-bullhorn
+                    {% elif rules[x]['action']=='discard' %}"Force Discard"><i class="fas fa-ban                   
                     {% else %}""><i class=" fas fa-robot{% endif %}fa-lg"></i>
                     </span>&nbsp;&nbsp;{{ x }}<span style="margin-left: auto;"></span>
                     {% if rules[x]['fallback']=='True' %}
-                    <span class="has-tooltip-right has-tooltip-success" data-tooltip="Fallback Rule"><i
-                            class="fas fa-magnet ruleicon"></i></span>
+                    <span class="has-tooltip-right has-tooltip-success" data-tooltip="Fallback Rule"><i class="fas fa-magnet ruleicon"></i></span>
                     {% endif %}
                     {% if rules[x]['priority']=='urgent' %}
-                    <span class="has-tooltip-right has-tooltip-success" data-tooltip="Urgent Processing"><i
-                            class="fas fa-shipping-fast ruleicon"></i></span>
+                    <span class="has-tooltip-right has-tooltip-success" data-tooltip="Urgent Processing"><i class="fas fa-shipping-fast ruleicon"></i></span>
                     {% elif rules[x]['priority']=='offpeak' %}
-                    <span class="has-tooltip-right has-tooltip-success" data-tooltip="Off-Peak Processing"><i
-                            class="fas fa-bed ruleicon"></i></span>
+                    <span class="has-tooltip-right has-tooltip-success" data-tooltip="Off-Peak Processing"><i class="fas fa-bed ruleicon"></i></span>
                     {% endif %}
                     {% if rules[x]['notification_webhook']!='' %}
-                    <span class="has-tooltip-right has-tooltip-success" data-tooltip="Sending Notification"><i
-                            class="fas fa-bell ruleicon"></i></span>
+                    <span class="has-tooltip-right has-tooltip-success" data-tooltip="Sending Notification"><i class="fas fa-bell ruleicon"></i></span>
                     {% endif %}
                 </p>
                 <a class="card-header-icon card-toggle">
@@ -113,7 +108,6 @@
                 <p class="modal-card-title">Add New Rule</p>
             </header>
             <section class="modal-card-body">
-
                 <form method="post">
                     <div class="field">
                         <p class="control">
@@ -131,7 +125,6 @@
             </section>
         </div>
     </div>
-
 </main>
 
 <script>
@@ -144,13 +137,11 @@
         }
     });
 
-
     function showAddModal(val) {
         $("#addnewname").val("");
         $("#addmodal").addClass("is-active");
         $("#addnewname").focus();
     }
-
 
     var ruleToDelete = "";
 
@@ -160,7 +151,6 @@
     }
 
     $(function () {
-
         $('#closeaddmodal').click(function () {
             $("#addmodal").removeClass("is-active");
         })

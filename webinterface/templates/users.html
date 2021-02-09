@@ -10,8 +10,7 @@
         <div class="card rulecard">
             <header class="card-header has-background-light">
                 <p class="card-header-title card-toggle">
-                    <span class="icon"><i class="fas {% if users[x]['is_admin']==" True" %}fa-user-shield{% else
-                            %}fa-user{% endif %} fa-lg"></i></span>&nbsp;&nbsp;{{ x }}
+                    <span class="icon"><i class="fas {% if users[x]['is_admin']==" True" %}fa-user-shield{% else %}fa-user{% endif %} fa-lg"></i></span>&nbsp;&nbsp;{{ x }}
                 </p>
                 <a class="card-header-icon card-toggle">
                     <i class="fa fa-angle-down"></i>
@@ -42,8 +41,8 @@
                         <a class="button is-success" href="/users/edit/{{x}}"><i class="fas fa-pen"></i>&nbsp;Edit</a>
                         <button class="button is-danger" id="confirm-me" value="{{x}}"
                             onclick="confirmDelete(this.value)" {% if user==x %}disabled
-                            title="Cannot delete own account" {% endif %}><i
-                                class="fas fa-trash-alt"></i>&nbsp;Delete</button>
+                            title="Cannot delete own account" {% endif %}><i class="fas fa-trash-alt"></i>&nbsp;Delete
+                        </button>
                         {% endif %}
                     </div>
                 </div>
@@ -56,7 +55,6 @@
         </div>
         {% endif %}
     </div>
-
 
     <div class="modal" id="deletemodal">
         <div class="modal-background">
@@ -129,7 +127,6 @@
         $("#addmodal").addClass("is-active");
         $("#addnewname").focus();
     }
-
 
     var userToDelete = "";
 

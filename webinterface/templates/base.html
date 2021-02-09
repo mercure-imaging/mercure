@@ -38,29 +38,29 @@
       <div id="navbarMainMenu" class="navbar-menu">
         <div class="navbar-start">
           {% if logged_in %}
-          <a class="navbar-item {% if page != " homepage" %}has-text-grey-light{% endif %}" href="/">
+          <a class="navbar-item {% if page != 'homepage' %}has-text-grey-light{% endif %}" href="/">
             Overview
           </a>
-          <a class="navbar-item {% if page != " rules" %}has-text-grey-light{% endif %}" href="/rules">
+          <a class="navbar-item {% if page != 'rules' %}has-text-grey-light{% endif %}" href="/rules">
             Rules
           </a>
-          <a class="navbar-item {% if page != " targets" %}has-text-grey-light{% endif %}" href="/targets">
+          <a class="navbar-item {% if page != 'targets' %}has-text-grey-light{% endif %}" href="/targets">
             Targets
           </a>
-          <a class="navbar-item {% if page != " modules" %}has-text-grey-light{% endif %}" href="/modules">
+          <a class="navbar-item {% if page != 'modules' %}has-text-grey-light{% endif %}" href="/modules">
             Modules
           </a>
-          <a class="navbar-item {% if page != " queue" %}has-text-grey-light{% endif %}" href="/queue">
+          <a class="navbar-item {% if page != 'queue' %}has-text-grey-light{% endif %}" href="/queue">
             Queue
           </a>
           {% if is_admin %}
-          <a class="navbar-item {% if page != " logs" %}has-text-grey-light{% endif %}" href="/logs">
+          <a class="navbar-item {% if page != 'logs' %}has-text-grey-light{% endif %}" href="/logs">
             Logs
           </a>
-          <a class="navbar-item {% if page != " users" %}has-text-grey-light{% endif %}" href="/users">
+          <a class="navbar-item {% if page != 'users' %}has-text-grey-light{% endif %}" href="/users">
             Users
           </a>
-          <a class="navbar-item {% if page != " configuration" %}has-text-grey-light{% endif %}" href="/configuration">
+          <a class="navbar-item {% if page != 'configuration' %}has-text-grey-light{% endif %}" href="/configuration">
             Configuration
           </a>
           {% endif %}

@@ -30,9 +30,9 @@
       <div class="logtabs tabs">
         <ul>
           {% for service in service_logs %}
-          <li title="{{service_logs[service]["systemd"]}}" {% if service_logs[service]["id"]==log_id
-            %}class="is-active" {% endif %}><a href="/logs/{{service_logs[service]["id"]}}">{{
-              service_logs[service]["name"] }}</a></li>
+          <li title="{{service_logs[service]['systemd']}}" {% if service_logs[service]['id']==log_id %}class="is-active"
+            {% endif %}><a href="/logs/{{service_logs[service]['id']}}">{{
+              service_logs[service]['name'] }}</a></li>
           {% endfor %}
         </ul>
       </div>
@@ -55,7 +55,6 @@
     endTime = $("#endtime").val();
 
     url += "?from=" + startDate + "&from_time=" + startTime + "&to=" + endDate + "&to_time=" + endTime
-
     window.location.href = url;
   }
 
