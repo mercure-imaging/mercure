@@ -217,8 +217,8 @@ def push_series_studylevel(triggered_rules, file_list, series_UID, tags_list):
                 continue
 
             if first_series:
-                # Create task file with information on complete criteria                
-                create_study_task(folder_name, current_rule, study_UID, tags_list)                
+                # Create task file with information on complete criteria
+                create_study_task(folder_name, current_rule, study_UID, tags_list)
             else:
                 # Add data from latest series to task file
                 update_study_task(folder_name, current_rule, study_UID, tags_list)

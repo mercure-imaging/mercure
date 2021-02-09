@@ -36,17 +36,17 @@ DCMSEND_ERROR_CODES = {
 
 def _create_command(target_info, folder):
     """Composes the command for calling the dcmsend tool from DCMTK, which is used for sending out the DICOMS."""
-    target_ip         = target_info.get("dispatch",{}).get("target_ip","")
-    target_port       = target_info.get("dispatch",{}).get("target_port","")
-    target_aet_target = target_info.get("dispatch",{}).get("target_aet_target","")
-    target_aet_source = target_info.get("dispatch",{}).get("target_aet_source","")
-    
+    target_ip = target_info.get("dispatch", {}).get("target_ip", "")
+    target_port = target_info.get("dispatch", {}).get("target_port", "")
+    target_aet_target = target_info.get("dispatch", {}).get("target_aet_target", "")
+    target_aet_source = target_info.get("dispatch", {}).get("target_aet_source", "")
+
     dcmsend_status_file = Path(folder) / mercure_names.SENDLOG
 
     command = f"""dcmsend {target_ip} {target_port} +sd {folder}
             -aet {target_aet_source} -aec {target_aet_target} -nuc
             +sp '*.dcm' -to 60 +crf {dcmsend_status_file}"""
-    
+
     return command
 
 
@@ -69,31 +69,29 @@ def execute(
     if target_info and time.time() >= delay:
         logger.info(f"Folder {source_folder} is ready for sending")
 
-        series_uid=target_info.get("series_uid", "series_uid-missing") 
-        target_name=target_info.get("target_name", "target_name-missing")
+        series_uid = target_info.get("series_uid", "series_uid-missing")
+        target_name = target_info.get("target_name", "target_name-missing")
 
-        if (series_uid=="series_uid-missing") or (target_name=="target_name-missing"):
-            send_event(h_events.PROCESSING, severity.WARNING, f"Missing information for folder {source_folder}")    
+        if (series_uid == "series_uid-missing") or (target_name == "target_name-missing"):
+            send_event(h_events.PROCESSING, severity.WARNING, f"Missing information for folder {source_folder}")
 
         # Create a .sending file to indicate that this folder is being sent,
         # otherwise the dispatcher would pick it up again if the transfer is
         # still going on
         lock_file = Path(source_folder) / mercure_names.PROCESSING
         try:
-            lock_file.touch()            
+            lock_file.touch()
         except:
             send_event(h_events.PROCESSING, severity.ERROR, f"Error sending {series_uid} to {target_name}")
             send_series_event(s_events.ERROR, series_uid, 0, target_name, "Unable to create lock file")
-            logger.exception(f"Unable to create lock file {lock_file.name}")            
+            logger.exception(f"Unable to create lock file {lock_file.name}")
             return
 
         command = _create_command(target_info, source_folder)
         logger.debug(f"Running command {command}")
         try:
             run(split(command), check=True)
-            logger.info(
-                f"Folder {source_folder} successfully sent, moving to {success_folder}"
-            )
+            logger.info(f"Folder {source_folder} successfully sent, moving to {success_folder}")
             # Send bookkeeper notification
             file_count = len(list(Path(source_folder).glob(mercure_names.DCMFILTER)))
             send_series_event(
@@ -107,9 +105,7 @@ def execute(
             send_series_event(s_events.MOVE, series_uid, 0, success_folder, "")
         except CalledProcessError as e:
             dcmsend_error_message = DCMSEND_ERROR_CODES.get(e.returncode, None)
-            logger.exception(
-                f"Failed command:\n {command} \nbecause of {dcmsend_error_message}"
-            )
+            logger.exception(f"Failed command:\n {command} \nbecause of {dcmsend_error_message}")
             send_event(h_events.PROCESSING, severity.ERROR, f"Error sending {series_uid} to {target_name}")
             send_series_event(s_events.ERROR, series_uid, 0, target_name, dcmsend_error_message)
             retry_increased = increase_retry(source_folder, retry_max, retry_delay)
@@ -123,7 +119,7 @@ def execute(
                 send_event(h_events.PROCESSING, severity.ERROR, f"Series suspended after reaching max retries")
     else:
         pass
-        #logger.warning(f"Folder {source_folder} is *not* ready for sending")
+        # logger.warning(f"Folder {source_folder} is *not* ready for sending")
 
 
 def _move_sent_directory(source_folder, destination_folder):
@@ -134,18 +130,14 @@ def _move_sent_directory(source_folder, destination_folder):
     """
     try:
         if (destination_folder / source_folder.name).exists():
-            target_folder = destination_folder / (
-                source_folder.name + "_" + datetime.now().isoformat()
-            )
+            target_folder = destination_folder / (source_folder.name + "_" + datetime.now().isoformat())
             logger.debug(f"Moving {source_folder} to {target_folder}")
             shutil.move(source_folder, target_folder, copy_function=shutil.copy2)
             (Path(target_folder) / mercure_names.PROCESSING).unlink()
         else:
-            logger.debug(
-                f"Moving {source_folder} to {destination_folder / source_folder.name}"
-            )
+            logger.debug(f"Moving {source_folder} to {destination_folder / source_folder.name}")
             shutil.move(source_folder, destination_folder / source_folder.name)
             (destination_folder / source_folder.name / mercure_names.PROCESSING).unlink()
     except:
-        logger.info(f"Error moving folder {source_folder} to {destination_folder}")        
+        logger.info(f"Error moving folder {source_folder} to {destination_folder}")
         send_event(h_events.PROCESSING, severity.ERROR, f"Error moving {source_folder} to {destination_folder}")

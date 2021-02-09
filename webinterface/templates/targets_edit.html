@@ -4,50 +4,58 @@
 
 {% block content %}
 <main role="main">
-  <div class="container">
-    <h1 class="title">Edit Target - {{edittarget}}</h1>
+    <div class="container">
+        <h1 class="title">Edit Target - {{edittarget}}</h1>
 
-    <form method="post">
-        <div class="field">
-            <label class="label">IP</label>
-            <div class="control">
-                <input name="ip" class="input" autofocus required autocomplete='off' type="text" placeholder="IP address" value="{{targets[edittarget]['ip']}}" minlength="7" maxlength="15" size="15" pattern="^((\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.){3}(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])$">
+        <form method="post">
+            <div class="field">
+                <label class="label">IP</label>
+                <div class="control">
+                    <input name="ip" class="input" autofocus required autocomplete='off' type="text"
+                        placeholder="IP address" value="{{targets[edittarget]['ip']}}" minlength="7" maxlength="15"
+                        size="15" pattern="^((\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.){3}(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])$">
+                </div>
             </div>
-        </div>    
-        <div class="field">
-            <label class="label">Port</label>
-            <div class="control">
-                <input name="port" class="input" required autocomplete='off' type="number" placeholder="104" minlength="2" maxlength="5" value="{{targets[edittarget]['port']}}">
+            <div class="field">
+                <label class="label">Port</label>
+                <div class="control">
+                    <input name="port" class="input" required autocomplete='off' type="number" placeholder="104"
+                        minlength="2" maxlength="5" value="{{targets[edittarget]['port']}}">
+                </div>
             </div>
-        </div>    
-        <div class="field">
-            <label class="label">AET Target</label>
-            <div class="control">
-                <input name="aet_target" class="input" required autocomplete='off' type="text" placeholder="Calling AET" value="{{targets[edittarget]['aet_target']}}" pattern="[A-Za-z0-9_-]+">
+            <div class="field">
+                <label class="label">AET Target</label>
+                <div class="control">
+                    <input name="aet_target" class="input" required autocomplete='off' type="text"
+                        placeholder="Calling AET" value="{{targets[edittarget]['aet_target']}}"
+                        pattern="[A-Za-z0-9_-]+">
+                </div>
             </div>
-        </div>    
-        <div class="field">
-            <label class="label">AET Source</label>
-            <div class="control">
-                <input name="aet_source" class="input" required autocomplete='off' type="text" placeholder="Outgoing AET" value="{{targets[edittarget]['aet_source']}}" pattern="[A-Za-z0-9_-]+">
+            <div class="field">
+                <label class="label">AET Source</label>
+                <div class="control">
+                    <input name="aet_source" class="input" required autocomplete='off' type="text"
+                        placeholder="Outgoing AET" value="{{targets[edittarget]['aet_source']}}"
+                        pattern="[A-Za-z0-9_-]+">
+                </div>
             </div>
-        </div>
-        <div class="field">
-            <label class="label">Contact</label>
-            <div class="control">
-                <input name="contact" class="input" autocomplete='off' type="email" placeholder="Email address" value="{{targets[edittarget]['contact']}}">
+            <div class="field">
+                <label class="label">Contact</label>
+                <div class="control">
+                    <input name="contact" class="input" autocomplete='off' type="email" placeholder="Email address"
+                        value="{{targets[edittarget]['contact']}}">
+                </div>
             </div>
-        </div>    
-        <div class="field">
-            <p class="control buttons" style="margin-top: 30px;">
-            <button type="submit" class="button is-success" value="default action">
-                <i class="fas fa-save"></i>&nbsp;Save
-            </button>
-            <a class="button" href="/targets"><i class="fas fa-ban"></i>&nbsp;Cancel</a>
-            </p>
-        </div>
-    </form>
-  </div>
+            <div class="field">
+                <p class="control buttons" style="margin-top: 30px;">
+                    <button type="submit" class="button is-success" value="default action">
+                        <i class="fas fa-save"></i>&nbsp;Save
+                    </button>
+                    <a class="button" href="/targets"><i class="fas fa-ban"></i>&nbsp;Cancel</a>
+                </p>
+            </div>
+        </form>
+    </div>
 </main>
 
 {% endblock %}

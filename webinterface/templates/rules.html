@@ -4,78 +4,100 @@
 
 {% block content %}
 <main role="main">
-  <div class="container">
-    <h1 class="title">DICOM Rules</h1>
-    {% for x in rules %}
-    <div class="card rulecard">
-        <header class="card-header has-background-light" >
-            <p class="card-header-title card-toggle {% if rules[x]['disabled']=='True' %}has-text-grey-light{% endif %}">
-                <span class="icon {% if rules[x]['disabled']!='True' %}has-text-success{% else %}has-text-grey-light{% endif %} has-tooltip-left has-tooltip-success" data-tooltip=
-                    {% if rules[x]['action']=='route' %}"Routing Only"><i class="fas fa-directions
-                    {% elif rules[x]['action']=='both' %}"Processing & Routing"><i class="fas fa-layer-group
-                    {% elif rules[x]['action']=='process' %}"Processing Only"><i class="fas fa-microchip
-                    {% elif rules[x]['action']=='notification' %}"Notification Only"><i class="fas fa-bullhorn
-                    {% elif rules[x]['action']=='discard' %}"Force Discard"><i class="fas fa-ban                   
-                    {% else %}""><i class="fas fa-robot{% endif %}fa-lg"></i>
-                </span>&nbsp;&nbsp;{{ x }}<span style="margin-left: auto;"></span>
-                {% if rules[x]['fallback']=='True' %}
-                <span class="has-tooltip-right has-tooltip-success" data-tooltip="Fallback Rule"><i class="fas fa-magnet ruleicon"></i></span>
-                {% endif %}
-                {% if rules[x]['priority']=='urgent' %}
-                <span class="has-tooltip-right has-tooltip-success" data-tooltip="Urgent Processing"><i class="fas fa-shipping-fast ruleicon"></i></span>
-                {% elif rules[x]['priority']=='offpeak' %}
-                <span class="has-tooltip-right has-tooltip-success" data-tooltip="Off-Peak Processing"><i class="fas fa-bed ruleicon"></i></span>
-                {% endif %}
-                {% if rules[x]['notification_webhook']!='' %}
-                <span class="has-tooltip-right has-tooltip-success" data-tooltip="Sending Notification"><i class="fas fa-bell ruleicon"></i></span>
-                {% endif %}
-            </p>
-            <a class="card-header-icon card-toggle">
-                <i class="fa fa-angle-down"></i>
-            </a>          
-        </header>
-        <div class="card-content rulecard-content is-hidden">
-            <div class="content">
-                <table class="table is-narrow" style="margin-bottom: 8px;">
-                <col width="150">
-                <tr><td>Rule:</td><td>{{ rules[x]['rule'] }}</td></tr>
-                {% if (rules[x]['action']=='process') or (rules[x]['action']=='both') %}
-                <tr><td>Module:</td><td>{{ rules[x]['processing_module'] }}</td></tr>
-                {% endif %}
-                {% if (rules[x]['action']=='route') or (rules[x]['action']=='both') %}
-                <tr><td>Target:</td><td>{{ rules[x]['target'] }}</td></tr>
-                {% endif %}
-                <tr><td>Contact:</td><td>{{ rules[x]['contact'] }}</td></tr>
-                <tr><td>Comment:</td><td>{{ rules[x]['comment'] }}</td></tr>
-                </table>
-                <div class="buttons is-right">
-                    {% if is_admin %}
-                    <a class="button is-success" href="/rules/edit/{{x}}" ><i class="fas fa-pen"></i>&nbsp;Edit</a>
-                    <button class="button is-danger" id="confirm-me" value="{{x}}" onclick="confirmDelete(this.value)"><i class="fas fa-trash-alt"></i>&nbsp;Delete</button>
+    <div class="container">
+        <h1 class="title">DICOM Rules</h1>
+        {% for x in rules %}
+        <div class="card rulecard">
+            <header class="card-header has-background-light">
+                <p
+                    class="card-header-title card-toggle {% if rules[x]['disabled']=='True' %}has-text-grey-light{% endif %}">
+                    <span
+                        class="icon {% if rules[x]['disabled']!='True' %}has-text-success{% else %}has-text-grey-light{% endif %} has-tooltip-left has-tooltip-success"
+                        data-tooltip={% if rules[x]['action']=='route' %}"Routing Only"><i class="fas fa-directions
+                    {% elif rules[x]['action']=='both' %}" Processing & Routing"><i class="fas fa-layer-group
+                    {% elif rules[x]['action']=='process' %}" Processing Only"><i class="fas fa-microchip
+                    {% elif rules[x]['action']=='notification' %}" Notification Only"><i class="fas fa-bullhorn
+                    {% elif rules[x]['action']=='discard' %}" Force Discard"><i class="fas fa-ban                   
+                    {% else %}""><i class=" fas fa-robot{% endif %}fa-lg"></i>
+                    </span>&nbsp;&nbsp;{{ x }}<span style="margin-left: auto;"></span>
+                    {% if rules[x]['fallback']=='True' %}
+                    <span class="has-tooltip-right has-tooltip-success" data-tooltip="Fallback Rule"><i
+                            class="fas fa-magnet ruleicon"></i></span>
                     {% endif %}
-                </div>                
+                    {% if rules[x]['priority']=='urgent' %}
+                    <span class="has-tooltip-right has-tooltip-success" data-tooltip="Urgent Processing"><i
+                            class="fas fa-shipping-fast ruleicon"></i></span>
+                    {% elif rules[x]['priority']=='offpeak' %}
+                    <span class="has-tooltip-right has-tooltip-success" data-tooltip="Off-Peak Processing"><i
+                            class="fas fa-bed ruleicon"></i></span>
+                    {% endif %}
+                    {% if rules[x]['notification_webhook']!='' %}
+                    <span class="has-tooltip-right has-tooltip-success" data-tooltip="Sending Notification"><i
+                            class="fas fa-bell ruleicon"></i></span>
+                    {% endif %}
+                </p>
+                <a class="card-header-icon card-toggle">
+                    <i class="fa fa-angle-down"></i>
+                </a>
+            </header>
+            <div class="card-content rulecard-content is-hidden">
+                <div class="content">
+                    <table class="table is-narrow" style="margin-bottom: 8px;">
+                        <col width="150">
+                        <tr>
+                            <td>Rule:</td>
+                            <td>{{ rules[x]['rule'] }}</td>
+                        </tr>
+                        {% if (rules[x]['action']=='process') or (rules[x]['action']=='both') %}
+                        <tr>
+                            <td>Module:</td>
+                            <td>{{ rules[x]['processing_module'] }}</td>
+                        </tr>
+                        {% endif %}
+                        {% if (rules[x]['action']=='route') or (rules[x]['action']=='both') %}
+                        <tr>
+                            <td>Target:</td>
+                            <td>{{ rules[x]['target'] }}</td>
+                        </tr>
+                        {% endif %}
+                        <tr>
+                            <td>Contact:</td>
+                            <td>{{ rules[x]['contact'] }}</td>
+                        </tr>
+                        <tr>
+                            <td>Comment:</td>
+                            <td>{{ rules[x]['comment'] }}</td>
+                        </tr>
+                    </table>
+                    <div class="buttons is-right">
+                        {% if is_admin %}
+                        <a class="button is-success" href="/rules/edit/{{x}}"><i class="fas fa-pen"></i>&nbsp;Edit</a>
+                        <button class="button is-danger" id="confirm-me" value="{{x}}"
+                            onclick="confirmDelete(this.value)"><i class="fas fa-trash-alt"></i>&nbsp;Delete</button>
+                        {% endif %}
+                    </div>
+                </div>
             </div>
-        </div>                                                            
-    </div>                                                
-    {% endfor %}            
-    {% if is_admin %}
-    <div class="buttons is-left" style="margin-top: 20px;">
-        <button class="button is-success" onclick="showAddModal()"><i class="fas fa-plus"></i>&nbsp;Add New</button>
-    </div>        
-    {% endif %}
-  </div>
+        </div>
+        {% endfor %}
+        {% if is_admin %}
+        <div class="buttons is-left" style="margin-top: 20px;">
+            <button class="button is-success" onclick="showAddModal()"><i class="fas fa-plus"></i>&nbsp;Add New</button>
+        </div>
+        {% endif %}
+    </div>
 
     <div class="modal" id="deletemodal">
         <div class="modal-background"></div>
         <div class="modal-card">
             <header class="modal-card-head">
                 <p class="modal-card-title">Delete Rule?</p>
-            </header>            
+            </header>
             <section class="modal-card-body">
-                <div class="field">                
-                        Are you sure to delete the rule? This cannot be undone.
+                <div class="field">
+                    Are you sure to delete the rule? This cannot be undone.
                 </div>
-                <div class="field" style="margin-top: 20px;">                
+                <div class="field" style="margin-top: 20px;">
                     <p class="control">
                         <button id="confirmmodal" class="button is-danger">Delete</button>
                         <button id="closemodal" class="button">Cancel</button>
@@ -85,17 +107,18 @@
         </div>
     </div>
     <div class="modal" id="addmodal">
-            <div class="modal-background"></div>
-            <div class="modal-card">
-                <header class="modal-card-head">
-                    <p class="modal-card-title">Add New Rule</p>
-                </header>            
-                <section class="modal-card-body">
+        <div class="modal-background"></div>
+        <div class="modal-card">
+            <header class="modal-card-head">
+                <p class="modal-card-title">Add New Rule</p>
+            </header>
+            <section class="modal-card-body">
 
                 <form method="post">
                     <div class="field">
                         <p class="control">
-                        <input class="input" id="addnewname" type="text" required pattern="[-_A-Za-z0-9]+" placeholder="Name of rule" name="name" autofocus>
+                            <input class="input" id="addnewname" type="text" required pattern="[-_A-Za-z0-9]+"
+                                placeholder="Name of rule" name="name" autofocus>
                         </p>
                     </div>
                     <div class="field">
@@ -105,56 +128,56 @@
                         </p>
                     </div>
                 </form>
-                </section>
-            </div>
+            </section>
         </div>
-    
+    </div>
+
 </main>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-	let cardToggles = document.getElementsByClassName('card-toggle');
-	for (let i = 0; i < cardToggles.length; i++) {
-		cardToggles[i].addEventListener('click', e => {
-			e.currentTarget.parentElement.parentElement.childNodes[3].classList.toggle('is-hidden');
-		});
-	}
-});
+    document.addEventListener('DOMContentLoaded', function () {
+        let cardToggles = document.getElementsByClassName('card-toggle');
+        for (let i = 0; i < cardToggles.length; i++) {
+            cardToggles[i].addEventListener('click', e => {
+                e.currentTarget.parentElement.parentElement.childNodes[3].classList.toggle('is-hidden');
+            });
+        }
+    });
 
 
-function showAddModal(val) { 
-    $("#addnewname").val("");
-    $("#addmodal").addClass("is-active");
-    $("#addnewname").focus();   
-}
+    function showAddModal(val) {
+        $("#addnewname").val("");
+        $("#addmodal").addClass("is-active");
+        $("#addnewname").focus();
+    }
 
 
-var ruleToDelete = "";
+    var ruleToDelete = "";
 
-function confirmDelete(val) { 
-    $("#deletemodal").addClass("is-active");
-    ruleToDelete=val;
-}
+    function confirmDelete(val) {
+        $("#deletemodal").addClass("is-active");
+        ruleToDelete = val;
+    }
 
-$(function () {
+    $(function () {
 
-    $('#closeaddmodal').click(function () { 
-        $("#addmodal").removeClass("is-active");  
-    })   
+        $('#closeaddmodal').click(function () {
+            $("#addmodal").removeClass("is-active");
+        })
 
-    $('#closemodal').click(function () { 
-        $("#deletemodal").removeClass("is-active");  
-    })   
+        $('#closemodal').click(function () {
+            $("#deletemodal").removeClass("is-active");
+        })
 
-    $('#confirmmodal').click(function () { 
-        $("#deletemodal").removeClass("is-active");
+        $('#confirmmodal').click(function () {
+            $("#deletemodal").removeClass("is-active");
 
-        var url = '/rules/delete/'+ruleToDelete;
-        var form = $('<form action="' + url + '" method="post"></form>');
-        $('body').append(form);
-        form.submit();        
-    })           
-});
+            var url = '/rules/delete/' + ruleToDelete;
+            var form = $('<form action="' + url + '" method="post"></form>');
+            $('body').append(form);
+            form.submit();
+        })
+    });
 </script>
 
 {% endblock %}

@@ -21,24 +21,18 @@ from common.constants import mercure_defs, mercure_folders
 
 daiquiri.setup(
     level=logging.INFO,
-    outputs=(
-        daiquiri.output.Stream(
-            formatter=daiquiri.formatter.ColorFormatter(
-                fmt="%(color)s%(levelname)-8.8s " "%(name)s: %(message)s%(color_stop)s"
-            )
-        ),
-    ),
+    outputs=(daiquiri.output.Stream(formatter=daiquiri.formatter.ColorFormatter(fmt="%(color)s%(levelname)-8.8s " "%(name)s: %(message)s%(color_stop)s")),),
 )
 logger = daiquiri.getLogger("dispatcher")
 
 
 def terminate_process(signalNumber, frame):
     """Triggers the shutdown of the service."""
-    helper.g_log('events.shutdown', 1)
+    helper.g_log("events.shutdown", 1)
     logger.info("Shutdown requested")
     monitor.send_event(monitor.h_events.SHUTDOWN_REQUEST, monitor.severity.INFO)
     # Note: main_loop can be read here because it has been declared as global variable
-    if 'main_loop' in globals() and main_loop.is_running:
+    if "main_loop" in globals() and main_loop.is_running:
         main_loop.stop()
     helper.trigger_terminate()
 
@@ -48,7 +42,7 @@ def dispatch(args):
     if helper.is_terminated():
         return
 
-    helper.g_log('events.run', 1)
+    helper.g_log("events.run", 1)
 
     try:
         config.read_config()
@@ -62,18 +56,14 @@ def dispatch(args):
         return
 
     success_folder = Path(config.mercure[mercure_folders.SUCCESS])
-    error_folder   = Path(config.mercure[mercure_folders.ERROR])
-    retry_max      = config.mercure["retry_max"]
-    retry_delay    = config.mercure["retry_delay"]
+    error_folder = Path(config.mercure[mercure_folders.ERROR])
+    retry_max = config.mercure["retry_max"]
+    retry_delay = config.mercure["retry_delay"]
 
     # TODO: Sort list so that the oldest DICOMs get dispatched first
     with os.scandir(config.mercure[mercure_folders.OUTGOING]) as it:
         for entry in it:
-            if (
-                entry.is_dir()
-                and not has_been_send(entry.path)
-                and is_ready_for_sending(entry.path)
-            ):
+            if entry.is_dir() and not has_been_send(entry.path) and is_ready_for_sending(entry.path):
                 logger.info(f"Sending folder {entry.path}")
                 execute(Path(entry.path), success_folder, error_folder, retry_max, retry_delay)
 
@@ -108,23 +98,19 @@ if __name__ == "__main__":
         logger.exception("Cannot start service. Going down.")
         sys.exit(1)
 
-    appliance_name=config.mercure['appliance_name']
+    appliance_name = config.mercure["appliance_name"]
 
-    logger.info(f'Appliance name = {appliance_name}')
+    logger.info(f"Appliance name = {appliance_name}")
     logger.info(f"Instance  name = {instance_name}")
     logger.info(f"Instance  PID  = {os.getpid()}")
     logger.info(sys.version)
 
     monitor.configure("dispatcher", instance_name, config.mercure["bookkeeper"])
-    monitor.send_event(
-        monitor.h_events.BOOT, monitor.severity.INFO, f"PID = {os.getpid()}"
-    )
+    monitor.send_event(monitor.h_events.BOOT, monitor.severity.INFO, f"PID = {os.getpid()}")
 
     if len(config.mercure["graphite_ip"]) > 0:
-        logging.info(
-            f'Sending events to graphite server: {config.mercure["graphite_ip"]}'
-        )
-        graphite_prefix = "mercure."+appliance_name+".dispatcher." + instance_name
+        logging.info(f'Sending events to graphite server: {config.mercure["graphite_ip"]}')
+        graphite_prefix = "mercure." + appliance_name + ".dispatcher." + instance_name
         graphyte.init(
             config.mercure["graphite_ip"],
             config.mercure["graphite_port"],
@@ -134,12 +120,10 @@ if __name__ == "__main__":
     logger.info(f"Dispatching folder: {config.mercure[mercure_folders.OUTGOING]}")
 
     global main_loop
-    main_loop = helper.RepeatedTimer(
-        config.mercure["dispatcher_scan_interval"], dispatch, exit_dispatcher, {}
-    )
+    main_loop = helper.RepeatedTimer(config.mercure["dispatcher_scan_interval"], dispatch, exit_dispatcher, {})
     main_loop.start()
 
-    helper.g_log('events.boot', 1)
+    helper.g_log("events.boot", 1)
 
     # Start the asyncio event loop for asynchronous function calls
     helper.loop.run_forever()

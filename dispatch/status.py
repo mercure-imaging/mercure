@@ -47,21 +47,19 @@ def is_target_json_valid(folder):
     except:
         send_series_event(
             s_events.ERROR,
-            target.get("dispatch",{}).get("series_uid", "None"),
+            target.get("dispatch", {}).get("series_uid", "None"),
             0,
-            target.get("dispatch",{}).get("target_name", "None"),
+            target.get("dispatch", {}).get("target_name", "None"),
             f"task.json has invalid format",
         )
         return None
 
-    if not all(
-        [key in target.get("dispatch",{}) for key in ["target_ip", "target_port", "target_aet_target"]]
-    ):
+    if not all([key in target.get("dispatch", {}) for key in ["target_ip", "target_port", "target_aet_target"]]):
         send_series_event(
             s_events.ERROR,
-            target.get("dispatch",{}).get("series_uid", "None"),
+            target.get("dispatch", {}).get("series_uid", "None"),
             0,
-            target.get("dispatch",{}).get("target_name", "None"),
+            target.get("dispatch", {}).get("target_name", "None"),
             f"task.json is missing a mandatory key {target}",
         )
         return None

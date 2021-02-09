@@ -57,7 +57,7 @@
           <div class="control select is-multiple is-fullwidth">
             <select name='services[]' multiple size="6" id="controlserviceselector">
               {% for service in service_status %}
-              <option {% if loop.index > 1 %}selected{% endif %} value="{{service}}">{{service_status[service]["name"]}}
+              <option {% if loop.index> 1 %}selected{% endif %} value="{{service}}">{{service_status[service]["name"]}}
               </option>
               {% endfor %}
             </select>

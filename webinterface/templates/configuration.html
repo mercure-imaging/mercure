@@ -4,95 +4,177 @@
 
 {% block content %}
 <main role="main">
-  <div class="container">
-    <h1 class="title">Configuration</h1>
-    <div class="columns">
-        <div class="column is-full">
-             {% if config_edited>0 %} 
-            <div class="notification is-success">
-                <i class="fas fa-check"></i>&nbsp;&nbsp;Configuration has been updated.
-            </div>        
-            {% endif %}
-            <h5 class="title is-5 configtitle"><i class="fas fa-server has-text-success"></i>&nbsp;&nbsp;General</h5>
-            <table class="table is-narrow is-hoverable is-fullwidth configtable">
-                <col width="200px">
-                <tr><td>Operating System:</td><td>{{os_string}}</td></tr>
-                <tr><td>mercure Version:</td><td>{{mercure_version}}</td></tr>
-                <tr><td>Appliance Name:</td><td>{{config["appliance_name"]}}</td></tr>
-                <tr><td>DICOM Port:</td><td>{{config["port"]}}</td></tr>
-            </table>            
+    <div class="container">
+        <h1 class="title">Configuration</h1>
+        <div class="columns">
+            <div class="column is-full">
+                {% if config_edited>0 %}
+                <div class="notification is-success">
+                    <i class="fas fa-check"></i>&nbsp;&nbsp;Configuration has been updated.
+                </div>
+                {% endif %}
+                <h5 class="title is-5 configtitle"><i class="fas fa-server has-text-success"></i>&nbsp;&nbsp;General
+                </h5>
+                <table class="table is-narrow is-hoverable is-fullwidth configtable">
+                    <col width="200px">
+                    <tr>
+                        <td>Operating System:</td>
+                        <td>{{os_string}}</td>
+                    </tr>
+                    <tr>
+                        <td>mercure Version:</td>
+                        <td>{{mercure_version}}</td>
+                    </tr>
+                    <tr>
+                        <td>Appliance Name:</td>
+                        <td>{{config["appliance_name"]}}</td>
+                    </tr>
+                    <tr>
+                        <td>DICOM Port:</td>
+                        <td>{{config["port"]}}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        <div class="columns">
+            <div class="column is-full">
+                <h5 class="title is-5 configtitle"><i
+                        class="fas fa-exclamation-triangle has-text-success"></i>&nbsp;&nbsp;Error Handling</h5>
+                <table class="table is-narrow is-hoverable is-fullwidth configtable">
+                    <col width="200px">
+                    <tr>
+                        <td>Retry Delay:</td>
+                        <td>{{config["retry_delay"]}} sec</td>
+                    </tr>
+                    <tr>
+                        <td>Max. Retries:</td>
+                        <td>{{config["retry_max"]}}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        <div class="columns">
+            <div class="column is-full">
+                <h5 class="title is-5 configtitle"><i
+                        class="fas fa-bullhorn has-text-success"></i>&nbsp;&nbsp;Monitoring</h5>
+                <table class="table is-narrow is-hoverable is-fullwidth configtable">
+                    <col width="200px">
+                    <tr>
+                        <td>Bookkeeper:</td>
+                        <td>{{config["bookkeeper"]}}</td>
+                    </tr>
+                    <tr>
+                        <td>Graphite IP:</td>
+                        <td>{{config["graphite_ip"]}}</td>
+                    </tr>
+                    <tr>
+                        <td>Graphite Port:</td>
+                        <td>{{config["graphite_port"]}}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        <div class="columns">
+            <div class="column is-full">
+                <h5 class="title is-5 configtitle"><i class="fas fa-bed has-text-success"></i>&nbsp;&nbsp;Off-Peak Hours
+                </h5>
+                <table class="table is-narrow is-hoverable is-fullwidth configtable">
+                    <col width="200px">
+                    <tr>
+                        <td>From:</td>
+                        <td>{{config["offpeak_start"]}}</td>
+                    </tr>
+                    <tr>
+                        <td>To:</td>
+                        <td>{{config["offpeak_end"]}}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        <div class="columns">
+            <div class="column is-full">
+                <h5 class="title is-5 configtitle"><i
+                        class="fas fa-hourglass-end has-text-success"></i>&nbsp;&nbsp;Thresholds</h5>
+                <table class="table is-narrow is-hoverable is-fullwidth configtable">
+                    <col width="200px">
+                    <tr>
+                        <td>Series Completion:</td>
+                        <td>{{config["series_complete_trigger"]}} sec</td>
+                    </tr>
+                    <tr>
+                        <td>Study Completion:</td>
+                        <td>{{config["study_complete_trigger"]}} sec</td>
+                    </tr>
+                    <tr>
+                        <td>Force Study Completion:</td>
+                        <td>{{config["study_forcecomplete_trigger"]}} sec</td>
+                    </tr>
+                    <tr>
+                        <td>Retention Period:</td>
+                        <td>{{config["retention"]}} sec</td>
+                    </tr>
+                    <tr>
+                        <td>Router Interval:</td>
+                        <td>{{config["router_scan_interval"]}} sec</td>
+                    </tr>
+                    <tr>
+                        <td>Dispatcher Interval:</td>
+                        <td>{{config["dispatcher_scan_interval"]}} sec</td>
+                    </tr>
+                    <tr>
+                        <td>Cleaner Interval:</td>
+                        <td>{{config["cleaner_scan_interval"]}} sec</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        <div class="columns">
+            <div class="column is-full">
+                <h5 class="title is-5 configtitle"><i
+                        class="fas fa-folder-open has-text-success"></i>&nbsp;&nbsp;Folders</h5>
+                <table class="table is-narrow is-hoverable is-fullwidth configtable">
+                    <col width="200px">
+                    <tr>
+                        <td>Incoming:</td>
+                        <td>{{config["incoming_folder"]}}</td>
+                    </tr>
+                    <tr>
+                        <td>Studies:</td>
+                        <td>{{config["studies_folder"]}}</td>
+                    </tr>
+                    <tr>
+                        <td>Outgoing:</td>
+                        <td>{{config["outgoing_folder"]}}</td>
+                    </tr>
+                    <tr>
+                        <td>Processing:</td>
+                        <td>{{config["processing_folder"]}}</td>
+                    </tr>
+                    <tr>
+                        <td>Success:</td>
+                        <td>{{config["success_folder"]}}</td>
+                    </tr>
+                    <tr>
+                        <td>Error:</td>
+                        <td>{{config["error_folder"]}}</td>
+                    </tr>
+                    <tr>
+                        <td>Discard:</td>
+                        <td>{{config["discard_folder"]}}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        <div class="columns">
+            <div class="column is-full">
+                {% if is_admin %}
+                <div class="buttons is-left" style="margin-top: 10px;">
+                    <a class="button" href="/configuration/edit"><i class="fas fa-pencil-alt"></i>&nbsp;Edit
+                        Settings</a>
+                </div>
+                {% endif %}
+            </div>
         </div>
     </div>
-    <div class="columns">
-        <div class="column is-full">
-            <h5 class="title is-5 configtitle"><i class="fas fa-exclamation-triangle has-text-success"></i>&nbsp;&nbsp;Error Handling</h5>
-            <table class="table is-narrow is-hoverable is-fullwidth configtable">
-                <col width="200px">
-                <tr><td>Retry Delay:</td><td>{{config["retry_delay"]}} sec</td></tr>
-                <tr><td>Max. Retries:</td><td>{{config["retry_max"]}}</td></tr>
-            </table>            
-        </div>
-    </div>
-    <div class="columns">
-        <div class="column is-full">
-            <h5 class="title is-5 configtitle"><i class="fas fa-bullhorn has-text-success"></i>&nbsp;&nbsp;Monitoring</h5>
-            <table class="table is-narrow is-hoverable is-fullwidth configtable">
-                <col width="200px">
-                <tr><td>Bookkeeper:</td><td>{{config["bookkeeper"]}}</td></tr>
-                <tr><td>Graphite IP:</td><td>{{config["graphite_ip"]}}</td></tr>
-                <tr><td>Graphite Port:</td><td>{{config["graphite_port"]}}</td></tr>
-            </table>            
-        </div>
-    </div>    
-    <div class="columns">
-        <div class="column is-full">
-            <h5 class="title is-5 configtitle"><i class="fas fa-bed has-text-success"></i>&nbsp;&nbsp;Off-Peak Hours</h5>
-            <table class="table is-narrow is-hoverable is-fullwidth configtable">
-                <col width="200px">
-                <tr><td>From:</td><td>{{config["offpeak_start"]}}</td></tr>
-                <tr><td>To:</td><td>{{config["offpeak_end"]}}</td></tr>
-            </table>            
-        </div>
-    </div>        
-    <div class="columns">
-        <div class="column is-full">
-            <h5 class="title is-5 configtitle"><i class="fas fa-hourglass-end has-text-success"></i>&nbsp;&nbsp;Thresholds</h5>
-            <table class="table is-narrow is-hoverable is-fullwidth configtable">
-                <col width="200px">
-                <tr><td>Series Completion:</td><td>{{config["series_complete_trigger"]}} sec</td></tr>
-                <tr><td>Study Completion:</td><td>{{config["study_complete_trigger"]}} sec</td></tr>                
-                <tr><td>Force Study Completion:</td><td>{{config["study_forcecomplete_trigger"]}} sec</td></tr>                
-                <tr><td>Retention Period:</td><td>{{config["retention"]}} sec</td></tr>
-                <tr><td>Router Interval:</td><td>{{config["router_scan_interval"]}} sec</td></tr>
-                <tr><td>Dispatcher Interval:</td><td>{{config["dispatcher_scan_interval"]}} sec</td></tr>
-                <tr><td>Cleaner Interval:</td><td>{{config["cleaner_scan_interval"]}} sec</td></tr>
-            </table>            
-        </div>
-    </div>        
-    <div class="columns">
-        <div class="column is-full">
-            <h5 class="title is-5 configtitle"><i class="fas fa-folder-open has-text-success"></i>&nbsp;&nbsp;Folders</h5>
-            <table class="table is-narrow is-hoverable is-fullwidth configtable">
-                <col width="200px">
-                <tr><td>Incoming:</td><td>{{config["incoming_folder"]}}</td></tr>
-                <tr><td>Studies:</td><td>{{config["studies_folder"]}}</td></tr>
-                <tr><td>Outgoing:</td><td>{{config["outgoing_folder"]}}</td></tr>
-                <tr><td>Processing:</td><td>{{config["processing_folder"]}}</td></tr>
-                <tr><td>Success:</td><td>{{config["success_folder"]}}</td></tr>
-                <tr><td>Error:</td><td>{{config["error_folder"]}}</td></tr>
-                <tr><td>Discard:</td><td>{{config["discard_folder"]}}</td></tr>
-            </table>
-        </div>
-    </div>
-    <div class="columns">
-        <div class="column is-full">
-            {% if is_admin %}
-            <div class="buttons is-left" style="margin-top: 10px;">
-                <a class="button" href="/configuration/edit"><i class="fas fa-pencil-alt"></i>&nbsp;Edit Settings</a>
-            </div>        
-            {% endif %}            
-        </div>
-    </div>        
-  </div>    
 </main>
 {% endblock %}

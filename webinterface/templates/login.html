@@ -5,9 +5,9 @@
 {% block content %}
 <main role="main">
 
-  <div class="container">   
+  <div class="container">
     <h1 class="title">Login</h1>
-    <div class="columns is-centered" style="margin-top: 60px;">    
+    <div class="columns is-centered" style="margin-top: 60px;">
       <div class="column is-one-third card is-centered is-success" style="padding: 0; border-top: solid 4px #23d160;">
         {% if appliance_name != 'master' %}
         <header class="card-header">
@@ -17,40 +17,42 @@
         </header>
         {% endif %}
         <div style="padding: 40px; padding-top: 44px; padding-bottom: 44px; ">
-        <form method="post">
-          <div class="field">
-            <p class="control has-icons-left has-icons-right">
-              <input class="input" type="text" placeholder="Username" name="username" autofocus>
-              <span class="icon is-small is-left">
-                <i class="fas fa-user"></i>
-              </span>
-            </p>
-          </div>
-          <div class="field">
-            <p class="control has-icons-left">
-              <input class="input" type="password" placeholder="Password" name="password">
-              <span class="icon is-small is-left">
-                <i class="fas fa-lock"></i>
-              </span>
-            </p>
-          </div>
-          <div class="field">
-            <p class="control">
-              <button type="submit" class="button is-success is-fullwidth" value="default action"  style="margin-top: 34px;">
-                <i class="fas fa-key"></i>&nbsp;Login
-              </button>
-            </p>
-          </div>
-        </form>       
+          <form method="post">
+            <div class="field">
+              <p class="control has-icons-left has-icons-right">
+                <input class="input" type="text" placeholder="Username" name="username" autofocus>
+                <span class="icon is-small is-left">
+                  <i class="fas fa-user"></i>
+                </span>
+              </p>
+            </div>
+            <div class="field">
+              <p class="control has-icons-left">
+                <input class="input" type="password" placeholder="Password" name="password">
+                <span class="icon is-small is-left">
+                  <i class="fas fa-lock"></i>
+                </span>
+              </p>
+            </div>
+            <div class="field">
+              <p class="control">
+                <button type="submit" class="button is-success is-fullwidth" value="default action"
+                  style="margin-top: 34px;">
+                  <i class="fas fa-key"></i>&nbsp;Login
+                </button>
+              </p>
+            </div>
+          </form>
         </div>
-        {% if invalid_password %}        
+        {% if invalid_password %}
         <footer class="card-footer">
-          <div class="card-footer-item notification is-danger" style="padding-top: 15px; padding-bottom: 15px; border-radius: 0px !important; box-shadow: 0 2px 3px rgba(10,10,10,.1), 0 0 0 1px rgba(10,10,10,.1);">
+          <div class="card-footer-item notification is-danger"
+            style="padding-top: 15px; padding-bottom: 15px; border-radius: 0px !important; box-shadow: 0 2px 3px rgba(10,10,10,.1), 0 0 0 1px rgba(10,10,10,.1);">
             <i class="fas fa-lock"></i>&nbsp;&nbsp;Invalid credentials
-          </div>   
-        </footer>       
-        {% endif %}    
-      </div>    
+          </div>
+        </footer>
+        {% endif %}
+      </div>
     </div>
 
   </div> <!-- /container -->

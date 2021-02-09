@@ -49,7 +49,9 @@
             <div class="field">
                 <label class="label">Permissions</label>
                 <div class="control" style="min-height: 40px;">
-                    <input id="permissions" name="permissions" class="input" type="tags" placeholder="Add permission group" value="{{edituser_info['permissions']}}" style="height: 36px !important; font-size: 13.33px !important;">
+                    <input id="permissions" name="permissions" class="input" type="tags"
+                        placeholder="Add permission group" value="{{edituser_info['permissions']}}"
+                        style="height: 36px !important; font-size: 13.33px !important;">
                 </div>
             </div>
             {% endif %}
@@ -83,7 +85,7 @@
 <script type="text/javascript" src="{{ url_for('static', path='/js/bulma-tagsinput.min.js') }}">
 </script>
 <script>
-  bulmaTagsinput.attach();
+    bulmaTagsinput.attach();
 </script>
 
 {% endblock %}

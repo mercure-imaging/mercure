@@ -31,13 +31,12 @@ def send_webhook(url, payload, event):
     if event == mercure_events.ERROR:
         pass
 
-    try: 
-        response = requests.post(url, data=json.dumps('{'+payload+'}'), headers={'Content-Type': 'application/json'})
+    try:
+        response = requests.post(url, data=json.dumps("{" + payload + "}"), headers={"Content-Type": "application/json"})
         if response.status_code != 200:
-            logger.error(f'ERROR: Webhook notification failed (status code {response.status_code})')
-            logger.error(f'ERROR: {response.text}')
+            logger.error(f"ERROR: Webhook notification failed (status code {response.status_code})")
+            logger.error(f"ERROR: {response.text}")
     except:
-        logger.error(f'ERROR: Webhook notification failed')
+        logger.error(f"ERROR: Webhook notification failed")
         logger.error(traceback.format_exc())
         return
-

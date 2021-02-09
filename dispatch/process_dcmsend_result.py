@@ -54,9 +54,7 @@ def parse(result_file):
 
 def create_arg_parser():
     """Creates and returns the ArgumentParser object."""
-    parser = argparse.ArgumentParser(
-        description="Creates stripped json representation of a dcmsend result text file and prints it out."
-    )
+    parser = argparse.ArgumentParser(description="Creates stripped json representation of a dcmsend result text file and prints it out.")
     parser.add_argument("resultFile", help="Path to the dcmsend result file.")
     return parser
 

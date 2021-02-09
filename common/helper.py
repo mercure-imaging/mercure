@@ -36,6 +36,7 @@ class RepeatedTimer(object):
     Helper class for running a continuous timer that is suspended
     while the worker function is running
     """
+
     def __init__(self, interval, function, exit_function, *args, **kwargs):
         self._timer = None
         self.interval = interval
@@ -47,7 +48,7 @@ class RepeatedTimer(object):
 
     def _run(self):
         """Callback function for the timer event. Will execute the defined function and restart
-           the timer after completion, unless the eventloop has been asked to shut down."""
+        the timer after completion, unless the eventloop has been asked to shut down."""
         global terminate
         self.is_running = False
         self.function(*self.args, **self.kwargs)
@@ -72,10 +73,11 @@ class RepeatedTimer(object):
 
 class FileLock:
     """Helper class that implements a file lock. The lock file will be removed also from the destructor so that
-       no spurious lock files remain if exceptions are raised."""
+    no spurious lock files remain if exceptions are raised."""
+
     def __init__(self, path_for_lockfile):
-        self.lockCreated=True
-        self.lockfile=path_for_lockfile
+        self.lockCreated = True
+        self.lockfile = path_for_lockfile
         self.lockfile.touch()
 
     # Destructor to ensure that the lock file gets deleted
@@ -87,4 +89,4 @@ class FileLock:
     def free(self):
         if self.lockCreated:
             self.lockfile.unlink()
-            self.lockCreated=False
+            self.lockCreated = False

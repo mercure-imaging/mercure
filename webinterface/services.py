@@ -8,14 +8,14 @@ import daiquiri
 daiquiri.setup(level=logging.INFO)
 logger = daiquiri.getLogger("config")
 
-services_filename  = os.path.realpath(os.path.dirname(os.path.realpath(__file__))+'/../configuration/services.json')
+services_filename = os.path.realpath(os.path.dirname(os.path.realpath(__file__)) + "/../configuration/services.json")
 
 services_list = {}
 
 
 def read_services():
-    """Reads the list of configured services from the configuration file. This list normally does not have to be changed, but 
-       can be modified if multiple instances of individual services should be used to increase performance."""
+    """Reads the list of configured services from the configuration file. This list normally does not have to be changed, but
+    can be modified if multiple instances of individual services should be used to increase performance."""
     global services_list
     services_file = Path(services_filename)
 
@@ -25,4 +25,4 @@ def read_services():
     logger.info(f"Reading services from: {services_file}")
 
     with open(services_file, "r") as json_file:
-        services_list=json.load(json_file)
+        services_list = json.load(json_file)

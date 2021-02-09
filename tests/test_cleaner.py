@@ -39,4 +39,3 @@ def test_wrong_start_input_offpeak():
 def test_wrong_end_input_offpeak():
     is_ = c._is_offpeak("22:00", "asdf", _to_time("5:00"))
     assert is_
-

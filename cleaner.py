@@ -26,13 +26,7 @@ from common.constants import mercure_defs, mercure_folders
 
 daiquiri.setup(
     level=logging.INFO,
-    outputs=(
-        daiquiri.output.Stream(
-            formatter=daiquiri.formatter.ColorFormatter(
-                fmt="%(color)s%(levelname)-8.8s " "%(name)s: %(message)s%(color_stop)s"
-            )
-        ),
-    ),
+    outputs=(daiquiri.output.Stream(formatter=daiquiri.formatter.ColorFormatter(fmt="%(color)s%(levelname)-8.8s " "%(name)s: %(message)s%(color_stop)s")),),
 )
 logger = daiquiri.getLogger("cleaner")
 
@@ -99,12 +93,7 @@ def clean_dir(discard_folder, retention):
     Cleans the discard folder if it is older than the retention time, starting
     from oldest first.
     """
-    candidates = [
-        (f, f.stat().st_mtime)
-        for f in Path(discard_folder).iterdir()
-        if f.is_dir()
-        and retention < timedelta(seconds=(time.time() - f.stat().st_mtime))
-    ]
+    candidates = [(f, f.stat().st_mtime) for f in Path(discard_folder).iterdir() if f.is_dir() and retention < timedelta(seconds=(time.time() - f.stat().st_mtime))]
     oldest_first = sorted(candidates, key=lambda x: x[1], reverse=True)
     for entry in oldest_first:
         delete_folder(entry)
@@ -121,9 +110,7 @@ def delete_folder(entry):
     except Exception as e:
         logger.info(f"Unable to delete folder {delete_path}")
         logger.exception(e)
-        send_series_event(
-            s_events.ERROR, series_uid, 0, delete_path, "Unable to delete folder"
-        )
+        send_series_event(s_events.ERROR, series_uid, 0, delete_path, "Unable to delete folder")
         monitor.send_event(
             monitor.h_events.PROCESSING,
             monitor.severity.ERROR,
@@ -168,23 +155,19 @@ if __name__ == "__main__":
         logger.exception("Cannot start service. Going down.")
         sys.exit(1)
 
-    appliance_name=config.mercure['appliance_name']
+    appliance_name = config.mercure["appliance_name"]
 
-    logger.info(f'Appliance name = {appliance_name}')
+    logger.info(f"Appliance name = {appliance_name}")
     logger.info(f"Instance  name = {instance_name}")
     logger.info(f"Instance  PID  = {os.getpid()}")
     logger.info(sys.version)
 
     monitor.configure("cleaner", instance_name, config.mercure["bookkeeper"])
-    monitor.send_event(
-        monitor.h_events.BOOT, monitor.severity.INFO, f"PID = {os.getpid()}"
-    )
-    
+    monitor.send_event(monitor.h_events.BOOT, monitor.severity.INFO, f"PID = {os.getpid()}")
+
     if len(config.mercure["graphite_ip"]) > 0:
-        logger.info(
-            f"Sending events to graphite server: {config.mercure['graphite_ip']}"
-        )
-        graphite_prefix = "mercure."+appliance_name+".cleaner." + instance_name
+        logger.info(f"Sending events to graphite server: {config.mercure['graphite_ip']}")
+        graphite_prefix = "mercure." + appliance_name + ".cleaner." + instance_name
         graphyte.init(
             config.mercure["graphite_ip"],
             config.mercure["graphite_port"],
@@ -192,9 +175,7 @@ if __name__ == "__main__":
         )
 
     global main_loop
-    main_loop = helper.RepeatedTimer(
-        config.mercure["cleaner_scan_interval"], clean, exit_cleaner, {}
-    )
+    main_loop = helper.RepeatedTimer(config.mercure["cleaner_scan_interval"], clean, exit_cleaner, {})
     main_loop.start()
 
     helper.g_log("events.boot", 1)
