@@ -12,7 +12,7 @@ import common.config as config
 import common.rule_evaluation as rule_evaluation
 import common.monitor as monitor
 import common.helper as helper
-from common.constants import mercure_defs, mercure_names, mercure_sections, mercure_rule, mercure_config, mercure_options, mercure_actions, mercure_study
+from common.constants import mercure_defs, mercure_names, mercure_sections, mercure_rule, mercure_config, mercure_options, mercure_actions, mercure_study, mercure_info
 
 
 logger = daiquiri.getLogger("generate_taskfile")
@@ -67,14 +67,14 @@ def add_dispatching(applied_rule, tags_list, target):
 def add_info(uid, uid_type, triggered_rules, tags_list):
     info_section = {}
     info_section[mercure_sections.INFO] = {}
-    info_section[mercure_sections.INFO]["uid"] = uid
-    info_section[mercure_sections.INFO]["uid_type"] = uid_type
-    info_section[mercure_sections.INFO]["triggered_rules"] = triggered_rules
-    info_section[mercure_sections.INFO]["mrn"] = tags_list.get("PatientID", mercure_options.MISSING)
-    info_section[mercure_sections.INFO]["acc"] = tags_list.get("AccessionNumber", mercure_options.MISSING)
-    info_section[mercure_sections.INFO]["mercure_version"] = mercure_defs.VERSION
-    info_section[mercure_sections.INFO]["mercure_appliance"] = config.mercure["appliance_name"]
-    info_section[mercure_sections.INFO]["mercure_server"] = socket.gethostname()
+    info_section[mercure_sections.INFO][mercure_info.UID] = uid
+    info_section[mercure_sections.INFO][mercure_info.UID_TYPE] = uid_type
+    info_section[mercure_sections.INFO][mercure_info.TRIGGERED_RULES] = triggered_rules
+    info_section[mercure_sections.INFO][mercure_info.MRN] = tags_list.get("PatientID", mercure_options.MISSING)
+    info_section[mercure_sections.INFO][mercure_info.ACC] = tags_list.get("AccessionNumber", mercure_options.MISSING)
+    info_section[mercure_sections.INFO][mercure_info.MERCURE_VERSION] = mercure_defs.VERSION
+    info_section[mercure_sections.INFO][mercure_info.MERCURE_APPLIANCE] = config.mercure["appliance_name"]
+    info_section[mercure_sections.INFO][mercure_info.MERCURE_SERVER] = socket.gethostname()
     return info_section
 
 
@@ -114,6 +114,7 @@ def update_study_task(folder_name, applied_rule, study_UID, tags_list):
     series_description = tags_list.get("SeriesDescription", mercure_options.INVALID)
     task_filename = folder_name + mercure_names.TASKFILE
 
+    # Load existing task file. Raise error if it does not exist
     try:
         with open(task_filename, "r") as task_file:
             task_json = json.load(task_file)
@@ -123,19 +124,23 @@ def update_study_task(folder_name, applied_rule, study_UID, tags_list):
         monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, error_message)
         return False
 
+    # Ensure that the task file contains the study information
     if not (mercure_sections.STUDY in task_json):
         error_message = f"Study information missing in task file {task_filename}"
         logger.error(error_message)
         monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, error_message)
         return False
 
+    # Remember the time when the last series was received, as needed to determine completion on timeout
     task_json[mercure_sections.STUDY][mercure_study.LAST_RECEIVE_TIME] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+    # Remember all received series descriptions, as needed to determine completion on received series
     if (mercure_study.RECEIVED_SERIES in task_json[mercure_sections.STUDY]) and (isinstance(task_json[mercure_sections.STUDY][mercure_study.RECEIVED_SERIES], list)):
         task_json[mercure_sections.STUDY][mercure_study.RECEIVED_SERIES].append(series_description)
     else:
         task_json[mercure_sections.STUDY][mercure_study.RECEIVED_SERIES] = [series_description]
 
+    # Safe the updated file back to disk
     try:
         with open(task_filename, "w") as task_file:
             json.dump(task_json, task_file)

@@ -80,6 +80,16 @@ class mercure_study:
     RECEIVED_SERIES = "received_series"
 
 
+class mercure_info:
+    UID = "uid"
+    UID_TYPE = "uid_type"
+    TRIGGERED_RULES = "triggered_rules"
+    MRN = "mrn"
+    ACC = "acc"
+    MERCURE_VERSION = "mercure_version"
+    MERCURE_APPLIANCE = "mercure_appliance"
+    MERCURE_SERVER = "mercure_server"
+
 class mercure_options:
     TRUE = "True"
     FALSE = "False"
