@@ -11,35 +11,35 @@ from common.constants import mercure_names
 logger = daiquiri.getLogger("config")
 
 configuration_timestamp = 0
-configuration_filename  = os.path.realpath(os.path.dirname(os.path.realpath(__file__))+'/../configuration/mercure.json')
+configuration_filename = os.path.realpath(os.path.dirname(os.path.realpath(__file__)) + "/../configuration/mercure.json")
 
 mercure_defaults = {
-    'appliance_name'             :                'master',
-    'port'                       :                     104,
-    'incoming_folder'            :            './incoming',
-    'studies_folder'             :             './studies',
-    'outgoing_folder'            :            './outgoing',
-    'success_folder'             :             './success',
-    'error_folder'               :               './error',
-    'discard_folder'             :             './discard',
-    'processing_folder'          :          './processing',
-    'router_scan_interval'       :                       1, # in seconds
-    'dispatcher_scan_interval'   :                       1, # in seconds
-    'cleaner_scan_interval'      :                      60, # in seconds
-    'retention'                  :                  259200, # in seconds (3 days)
-    'retry_delay'                :                     900, # in seconds (15 min)
-    'retry_max'                  :                       5,
-    'series_complete_trigger'    :                      60, # in seconds
-    'study_complete_trigger'     :                     900, # in seconds
-    'study_forcecomplete_trigger':                    5400, # in seconds
-    'graphite_ip'                :                      '',
-    'graphite_port'              :                    2003,
-    'bookkeeper'                 :          '0.0.0.0:8080',
-    'offpeak_start'              :                 '22:00',
-    'offpeak_end'                :                 '06:00',
-    'targets'                    :                      {},
-    'rules'                      :                      {},
-    'modules'                    :                      {}
+    "appliance_name": "master",
+    "port": 104,
+    "incoming_folder": "./incoming",
+    "studies_folder": "./studies",
+    "outgoing_folder": "./outgoing",
+    "success_folder": "./success",
+    "error_folder": "./error",
+    "discard_folder": "./discard",
+    "processing_folder": "./processing",
+    "router_scan_interval": 1,  # in seconds
+    "dispatcher_scan_interval": 1,  # in seconds
+    "cleaner_scan_interval": 60,  # in seconds
+    "retention": 259200,  # in seconds (3 days)
+    "retry_delay": 900,  # in seconds (15 min)
+    "retry_max": 5,
+    "series_complete_trigger": 60,  # in seconds
+    "study_complete_trigger": 900,  # in seconds
+    "study_forcecomplete_trigger": 5400,  # in seconds
+    "graphite_ip": "",
+    "graphite_port": 2003,
+    "bookkeeper": "0.0.0.0:8080",
+    "offpeak_start": "22:00",
+    "offpeak_end": "06:00",
+    "targets": {},
+    "rules": {},
+    "modules": {},
 }
 
 mercure = {}
@@ -47,14 +47,14 @@ mercure = {}
 
 def read_config():
     """Reads the configuration settings (rules, targets, general settings) from the configuration file. The configuration will
-       only be updated if the file has changed compared the the last function call. If the configuration file is locked by
-       another process, an exception will be raised."""
+    only be updated if the file has changed compared the the last function call. If the configuration file is locked by
+    another process, an exception will be raised."""
     global mercure
     global configuration_timestamp
     configuration_file = Path(configuration_filename)
 
     # Check for existence of lock file
-    lock_file=Path(configuration_file.parent/configuration_file.stem).with_suffix(mercure_names.LOCK)
+    lock_file = Path(configuration_file.parent / configuration_file.stem).with_suffix(mercure_names.LOCK)
 
     if lock_file.exists():
         raise ResourceWarning(f"Configuration file locked: {lock_file}")
@@ -63,9 +63,9 @@ def read_config():
         # Get the modification date/time of the configuration file
         stat = os.stat(configuration_filename)
         try:
-            timestamp=stat.st_mtime
+            timestamp = stat.st_mtime
         except AttributeError:
-            timestamp=0
+            timestamp = 0
 
         # Check if the configuration file is newer than the version
         # loaded into memory. If not, return
@@ -75,11 +75,11 @@ def read_config():
         logger.info(f"Reading configuration from: {configuration_filename}")
 
         with open(configuration_file, "r") as json_file:
-            loaded_config=json.load(json_file)
+            loaded_config = json.load(json_file)
             # Reset configuration to default values (to ensure all needed
             # keys are present in the configuration)
-            mercure={}
-            mercure=mercure_defaults
+            mercure = {}
+            mercure = mercure_defaults
             # Now merge with values loaded from configuration file
             mercure.update(loaded_config)
 
@@ -89,12 +89,12 @@ def read_config():
             if not checkFolders():
                 raise FileNotFoundError("Configured folders missing")
 
-            #logger.info("")
-            #logger.info("Active configuration: ")
-            #logger.info(json.dumps(mercure, indent=4))
-            #logger.info("")
+            # logger.info("")
+            # logger.info("Active configuration: ")
+            # logger.info(json.dumps(mercure, indent=4))
+            # logger.info("")
 
-            configuration_timestamp=timestamp
+            configuration_timestamp = timestamp
             monitor.send_event(monitor.h_events.CONFIG_UPDATE, monitor.severity.INFO, "Configuration updated")
             return mercure
     else:
@@ -103,29 +103,29 @@ def read_config():
 
 def save_config():
     """Saves the current configuration in a file on the disk. Raises an exception if the file has
-       been locked by another process."""
+    been locked by another process."""
     global configuration_timestamp
     configuration_file = Path(configuration_filename)
 
     # Check for existence of lock file
-    lock_file=Path(configuration_file.parent/configuration_file.stem).with_suffix(mercure_names.LOCK)
+    lock_file = Path(configuration_file.parent / configuration_file.stem).with_suffix(mercure_names.LOCK)
 
     if lock_file.exists():
         raise ResourceWarning(f"Configuration file locked: {lock_file}")
 
     try:
-        lock=helper.FileLock(lock_file)
+        lock = helper.FileLock(lock_file)
     except:
-        raise ResourceWarning(f"Unable to lock configuration file: {lock_file}")   
+        raise ResourceWarning(f"Unable to lock configuration file: {lock_file}")
 
     with open(configuration_file, "w") as json_file:
-        json.dump(mercure,json_file, indent=4)
+        json.dump(mercure, json_file, indent=4)
 
     try:
         stat = os.stat(configuration_file)
-        configuration_timestamp=stat.st_mtime
+        configuration_timestamp = stat.st_mtime
     except AttributeError:
-        configuration_timestamp=0
+        configuration_timestamp = 0
 
     monitor.send_event(monitor.h_events.CONFIG_UPDATE, monitor.severity.INFO, "Saved new configuration.")
     logger.info(f"Stored configuration into: {configuration_file}")
@@ -134,8 +134,8 @@ def save_config():
         lock.free()
     except:
         # Can't delete lock file, so something must be seriously wrong
-        logger.error(f'Unable to remove lock file {lock_file}')
-        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Unable to remove lock file {lock_file}')
+        logger.error(f"Unable to remove lock file {lock_file}")
+        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Unable to remove lock file {lock_file}")
         return
 
 
@@ -144,15 +144,15 @@ def write_configfile(json_content):
     configuration_file = Path(configuration_filename)
 
     # Check for existence of lock file
-    lock_file=Path(configuration_file.parent/configuration_file.stem).with_suffix(mercure_names.LOCK)
+    lock_file = Path(configuration_file.parent / configuration_file.stem).with_suffix(mercure_names.LOCK)
 
     if lock_file.exists():
         raise ResourceWarning(f"Configuration file locked: {lock_file}")
 
     try:
-        lock=helper.FileLock(lock_file)
+        lock = helper.FileLock(lock_file)
     except:
-        raise ResourceWarning(f"Unable to lock configuration file: {lock_file}")   
+        raise ResourceWarning(f"Unable to lock configuration file: {lock_file}")
 
     with open(configuration_file, "w") as json_file:
         json.dump(json_content, json_file, indent=4)
@@ -164,14 +164,14 @@ def write_configfile(json_content):
         lock.free()
     except:
         # Can't delete lock file, so something must be seriously wrong
-        logger.error(f'Unable to remove lock file {lock_file}')
-        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f'Unable to remove lock file {lock_file}')
+        logger.error(f"Unable to remove lock file {lock_file}")
+        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Unable to remove lock file {lock_file}")
         return
 
 
 def checkFolders():
     """Checks if all required folders for handling the DICOM files exist."""
-    for entry in ['incoming_folder','studies_folder', 'outgoing_folder','success_folder','error_folder','discard_folder', 'processing_folder']:
+    for entry in ["incoming_folder", "studies_folder", "outgoing_folder", "success_folder", "error_folder", "discard_folder", "processing_folder"]:
         if not Path(mercure[entry]).exists():
             logger.error(f"Folder not found {mercure[entry]}")
             monitor.send_event(monitor.h_events.CONFIG_UPDATE, monitor.severity.CRITICAL, "Folders are missing")
