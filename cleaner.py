@@ -78,8 +78,9 @@ def _is_offpeak(offpeak_start, offpeak_end, current_time):
     try:
         start_time = datetime.strptime(offpeak_start, "%H:%M").time()
         end_time = datetime.strptime(offpeak_end, "%H:%M").time()
-    except ValueError as e:
-        logger.error("Error parsing offpeak time, please check configuration", e)
+    except Exception as e:
+        logger.error("Error parsing offpeak time, please check configuration")
+        logger.exception(e)
         return True
 
     if start_time < end_time:
