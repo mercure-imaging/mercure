@@ -72,12 +72,13 @@ class mercure_rule:
 
 
 class mercure_study:
-    LAST_RECEIVE_TIME = "last_receive_time"
-    CREATION_TIME = "creation_time"
     STUDY_UID = "study_uid"
+    CREATION_TIME = "creation_time"
+    LAST_RECEIVE_TIME = "last_receive_time"
+    RECEIVED_SERIES = "received_series"
     COMPLETE_TRIGGER = "complete_trigger"
     COMPLETE_REQUIRED_SERIES = "complete_required_series"
-    RECEIVED_SERIES = "received_series"
+    COMPLETE_FORCE = "complete_force"
 
 
 class mercure_info:
@@ -89,6 +90,7 @@ class mercure_info:
     MERCURE_VERSION = "mercure_version"
     MERCURE_APPLIANCE = "mercure_appliance"
     MERCURE_SERVER = "mercure_server"
+
 
 class mercure_options:
     TRUE = "True"

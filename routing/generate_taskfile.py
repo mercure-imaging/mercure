@@ -91,6 +91,7 @@ def create_study_task(folder_name, applied_rule, study_UID, tags_list):
     study_info[mercure_study.CREATION_TIME] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     study_info[mercure_study.LAST_RECEIVE_TIME] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     study_info[mercure_study.RECEIVED_SERIES] = [tags_list.get("SeriesDescription", mercure_options.INVALID)]
+    study_info[mercure_study.COMPLETE_FORCE] = mercure_options.FALSE
 
     task_json = {}
     task_json[mercure_sections.STUDY] = study_info
