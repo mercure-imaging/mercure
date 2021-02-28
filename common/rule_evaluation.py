@@ -71,6 +71,43 @@ def test_rule(rule, tags):
         return str(e)
 
 
+def test_completion_series(value):
+    """Tests if the given string with the list of series required for study completion has valid format. If so, True
+    is returned as string, otherwise the error description is returned."""
+    if not value:
+        return "Value cannot be empty"
+    if (not "'" in value) or ('"' in value):
+        return "Series names must be enclosed by '...'"
+    if value.count("'") % 2:
+        return "Series names not properly enclosed by '...'"
+    try:
+        eval(value, {"__builtins__": {}}, {})
+    except Exception as e:
+        return "Compare syntax with example shown above."
+
+    series_found = []
+    i = 0
+    while i < len(value):
+        opening = value.find("'", i)
+        if opening < 0:
+            break
+        closing = value.find("'", opening + 1)
+        if closing < 0:
+            break
+        series_string = value[opening + 1 : closing]
+        series_found.append(series_string)
+        i = closing + 1
+    for series in series_found:
+        value = value.replace("'" + series + "'", " @@SERIES@@ ")
+
+    value_split = value.split(" ")
+    for element in value_split:
+        if element not in ["@@SERIES@@", "or", "and", "(", ")", ""]:
+            return "Invalid entries. Are all series names enclosed?"
+
+    return "True"
+
+
 # if __name__ == "__main__":
 #    tags = { "Tag1": "One", "TestTag": "Two", "AnotherTag": "Three" }
 #    result = "('Tr' in @Tag1@) | (@Tag1@ == 'Trio') @Three@ @AnotherTag@"

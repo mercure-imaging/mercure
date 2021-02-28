@@ -370,6 +370,24 @@ async def rules_test(request):
             return PlainTextResponse('<span class="tag is-danger is-medium ruleresult"><i class="fas fa-bug"></i>&nbsp;Error</span>&nbsp;&nbsp;Invalid rule: ' + result)
 
 
+@app.route("/rules/test_completionseries", methods=["POST"])
+@requires(["authenticated", "admin"], redirect="login")
+async def rules_test_completionseries(request):
+    """Evalutes if a given value for the series list for study completion is valid."""
+    try:
+        form = dict(await request.form())
+        test_series_list = form["study_trigger_series"]
+    except:
+        return PlainTextResponse('<span class="tag is-warning is-medium ruleresult"><i class="fas fa-bug"></i>&nbsp;Error</span>&nbsp;&nbsp;Invalid')
+
+    result = rule_evaluation.test_completion_series(test_series_list)
+
+    if result == "True":
+        return PlainTextResponse('<i class="fas fa-check-circle fa-lg has-text-success"></i>&nbsp;&nbsp;Valid')
+    else:
+        return PlainTextResponse('<i class="fas fa-times-circle fa-lg has-text-danger"></i>&nbsp;&nbsp;Invalid: ' + result)
+
+
 ###################################################################################
 ## Targets endpoints
 ###################################################################################

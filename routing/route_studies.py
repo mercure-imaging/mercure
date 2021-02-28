@@ -84,7 +84,7 @@ def is_study_complete(folder):
         if complete_trigger == mercure_rule.STUDY_TRIGGER_CONDITION_TIMEOUT:
             return check_study_timeout(task)
         elif complete_trigger == mercure_rule.STUDY_TRIGGER_CONDITION_RECEIVED_SERIES:
-            return check_study_timeout(task)
+            return check_study_series(task, complete_required_series)
         else:
             error_text = f"Invalid trigger condition in task file in study folder {folder}"
             logger.error(error_text)
@@ -113,12 +113,17 @@ def check_study_timeout(task):
         return False
 
 
-def check_study_series(task):
+def check_study_series(task, required_series):
     """Checks if all series required for study completion have been received"""
     # TODO
     return False
 
 
 def route_study(study):
+    if is_study_locked(config.mercure[mercure_folders.STUDIES] + "/" + study):
+        # If the study folder has been locked in the meantime, then skip and proceed with the next one
+        return True
+
     # TODO
+
     pass

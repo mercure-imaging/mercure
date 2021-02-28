@@ -117,15 +117,20 @@
                                     </option>
                                     <option value="received_series" {% if
                                         rules[rule]['study_trigger_condition']=='received_series' %}selected{% endif%}>
-                                        Specified Series Received
+                                        Listed Series Received
                                     </option>
                                 </select>
                             </div>
                             <div class="control is-expanded" style="margin-left: 10px;">
-                                <input name="study_trigger_series" id="study_trigger_series" pattern="[^{}\x22]+"
-                                    class="input" autocomplete='off' type="text"
-                                    placeholder="Series required for completion"
-                                    value="{{rules[rule]['study_trigger_series']}}">
+                                <div class="field has-addons" id="study_trigger_series_section">
+                                    <input name="study_trigger_series" id="study_trigger_series" pattern="[^{}\x22]+"
+                                        class="input series_completion_fix" autocomplete='off' type="text"
+                                        placeholder="Series required for completion"
+                                        value="{{rules[rule]['study_trigger_series']}}">
+                                    <button class="button" type="button" onclick="showTestCompletionSeries()" title="Test rule">
+                                        <i class="fas fa-spell-check"></i>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -352,6 +357,32 @@
     </div>
 </div>
 
+<div class="modal" id="testcompletionseries">
+    <div class="modal-background"></div>
+    <div class="modal-card" style="width: 768px;">
+        <header class="modal-card-head">
+            <p class="modal-card-title">Required Series</p>
+        </header>
+        <section class="modal-card-body">
+            <div class="container">
+                <div class="field">
+                    <label class="label">Example:</label>
+                    <div>'Axial T2' and ('Sag T1 GRE' or 'Sag T1 TSE')</div>
+                </div>
+                <div class="field">
+                    <label class="label">Current Value:</label>
+                    <div id="testcompletionseriesresult" style="height: 3em;"></div>
+                </div>
+            </div>
+        </section>
+        <footer class="modal-card-foot buttons is-centered">
+            <button style="display: none;" class="button" id="evaltestcompletionseries" ic-post-to="/rules/test_completionseries"
+                ic-global-include="#study_trigger_series" ic-target="#testcompletionseriesresult">Test</button>            
+            <button class="button" type="button" id="closetestcompletionseries" onclick="closeTestCompletionSeries()">Close</button>
+        </footer>
+    </div>
+</div>
+
 <div id="quickviewDefault" class="quickview">
     <header class="quickview-header quickviewtitle">
         <p class="title">Rule Notation</p>
@@ -416,6 +447,15 @@
 
     function closeTestRule() {
         $("#testrule").removeClass("is-active");
+    }
+
+    function showTestCompletionSeries() {
+        $("#testcompletionseries").addClass("is-active");
+        $("#evaltestcompletionseries").click();
+    }
+
+    function closeTestCompletionSeries() {
+        $("#testcompletionseries").removeClass("is-active");
     }
 
     function copyTag(value) {
@@ -492,10 +532,10 @@
             var study_trigger = $(this).children("option:selected").val();
 
             if (study_trigger == 'timeout') {
-                $('#study_trigger_series').hide();
+                $('#study_trigger_series_section').hide();
                 $('#study_trigger_series').prop('required', false);
             } else {
-                $('#study_trigger_series').show();
+                $('#study_trigger_series_section').show();
                 $('#study_trigger_series').prop('required', true);
             }
         });

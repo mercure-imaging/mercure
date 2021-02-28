@@ -1,245 +1,255 @@
 .rulecard {
-    margin-bottom: 10px;
+  margin-bottom: 10px;
 }
 
 .rulecard-content {
-    padding: 10px;
+  padding: 10px;
 }
 
 .modal-card-head {
-    border-top-left-radius: 0px;
-    border-top-right-radius: 0px;
+  border-top-left-radius: 0px;
+  border-top-right-radius: 0px;
 }
 
 .modal-card-foot {
-    border-bottom-left-radius: 0px;
-    border-bottom-right-radius: 0px;
+  border-bottom-left-radius: 0px;
+  border-bottom-right-radius: 0px;
 }
 
-.navbar.is-black .navbar-start>a.navbar-item:hover,
-.navbar.is-black .navbar-item.has-dropdown:hover .navbar-link
-{
-    background-color: hsl(141, 71%, 48%);
-    color: #FFF !important;
+.navbar.is-black .navbar-start > a.navbar-item:hover,
+.navbar.is-black .navbar-item.has-dropdown:hover .navbar-link {
+  background-color: hsl(141, 71%, 48%);
+  color: #fff !important;
 }
 
 .brand {
-    color: hsl(141, 71%, 48%) !important;
+  color: hsl(141, 71%, 48%) !important;
 }
 
 .footer {
-    margin-top: 64px;
-    padding: 32px;
-    background-color: hsl(0, 0%, 21%);
-    border-top: 3px solid hsl(141, 71%, 48%);
-    color: hsl(0, 0%, 96%);
+  margin-top: 64px;
+  padding: 32px;
+  background-color: hsl(0, 0%, 21%);
+  border-top: 3px solid hsl(141, 71%, 48%);
+  color: hsl(0, 0%, 96%);
 }
 
 html {
-    background-color: hsl(0, 0%, 21%);
+  background-color: hsl(0, 0%, 21%);
 }
 
 .footer a {
-    color: hsl(141, 71%, 48%);
+  color: hsl(141, 71%, 48%);
 }
 
 .logtabs li.is-active a {
-    color: hsl(141, 71%, 48%) !important;
-    font-weight: 500;
+  color: hsl(141, 71%, 48%) !important;
+  font-weight: 500;
 }
 
 body {
-    background-color: #FFF;
-    display: flex;
-    min-height: 100vh;
-    flex-direction: column;    
+  background-color: #fff;
+  display: flex;
+  min-height: 100vh;
+  flex-direction: column;
 }
 
 .ruleresult {
-    border-bottom-left-radius: 0px !important;
-    border-bottom-right-radius: 0px !important;
-    border-top-left-radius: 0px !important;
-    border-top-right-radius: 0px !important;
+  border-bottom-left-radius: 0px !important;
+  border-bottom-right-radius: 0px !important;
+  border-top-left-radius: 0px !important;
+  border-top-right-radius: 0px !important;
 }
 
 .quickviewtitle {
-    background-color: hsl(141, 71%, 48%) !important;
-    color: #FFF !important;
-    font-weight: 900 !important;
+  background-color: hsl(141, 71%, 48%) !important;
+  color: #fff !important;
+  font-weight: 900 !important;
 }
 
 .quickviewtitle p {
-    color: #FFF !important;
-    font-weight: 900 !important;
+  color: #fff !important;
+  font-weight: 900 !important;
 }
 
 .quickview {
-    width: 420px;
-    right: -420px;
-} 
+  width: 420px;
+  right: -420px;
+}
 
 .quickview-body {
-    border-left: 1px solid #dbdbdb !important;
+  border-left: 1px solid #dbdbdb !important;
 }
 
 .configtitle {
-    margin-bottom: 10px !important;
-    margin-top: 10px;
+  margin-bottom: 10px !important;
+  margin-top: 10px;
 }
 
 .configtable {
-    margin-bottom: 15px;
+  margin-bottom: 15px;
 }
 
 .logviewer {
-    font-family: monospace;
-    display: inline-block;
-    white-space: nowrap;
-    overflow-x: scroll;
-    overflow-y: scroll;
-    width: 100%;
-    height: 100%;
-    background-color: #0a0a0a;
-    color: #FFF;
-    padding: 8px;
+  font-family: monospace;
+  display: inline-block;
+  white-space: nowrap;
+  overflow-x: scroll;
+  overflow-y: scroll;
+  width: 100%;
+  height: 100%;
+  background-color: #0a0a0a;
+  color: #fff;
+  padding: 8px;
 }
 
 .logviewer::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+  width: 6px;
+  height: 6px;
 }
-  
-.logviewer::-webkit-scrollbar-track, .logviewer::-webkit-scrollbar-corner {
-    background-color: #0a0a0a;
+
+.logviewer::-webkit-scrollbar-track,
+.logviewer::-webkit-scrollbar-corner {
+  background-color: #0a0a0a;
 }
-   
+
 .logviewer::-webkit-scrollbar-thumb {
-    background: hsl(141, 71%, 48%);
-    border-radius: 10px;
+  background: hsl(141, 71%, 48%);
+  border-radius: 10px;
 }
-  
+
 .logviewer::-webkit-scrollbar-thumb:hover {
-    background: #22c65b;
+  background: #22c65b;
 }
 
 .logview {
-    height: 70vh;
+  height: 70vh;
 }
 
 #tab-content div.panel {
-    display: none;
+  display: none;
 }
-  
+
 #tab-content div.panel.is-active {
-    display: block;
+  display: block;
 }
 
 .tabs li.is-active a {
-    border-bottom-color: hsl(141, 71%, 48%);
-    color: hsl(141, 71%, 48%);
+  border-bottom-color: hsl(141, 71%, 48%);
+  color: hsl(141, 71%, 48%);
 }
 
 .tabs.is-toggle li.is-active a {
-    background-color: #2f2f2f;
-    border-color: #2f2f2f;
+  background-color: #2f2f2f;
+  border-color: #2f2f2f;
 }
 
 .tabs li.is-disabled {
-    display: none;
+  display: none;
 }
 
 .tabs li.is-disabled a:hover {
-    background-color: #FFF;
+  background-color: #fff;
 }
 
-.switch[type='checkbox'] + label::before,
-.switch[type='checkbox']:checked + label:before {
-    outline: none !important;
+.switch[type="checkbox"] + label::before,
+.switch[type="checkbox"]:checked + label:before {
+  outline: none !important;
 }
 
-.switch[type='checkbox'] + label::after,
-.switch[type='checkbox']:checked + label:after {
-    outline: none !important;
+.switch[type="checkbox"] + label::after,
+.switch[type="checkbox"]:checked + label:after {
+  outline: none !important;
 }
 
 ::selection {
-    color: none;
-    background: none;
+  color: none;
+  background: none;
 }
 
-.textarea::selection, .input::selection {
-    background-color: rgb(50, 115, 220);
-    color: #FFF;
+.textarea::selection,
+.input::selection {
+  background-color: rgb(50, 115, 220);
+  color: #fff;
 }
 
 .logviewer::selection {
-    background-color: rgb(50, 115, 220);
-    color: #FFF;
+  background-color: rgb(50, 115, 220);
+  color: #fff;
 }
 
 .ruleicon {
-    margin-left: 5px;
-    margin-right: 0px;    
+  margin-left: 5px;
+  margin-right: 0px;
 }
 
-.switch[type=checkbox]+label::before, .switch[type=checkbox]+label:before {
-    background-color: #dbdbdb;
+.switch[type="checkbox"] + label::before,
+.switch[type="checkbox"] + label:before {
+  background-color: #dbdbdb;
 }
 
 .jobtable {
-    table-layout: fixed;
+  table-layout: fixed;
 }
 
 .jobtable td {
-    width: 20%;
+  width: 20%;
 }
 
 .jobtable tr.is-selected {
-    background-color: hsl(141, 71%, 48%);
+  background-color: hsl(141, 71%, 48%);
 }
 
 .jobstabs a {
-    width: 160px;
+  width: 160px;
 }
 
 .tagback:not(body) {
-    background-color: #dbdbdb;
+  background-color: #dbdbdb;
 }
 
 .tagsinput .tag:not(body) {
-    background-color: #363636;
-    color:#fff;
+  background-color: #363636;
+  color: #fff;
 }
 
 .tagsinput .tag.is-active {
-    background-color: #363636;
-    color:#fff;
+  background-color: #363636;
+  color: #fff;
 }
 
 .tagsinput .tag:not(body).is-delete:hover {
-    background-color: #2f2f2f;
+  background-color: #2f2f2f;
 }
 
-.tagsinput > input[type=text]::placeholder {
-    color: #C2C2C2;
+.tagsinput > input[type="text"]::placeholder {
+  color: #c2c2c2;
 }
 
 .tagsinput.field.is-grouped.is-grouped-multiline:last-child {
-    margin-bottom: 0px !important;
+  margin-bottom: 0px !important;
 }
 
 .tagsinput.field {
-    min-height: 36px !important;
+  min-height: 36px !important;
 }
 
 .is-frameless {
-    border: none;
-    color: rgb(54, 54, 54);
-    padding-left: 8px;
-    padding-right: 8px;
+  border: none;
+  color: rgb(54, 54, 54);
+  padding-left: 8px;
+  padding-right: 8px;
 }
 
 .is-frameless:hover {
-    border: none;
-    color: rgb(50, 115, 220);    
+  border: none;
+  color: rgb(50, 115, 220);
+}
+
+.series_completion_fix {
+  border-bottom-left-radius: 4px !important;
+  border-top-left-radius: 4px !important;
+  border-bottom-right-radius: 0;
+  border-top-right-radius: 0;
+  margin-right: -1px;
 }
