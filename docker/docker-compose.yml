@@ -1,0 +1,106 @@
+version: "3.9"
+services:
+  ui:
+    depends_on:
+      db:
+        condition: service_healthy
+    build: ui
+    ports:
+      - "8000:8000"
+    volumes:
+      - mercure-config:/home/mercure/mercure/configuration
+      - mercure-data:/home/mercure/mercure-data
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  db:
+    image: library/postgres:alpine
+    environment:
+      POSTGRES_PASSWORD: ChangePasswordHere
+      POSTGRES_USER: mercure
+      POSTGRES_DB: mercure
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "15432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U mercure" ]
+
+  receiver:
+    build: receiver
+    depends_on:
+      bookkeeper:
+        condition: service_healthy
+    ports:
+      - "104:104"
+    volumes:
+      - mercure-config:/home/mercure/mercure/configuration
+      - mercure-data:/home/mercure/mercure-data
+
+  cleaner:
+    build: cleaner
+    depends_on:
+      bookkeeper:
+        condition: service_healthy
+    volumes:
+      - mercure-config:/home/mercure/mercure/configuration
+      - mercure-data:/home/mercure/mercure-data
+
+  dispatcher:
+    build: dispatcher
+    depends_on:
+      bookkeeper:
+        condition: service_healthy
+    volumes:
+      - mercure-config:/home/mercure/mercure/configuration
+      - mercure-data:/home/mercure/mercure-data
+
+  processor:
+    build: processor
+    depends_on:
+      bookkeeper:
+        condition: service_healthy
+    volumes:
+      - mercure-config:/home/mercure/mercure/configuration
+      - mercure-data:/home/mercure/mercure-data
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  router:
+    build: router
+    depends_on:
+      bookkeeper:
+        condition: service_healthy
+    volumes:
+      - mercure-config:/home/mercure/mercure/configuration
+      - mercure-data:/home/mercure/mercure-data
+
+  bookkeeper:
+    build: bookkeeper
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - mercure-config:/home/mercure/mercure/configuration
+      - mercure-data:/home/mercure/mercure-data
+
+volumes:
+  db-data:
+    driver: local
+    driver_opts:
+      type: 'none'
+      o: 'bind'
+      device: '$HOME/mercure-docker/mercure-db'
+
+  mercure-data:
+    driver: local
+    driver_opts:
+      type: 'none'
+      o: 'bind'
+      device: '$HOME/mercure-docker/mercure-data'
+
+  mercure-config:
+    driver: local
+    driver_opts:
+      type: 'none'
+      o: 'bind'
+      device: '$HOME/mercure-docker/mercure-config'
