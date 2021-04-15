@@ -6,7 +6,7 @@ It is recommended to install mercure on a Linux machine running Ubuntu Server 18
 .. note:: mercure might run on other Linux flavors as well, but the installation instructions listed on this page will likely not be applicable without modification.
 
 Installing mercure
------------------
+------------------
 
 After finishing the Ubuntu installation procedure, the Offis DICOM toolkit (DCMTK), gcc compiler, and jq need to be installed. A user called "mercure" should be created (the adduser command will ask for a password), and the mercure installation file should be cloned using the shown Git command. By default, mercure should be installed into the home directory of the user mercure. 
 

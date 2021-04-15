@@ -1,26 +1,32 @@
 {
     "receiver": {
         "name": "Receiver",
-        "systemd_service": "mercure_receiver.service"
+        "systemd_service": "mercure_receiver.service",
+        "docker_service": "mercure_receiver_1"
     },
     "router": {
         "name": "Router",
-        "systemd_service": "mercure_router.service"
+        "systemd_service": "mercure_router.service",
+        "docker_service": "mercure_router_1"
     },
     "processor": {
         "name": "Processor",
-        "systemd_service": "mercure_processor.service"
+        "systemd_service": "mercure_processor.service",
+        "docker_service": "mercure_processor_1"
     },
     "dispatcher": {
         "name": "Dispatcher",
-        "systemd_service": "mercure_dispatcher.service"
+        "systemd_service": "mercure_dispatcher.service",
+        "docker_service": "mercure_dispatcher_1"
     },
     "cleaner": {
         "name": "Cleaner",
-        "systemd_service": "mercure_cleaner.service"
+        "systemd_service": "mercure_cleaner.service",
+        "docker_service": "mercure_cleaner_1"
     },    
     "bookkeeper": {
         "name": "Bookkeeper",
-        "systemd_service": "mercure_bookkeeper.service"
+        "systemd_service": "mercure_bookkeeper.service",
+        "docker_service": "mercure_bookkeeper_1"
     }
 }

@@ -3,6 +3,7 @@ webgui.py
 =========
 The web-based graphical user interface of mercure.
 """
+import docker
 import uvicorn
 import base64
 import binascii
@@ -27,7 +28,8 @@ from starlette.responses import JSONResponse
 from starlette.responses import RedirectResponse
 from starlette.templating import Jinja2Templates
 from starlette.authentication import requires
-from starlette.authentication import AuthenticationBackend, AuthenticationError, SimpleUser, UnauthenticatedUser, AuthCredentials
+from starlette.authentication import AuthenticationBackend, AuthenticationError, SimpleUser, UnauthenticatedUser, \
+    AuthCredentials
 from starlette.middleware.authentication import AuthenticationMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.config import Config
@@ -48,14 +50,14 @@ import webinterface.queue as queue
 from webinterface.common import templates
 from webinterface.common import get_user_information
 
-
 ###################################################################################
 ## Helper classes
 ###################################################################################
 
 daiquiri.setup(
     level=logging.INFO,
-    outputs=(daiquiri.output.Stream(formatter=daiquiri.formatter.ColorFormatter(fmt="%(color)s%(levelname)-8.8s " "%(name)s: %(message)s%(color_stop)s")),),
+    outputs=(daiquiri.output.Stream(formatter=daiquiri.formatter.ColorFormatter(
+        fmt="%(color)s%(levelname)-8.8s " "%(name)s: %(message)s%(color_stop)s")),),
 )
 logger = daiquiri.getLogger("webgui")
 
@@ -137,48 +139,69 @@ async def show_log(request):
     requested_service = request.path_params["service"]
 
     # Get optional start and end dates from the URL. Make sure
-    # that the date format is clean
+    # that the date format is clean.
     try:
         start_date = request.query_params.get("from", "")
-        start_time = request.query_params.get("from_time", "")
-        datetime.datetime.strptime(start_date, "%Y-%m-%d")
-        start_date_cmd = ' --since "' + start_date
-        if start_date and start_time:
-            datetime.datetime.strptime(start_time, "%H:%M")
-            start_date_cmd = start_date_cmd + " " + start_time
-        start_date_cmd = start_date_cmd + '"'
-    except:
-        start_date = ""
-        start_time = ""
-        start_date_cmd = ""
+        start_time = request.query_params.get("from_time", "00:00")
+        start_timestamp = f"{start_date} {start_time}"
+        start_obj = datetime.datetime.strptime(start_timestamp, "%Y-%m-%d %H:%M")
+    except ValueError:
+        start_obj = None
+        start_timestamp = ""
 
     try:
         end_date = request.query_params.get("to", "")
-        end_time = request.query_params.get("to_time", "")
-        datetime.datetime.strptime(end_date, "%Y-%m-%d")
-        end_date_cmd = ' --until "' + end_date
-        if end_date and end_time:
-            datetime.datetime.strptime(end_time, "%H:%M")
-            end_date_cmd = end_date_cmd + " " + end_time
-        end_date_cmd = end_date_cmd + '"'
-    except:
-        end_date = ""
-        end_time = ""
-        end_date_cmd = ""
+        # Make sure end time includes the day-of, unless otherwise specified
+        end_time = request.query_params.get("to_time", "23:59")
+        end_timestamp = f"{end_date} {end_time}"
+        datetime.datetime.strptime(end_timestamp, "%Y-%m-%d %H:%M")
+    except ValueError:
+        end_timestamp = ""
 
     service_logs = {}
     for service in services.services_list:
-        service_logs[service] = {"id": service, "name": services.services_list[service]["name"], "systemd": services.services_list[service]["systemd_service"]}
+        service_logs[service] = {"id": service,
+                                 "name": services.services_list[service]["name"],
+                                 "systemd": services.services_list[service].get("systemd_service", ""),
+                                 "docker": services.services_list[service].get("docker_service", "")
+                                 }
 
-    if (not requested_service in service_logs) or (not services.services_list[requested_service]["systemd_service"]):
-        return PlainTextResponse("Service does not exist or is incorrectly configured.")
+    if requested_service not in service_logs:
+        return PlainTextResponse("Service does not exist.")
 
-    run_result = await async_run("journalctl -n 1000 -u " + services.services_list[requested_service]["systemd_service"] + start_date_cmd + end_date_cmd)
+    if "systemd_service" not in services.services_list[requested_service] and \
+            "docker_service" not in services.services_list[requested_service]:
+        return PlainTextResponse("Service incorrectly configured.")
 
-    log_content = ""
+    return_code = -1
+    raw_logs = ""
 
-    if run_result[0] == 0:
-        log_content = html.escape(str(run_result[1].decode()))
+    if "systemd_service" in services.services_list[requested_service]:
+        start_date_cmd = ""
+        end_date_cmd = ""
+        if start_timestamp:
+            start_date_cmd = f'--since {start_timestamp}'
+        if end_timestamp:
+            end_date_cmd = f'--until {end_timestamp}'
+
+        run_result = await async_run(f'journalctl -n 1000 -u '
+                                     f'{services.services_list[requested_service]["systemd_service"]} '
+                                     f'{start_date_cmd} {end_date_cmd}')
+        return_code = run_result[0]
+        raw_logs = run_result[1]
+
+    elif "docker_service" in services.services_list[requested_service]:
+        client = docker.from_env()
+        try:
+            container = client.containers.get(services.services_list[requested_service]["docker_service"])
+            container.reload()
+            raw_logs = container.logs(since=start_obj)
+            return_code = 0
+        except (docker.errors.NotFound, docker.errors.APIError):
+            return_code = 1
+
+    if return_code == 0:
+        log_content = html.escape(str(raw_logs.decode()))
         line_list = log_content.split("\n")
         if len(line_list) and (not line_list[-1]):
             del line_list[-1]
@@ -221,7 +244,8 @@ async def show_rules(request):
         return PlainTextResponse("Configuration is being updated. Try again in a minute.")
 
     template = "rules.html"
-    context = {"request": request, "mercure_version": mercure_defs.VERSION, "page": "rules", "rules": config.mercure["rules"]}
+    context = {"request": request, "mercure_version": mercure_defs.VERSION, "page": "rules",
+               "rules": config.mercure["rules"]}
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
 
@@ -310,8 +334,10 @@ async def rules_edit_post(request):
     config.mercure["rules"][editrule]["processing_settings"] = form.get("processing_settings", "")
     config.mercure["rules"][editrule]["notification_webhook"] = form.get("notification_webhook", "")
     config.mercure["rules"][editrule]["notification_payload"] = form.get("notification_payload", "")
-    config.mercure["rules"][editrule]["notification_trigger_reception"] = form.get("notification_trigger_reception", "False")
-    config.mercure["rules"][editrule]["notification_trigger_completion"] = form.get("notification_trigger_completion", "False")
+    config.mercure["rules"][editrule]["notification_trigger_reception"] = form.get("notification_trigger_reception",
+                                                                                   "False")
+    config.mercure["rules"][editrule]["notification_trigger_completion"] = form.get("notification_trigger_completion",
+                                                                                    "False")
     config.mercure["rules"][editrule]["notification_trigger_error"] = form.get("notification_trigger_error", "False")
 
     try:
@@ -357,17 +383,21 @@ async def rules_test(request):
         testrule = form["rule"]
         testvalues = json.loads(form["testvalues"])
     except:
-        return PlainTextResponse('<span class="tag is-warning is-medium ruleresult"><i class="fas fa-bug"></i>&nbsp;Error</span>&nbsp;&nbsp;Invalid test values')
+        return PlainTextResponse(
+            '<span class="tag is-warning is-medium ruleresult"><i class="fas fa-bug"></i>&nbsp;Error</span>&nbsp;&nbsp;Invalid test values')
 
     result = rule_evaluation.test_rule(testrule, testvalues)
 
     if result == "True":
-        return PlainTextResponse('<span class="tag is-success is-medium ruleresult"><i class="fas fa-thumbs-up"></i>&nbsp;Route</span>')
+        return PlainTextResponse(
+            '<span class="tag is-success is-medium ruleresult"><i class="fas fa-thumbs-up"></i>&nbsp;Route</span>')
     else:
         if result == "False":
-            return PlainTextResponse('<span class="tag is-info is-medium ruleresult"><i class="fas fa-thumbs-down"></i>&nbsp;Discard</span>')
+            return PlainTextResponse(
+                '<span class="tag is-info is-medium ruleresult"><i class="fas fa-thumbs-down"></i>&nbsp;Discard</span>')
         else:
-            return PlainTextResponse('<span class="tag is-danger is-medium ruleresult"><i class="fas fa-bug"></i>&nbsp;Error</span>&nbsp;&nbsp;Invalid rule: ' + result)
+            return PlainTextResponse(
+                '<span class="tag is-danger is-medium ruleresult"><i class="fas fa-bug"></i>&nbsp;Error</span>&nbsp;&nbsp;Invalid rule: ' + result)
 
 
 @app.route("/rules/test_completionseries", methods=["POST"])
@@ -378,14 +408,16 @@ async def rules_test_completionseries(request):
         form = dict(await request.form())
         test_series_list = form["study_trigger_series"]
     except:
-        return PlainTextResponse('<span class="tag is-warning is-medium ruleresult"><i class="fas fa-bug"></i>&nbsp;Error</span>&nbsp;&nbsp;Invalid')
+        return PlainTextResponse(
+            '<span class="tag is-warning is-medium ruleresult"><i class="fas fa-bug"></i>&nbsp;Error</span>&nbsp;&nbsp;Invalid')
 
     result = rule_evaluation.test_completion_series(test_series_list)
 
     if result == "True":
         return PlainTextResponse('<i class="fas fa-check-circle fa-lg has-text-success"></i>&nbsp;&nbsp;Valid')
     else:
-        return PlainTextResponse('<i class="fas fa-times-circle fa-lg has-text-danger"></i>&nbsp;&nbsp;Invalid: ' + result)
+        return PlainTextResponse(
+            '<i class="fas fa-times-circle fa-lg has-text-danger"></i>&nbsp;&nbsp;Invalid: ' + result)
 
 
 ###################################################################################
@@ -408,7 +440,8 @@ async def show_targets(request):
         used_targets[used_target] = rule
 
     template = "targets.html"
-    context = {"request": request, "mercure_version": mercure_defs.VERSION, "page": "targets", "targets": config.mercure["targets"], "used_targets": used_targets}
+    context = {"request": request, "mercure_version": mercure_defs.VERSION, "page": "targets",
+               "targets": config.mercure["targets"], "used_targets": used_targets}
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
 
@@ -455,7 +488,8 @@ async def targets_edit(request):
         return RedirectResponse(url="/targets", status_code=303)
 
     template = "targets_edit.html"
-    context = {"request": request, "mercure_version": mercure_defs.VERSION, "page": "targets", "targets": config.mercure["targets"], "edittarget": edittarget}
+    context = {"request": request, "mercure_version": mercure_defs.VERSION, "page": "targets",
+               "targets": config.mercure["targets"], "edittarget": edittarget}
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
 
@@ -547,7 +581,9 @@ async def targets_test_post(request):
         if (await async_run("ping -w 1 -c 1 " + target_ip))[0] == 0:
             ping_response = "True"
             # Only test for c-echo if the ping was successful
-            if (await async_run("echoscu -to 10 -aec " + target_aec + " -aet " + target_aet + " " + target_ip + " " + target_port))[0] == 0:
+            if (await async_run(
+                    "echoscu -to 10 -aec " + target_aec + " -aet " + target_aet + " " + target_ip + " " + target_port))[
+                0] == 0:
                 cecho_response = "True"
 
     return JSONResponse('{"ping": "' + ping_response + '", "c-echo": "' + cecho_response + '" }')
@@ -616,7 +652,8 @@ async def users_edit(request):
         return RedirectResponse(url="/users", status_code=303)
 
     template = "users_edit.html"
-    context = {"request": request, "mercure_version": mercure_defs.VERSION, "page": "users", "edituser": edituser, "edituser_info": users.users_list[edituser]}
+    context = {"request": request, "mercure_version": mercure_defs.VERSION, "page": "users", "edituser": edituser,
+               "edituser_info": users.users_list[edituser]}
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
 
@@ -760,7 +797,8 @@ async def configuration_edit(request):
     config_content = json.dumps(config_content, indent=4, sort_keys=False)
 
     template = "configuration_edit.html"
-    context = {"request": request, "mercure_version": mercure_defs.VERSION, "page": "configuration", "config_content": config_content}
+    context = {"request": request, "mercure_version": mercure_defs.VERSION, "page": "configuration",
+               "config_content": config_content}
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
 
@@ -803,7 +841,8 @@ async def login(request):
         return PlainTextResponse("Error reading configuration file.")
     request.session.clear()
     template = "login.html"
-    context = {"request": request, "mercure_version": mercure_defs.VERSION, "appliance_name": config.mercure.get("appliance_name", "master")}
+    context = {"request": request, "mercure_version": mercure_defs.VERSION,
+               "appliance_name": config.mercure.get("appliance_name", "master")}
     return templates.TemplateResponse(template, context)
 
 
@@ -824,7 +863,8 @@ async def login_post(request):
         if users.is_admin(form["username"]) == True:
             request.session.update({"is_admin": "Jawohl"})
 
-        monitor.send_webgui_event(monitor.w_events.LOGIN, form["username"], "{admin}".format(admin="ADMIN" if users.is_admin(form["username"]) else ""))
+        monitor.send_webgui_event(monitor.w_events.LOGIN, form["username"],
+                                  "{admin}".format(admin="ADMIN" if users.is_admin(form["username"]) else ""))
 
         if users.needs_change_password(form["username"]):
             return RedirectResponse(url="/settings", status_code=303)
@@ -838,7 +878,8 @@ async def login_post(request):
         monitor.send_webgui_event(monitor.w_events.LOGIN_FAIL, form["username"], source_ip)
 
         template = "login.html"
-        context = {"request": request, "invalid_password": 1, "mercure_version": mercure_defs.VERSION, "appliance_name": config.mercure.get("appliance_name", "mercure Router")}
+        context = {"request": request, "invalid_password": 1, "mercure_version": mercure_defs.VERSION,
+                   "appliance_name": config.mercure.get("appliance_name", "mercure Router")}
         return templates.TemplateResponse(template, context)
 
 
@@ -885,7 +926,21 @@ async def homepage(request):
             if (await async_run("systemctl is-active " + services.services_list[service]["systemd_service"]))[0] == 0:
                 running_status = "True"
 
-        service_status[service] = {"id": service, "name": services.services_list[service]["name"], "running": running_status}
+        elif services.services_list[service].get("docker_service", ""):
+            client = docker.from_env()
+            try:
+                container = client.containers.get(services.services_list[service]["docker_service"])
+                container.reload()
+                status = container.status
+                """restarting, running, paused, exited"""
+                if status == "running":
+                    running_status = "True"
+
+            except (docker.errors.NotFound, docker.errors.APIError):
+                running_status = "False"
+
+        service_status[service] = {"id": service, "name": services.services_list[service]["name"],
+                                   "running": running_status}
 
     template = "index.html"
     context = {
@@ -922,9 +977,30 @@ async def control_services(request):
         for service in controlservices:
             if not str(service) in services.services_list:
                 continue
-            command = "systemctl " + action + " " + services.services_list[service]["systemd_service"]
-            logger.info(f"Executing: {command}")
-            await async_run(command)
+
+            if services.services_list[service].get("systemd_service", ""):
+                command = "systemctl " + action + " " + services.services_list[service]["systemd_service"]
+                logger.info(f"Executing: {command}")
+                await async_run(command)
+
+            elif services.services_list[service].get("docker_service", ""):
+                client = docker.from_env()
+                logger.info(f'Executing: {action} on {services.services_list[service]["docker_service"]}')
+                try:
+                    container = client.containers.get(services.services_list[service]["docker_service"])
+                    container.reload()
+                    if action == "start":
+                        container.start()
+                    if action == "stop":
+                        container.stop()
+                    if action == "restart":
+                        container.restart()
+                    if action == "kill":
+                        container.kill()
+
+                except (docker.errors.NotFound, docker.errors.APIError) as docker_error:
+                    logger.error(f"{docker_error}")
+                    pass
 
     monitor_string = "action: " + action + "; services: " + form.get("services", "")
     monitor.send_webgui_event(monitor.w_events.SERVICE_CONTROL, request.user.display_name, monitor_string)
