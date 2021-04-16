@@ -143,19 +143,33 @@ async def show_log(request):
     try:
         start_date = request.query_params.get("from", "")
         start_time = request.query_params.get("from_time", "00:00")
+<<<<<<< HEAD
         start_timestamp = f"{start_date} {start_time}"
         start_obj = datetime.datetime.strptime(start_timestamp, "%Y-%m-%d %H:%M")
     except ValueError:
         start_obj = None
+=======
+        start_unixtime = datetime.datetime.strptime(f"{start_date} {start_time}", "%Y-%m-%d %H:%M").timestamp()
+        start_timestamp = f"{start_date} {start_time}"
+    except ValueError:
+        start_unixtime = 0
+>>>>>>> ed4503f6ea57e617aacee8a2de53094469a51349
         start_timestamp = ""
 
     try:
         end_date = request.query_params.get("to", "")
         # Make sure end time includes the day-of, unless otherwise specified
         end_time = request.query_params.get("to_time", "23:59")
+<<<<<<< HEAD
         end_timestamp = f"{end_date} {end_time}"
         datetime.datetime.strptime(end_timestamp, "%Y-%m-%d %H:%M")
     except ValueError:
+=======
+        end_unixtime = datetime.datetime.strptime(f"{end_date} {end_time}", "%Y-%m-%d %H:%M").timestamp()
+        end_timestamp = f"{end_date} {end_time}"
+    except ValueError:
+        end_unixtime = 0
+>>>>>>> ed4503f6ea57e617aacee8a2de53094469a51349
         end_timestamp = ""
 
     service_logs = {}
@@ -195,7 +209,11 @@ async def show_log(request):
         try:
             container = client.containers.get(services.services_list[requested_service]["docker_service"])
             container.reload()
+<<<<<<< HEAD
             raw_logs = container.logs(since=start_obj)
+=======
+            raw_logs = container.logs(since=start_unixtime)
+>>>>>>> ed4503f6ea57e617aacee8a2de53094469a51349
             return_code = 0
         except (docker.errors.NotFound, docker.errors.APIError):
             return_code = 1
