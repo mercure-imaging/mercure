@@ -13,7 +13,7 @@
 # CONFIG SECTION
 #################################################################
 # Change prefix to your own Docker prefix so you can make your own build
-PREFIX=$USER
+PREFIX=guruevi
 SECRET='PutSomethingRandomHere'
 DB_PWD='ChangePasswordHere'
 

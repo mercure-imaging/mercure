@@ -32,12 +32,14 @@ def add_processing(applied_rule, tags_list):
 
     if config.mercure[mercure_config.RULES][applied_rule].get(mercure_rule.ACTION, mercure_actions.PROCESS) in (mercure_actions.PROCESS, mercure_actions.BOTH):
 
-        # TODO: This should be changed into an array
+        # TODO: This should be changed into an array?
+        # Get the module that should be triggered
         module = config.mercure[mercure_config.RULES][applied_rule].get(mercure_rule.PROCESSING_MODULE, "")
+        # Get the configuration on this module
+        module_config = config.mercure[mercure_config.MODULES].get(module, {})
 
-        # TODO: Still incomplete
-        process_section[mercure_sections.PROCESS]["modules"] = [module]
-        process_section[mercure_sections.PROCESS]["settings"] = {}
+        # TODO: Probably Still incomplete, but this seems to make the current Processing happy
+        process_section[mercure_sections.PROCESS] = module_config
 
         # = config.mercure[mercure_config.MODULES].get(module,{})
         # task_json[mercure_sections.INFO].update({"module": module })

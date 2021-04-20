@@ -577,7 +577,7 @@ async def targets_test_post(request):
 
     logger.info(f"Testing target {testtarget}")
 
-    if (target_ip) and (target_port):
+    if target_ip and target_port:
         if (await async_run("ping -w 1 -c 1 " + target_ip))[0] == 0:
             ping_response = "True"
             # Only test for c-echo if the ping was successful
@@ -705,10 +705,10 @@ async def users_edit_post(request):
 
     # Only admins are allowed to change the admin status, and the current user
     # cannot change the status for himself (which includes the settings page)
-    if (request.user.is_admin) and (request.user.display_name != edituser):
+    if request.user.is_admin and (request.user.display_name != edituser):
         users.users_list[edituser]["is_admin"] = form["is_admin"]
 
-    if request.user.is_admin:
+    if request.user.is_admin and form["permissions"]:
         users.users_list[edituser]["permissions"] = form["permissions"]
 
     try:

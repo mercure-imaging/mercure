@@ -38,25 +38,47 @@ def process_series(folder):
         return
 
     processing_success = True
+    # TODO: Something needs to figure out whether to dispatch
     needs_dispatching = False
 
-    # TODO: Perform the processing
-    time.sleep(10)
+    the_path = Path(folder) / mercure_names.TASKFILE
+    if not the_path.exists():
+        logger.error(f"Task file does not exist")
+        return
 
-    def get_task():
-        the_path = Path(folder) / mercure_names.TASKFILE
-        if not the_path.exists():
-            return None
+    with open(the_path, "r") as f:
+        task = json.load(f)
 
-        with open(the_path, "r") as f:
-            return json.load(f)
+    docker_tag = task["process"]["docker_tag"]
+    additional_volumes = json.loads(task["process"].get("additional_volumes", {}))
+    logger.info(docker_tag)
+    default_volumes = {folder: {"bind": "/data", "mode": "rw"}}
+    # Merge the two dictionaries
+    merged_volumes = {**default_volumes, **additional_volumes}
 
-    task = get_task()
-    logger.info(task["process"]["docker_tag"])
-
-    docker_client.containers.run(task["process"]["docker_tag"], "--dicom-path /data", volumes={folder: {"bind": "/data", "mode": "rw"}})
-
-    # TODO: Error handling
+    # Run the container, handle errors of running the container
+    try:
+        logs = docker_client.containers.run(docker_tag, volumes=merged_volumes)
+        # Returns: logs (stdout), pass stderr=True if you want stderr too.
+        logger.info(logs)
+        """Raises:	
+            docker.errors.ContainerError – If the container exits with a non-zero exit code
+            docker.errors.ImageNotFound – If the specified image does not exist.
+            docker.errors.APIError – If the server returns an error."""
+    except (docker.errors.APIError, docker.errors.ImageNotFound):
+        # Something really serious happened
+        logger.info("There was a problem running the specified Docker container")
+        logger.error(traceback.format_exc())
+        monitor.send_event(monitor.h_events.PROCESSING,
+                           monitor.severity.ERROR,
+                           f'Error starting Docker container {docker_tag}')
+        processing_success = False
+    except docker.errors.ContainerError as err:
+        logger.info("The container returned a non-zero exit code")
+        monitor.send_event(monitor.h_events.PROCESSING,
+                           monitor.severity.ERROR,
+                           f'Error while running Docker container {docker_tag} - {err.exit_status}')
+        processing_success = False
 
     # Create a new lock file to ensure that no other process picks up the folder while copying
     lock_file = Path(folder) / mercure_names.LOCK
@@ -65,7 +87,9 @@ def process_series(folder):
     except:
         logger.info(f"Error locking folder to be moved {folder}")
         logger.error(traceback.format_exc())
-        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Error locking folder to be moved {folder}")
+        monitor.send_event(monitor.h_events.PROCESSING,
+                           monitor.severity.ERROR,
+                           f"Error locking folder to be moved {folder}")
 
     # Remove the processing lock
     lock.free()

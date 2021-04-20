@@ -9,17 +9,28 @@
 
         <form method="post">
             <div class="field">
-                <label class="label">Git URL</label>
+                <label class="label" for="url">Git URL</label>
                 <p class="control">
                     <input class="input" id="url" type="url" required pattern="https://.*" placeholder="Git URL"
                         name="url" autofocus value="{{module['url']}}">
                 </p>
             </div>
             <div class="field">
-                <label class="label">Docker tag</label>
+                <label class="label" for="docker_tag">Docker tag</label>
                 <p class="control">
                     <input class="input" id="docker_tag" type="text" placeholder="Docker tag" name="docker_tag"
                         value="{{module['docker_tag']}}">
+                </p>
+            </div>
+            <div class="field">
+                <label class="label" for="additional_volumes">Additional volumes</label>
+                <p class="control">
+                    <input class="input"
+                           id="additional_volumes"
+                           type="text"
+                           placeholder="{&quot;/host&quot;: {&quot;bind&quot;: &quot;/config&quot;, &quot;mode&quot;: &quot;r&quot;}}"
+                           name="additional_volumes"
+                           value="{{module['additional_volumes']}}">
                 </p>
             </div>
             <div class="field">
