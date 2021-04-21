@@ -15,7 +15,6 @@ import common.helper as helper
 import common.config as config
 from common.constants import mercure_names
 
-
 logger = daiquiri.getLogger("process_series")
 
 
@@ -34,7 +33,8 @@ def process_series(folder):
         # Can't create lock file, so something must be seriously wrong
         logger.error(f"Unable to create lock file {lock_file}")
         logger.error(traceback.format_exc())
-        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Unable to create lock file in processing folder {lock_file}")
+        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR,
+                           f"Unable to create lock file in processing folder {lock_file}")
         return
 
     processing_success = True
@@ -50,7 +50,22 @@ def process_series(folder):
         task = json.load(f)
 
     docker_tag = task["process"]["docker_tag"]
-    additional_volumes = json.loads(task["process"].get("additional_volumes", {}))
+    if "dispatch" in task:
+        needs_dispatching = True
+
+    def decode_task(option):
+        try:
+            option_dict = json.loads(task["process"].get(option, "{}"))
+        except json.decoder.JSONDecodeError:
+            # The decoder bails if the JSON is an empty string
+            option_dict = {}
+
+        return option_dict
+
+    additional_volumes = decode_task("additional_volumes")
+    environment = decode_task("environment")
+    arguments = decode_task("arguments")
+
     logger.info(docker_tag)
     default_volumes = {folder: {"bind": "/data", "mode": "rw"}}
     # Merge the two dictionaries
@@ -58,7 +73,7 @@ def process_series(folder):
 
     # Run the container, handle errors of running the container
     try:
-        logs = docker_client.containers.run(docker_tag, volumes=merged_volumes)
+        logs = docker_client.containers.run(docker_tag, volumes=merged_volumes, environment=environment, **arguments)
         # Returns: logs (stdout), pass stderr=True if you want stderr too.
         logger.info(logs)
         """Raises:	
@@ -107,7 +122,6 @@ def process_series(folder):
 
 
 def move_folder(source_folder_str, destination_folder_str):
-
     source_folder = Path(source_folder_str)
     destination_folder = Path(destination_folder_str)
 
@@ -123,4 +137,5 @@ def move_folder(source_folder_str, destination_folder_str):
     except:
         logger.info(f"Error moving folder {source_folder} to {destination_folder}")
         logger.error(traceback.format_exc())
-        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Error moving {source_folder} to {destination_folder}")
+        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR,
+                           f"Error moving {source_folder} to {destination_folder}")

@@ -34,6 +34,28 @@
                 </p>
             </div>
             <div class="field">
+                <label class="label" for="environment">Environment Variables</label>
+                <p class="control">
+                    <input class="input"
+                           id="environment"
+                           type="text"
+                           placeholder="{foo=&quot;bar&quot;}"
+                           name="environment"
+                           value="{{module['environment']}}">
+                </p>
+            </div>
+            <div class="field">
+                <label class="label" for="docker_arguments">Other Docker arguments</label>
+                <p class="control">
+                    <input class="input"
+                           id="docker_arguments"
+                           type="text"
+                           placeholder="See https://docker-py.readthedocs.io/en/stable/containers.html for parameters"
+                           name="docker_arguments"
+                           value="{{module['docker_arguments']}}">
+                </p>
+            </div>
+            <div class="field">
                 <p class="control" style="margin-top: 20px;">
                     <button id="confirmaddmodal" class="button is-success">Submit</button>
                     <!-- <a id="closeaddmodal" class="button">Cancel</a> -->

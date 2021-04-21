@@ -28,10 +28,6 @@
                                     <td>Docker tag:</td>
                                     <td>{{ modules[x]['docker_tag'] }}</td>
                                 </tr>
-                                <tr>
-                                    <td>Additional volumes:</td>
-                                    <td>{{ modules[x]['additional_volumes'] }}</td>
-                                </tr>
                             </table>
                             <div class="buttons is-right">
                                 {% if is_admin %}
@@ -108,8 +104,26 @@
                                 <input class="input"
                                        id="additional_volumes"
                                        type="text"
-                                       placeholder="Additional volumes (https://docker-py.readthedocs.io/en/stable/volumes.html)"
+                                       placeholder="{&quot;/host&quot;: {&quot;bind&quot;: &quot;/config&quot;, &quot;mode&quot;: &quot;r&quot;}}"
                                        name="additional_volumes">
+                            </p>
+                        </div>
+                        <div class="field">
+                            <p class="control">
+                                <input class="input"
+                                       id="environment"
+                                       type="text"
+                                       placeholder="{foo=&quot;bar&quot;}"
+                                       name="environment">
+                            </p>
+                        </div>
+                        <div class="field">
+                            <p class="control">
+                                <input class="input"
+                                       id="docker_arguments"
+                                       type="text"
+                                       placeholder="Additional arguments (https://docker-py.readthedocs.io/en/stable/containers.html)"
+                                       name="docker_arguments">
                             </p>
                         </div>
                         <div class="field">

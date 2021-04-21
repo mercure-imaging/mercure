@@ -31,7 +31,10 @@ async def save_module(form, name):
 
     config.mercure["modules"][name] = {"url": form.get("url", ""),
                                        "docker_tag": form.get("docker_tag", None),
-                                       "additional_volumes": form.get("additional_volumes", None)}
+                                       "additional_volumes": form.get("additional_volumes", None),
+                                       "environment": form.get("environment", None),
+                                       "docker_arguments": form.get("docker_arguments", None)
+                                       }
     try:
         config.save_config()
     except:
