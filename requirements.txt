@@ -1,6 +1,7 @@
 daiquiri
 pydicom
 graphyte
+mypy 
 
 # documentation
 sphinx
