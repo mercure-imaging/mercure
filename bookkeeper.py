@@ -5,6 +5,7 @@ The bookkeeper service of mercure, which receives notifications from all mercure
 and stores the information in a Postgres database.
 """
 # Standard python includes
+from sqlalchemy.engine.base import Connection
 import uvicorn
 import datetime
 import logging
@@ -53,7 +54,7 @@ app = Starlette(debug=True)
 
 metadata = sqlalchemy.MetaData()
 engine = sqlalchemy.create_engine(DATABASE_URL)
-connection = None
+connection:Connection
 
 mercure_events = sqlalchemy.Table(
     "mercure_events",
@@ -155,13 +156,13 @@ dicom_series_map = sqlalchemy.Table(
 ###################################################################################
 
 
-def create_database():
+def create_database() -> None:
     """Creates all tables in the database if they do not exist."""
     metadata.create_all(engine)
 
 
 @app.on_event("startup")
-async def startup():
+async def startup() -> None:
     """Connects to database on startup. If the database does not exist, it will
     be created."""
     global connection
@@ -170,7 +171,7 @@ async def startup():
 
 
 @app.on_event("shutdown")
-async def shutdown():
+async def shutdown() -> None:
     """Disconnect from database on shutdown."""
     engine.disconnect()
 
@@ -180,7 +181,8 @@ async def shutdown():
 ###################################################################################
 
 
-async def execute_db_operation(operation):
+async def execute_db_operation(operation) -> None:
+    global connection
     """Executes a previously prepared database operation."""
     try:
         connection.execute(operation)
@@ -189,13 +191,13 @@ async def execute_db_operation(operation):
 
 
 @app.route("/test", methods=["GET", "POST"])
-async def test_endpoint(request):
+async def test_endpoint(request) -> JSONResponse:
     """Endpoint for testing that the bookkeeper is active."""
     return JSONResponse({"ok": ""})
 
 
 @app.route("/mercure-event", methods=["POST"])
-async def post_mercure_event(request):
+async def post_mercure_event(request) -> JSONResponse:
     """Endpoint for receiving mercure system events."""
     payload = dict(await request.form())
     sender = payload.get("sender", "Unknown")
@@ -210,7 +212,7 @@ async def post_mercure_event(request):
 
 
 @app.route("/webgui-event", methods=["POST"])
-async def post_webgui_event(request):
+async def post_webgui_event(request) -> JSONResponse:
     """Endpoint for logging relevant events of the webgui."""
     payload = dict(await request.form())
     sender = payload.get("sender", "Unknown")
@@ -225,7 +227,7 @@ async def post_webgui_event(request):
 
 
 @app.route("/register-dicom", methods=["POST"])
-async def register_dicom(request):
+async def register_dicom(request) -> JSONResponse:
     """Endpoint for registering newly received DICOM files. Called by the getdcmtags module."""
     payload = dict(await request.form())
     filename = payload.get("filename", "")
@@ -238,7 +240,8 @@ async def register_dicom(request):
     return JSONResponse({"ok": ""}, background=tasks)
 
 
-async def parse_and_submit_tags(payload):
+async def parse_and_submit_tags(payload) -> None:
+    global connection
     """Helper function that reads series information from the request body."""
     try:
         query = dicom_series.insert().values(
@@ -281,7 +284,7 @@ async def parse_and_submit_tags(payload):
 
 
 @app.route("/register-series", methods=["POST"])
-async def register_series(request):
+async def register_series(request) -> JSONResponse:
     """Endpoint that is called by the router whenever a new series arrives."""
     payload = dict(await request.form())
     tasks = BackgroundTasks()
@@ -290,7 +293,7 @@ async def register_series(request):
 
 
 @app.route("/series-event", methods=["POST"])
-async def post_series_event(request):
+async def post_series_event(request) -> JSONResponse:
     """Endpoint for logging all events related to one series."""
     payload = dict(await request.form())
     sender = payload.get("sender", "Unknown")

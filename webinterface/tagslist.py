@@ -2,14 +2,15 @@ import json
 import os
 from pathlib import Path
 import re
+from typing import Dict
 
 tagslist_source = os.path.realpath(os.path.dirname(os.path.realpath(__file__)) + "/../getdcmtags/main.cpp")
 
-alltags = {}
+alltags:Dict[str,str] = {}
 sortedtags = []
 
 
-def read_tagslist():
+def read_tagslist() -> None:
     """Reads the list of supported DICOM tags with example values. This list is parsed from the C code of the getseqparam module."""
     global alltags
     alltags = {}

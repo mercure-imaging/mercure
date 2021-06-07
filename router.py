@@ -20,6 +20,7 @@ import common.monitor as monitor
 from routing.route_series import route_series, route_error_files
 from routing.route_studies import route_studies
 
+from typing import Dict
 
 # NOTES: Currently, the router only implements series-level rules, i.e. the proxy rules will be executed
 #        once the series is complete. In the future, also study-level rules can be implemented (i.e. a
@@ -39,7 +40,7 @@ daiquiri.setup(
 logger = daiquiri.getLogger("router")
 
 
-def terminate_process(signalNumber, frame):
+def terminate_process(signalNumber, frame)  -> None:
     """Triggers the shutdown of the service."""
     helper.g_log("events.shutdown", 1)
     logger.info("Shutdown requested")
@@ -50,7 +51,7 @@ def terminate_process(signalNumber, frame):
     helper.trigger_terminate()
 
 
-def run_router(args):
+def run_router(args=None) -> None:
     """Main processing function that is called every second."""
     if helper.is_terminated():
         return
@@ -68,14 +69,14 @@ def run_router(args):
         return
 
     filecount = 0
-    series = {}
+    series: Dict[str,float] = {}
     complete_series = {}
 
     error_files_found = False
 
     # Check the incoming folder for completed series. To this end, generate a map of all
     # series in the folder with the timestamp of the latest DICOM file as value
-    for entry in os.scandir(config.mercure[mercure_folders.INCOMING]):
+    for entry in os.scandir(config.mercure['incoming_folder']):
         if entry.name.endswith(mercure_names.TAGS) and not entry.is_dir():
             filecount += 1
             seriesString = entry.name.split(mercure_defs.SEPARATOR, 1)[0]
@@ -92,9 +93,9 @@ def run_router(args):
             error_files_found = True
 
     # Check if any of the series exceeds the "series complete" threshold
-    for entry in series:
-        if (time.time() - series[entry]) > config.mercure["series_complete_trigger"]:
-            complete_series[entry] = series[entry]
+    for serie in series:
+        if (time.time() - series[serie]) > config.mercure["series_complete_trigger"]:
+            complete_series[serie] = series[serie]
 
     # logger.info(f'Files found     = {filecount}')
     # logger.info(f'Series found    = {len(series)}')
@@ -103,12 +104,12 @@ def run_router(args):
     helper.g_log("incoming.series", len(series))
 
     # Process all complete series
-    for entry in sorted(complete_series):
+    for serie in sorted(complete_series):
         try:
-            route_series(entry)
+            route_series(serie)
         except Exception:
-            logger.exception(f"Problems while processing series {entry}")
-            monitor.send_series_event(monitor.s_events.ERROR, entry, 0, "", "Exception while processing")
+            logger.exception(f"Problems while processing series {serie}")
+            monitor.send_series_event(monitor.s_events.ERROR, serie, 0, "", "Exception while processing")
             monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, "Exception while processing series")
         # If termination is requested, stop processing series after the active one has been completed
         if helper.is_terminated():
@@ -121,7 +122,7 @@ def run_router(args):
     route_studies()
 
 
-def exit_router(args):
+def exit_router(args)  -> None:
     """Callback function that is triggered when the process terminates. Stops the asyncio event loop."""
     helper.loop.call_soon_threadsafe(helper.loop.stop)
 
@@ -163,10 +164,10 @@ if __name__ == "__main__":
         graphite_prefix = "mercure." + appliance_name + ".router." + instance_name
         graphyte.init(config.mercure["graphite_ip"], config.mercure["graphite_port"], prefix=graphite_prefix)
 
-    logger.info(f"Incoming   folder: {config.mercure[mercure_folders.INCOMING]}")
-    logger.info(f"Studies    folder: {config.mercure[mercure_folders.STUDIES]}")
-    logger.info(f"Outgoing   folder: {config.mercure[mercure_folders.OUTGOING]}")
-    logger.info(f"Processing folder: {config.mercure[mercure_folders.PROCESSING]}")
+    logger.info(f"Incoming   folder: {config.mercure['incoming_folder']}")
+    logger.info(f"Studies    folder: {config.mercure['studies_folder']}")
+    logger.info(f"Outgoing   folder: {config.mercure['outgoing_folder']}")
+    logger.info(f"Processing folder: {config.mercure['processing_folder']}")
 
     # Start the timer that will periodically trigger the scan of the incoming folder
     global main_loop

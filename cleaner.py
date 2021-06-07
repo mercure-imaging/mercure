@@ -12,6 +12,7 @@ import signal
 import sys
 import time
 from datetime import timedelta, datetime
+from datetime import time as _time
 from pathlib import Path
 from shutil import rmtree
 import daiquiri
@@ -31,7 +32,7 @@ daiquiri.setup(
 logger = daiquiri.getLogger("cleaner")
 
 
-def terminate_process(signalNumber, frame):
+def terminate_process(signalNumber, frame) -> None:
     """Triggers the shutdown of the service."""
     helper.g_log("events.shutdown", 1)
     logger.info("Shutdown requested")
@@ -42,7 +43,7 @@ def terminate_process(signalNumber, frame):
     helper.trigger_terminate()
 
 
-def clean(args):
+def clean(args) -> None:
     """ Main entry function. """
     if helper.is_terminated():
         return
@@ -67,14 +68,14 @@ def clean(args):
         config.mercure["offpeak_end"],
         datetime.now().time(),
     ):
-        success_folder = config.mercure[mercure_folders.SUCCESS]
-        discard_folder = config.mercure[mercure_folders.DISCARD]
+        success_folder = config.mercure["success_folder"]
+        discard_folder = config.mercure["discard_folder"]
         retention = timedelta(seconds=config.mercure["retention"])
         clean_dir(success_folder, retention)
         clean_dir(discard_folder, retention)
 
 
-def _is_offpeak(offpeak_start, offpeak_end, current_time):
+def _is_offpeak(offpeak_start:str, offpeak_end:str, current_time:_time) -> bool:
     try:
         start_time = datetime.strptime(offpeak_start, "%H:%M").time()
         end_time = datetime.strptime(offpeak_end, "%H:%M").time()
@@ -89,7 +90,7 @@ def _is_offpeak(offpeak_start, offpeak_end, current_time):
     return current_time >= start_time or current_time <= end_time
 
 
-def clean_dir(discard_folder, retention):
+def clean_dir(discard_folder, retention) -> None:
     """
     Cleans the discard folder if it is older than the retention time, starting
     from oldest first.
@@ -100,7 +101,7 @@ def clean_dir(discard_folder, retention):
         delete_folder(entry)
 
 
-def delete_folder(entry):
+def delete_folder(entry) -> None:
     """ Deletes given folder. """
     delete_path = entry[0]
     series_uid = find_series_uid(delete_path)
@@ -119,7 +120,7 @@ def delete_folder(entry):
         )
 
 
-def find_series_uid(work_dir):
+def find_series_uid(work_dir) -> str:
     """
     Finds series uid which is always part before the '#'-sign in filename.
     """
@@ -128,9 +129,9 @@ def find_series_uid(work_dir):
         if "#" in entry.name:
             return entry.name.split(mercure_defs.SEPARATOR)[0]
         return "series_uid-not-found"
+    return "series_uid-not-found"
 
-
-def exit_cleaner(args):
+def exit_cleaner(args) -> None:
     """ Stop the asyncio event loop. """
     helper.loop.call_soon_threadsafe(helper.loop.stop)
 

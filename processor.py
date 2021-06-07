@@ -34,7 +34,7 @@ processor_lockfile = Path("")
 processor_is_locked = False
 
 
-def search_folder(counter):
+def search_folder(counter) -> bool:
     global processor_lockfile
     global processor_is_locked
 
@@ -82,7 +82,7 @@ def search_folder(counter):
         return False
 
 
-def run_processor(args):
+def run_processor(args) -> None:
     """Main processing function that is called every second."""
     if helper.is_terminated():
         return
@@ -103,12 +103,12 @@ def run_processor(args):
             return
 
 
-def exit_processor(args):
+def exit_processor(args) -> None:
     """Callback function that is triggered when the process terminates. Stops the asyncio event loop."""
     helper.loop.call_soon_threadsafe(helper.loop.stop)
 
 
-def terminate_process(signalNumber, frame):
+def terminate_process(signalNumber, frame) -> None:
     """Triggers the shutdown of the service."""
     helper.g_log("events.shutdown", 1)
     logger.info("Shutdown requested")
@@ -147,7 +147,7 @@ if __name__ == "__main__":
     logger.info(f"Instance  name = {instance_name}")
     logger.info(f"Instance  PID  = {os.getpid()}")
     logger.info(sys.version)
-
+    
     monitor.configure("processor", instance_name, config.mercure["bookkeeper"])
     monitor.send_event(monitor.h_events.BOOT, monitor.severity.INFO, f"PID = {os.getpid()}")
 

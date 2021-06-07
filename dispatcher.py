@@ -16,7 +16,7 @@ import common.helper as helper
 import common.monitor as monitor
 from dispatch.status import has_been_send, is_ready_for_sending
 from dispatch.send import execute
-from common.config import mercure
+
 from common.constants import mercure_defs, mercure_folders
 
 daiquiri.setup(
@@ -26,7 +26,7 @@ daiquiri.setup(
 logger = daiquiri.getLogger("dispatcher")
 
 
-def terminate_process(signalNumber, frame):
+def terminate_process(signalNumber, frame) -> None:
     """Triggers the shutdown of the service."""
     helper.g_log("events.shutdown", 1)
     logger.info("Shutdown requested")
@@ -37,7 +37,7 @@ def terminate_process(signalNumber, frame):
     helper.trigger_terminate()
 
 
-def dispatch(args):
+def dispatch(args) -> None:
     """ Main entry function. """
     if helper.is_terminated():
         return
@@ -55,13 +55,13 @@ def dispatch(args):
         )
         return
 
-    success_folder = Path(config.mercure[mercure_folders.SUCCESS])
-    error_folder = Path(config.mercure[mercure_folders.ERROR])
+    success_folder = Path(config.mercure["success_folder"])
+    error_folder = Path(config.mercure["error_folder"])
     retry_max = config.mercure["retry_max"]
     retry_delay = config.mercure["retry_delay"]
 
     # TODO: Sort list so that the oldest DICOMs get dispatched first
-    with os.scandir(config.mercure[mercure_folders.OUTGOING]) as it:
+    with os.scandir(config.mercure["outgoing_folder"]) as it:
         for entry in it:
             if entry.is_dir() and not has_been_send(entry.path) and is_ready_for_sending(entry.path):
                 logger.info(f"Sending folder {entry.path}")
@@ -73,7 +73,7 @@ def dispatch(args):
                 break
 
 
-def exit_dispatcher(args):
+def exit_dispatcher(args) -> None:
     """ Stop the asyncio event loop. """
     helper.loop.call_soon_threadsafe(helper.loop.stop)
 
@@ -117,7 +117,7 @@ if __name__ == "__main__":
             prefix=graphite_prefix,
         )
 
-    logger.info(f"Dispatching folder: {config.mercure[mercure_folders.OUTGOING]}")
+    logger.info(f"Dispatching folder: {config.mercure['outgoing_folder']}")
 
     global main_loop
     main_loop = helper.RepeatedTimer(config.mercure["dispatcher_scan_interval"], dispatch, exit_dispatcher, {})

@@ -12,13 +12,15 @@ import traceback
 import common.config as config
 import common.monitor as monitor
 import common.helper as helper
+import traceback
+
 from common.constants import mercure_defs, mercure_names, mercure_sections, mercure_rule, mercure_config, mercure_options, mercure_events
 
 
 logger = daiquiri.getLogger("notification")
 
 
-def send_webhook(url, payload, event):
+def send_webhook(url, payload, event) -> None:
     if not url:
         return
 

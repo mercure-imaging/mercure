@@ -82,8 +82,7 @@ def process_series(folder):
     return
 
 
-def move_folder(source_folder_str, destination_folder_str):
-
+def move_folder(source_folder_str, destination_folder_str) -> None:
     source_folder = Path(source_folder_str)
     destination_folder = Path(destination_folder_str)
 
@@ -93,7 +92,7 @@ def move_folder(source_folder_str, destination_folder_str):
 
     logger.debug(f"Moving {source_folder} to {target_folder}")
     try:
-        shutil.move(source_folder, target_folder)
+        shutil.move(str(source_folder), target_folder)
         lockfile = target_folder / mercure_names.LOCK
         lockfile.unlink()
     except:

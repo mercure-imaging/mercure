@@ -90,7 +90,7 @@ async def edit_module(request):
 
 @modules_app.route("/edit/{module}", methods=["POST"])
 @requires(["authenticated", "admin"], redirect="login")
-async def edit_module(request):
+async def edit_module_POST(request):
     """Creates a new routing rule and forwards the user to the rule edit page."""
     try:
         config.read_config()

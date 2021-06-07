@@ -1,16 +1,18 @@
 import json
 import os
 from pathlib import Path
+from typing_extensions import Literal
 import daiquiri
 
 import common.monitor as monitor
 import common.helper as helper
 from common.constants import mercure_names
+from  typing import cast
 
-
+from common.types import Config
 logger = daiquiri.getLogger("config")
 
-configuration_timestamp = 0
+configuration_timestamp:float = 0
 configuration_filename = os.path.realpath(os.path.dirname(os.path.realpath(__file__)) + "/../configuration/mercure.json")
 
 mercure_defaults = {
@@ -42,10 +44,12 @@ mercure_defaults = {
     "modules": {},
 }
 
-mercure = {}
 
 
-def read_config():
+mercure: Config
+
+
+def read_config() -> Config:
     """Reads the configuration settings (rules, targets, general settings) from the configuration file. The configuration will
     only be updated if the file has changed compared the the last function call. If the configuration file is locked by
     another process, an exception will be raised."""
@@ -78,8 +82,7 @@ def read_config():
             loaded_config = json.load(json_file)
             # Reset configuration to default values (to ensure all needed
             # keys are present in the configuration)
-            mercure = {}
-            mercure = mercure_defaults
+            mercure = cast(Config,mercure_defaults)
             # Now merge with values loaded from configuration file
             mercure.update(loaded_config)
 
@@ -101,10 +104,10 @@ def read_config():
         raise FileNotFoundError(f"Configuration file not found: {configuration_file}")
 
 
-def save_config():
+def save_config() -> None:
     """Saves the current configuration in a file on the disk. Raises an exception if the file has
     been locked by another process."""
-    global configuration_timestamp
+    global configuration_timestamp, mercure
     configuration_file = Path(configuration_filename)
 
     # Check for existence of lock file
@@ -139,7 +142,7 @@ def save_config():
         return
 
 
-def write_configfile(json_content):
+def write_configfile(json_content) -> None:
     """Rewrites the config file using the JSON data passed as argument. Used by the config editor of the webgui."""
     configuration_file = Path(configuration_filename)
 
@@ -169,9 +172,12 @@ def write_configfile(json_content):
         return
 
 
-def checkFolders():
+def checkFolders() -> bool:
+    global mercure
     """Checks if all required folders for handling the DICOM files exist."""
     for entry in ["incoming_folder", "studies_folder", "outgoing_folder", "success_folder", "error_folder", "discard_folder", "processing_folder"]:
+        entry = cast(Literal["incoming_folder", "studies_folder", "outgoing_folder", "success_folder", "error_folder", "discard_folder", "processing_folder"], entry)
+
         if not Path(mercure[entry]).exists():
             logger.error(f"Folder not found {mercure[entry]}")
             monitor.send_event(monitor.h_events.CONFIG_UPDATE, monitor.severity.CRITICAL, "Folders are missing")

@@ -1,3 +1,4 @@
+from typing import Dict
 import requests
 import daiquiri
 import logging
@@ -62,7 +63,7 @@ class severity:
     CRITICAL = 3
 
 
-def configure(module, instance, address):
+def configure(module, instance, address) -> None:
     """Configures the connection to the bookkeeper module. If not called, events
     will not be transmitted to the bookkeeper."""
     global sender_name
@@ -71,7 +72,7 @@ def configure(module, instance, address):
     bookkeeper_address = "http://" + address
 
 
-def send_event(event, severity=severity.INFO, description=""):
+def send_event(event, severity=severity.INFO, description:str="") -> None:
     """Sends information about general mercure events to the bookkeeper (e.g., during module start)."""
     if not bookkeeper_address:
         return
@@ -87,7 +88,7 @@ def send_event(event, severity=severity.INFO, description=""):
         logger.error("Failed request to bookkeeper")
 
 
-def send_webgui_event(event, user, description=""):
+def send_webgui_event(event, user, description="") -> None:
     """Sends information about an event on the webgui to the bookkeeper."""
     if not bookkeeper_address:
         return
@@ -103,7 +104,7 @@ def send_webgui_event(event, user, description=""):
         logger.error("Failed request to bookkeeper")
 
 
-def send_register_series(tags):
+def send_register_series(tags:Dict[str,str]) -> None:
     """Registers a received series on the bookkeeper. This should be called when a series has been
     fully received and the DICOM tags have been parsed."""
     if not bookkeeper_address:
@@ -114,7 +115,7 @@ def send_register_series(tags):
         logger.error("Failed request to bookkeeper")
 
 
-def send_series_event(event, series_uid, file_count, target, info):
+def send_series_event(event, series_uid, file_count, target, info) -> None:
     """Send an event related to a specific series to the bookkeeper."""
     if not bookkeeper_address:
         return

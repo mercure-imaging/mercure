@@ -34,7 +34,7 @@ DCMSEND_ERROR_CODES = {
 }
 
 
-def _create_command(target_info, folder):
+def _create_command(target_info, folder) -> str:
     """Composes the command for calling the dcmsend tool from DCMTK, which is used for sending out the DICOMS."""
     target_ip = target_info.get("dispatch", {}).get("target_ip", "")
     target_port = target_info.get("dispatch", {}).get("target_port", "")
@@ -64,7 +64,10 @@ def execute(
     Folder with .error files are _not_ ready for sending.
     """
     target_info = is_ready_for_sending(source_folder)
-    delay = target_info.get("next_retry_at", 0)
+    delay:float
+
+    if target_info:
+        delay = target_info.get("next_retry_at", 0)
 
     if target_info and time.time() >= delay:
         logger.info(f"Folder {source_folder} is ready for sending")
@@ -122,7 +125,7 @@ def execute(
         # logger.warning(f"Folder {source_folder} is *not* ready for sending")
 
 
-def _move_sent_directory(source_folder, destination_folder):
+def _move_sent_directory(source_folder, destination_folder) -> None:
     """
     This check is needed if there is already a folder with the same name
     in the success folder. If so a new directory is create with a timestamp

@@ -1,16 +1,19 @@
 import os
 from pathlib import Path
+from typing import Any, Callable, Dict, List, Tuple, Union
+from typing_extensions import Literal
 import uuid
 import json
 import shutil
 import daiquiri
-
+import traceback
 # App-specific includes
 import common.config as config
 import common.rule_evaluation as rule_evaluation
 import common.monitor as monitor
 import common.helper as helper
 import common.notification as notification
+from common.types import Rule
 from common.constants import mercure_defs, mercure_names, mercure_actions, mercure_rule, mercure_config, mercure_options, mercure_folders, mercure_events
 from routing.generate_taskfile import compose_task, create_series_task, create_study_task, update_study_task
 
@@ -18,9 +21,10 @@ from routing.generate_taskfile import compose_task, create_series_task, create_s
 logger = daiquiri.getLogger("route_series")
 
 
-def route_series(series_UID):
+import mmap, pprint
+def route_series(series_UID:str) -> None:
     """Processes the series with the given series UID from the incoming folder."""
-    lock_file = Path(config.mercure[mercure_folders.INCOMING] + "/" + str(series_UID) + mercure_names.LOCK)
+    lock_file = Path(config.mercure["incoming_folder"] + "/" + str(series_UID) + mercure_names.LOCK)
 
     if lock_file.exists():
         # Series is locked, so another instance might be working on it
@@ -40,7 +44,7 @@ def route_series(series_UID):
     seriesPrefix = series_UID + "#"
 
     # Collect all files belonging to the series
-    for entry in os.scandir(config.mercure[mercure_folders.INCOMING]):
+    for entry in os.scandir(config.mercure["incoming_folder"]):
         if entry.name.endswith(mercure_names.TAGS) and entry.name.startswith(seriesPrefix) and not entry.is_dir():
             stemName = entry.name[:-5]
             fileList.append(stemName)
@@ -56,7 +60,7 @@ def route_series(series_UID):
 
     try:
         with open(tagsMasterFile, "r") as json_file:
-            tagsList = json.load(json_file)
+            tagsList:Dict[str,str] = json.load(json_file)
     except Exception:
         logger.exception(f"Invalid tag information of series {series_UID}")
         monitor.send_series_event(monitor.s_events.ERROR, entry, 0, "", "Invalid tag information")
@@ -91,25 +95,26 @@ def route_series(series_UID):
         return
 
 
-def get_triggered_rules(tagList):
+def get_triggered_rules(tagList: Dict[str,str]) -> Tuple[Dict[str,Literal[True]], Union[Any, Literal['']]]:
     """Evaluates the routing rules and returns a list with triggered rules."""
-    triggered_rules = {}
+    triggered_rules:Dict[str,Literal[True]] = {}
     discard_rule = ""
     fallback_rule = ""
 
     # Iterate over all defined processing rules
     for current_rule in config.mercure["rules"]:
         try:
+            rule:Rule = config.mercure["rules"][current_rule]
             # Check if the current rule has been disabled
-            if config.mercure["rules"][current_rule].get(mercure_rule.DISABLED, "False") == "True":
+            if rule.get(mercure_rule.DISABLED, "False") == "True":
                 continue
             # If the current rule is flagged as fallback rule, remember the name (to avoid repeated iteration over the rules)
-            if config.mercure["rules"][current_rule].get(mercure_rule.FALLBACK, "False") == "True":
+            if rule.get(mercure_rule.FALLBACK, "False") == "True":
                 fallback_rule = current_rule
             # Check if the current rule is triggered for the provided tag set
-            if rule_evaluation.parse_rule(config.mercure["rules"][current_rule].get(mercure_rule.RULE, "False"), tagList):
-                triggered_rules[current_rule] = current_rule
-                if config.mercure["rules"][current_rule].get(mercure_rule.ACTION, "") == mercure_actions.DISCARD:
+            if rule_evaluation.parse_rule(rule.get("rule", "False"), tagList):
+                triggered_rules[current_rule] = True
+                if rule.get(mercure_rule.ACTION, "") == mercure_actions.DISCARD:
                     discard_rule = current_rule
                     # If the triggered rule's action is to discard, stop further iteration over the rules
                     break
@@ -121,7 +126,7 @@ def get_triggered_rules(tagList):
 
     # If no rule has triggered but a fallback rule exists, then apply this rule
     if (len(triggered_rules) == 0) and (fallback_rule):
-        triggered_rules[fallback_rule] = fallback_rule
+        triggered_rules[fallback_rule] = True
         if config.mercure["rules"][fallback_rule].get(mercure_rule.ACTION, "") == mercure_actions.DISCARD:
             discard_rule = fallback_rule
 
@@ -130,13 +135,13 @@ def get_triggered_rules(tagList):
     return triggered_rules, discard_rule
 
 
-def push_series_discard(fileList, series_UID, discard_series):
+def push_series_discard(fileList:List[str], series_UID, discard_series) -> None:
     """Discards the series by moving all files into the "discard" folder, which is periodically cleared."""
     # Define the source and target folder. Use UUID as name for the target folder in the
     # discard directory to avoid collisions
-    discard_path = config.mercure[mercure_folders.DISCARD] + "/" + str(uuid.uuid1())
+    discard_path = config.mercure["discard_folder"] + "/" + str(uuid.uuid1())
     discard_folder = discard_path + "/"
-    source_folder = config.mercure[mercure_folders.INCOMING] + "/"
+    source_folder = config.mercure["incoming_folder"] + "/"
 
     # Create subfolder in the discard directory and validate that is has been created
     try:
@@ -187,12 +192,12 @@ def push_series_discard(fileList, series_UID, discard_series):
         return
 
 
-def push_series_studylevel(triggered_rules, file_list, series_UID, tags_list):
+def push_series_studylevel(triggered_rules:Dict[str,Literal[True]], file_list:List[str], series_UID, tags_list) -> None:
     """Prepeares study-level routing for the current series."""
 
     # Move series into individual study-level folder for every rule
     for current_rule in triggered_rules:
-        if config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.ACTION_TRIGGER, mercure_options.SERIES) == mercure_options.STUDY:
+        if config.mercure["rules"][current_rule].get(mercure_rule.ACTION_TRIGGER, mercure_options.SERIES) == mercure_options.STUDY:
             first_series = False
 
             # Create folder to buffer the series until study completion
@@ -228,41 +233,41 @@ def push_series_studylevel(triggered_rules, file_list, series_UID, tags_list):
             lock.free()
 
 
-def push_series_serieslevel(triggered_rules, file_list, series_UID, tags_list):
+def push_series_serieslevel(triggered_rules:Dict[str,Literal[True]], file_list:List[str], series_UID, tags_list)  -> None:
     """Prepeares all series-level routings for the current series."""
     push_serieslevel_routing(triggered_rules, file_list, series_UID, tags_list)
     push_serieslevel_processing(triggered_rules, file_list, series_UID, tags_list)
     push_serieslevel_notification(triggered_rules, file_list, series_UID, tags_list)
 
 
-def trigger_serieslevel_notification_reception(current_rule, tags_list):
+def trigger_serieslevel_notification_reception(current_rule:str, tags_list) -> None:
     notification.send_webhook(
-        config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.NOTIFICATION_WEBHOOK, ""),
-        config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.NOTIFICATION_PAYLOAD, ""),
+        config.mercure["rules"][current_rule].get(mercure_rule.NOTIFICATION_WEBHOOK, ""),
+        config.mercure["rules"][current_rule].get(mercure_rule.NOTIFICATION_PAYLOAD, ""),
         mercure_events.RECEPTION,
     )
 
 
-def push_serieslevel_routing(triggered_rules, file_list, series_UID, tags_list):
+def push_serieslevel_routing(triggered_rules:Dict[str,Literal[True]], file_list:List[str], series_UID, tags_list) -> None:
     selected_targets = {}
     # Collect the dispatch-only targets to avoid that a series is sent twice to the
     # same target due to multiple targets triggered (note: this only makes sense for routing-only
     # series tasks as study-level rules might have different completion criteria)
     for current_rule in triggered_rules:
-        if config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.ACTION_TRIGGER, mercure_options.SERIES) == mercure_options.SERIES:
-            if config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.ACTION, "") == mercure_actions.ROUTE:
-                target = config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.TARGET, "")
+        if config.mercure["rules"][current_rule].get(mercure_rule.ACTION_TRIGGER, mercure_options.SERIES) == mercure_options.SERIES:
+            if config.mercure["rules"][current_rule].get(mercure_rule.ACTION, "") == mercure_actions.ROUTE:
+                target = config.mercure["rules"][current_rule].get(mercure_rule.TARGET, "")
                 if target:
                     selected_targets[target] = current_rule
                 trigger_serieslevel_notification_reception(current_rule, tags_list)
     push_serieslevel_outgoing(triggered_rules, file_list, series_UID, tags_list, selected_targets)
 
 
-def push_serieslevel_processing(triggered_rules, file_list, series_UID, tags_list):
+def push_serieslevel_processing(triggered_rules:Dict[str,Literal[True]], file_list, series_UID, tags_list) -> bool:
     for current_rule in triggered_rules:
-        if config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.ACTION_TRIGGER, mercure_options.SERIES) == mercure_options.SERIES:
-            if (config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.ACTION, "") == mercure_actions.PROCESS) or (
-                config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.ACTION, "") == mercure_actions.BOTH
+        if config.mercure["rules"][current_rule].get(mercure_rule.ACTION_TRIGGER, mercure_options.SERIES) == mercure_options.SERIES:
+            if (config.mercure["rules"][current_rule].get(mercure_rule.ACTION, "") == mercure_actions.PROCESS) or (
+                config.mercure["rules"][current_rule].get(mercure_rule.ACTION, "") == mercure_actions.BOTH
             ):
                 # Determine if the files should be copied or moved. If only one rule triggered, files can
                 # safely be moved, otherwise files will be moved and removed in the end
@@ -270,7 +275,7 @@ def push_serieslevel_processing(triggered_rules, file_list, series_UID, tags_lis
                 if len(triggered_rules) == 1:
                     copy_files = False
 
-                folder_name = config.mercure[mercure_folders.PROCESSING] + "/" + str(uuid.uuid1())
+                folder_name = config.mercure["processing_folder"] + "/" + str(uuid.uuid1())
                 target_folder = folder_name + "/"
 
                 try:
@@ -316,22 +321,23 @@ def push_serieslevel_processing(triggered_rules, file_list, series_UID, tags_lis
     return True
 
 
-def push_serieslevel_notification(triggered_rules, file_list, series_UID, tags_list):
+def push_serieslevel_notification(triggered_rules:Dict[str,Literal[True]], file_list, series_UID, tags_list) -> bool:
     for current_rule in triggered_rules:
-        if config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.ACTION_TRIGGER, mercure_options.SERIES) == mercure_options.SERIES:
-            if config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.ACTION, "") == mercure_actions.NOTIFICATION:
+        if config.mercure["rules"][current_rule].get(mercure_rule.ACTION_TRIGGER, mercure_options.SERIES) == mercure_options.SERIES:
+            if config.mercure["rules"][current_rule].get(mercure_rule.ACTION, "") == mercure_actions.NOTIFICATION:
                 trigger_serieslevel_notification_reception(current_rule, tags_list)
                 # If the current rule is "notification-only" and this is the only rule that
                 # has been triggered, then remove the files (if more than one rule has been
                 # triggered, the parent function will take care of it)
-                if len(triggered_rules == 1):
+                if len(triggered_rules) == 1:
                     remove_series(file_list)
+                return False
     return True
 
 
-def push_serieslevel_outgoing(triggered_rules, file_list, series_UID, tags_list, selected_targets):
+def push_serieslevel_outgoing(triggered_rules:Dict[str,Literal[True]], file_list, series_UID, tags_list, selected_targets) -> None:
     """Move the DICOM files of the series to a separate subfolder for each target in the outgoing folder."""
-    source_folder = config.mercure[mercure_folders.INCOMING] + "/"
+    source_folder = config.mercure["incoming_folder"] + "/"
 
     # Determine if the files should be copied or moved. If only one rule triggered, files can
     # safely be moved, otherwise files will be moved and removed in the end
@@ -345,7 +351,7 @@ def push_serieslevel_outgoing(triggered_rules, file_list, series_UID, tags_list,
             monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Invalid target selected {target}")
             continue
 
-        folder_name = config.mercure[mercure_folders.OUTGOING] + "/" + str(uuid.uuid1())
+        folder_name = config.mercure["outgoing_folder"] + "/" + str(uuid.uuid1())
         target_folder = folder_name + "/"
 
         try:
@@ -375,6 +381,7 @@ def push_serieslevel_outgoing(triggered_rules, file_list, series_UID, tags_list,
 
         monitor.send_series_event(monitor.s_events.ROUTE, series_UID, len(file_list), target, selected_targets[target])
 
+        operation:Callable
         if move_operation:
             operation = shutil.move
         else:
@@ -401,17 +408,18 @@ def push_serieslevel_outgoing(triggered_rules, file_list, series_UID, tags_list,
             return
 
 
-def push_files(file_list, target_path, copy_files):
+def push_files(file_list:List[str], target_path:str, copy_files:bool) -> bool:
     """
     Copies or moves the given files to the target path. If copy_files is True, files are copied, otherwise moved.
     Note that this function does not create a lock file (this needs to be done by the calling function).
     """
+    operation: Callable
     if copy_files == False:
         operation = shutil.move
     else:
         operation = shutil.copy
 
-    source_folder = config.mercure[mercure_folders.INCOMING] + "/"
+    source_folder = config.mercure["incoming_folder"] + "/"
     target_folder = target_path + "/"
 
     for entry in file_list:
@@ -428,9 +436,9 @@ def push_files(file_list, target_path, copy_files):
     return True
 
 
-def remove_series(file_list):
+def remove_series(file_list:List[str]) -> None:
     """Deletes the given files from the incoming folder."""
-    source_folder = config.mercure[mercure_folders.INCOMING] + "/"
+    source_folder = config.mercure["incoming_folder"] + "/"
     for entry in file_list:
         try:
             os.remove(source_folder + entry + mercure_names.TAGS)
@@ -440,17 +448,17 @@ def remove_series(file_list):
             monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Error while removing file {entry}")
 
 
-def route_error_files():
+def route_error_files() -> None:
     """
     Looks for error files, moves these files and the corresponding DICOM files to the error folder,
     and sends an alert to the bookkeeper instance.
     """
     error_files_found = 0
 
-    for entry in os.scandir(config.mercure[mercure_folders.INCOMING]):
+    for entry in os.scandir(config.mercure["incoming_folder"]):
         if entry.name.endswith(mercure_names.ERROR) and not entry.is_dir():
             # Check if a lock file exists. If not, create one.
-            lock_file = Path(config.mercure[mercure_folders.INCOMING] + "/" + entry.name + mercure_names.LOCK)
+            lock_file = Path(config.mercure["incoming_folder"] + "/" + entry.name + mercure_names.LOCK)
             if lock_file.exists():
                 continue
             try:
@@ -461,12 +469,12 @@ def route_error_files():
             logger.error(f"Found incoming error file {entry.name}")
             error_files_found += 1
 
-            shutil.move(config.mercure[mercure_folders.INCOMING] + "/" + entry.name, config.mercure[mercure_folders.ERROR] + "/" + entry.name)
+            shutil.move(config.mercure["incoming_folder"] + "/" + entry.name, config.mercure["error_folder"] + "/" + entry.name)
 
             dicom_filename = entry.name[:-6]
-            dicom_file = Path(config.mercure[mercure_folders.INCOMING] + "/" + dicom_filename)
+            dicom_file = Path(config.mercure["incoming_folder"] + "/" + dicom_filename)
             if dicom_file.exists():
-                shutil.move(config.mercure[mercure_folders.INCOMING] + "/" + dicom_filename, config.mercure[mercure_folders.ERROR] + "/" + dicom_filename)
+                shutil.move(config.mercure["incoming_folder"] + "/" + dicom_filename, config.mercure["error_folder"] + "/" + dicom_filename)
 
             lock.free()
 

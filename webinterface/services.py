@@ -13,7 +13,7 @@ services_filename = os.path.realpath(os.path.dirname(os.path.realpath(__file__))
 services_list = {}
 
 
-def read_services():
+def read_services() -> None:
     """Reads the list of configured services from the configuration file. This list normally does not have to be changed, but
     can be modified if multiple instances of individual services should be used to increase performance."""
     global services_list

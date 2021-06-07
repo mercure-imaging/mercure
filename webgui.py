@@ -121,7 +121,7 @@ async def async_run(cmd):
 
 @app.route("/logs")
 @requires(["authenticated", "admin"], redirect="login")
-async def show_first_log(request):
+async def show_first_log(request) -> Response:
     """Get the first service entry and forward to corresponding log entry point."""
     if services.services_list:
         first_service = next(iter(services.services_list))
@@ -132,12 +132,14 @@ async def show_first_log(request):
 
 @app.route("/logs/{service}")
 @requires(["authenticated", "admin"], redirect="login")
-async def show_log(request):
+async def show_log(request) -> Response:
     """Render the log for the given service. The time range can be specified via URL parameters."""
     requested_service = request.path_params["service"]
 
     # Get optional start and end dates from the URL. Make sure
-    # that the date format is clean
+    # that the date format is clean.
+    start_obj: Optional[datetime.datetime]
+
     try:
         start_date = request.query_params.get("from", "")
         start_time = request.query_params.get("from_time", "")
@@ -213,7 +215,7 @@ async def show_log(request):
 
 @app.route("/rules", methods=["GET"])
 @requires("authenticated", redirect="login")
-async def show_rules(request):
+async def show_rules(request) -> Response:
     """Show all defined routing rules. Can be executed by all logged-in users."""
     try:
         config.read_config()
@@ -228,7 +230,7 @@ async def show_rules(request):
 
 @app.route("/rules", methods=["POST"])
 @requires(["authenticated", "admin"], redirect="login")
-async def add_rule(request):
+async def add_rule(request) -> Response:
     """Creates a new routing rule and forwards the user to the rule edit page."""
     try:
         config.read_config()
@@ -281,7 +283,7 @@ async def rules_edit(request):
 
 @app.route("/rules/edit/{rule}", methods=["POST"])
 @requires(["authenticated", "admin"], redirect="login")
-async def rules_edit_post(request):
+async def rules_edit_post(request) -> Response:
     """Updates the settings for the given routing rule."""
     try:
         config.read_config()
@@ -326,7 +328,7 @@ async def rules_edit_post(request):
 
 @app.route("/rules/delete/{rule}", methods=["POST"])
 @requires(["authenticated", "admin"], redirect="login")
-async def rules_delete_post(request):
+async def rules_delete_post(request) -> Response:
     """Deletes the given routing rule"""
     try:
         config.read_config()
@@ -350,7 +352,7 @@ async def rules_delete_post(request):
 
 @app.route("/rules/test", methods=["POST"])
 @requires(["authenticated", "admin"], redirect="login")
-async def rules_test(request):
+async def rules_test(request) -> Response:
     """Evalutes if a given routing rule is valid. The rule and testing dictionary have to be passed as form parameters."""
     try:
         form = dict(await request.form())
@@ -395,7 +397,7 @@ async def rules_test_completionseries(request):
 
 @app.route("/targets", methods=["GET"])
 @requires("authenticated", redirect="login")
-async def show_targets(request):
+async def show_targets(request) -> Response:
     """Shows all configured targets."""
     try:
         config.read_config()
@@ -442,7 +444,7 @@ async def add_target(request):
 
 @app.route("/targets/edit/{target}", methods=["GET"])
 @requires(["authenticated", "admin"], redirect="login")
-async def targets_edit(request):
+async def targets_edit(request)  -> Response:
     """Shows the edit page for the given target."""
     try:
         config.read_config()
@@ -462,7 +464,7 @@ async def targets_edit(request):
 
 @app.route("/targets/edit/{target}", methods=["POST"])
 @requires(["authenticated", "admin"], redirect="login")
-async def targets_edit_post(request):
+async def targets_edit_post(request) -> Union[RedirectResponse,PlainTextResponse]:
     """Updates the given target using the form values posted with the request."""
     try:
         config.read_config()
@@ -517,7 +519,7 @@ async def targets_delete_post(request):
 
 @app.route("/targets/test/{target}", methods=["POST"])
 @requires(["authenticated"], redirect="login")
-async def targets_test_post(request):
+async def targets_test_post(request) -> Response:
     """Tests the connectivity of the given target by executing ping and c-echo requests."""
     try:
         config.read_config()
@@ -560,7 +562,7 @@ async def targets_test_post(request):
 
 @app.route("/users", methods=["GET"])
 @requires(["authenticated", "admin"], redirect="homepage")
-async def show_users(request):
+async def show_users(request) -> Response:
     """Shows all available users."""
     try:
         users.read_users()
@@ -603,7 +605,7 @@ async def add_new_user(request):
 
 @app.route("/users/edit/{user}", methods=["GET"])
 @requires(["authenticated", "admin"], redirect="login")
-async def users_edit(request):
+async def users_edit(request) -> Response:
     """Shows the settings for a given user."""
     try:
         users.read_users()
@@ -648,7 +650,7 @@ async def settings_edit(request):
 
 @app.route("/users/edit/{user}", methods=["POST"])
 @requires(["authenticated"], redirect="login")
-async def users_edit_post(request):
+async def users_edit_post(request) -> Response:
     """Updates the given user with settings passed as form parameters."""
     try:
         users.read_users()
@@ -661,10 +663,11 @@ async def users_edit_post(request):
     if not edituser in users.users_list:
         return PlainTextResponse("User does not exist anymore.")
 
-    users.users_list[edituser]["email"] = form["email"]
+    to_edit = users.users_list[edituser]
+    to_edit["email"] = form["email"]
     if form["password"]:
-        users.users_list[edituser]["password"] = users.hash_password(form["password"])
-        users.users_list[edituser]["change_password"] = "False"
+        to_edit["password"] = users.hash_password(form["password"])
+        to_edit["change_password"] = "False"
 
     # Only admins are allowed to change the admin status, and the current user
     # cannot change the status for himself (which includes the settings page)
@@ -718,7 +721,7 @@ async def users_delete_post(request):
 
 @app.route("/configuration")
 @requires(["authenticated", "admin"], redirect="homepage")
-async def configuration(request):
+async def configuration(request) -> Response:
     """Shows the current configuration of the mercure appliance."""
     try:
         config.read_config()
@@ -742,7 +745,7 @@ async def configuration(request):
 
 @app.route("/configuration/edit")
 @requires(["authenticated", "admin"], redirect="homepage")
-async def configuration_edit(request):
+async def configuration_edit(request) -> Response:
     """Shows a configuration editor"""
 
     # Check for existence of lock file
@@ -808,7 +811,7 @@ async def login(request):
 
 
 @app.route("/login", methods=["POST"])
-async def login_post(request):
+async def login_post(request) -> Response:
     """Evaluate the submitted login information. Redirects to index page if login information valid, otherwise back to login.
     On the first login, the user will be directed to the settings page and asked to change the password."""
     try:
@@ -857,11 +860,12 @@ async def logout(request):
 
 @app.route("/")
 @requires("authenticated", redirect="login")
-async def homepage(request):
+async def homepage(request) -> Response:
     """Renders the index page that shows information about the system status."""
-    used_space = 0
-    free_space = 0
-    total_space = 0
+    used_space:float = 0
+    free_space:Union[int,str] = 0
+    total_space:Union[int,str] = 0
+    disk_total:Union[int,str] = 0
 
     try:
         disk_total, disk_used, disk_free = shutil.disk_usage(config.mercure["incoming_folder"])
@@ -903,7 +907,7 @@ async def homepage(request):
 
 @app.route("/services/control", methods=["POST"])
 @requires(["authenticated", "admin"], redirect="homepage")
-async def control_services(request):
+async def control_services(request) -> Response: 
     form = dict(await request.form())
     action = ""
 
@@ -945,7 +949,7 @@ async def error(request):
 
 
 @app.exception_handler(404)
-async def not_found(request, exc):
+async def not_found(request, exc) -> Response:
     """
     Return an HTTP 404 page.
     """
@@ -955,7 +959,7 @@ async def not_found(request, exc):
 
 
 @app.exception_handler(500)
-async def server_error(request, exc):
+async def server_error(request, exc) -> Response:
     """
     Return an HTTP 500 page.
     """
@@ -969,12 +973,12 @@ async def server_error(request, exc):
 ###################################################################################
 
 
-async def emergency_response(request):
+async def emergency_response(request) -> Response:
     """Shows emergency message about invalid configuration."""
     return PlainTextResponse("ERROR: mercure configuration is invalid. Check configuration and restart webgui service.")
 
 
-def launch_emergency_app():
+def launch_emergency_app() -> None:
     """Launches a minimal application to inform the user about the incorrect configuration"""
     emergency_app = Starlette(debug=True)
     emergency_app = Router(

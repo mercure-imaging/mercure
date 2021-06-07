@@ -1,11 +1,12 @@
 import json
 from pathlib import Path
+from typing import Any, Optional
 
 from common.monitor import s_events, send_series_event
 from common.constants import mercure_names
+from common.types import Task
 
-
-def is_ready_for_sending(folder):
+def is_ready_for_sending(folder) -> Optional[Any]:
     """Checks if a case in the outgoing folder is ready for sending by the dispatcher.
 
     No lock file (.lock) should be in sending folder and no error file (.error),
@@ -26,12 +27,12 @@ def is_ready_for_sending(folder):
     return False
 
 
-def has_been_send(folder):
+def has_been_send(folder) -> bool:
     """Checks if the given folder has already been sent."""
     return (Path(folder) / mercure_names.SENDLOG).exists()
 
 
-def is_target_json_valid(folder):
+def is_target_json_valid(folder) -> Optional[Any]:
     """
     Checks if the task.json file exists and is also valid. Mandatory
     subkeys are target_ip, target_port and target_aet_target under the
@@ -43,23 +44,24 @@ def is_target_json_valid(folder):
 
     try:
         with open(path, "r") as f:
-            target = json.load(f)
+            target:Task = json.load(f)
     except:
         send_series_event(
             s_events.ERROR,
-            target.get("dispatch", {}).get("series_uid", "None"),
+            "None",
             0,
-            target.get("dispatch", {}).get("target_name", "None"),
+            "None",
             f"task.json has invalid format",
         )
         return None
 
-    if not all([key in target.get("dispatch", {}) for key in ["target_ip", "target_port", "target_aet_target"]]):
+    dispatch = target.get("dispatch", {})
+    if not all([key in dispatch for key in ["target_ip", "target_port", "target_aet_target"]]):
         send_series_event(
             s_events.ERROR,
-            target.get("dispatch", {}).get("series_uid", "None"),
+            dispatch.get("series_uid", "None"), # type: ignore
             0,
-            target.get("dispatch", {}).get("target_name", "None"),
+            dispatch.get("target_name", "None"), # type: ignore
             f"task.json is missing a mandatory key {target}",
         )
         return None

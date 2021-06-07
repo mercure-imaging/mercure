@@ -2,22 +2,32 @@ import json
 import os
 import logging
 from pathlib import Path
+from typing import Dict, cast
 from passlib.apps import custom_app_context as pwd_context
 import daiquiri
 
 from common.constants import mercure_names
+from mypy_extensions import TypedDict
+from typing_extensions import Literal
+from typing import Dict, Any
 
+class User(TypedDict,total=False):
+    email: str
+    password: str
+    is_admin: Literal["True", "False"]
+    change_password: Literal["True", "False"]
+    permissions: Any
 
 daiquiri.setup(level=logging.INFO)
 logger = daiquiri.getLogger("users")
 
-users_timestamp = 0
+users_timestamp: float = 0.0
 users_filename = os.path.realpath(os.path.dirname(os.path.realpath(__file__)) + "/../configuration/users.json")
 
-users_list = {}
+users_list: Dict[str, User] = {}
 
 
-def read_users():
+def read_users() -> Dict[str, User]:
     """Reads the user list from the configuration file. The file will only be read if it has been updated since the last
     function call. If the file does not exist, create a new user file."""
     global users_list
@@ -50,18 +60,19 @@ def read_users():
             users_timestamp = timestamp
             return users_list
     else:
-        create_users()
+        return create_users()
 
 
-def create_users():
+def create_users() -> Dict[str, User]:
     """Create new users file and create seed admin account with name "admin" and password "router"."""
     logger.info("No user file found. Creating user list with seed admin account.")
     global users_list
     users_list = {"admin": {"password": hash_password("router"), "is_admin": "True", "change_password": "True"}}
     save_users()
+    return users_list
 
 
-def save_users():
+def save_users() -> None:
     """Write the users list into a file on the disk."""
     global users_list
     global users_timestamp
@@ -85,7 +96,7 @@ def save_users():
     logger.info(f"Stored user list into: {users_filename}")
 
 
-def evaluate_password(username, password):
+def evaluate_password(username, password)-> bool:
     """Check if the given password for the given user is correct. Hashed passwords are stored with salt."""
     if (len(username) == 0) or (len(password) == 0):
         return False
@@ -106,12 +117,12 @@ def evaluate_password(username, password):
         return False
 
 
-def hash_password(password):
+def hash_password(password) -> str:
     """Hash the password using the passlib library."""
-    return pwd_context.hash(password)
+    return cast(str,pwd_context.hash(password))
 
 
-def is_admin(username):
+def is_admin(username) -> bool:
     """Check in the user list if the given user has admin rights."""
     if not username in users_list:
         return False
@@ -122,7 +133,7 @@ def is_admin(username):
         return False
 
 
-def needs_change_password(username):
+def needs_change_password(username) -> bool:
     """Check if the given user has to change his password after login."""
     if not username in users_list:
         return False

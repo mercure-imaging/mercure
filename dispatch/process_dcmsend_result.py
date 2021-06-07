@@ -3,13 +3,14 @@ import json
 import sys
 import logging
 from pathlib import Path
+from typing import Dict
 import daiquiri
 
 daiquiri.setup(level=logging.INFO)
 logger = daiquiri.getLogger("process_dcmsend_result")
 
 
-def _parse_header(header):
+def _parse_header(header) -> Dict:
     result = {}
     for line in header:
         if line.startswith("Communication Peer"):
@@ -21,7 +22,7 @@ def _parse_header(header):
     return result
 
 
-def _parse_summary(summary):
+def _parse_summary(summary) -> Dict:
     result = {}
     for line in summary:
         if line.startswith("Number of SOP instances"):
@@ -35,7 +36,7 @@ def _parse_summary(summary):
     return result
 
 
-def parse(result_file):
+def parse(result_file) -> Dict:
     """Parses the dcmsend result file and returns a python dictionary."""
     with result_file.open() as f:
         content = f.readlines()
@@ -52,7 +53,7 @@ def parse(result_file):
     return result
 
 
-def create_arg_parser():
+def create_arg_parser() -> argparse.ArgumentParser:
     """Creates and returns the ArgumentParser object."""
     parser = argparse.ArgumentParser(description="Creates stripped json representation of a dcmsend result text file and prints it out.")
     parser.add_argument("resultFile", help="Path to the dcmsend result file.")
