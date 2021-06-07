@@ -2,6 +2,7 @@ daiquiri
 pydicom
 graphyte
 mypy 
+typing_extensions
 
 # documentation
 sphinx
