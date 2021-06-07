@@ -52,7 +52,7 @@ def route_series(series_UID:str) -> None:
     logger.info("DICOM files found: " + str(len(fileList)))
 
     # Use the tags file from the first slice for evaluating the routing rules
-    tagsMasterFile = Path(config.mercure[mercure_folders.INCOMING] + "/" + fileList[0] + mercure_names.TAGS)
+    tagsMasterFile = Path(config.mercure["incoming_folder"] + "/" + fileList[0] + mercure_names.TAGS)
     if not tagsMasterFile.exists():
         logger.error(f"Missing file! {tagsMasterFile.name}")
         monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Missing file {tagsMasterFile.name}")

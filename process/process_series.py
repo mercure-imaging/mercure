@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 import os
+from typing import Optional, cast
 import uuid
 import json
 import shutil
@@ -14,12 +15,12 @@ import common.monitor as monitor
 import common.helper as helper
 import common.config as config
 from common.constants import mercure_names
-
+from common.types import Module, Task
 
 logger = daiquiri.getLogger("process_series")
 
 
-def process_series(folder):
+def process_series(folder) -> None:
     logger.info(f"Now processing = {folder}")
 
     docker_client = docker.from_env()
@@ -43,18 +44,22 @@ def process_series(folder):
     # TODO: Perform the processing
     time.sleep(10)
 
-    def get_task():
+    def get_task() -> Optional[Task]:
         the_path = Path(folder) / mercure_names.TASKFILE
         if not the_path.exists():
             return None
 
         with open(the_path, "r") as f:
-            return json.load(f)
+            return cast(Task, json.load(f))
 
     task = get_task()
-    logger.info(task["process"]["docker_tag"])
 
-    docker_client.containers.run(task["process"]["docker_tag"], "--dicom-path /data", volumes={folder: {"bind": "/data", "mode": "rw"}})
+    assert task is not None
+    process_info = cast(Module,task["process"])
+
+    logger.info(process_info.get("docker_tag"))
+
+    docker_client.containers.run(process_info["docker_tag"], "--dicom-path /data", volumes={folder: {"bind": "/data", "mode": "rw"}})
 
     # TODO: Error handling
 

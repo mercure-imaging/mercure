@@ -22,6 +22,7 @@ from pathlib import Path
 from starlette.applications import Starlette
 from starlette.staticfiles import StaticFiles
 from starlette.responses import HTMLResponse
+from starlette.responses import Response
 from starlette.responses import PlainTextResponse
 from starlette.responses import JSONResponse
 from starlette.responses import RedirectResponse
@@ -48,6 +49,7 @@ import webinterface.queue as queue
 from webinterface.common import templates
 from webinterface.common import get_user_information
 
+from typing import Tuple, Union, Optional
 
 ###################################################################################
 ## Helper classes
@@ -61,7 +63,7 @@ logger = daiquiri.getLogger("webgui")
 
 
 class ExtendedUser(SimpleUser):
-    def __init__(self, username: str, is_admin: False) -> None:
+    def __init__(self, username: str, is_admin: bool = False) -> None:
         self.username = username
         self.admin_status = is_admin
 
@@ -106,7 +108,7 @@ app.mount("/modules", modules.modules_app)
 app.mount("/queue", queue.queue_app)
 
 
-async def async_run(cmd):
+async def async_run(cmd) -> Tuple[Optional[int], bytes, bytes]:
     """Executes the given command in a way compatible with ayncio."""
     proc = await asyncio.create_subprocess_shell(cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
 
