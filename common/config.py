@@ -1,18 +1,23 @@
+"""
+config.py
+=========
+mercure's configuration management, used by various mercure modules 
+"""
 import json
 import os
 from pathlib import Path
 from typing_extensions import Literal
 import daiquiri
+from typing import cast
 
 import common.monitor as monitor
 import common.helper as helper
 from common.constants import mercure_names
-from  typing import cast
-
 from common.types import Config
+
 logger = daiquiri.getLogger("config")
 
-configuration_timestamp:float = 0
+configuration_timestamp: float = 0
 configuration_filename = os.path.realpath(os.path.dirname(os.path.realpath(__file__)) + "/../configuration/mercure.json")
 
 mercure_defaults = {
@@ -43,8 +48,6 @@ mercure_defaults = {
     "rules": {},
     "modules": {},
 }
-
-
 
 mercure: Config
 
@@ -82,14 +85,14 @@ def read_config() -> Config:
             loaded_config = json.load(json_file)
             # Reset configuration to default values (to ensure all needed
             # keys are present in the configuration)
-            mercure = cast(Config,mercure_defaults)
+            mercure = cast(Config, mercure_defaults)
             # Now merge with values loaded from configuration file
             mercure.update(loaded_config)
 
             # TODO: Check configuration for errors (esp targets and rules)
 
             # Check if directories exist
-            if not checkFolders():
+            if not check_folders():
                 raise FileNotFoundError("Configured folders missing")
 
             # logger.info("")
@@ -172,12 +175,12 @@ def write_configfile(json_content) -> None:
         return
 
 
-def checkFolders() -> bool:
-    global mercure
+def check_folders() -> bool:
     """Checks if all required folders for handling the DICOM files exist."""
+    global mercure
+
     for entry in ["incoming_folder", "studies_folder", "outgoing_folder", "success_folder", "error_folder", "discard_folder", "processing_folder"]:
         entry = cast(Literal["incoming_folder", "studies_folder", "outgoing_folder", "success_folder", "error_folder", "discard_folder", "processing_folder"], entry)
-
         if not Path(mercure[entry]).exists():
             logger.error(f"Folder not found {mercure[entry]}")
             monitor.send_event(monitor.h_events.CONFIG_UPDATE, monitor.severity.CRITICAL, "Folders are missing")

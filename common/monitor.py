@@ -72,7 +72,7 @@ def configure(module, instance, address) -> None:
     bookkeeper_address = "http://" + address
 
 
-def send_event(event, severity=severity.INFO, description:str="") -> None:
+def send_event(event, severity=severity.INFO, description: str = "") -> None:
     """Sends information about general mercure events to the bookkeeper (e.g., during module start)."""
     if not bookkeeper_address:
         return
@@ -104,7 +104,7 @@ def send_webgui_event(event, user, description="") -> None:
         logger.error("Failed request to bookkeeper")
 
 
-def send_register_series(tags:Dict[str,str]) -> None:
+def send_register_series(tags: Dict[str, str]) -> None:
     """Registers a received series on the bookkeeper. This should be called when a series has been
     fully received and the DICOM tags have been parsed."""
     if not bookkeeper_address:
