@@ -1,5 +1,5 @@
 What is mercure?
-===============
+================
 
 .. image:: scheme.png
    :width: 550px

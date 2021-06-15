@@ -6,7 +6,7 @@ It is recommended to install mercure on a Linux machine running Ubuntu Server 18
 .. note:: mercure might run on other Linux flavors as well, but the installation instructions listed on this page will likely not be applicable without modification.
 
 Installing mercure
------------------
+------------------
 
 After finishing the Ubuntu installation procedure, the Offis DICOM toolkit (DCMTK), gcc compiler, and jq need to be installed. A user called "mercure" should be created (the adduser command will ask for a password), and the mercure installation file should be cloned using the shown Git command. By default, mercure should be installed into the home directory of the user mercure. 
 
@@ -93,7 +93,7 @@ Read-only permissions can only be granted if the database tables already exist. 
 
 
 Basic mercure configuration
---------------------------
+---------------------------
 
 Before mercure can be started for the first time, several basic configuration steps are required.
 
@@ -135,7 +135,7 @@ Finally, if you are using a different storage location than "/home/mercure/mercu
 
 
 First start of mercure
----------------------
+----------------------
 
 Now, you can start mercure for the fist time. For now, start only the bookkeeper service, so that the database tables are created, and the webgui, so that the other services can later be started through the webgui.
 

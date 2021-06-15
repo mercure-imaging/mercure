@@ -31,21 +31,21 @@ mercure can transmit additional information about its activities to Graphite. To
 
 mercure transmits the following information to Graphite:
 
-====================================== ===========================================================================
-Key                                    Meaning
-====================================== ===========================================================================
-mercure.router.main.incoming.series     Number series in the incoming folder waiting for completion
-mercure.router.main.incoming.files      Number of received DICOM files waiting in the incoming folder
-mercure.router.main.events.run          Triggered when the router checks for incoming files (value=1)
-mercure.router.main.events.boot         Triggered when the router is started (value=1)
-mercure.router.main.events.shutdown     Triggered when the router shuts down (value=1)
-mercure.dispatcher.main.events.run      Triggered when the dispatcher checks for outgoing series (value=1)
-mercure.dispatcher.main.events.boot     Triggered when the dispatcher is started (value=1)
-mercure.dispatcher.main.events.shutdown Triggered when the dispatcher shuts down (value=1)
-mercure.cleaner.main.events.run         Triggered when the cleaner checks for files to-be-deleted (value=1)
-mercure.cleaner.main.events.boot        Triggered when the cleaner is started (value=1)
-mercure.cleaner.main.events.shutdown    Triggered when the cleaner shuts down (value=1)
-====================================== ===========================================================================
+======================================== ===========================================================================
+Key                                      Meaning
+======================================== ===========================================================================
+mercure.router.main.incoming.series      Number series in the incoming folder waiting for completion
+mercure.router.main.incoming.files       Number of received DICOM files waiting in the incoming folder
+mercure.router.main.events.run           Triggered when the router checks for incoming files (value=1)
+mercure.router.main.events.boot          Triggered when the router is started (value=1)
+mercure.router.main.events.shutdown      Triggered when the router shuts down (value=1)
+mercure.dispatcher.main.events.run       Triggered when the dispatcher checks for outgoing series (value=1)
+mercure.dispatcher.main.events.boot      Triggered when the dispatcher is started (value=1)
+mercure.dispatcher.main.events.shutdown  Triggered when the dispatcher shuts down (value=1)
+mercure.cleaner.main.events.run          Triggered when the cleaner checks for files to-be-deleted (value=1)
+mercure.cleaner.main.events.boot         Triggered when the cleaner is started (value=1)
+mercure.cleaner.main.events.shutdown     Triggered when the cleaner shuts down (value=1)
+======================================== ===========================================================================
 
 By creating a visualization of the mercure.x.main.events.run events, you can monitor that all processes are active and responsive.
 

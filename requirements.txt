@@ -1,8 +1,10 @@
-daiquiri
-pydicom
-graphyte
+# base
 mypy 
 typing_extensions
+
+# logging / monitoring
+graphyte
+daiquiri
 
 # documentation
 sphinx
@@ -30,3 +32,6 @@ asyncpg
 
 # processing
 docker
+
+# other
+pydicom

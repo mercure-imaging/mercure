@@ -9,6 +9,14 @@ common.config
    :undoc-members:
    :show-inheritance:
 
+common.constants 
+----------------
+
+.. automodule:: common.constants
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 common.helper 
 -------------
 
@@ -25,6 +33,14 @@ common.monitor
    :undoc-members:
    :show-inheritance:
 
+common.notification 
+-------------------
+
+.. automodule:: common.notification
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 common.rule_evaluation
 ----------------------
 
@@ -33,10 +49,10 @@ common.rule_evaluation
    :undoc-members:
    :show-inheritance:
 
-common.version
---------------
+common.types
+------------
 
-.. automodule:: common.version
+.. automodule:: common.types
    :members:
    :undoc-members:
    :show-inheritance:
