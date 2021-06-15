@@ -8,13 +8,13 @@ sys.path.insert(0, os.path.abspath('..'))
 # -- Project information -----------------------------------------------------
 
 project = 'mercure'
-copyright = '2019, Kai Tobias Block, Joshy Cyriac'
-author = 'Kai Tobias Block, Joshy Cyriac'
+copyright = '2019-2021, Kai Tobias Block, Joshy Cyriac, Roy Wiggins'
+author = 'Kai Tobias Block, Joshy Cyriac, Roy Wiggins'
 
 # The short X.Y version
-version = 'Version 0.1a'
+version = 'Version 0.2a'
 # The full version, including alpha/beta/rc tags
-release = '0.1a'
+release = '0.2a'
 
 
 # -- General configuration ---------------------------------------------------

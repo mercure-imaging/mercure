@@ -676,7 +676,7 @@ async def users_edit_post(request) -> Response:
     if (request.user.is_admin) and (request.user.display_name != edituser):
         users.users_list[edituser]["is_admin"] = form["is_admin"]
 
-    if request.user.is_admin:
+    if request.user.is_admin and form.get("permissions", ""):
         users.users_list[edituser]["permissions"] = form["permissions"]
 
     try:
