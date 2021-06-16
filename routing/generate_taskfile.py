@@ -1,3 +1,10 @@
+"""
+generate_taskfile.py
+====================
+Helper functions for generating task files in json format, which describe the job to be done and maintain a journal of the executed actions.
+"""
+
+# Standard python includes
 import os
 from pathlib import Path
 import uuid
@@ -6,6 +13,9 @@ import shutil
 import daiquiri
 import socket
 from datetime import datetime
+from mypy_extensions import TypedDict
+from typing_extensions import Literal
+from typing import Dict, Optional, Union, List, cast
 
 # App-specific includes
 import common.config as config
@@ -13,46 +23,62 @@ import common.rule_evaluation as rule_evaluation
 import common.monitor as monitor
 import common.helper as helper
 from common.types import *
+from common.constants import (
+    mercure_defs,
+    mercure_names,
+    mercure_sections,
+    mercure_rule,
+    mercure_config,
+    mercure_options,
+    mercure_actions,
+    mercure_study,
+    mercure_info,
+)
 
-from common.constants import mercure_defs, mercure_names, mercure_sections, mercure_rule, mercure_config, mercure_options, mercure_actions, mercure_study, mercure_info
-
-from mypy_extensions import TypedDict
-from typing_extensions import Literal
-from typing import Dict, Optional, Union, List, cast
-
-
+# Create local logger instance
 logger = daiquiri.getLogger("generate_taskfile")
 
-def compose_task(uid:str, uid_type:Literal["series", "study"], triggered_rules:Union[Dict[str,Literal[True]],str], tags_list:Dict[str, str], target:str) -> Task:
+
+def compose_task(
+    uid: str,
+    uid_type: Literal["series", "study"],
+    triggered_rules: Union[Dict[str, Literal[True]], str],
+    tags_list: Dict[str, str],
+    target: str,
+) -> Task:
     # TODO: triggered_rules is sometimes several strings, and sometimes only one. add_dispatching and add_processing both expect a string.
     return {
-        "info": add_info(uid, uid_type, triggered_rules, tags_list), 
-        "dispatch": add_dispatching(triggered_rules, tags_list, target) or {}, # type: ignore
-        "process" : add_processing(triggered_rules, tags_list) or {}, # type: ignore
-        "study" : EmptyDict()
+        "info": add_info(uid, uid_type, triggered_rules, tags_list),
+        "dispatch": add_dispatching(triggered_rules, tags_list, target) or {},  # type: ignore
+        "process": add_processing(triggered_rules, tags_list) or {},  # type: ignore
+        "study": EmptyDict(),
     }
 
-def add_processing(applied_rule:str, tags_list) -> Optional[Module]:
-    if isinstance(applied_rule,dict):
+
+def add_processing(applied_rule: str, tags_list) -> Optional[Module]:
+    if isinstance(applied_rule, dict):
         applied_rule = next(iter(applied_rule.keys()))
 
     logger.info("add_processing")
-    applied_rule_info:Rule = config.mercure['rules'][applied_rule]
+    applied_rule_info: Rule = config.mercure["rules"][applied_rule]
     logger.info(applied_rule_info)
 
-    if applied_rule_info.get(mercure_rule.ACTION, mercure_actions.PROCESS) in (mercure_actions.PROCESS, mercure_actions.BOTH):
-        
+    if applied_rule_info.get(mercure_rule.ACTION, mercure_actions.PROCESS) in (
+        mercure_actions.PROCESS,
+        mercure_actions.BOTH,
+    ):
+
         logger.info("adding processing section")
         # TODO: This should be changed into an array?
         # Get the module that should be triggered
-        module:str = applied_rule_info.get('processing_module', "")
+        module: str = applied_rule_info.get("processing_module", "")
         logger.info("module:")
         logger.info(module)
 
         # Get the configuration on this module
-        module_config = config.mercure['modules'].get(module, {})
-        
-        logger.info({"module_config" :module_config})
+        module_config = config.mercure["modules"].get(module, {})
+
+        logger.info({"module_config": module_config})
 
         # TODO: Probably Still incomplete, but this seems to make the current Processing happy
         return module_config
@@ -63,16 +89,20 @@ def add_processing(applied_rule:str, tags_list) -> Optional[Module]:
     logger.info("finished adding processing section")
     return None
 
-def add_dispatching(applied_rule:str, tags_list, target) -> Optional[TaskDispatch]:
-    if isinstance(applied_rule,dict):
+
+def add_dispatching(applied_rule: str, tags_list, target) -> Optional[TaskDispatch]:
+    if isinstance(applied_rule, dict):
         applied_rule = next(iter(applied_rule.keys()))
     # If no target is provided already (as done in routing-only mode), read the target defined in the applied rule
     if not target:
-        target = config.mercure['rules'][applied_rule].get(mercure_rule.TARGET, "")
+        target = config.mercure["rules"][applied_rule].get(mercure_rule.TARGET, "")
 
     # Fill the dispatching section, if routing has been selected and a target has been provided
-    if (config.mercure['rules'][applied_rule].get(mercure_rule.ACTION, mercure_actions.PROCESS) in (mercure_actions.ROUTE, mercure_actions.BOTH)) and target:
-        target_info:Target = config.mercure["targets"][target]
+    if (
+        config.mercure["rules"][applied_rule].get(mercure_rule.ACTION, mercure_actions.PROCESS)
+        in (mercure_actions.ROUTE, mercure_actions.BOTH)
+    ) and target:
+        target_info: Target = config.mercure["targets"][target]
         return {
             "target_name": target,
             "target_ip": target_info["ip"],
@@ -80,45 +110,51 @@ def add_dispatching(applied_rule:str, tags_list, target) -> Optional[TaskDispatc
             "target_aet_target": target_info.get("aet_target", "ANY-SCP"),
             "target_aet_source": target_info.get("aet_source", "mercure"),
             "retries": None,
-            "next_retry_at": None
+            "next_retry_at": None,
         }
 
     return None
 
 
-def add_info(uid:str, uid_type: Literal["series", "study"], triggered_rules:Union[Dict[str,Literal[True]],str], tags_list:Dict[str, str]) -> TaskInfo:
+def add_info(
+    uid: str,
+    uid_type: Literal["series", "study"],
+    triggered_rules: Union[Dict[str, Literal[True]], str],
+    tags_list: Dict[str, str],
+) -> TaskInfo:
     return {
         "uid": uid,
         "uid_type": uid_type,
         "triggered_rules": triggered_rules,
-        "mrn":  tags_list.get("PatientID", mercure_options.MISSING),
+        "mrn": tags_list.get("PatientID", mercure_options.MISSING),
         "acc": tags_list.get("AccessionNumber", mercure_options.MISSING),
         "mercure_version": mercure_defs.VERSION,
         "mercure_appliance": config.mercure["appliance_name"],
-        "mercure_server": socket.gethostname()
+        "mercure_server": socket.gethostname(),
     }
 
-def create_study_task(folder_name:str, applied_rule:str, study_UID:str, tags_list:Dict[str, str]) -> bool:
+
+def create_study_task(folder_name: str, applied_rule: str, study_UID: str, tags_list: Dict[str, str]) -> bool:
     """Generate task file with information on the study"""
 
     task_filename = folder_name + mercure_names.TASKFILE
 
     # TODO: Move into add_... function
-    study_info:TaskStudy = {
-        "study_uid" : study_UID,
-        "complete_trigger" : config.mercure['rules'][applied_rule]["study_trigger_condition"],
-        "complete_required_series" : config.mercure['rules'][applied_rule]["study_trigger_series"],
-        "creation_time" : datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "last_receive_time" : datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "received_series" : [tags_list.get("SeriesDescription", mercure_options.INVALID)],
-        "complete_force" : "False"
+    study_info: TaskStudy = {
+        "study_uid": study_UID,
+        "complete_trigger": config.mercure["rules"][applied_rule]["study_trigger_condition"],
+        "complete_required_series": config.mercure["rules"][applied_rule]["study_trigger_series"],
+        "creation_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "last_receive_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "received_series": [tags_list.get("SeriesDescription", mercure_options.INVALID)],
+        "complete_force": "False",
     }
 
-    task_json:Task = {
+    task_json: Task = {
         "info": add_info(study_UID, "study", applied_rule, tags_list),
         "dispatch": EmptyDict(),
-        "process":EmptyDict(),
-        "study": study_info
+        "process": EmptyDict(),
+        "study": study_info,
     }
     # TODO: Incomplete
 
@@ -127,13 +163,15 @@ def create_study_task(folder_name:str, applied_rule:str, study_UID:str, tags_lis
             json.dump(task_json, task_file)
     except:
         logger.error(f"Unable to create task file {task_filename}")
-        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Unable to create task file {task_filename}")
+        monitor.send_event(
+            monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Unable to create task file {task_filename}"
+        )
         return False
 
     return True
 
 
-def update_study_task(folder_name:str, applied_rule:str, study_UID, tags_list:Dict[str, str]) -> bool:
+def update_study_task(folder_name: str, applied_rule: str, study_UID, tags_list: Dict[str, str]) -> bool:
     """Update the study task file with information from the latest received series"""
 
     series_description = tags_list.get("SeriesDescription", mercure_options.INVALID)
@@ -142,8 +180,8 @@ def update_study_task(folder_name:str, applied_rule:str, study_UID, tags_list:Di
     # Load existing task file. Raise error if it does not exist
     try:
         with open(task_filename, "r") as task_file:
-            task_json:Task = json.load(task_file)
-            if len(task_json.get("study",{})) == 0:
+            task_json: Task = json.load(task_file)
+            if len(task_json.get("study", {})) == 0:
                 raise Exception("Study information is missing.")
     except:
         error_message = f"Unable to open task file {task_filename}"
@@ -151,7 +189,6 @@ def update_study_task(folder_name:str, applied_rule:str, study_UID, tags_list:Di
         monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, error_message)
         return False
 
-    
     # Ensure that the task file contains the study information
     if not (mercure_sections.STUDY in task_json):
         error_message = f"Study information missing in task file {task_filename}"
@@ -159,7 +196,7 @@ def update_study_task(folder_name:str, applied_rule:str, study_UID, tags_list:Di
         monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, error_message)
         return False
 
-    study = cast(TaskStudy,task_json["study"])
+    study = cast(TaskStudy, task_json["study"])
 
     # Remember the time when the last series was received, as needed to determine completion on timeout
     study["last_receive_time"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -183,7 +220,13 @@ def update_study_task(folder_name:str, applied_rule:str, study_UID, tags_list:Di
     return True
 
 
-def create_series_task(folder_name:str, triggered_rules:Union[Dict[str,Literal[True]],str], series_UID:str, tags_list:Dict[str, str], target:str) -> bool:
+def create_series_task(
+    folder_name: str,
+    triggered_rules: Union[Dict[str, Literal[True]], str],
+    series_UID: str,
+    tags_list: Dict[str, str],
+    target: str,
+) -> bool:
     """Create task file for the received series"""
 
     # For routing-only: triggered_rules is dict and target is string containing the target name
@@ -197,7 +240,9 @@ def create_series_task(folder_name:str, triggered_rules:Union[Dict[str,Literal[T
             json.dump(task_json, task_file)
     except:
         logger.error(f"Unable to create task file {task_filename}")
-        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Unable to create task file {task_filename}")
+        monitor.send_event(
+            monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Unable to create task file {task_filename}"
+        )
         return False
 
     return True

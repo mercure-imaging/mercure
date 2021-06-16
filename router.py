@@ -22,25 +22,22 @@ from routing.route_studies import route_studies
 
 from typing import Dict
 
-# NOTES: Currently, the router only implements series-level rules, i.e. the proxy rules will be executed
-#        once the series is complete. In the future, also study-level rules can be implemented (i.e. a
-#        rule can be a series-level or study-level rule). Series-level rules are executed as done right now.
-#        If a study-level rule exists that applies to a series, the series will be moved to an /incoming-study
-#        folder and renamed with the studyUID as prefix. Once the study is complete (via a separate time
-#        tigger), the study-level rules will be applied by taking each rule and collecting the series of
-#        the studies that apply to the rule. Each study-level rule will create a separate outgoing folder
-#        so that all series that apply to the study-level rule are transferred together in one DICOM
-#        transfer (association). This might be necessary for certain PACS systems or workstations (e.g.
-#        when transferring 4D series).
-
+# Setup daiquiri logger
 daiquiri.setup(
     level=logging.INFO,
-    outputs=(daiquiri.output.Stream(formatter=daiquiri.formatter.ColorFormatter(fmt="%(color)s%(levelname)-8.8s " "%(name)s: %(message)s%(color_stop)s")),),
+    outputs=(
+        daiquiri.output.Stream(
+            formatter=daiquiri.formatter.ColorFormatter(
+                fmt="%(color)s%(levelname)-8.8s " "%(name)s: %(message)s%(color_stop)s"
+            )
+        ),
+    ),
 )
+# Create local logger instance
 logger = daiquiri.getLogger("router")
 
 
-def terminate_process(signalNumber, frame)  -> None:
+def terminate_process(signalNumber, frame) -> None:
     """Triggers the shutdown of the service."""
     helper.g_log("events.shutdown", 1)
     logger.info("Shutdown requested")
@@ -65,18 +62,20 @@ def run_router(args=None) -> None:
         config.read_config()
     except Exception:
         logger.exception("Unable to update configuration. Skipping processing.")
-        monitor.send_event(monitor.h_events.CONFIG_UPDATE, monitor.severity.WARNING, "Unable to update configuration (possibly locked)")
+        monitor.send_event(
+            monitor.h_events.CONFIG_UPDATE, monitor.severity.WARNING, "Unable to update configuration (possibly locked)"
+        )
         return
 
     filecount = 0
-    series: Dict[str,float] = {}
+    series: Dict[str, float] = {}
     complete_series = {}
 
     error_files_found = False
 
     # Check the incoming folder for completed series. To this end, generate a map of all
     # series in the folder with the timestamp of the latest DICOM file as value
-    for entry in os.scandir(config.mercure['incoming_folder']):
+    for entry in os.scandir(config.mercure["incoming_folder"]):
         if entry.name.endswith(mercure_names.TAGS) and not entry.is_dir():
             filecount += 1
             seriesString = entry.name.split(mercure_defs.SEPARATOR, 1)[0]
@@ -122,7 +121,7 @@ def run_router(args=None) -> None:
     route_studies()
 
 
-def exit_router(args)  -> None:
+def exit_router(args) -> None:
     """Callback function that is triggered when the process terminates. Stops the asyncio event loop."""
     helper.loop.call_soon_threadsafe(helper.loop.stop)
 

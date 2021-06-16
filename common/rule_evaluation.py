@@ -1,14 +1,21 @@
+"""
+rule_evaluation.py
+==================
+Helper functions for evaluating routing rules and study-completion conditions.
+"""
+
+# Standard python includes
 from typing import Any, Dict, Union
-import common.monitor as monitor
 import daiquiri
 
+# App-specific includes
+import common.monitor as monitor
+
+# Create local logger instance
 logger = daiquiri.getLogger("rule_evaluation")
 
 
-safe_eval_cmds = {"float": float, "int": int, "str": str}
-
-
-def replace_tags(rule:str, tags:Dict[str, str]) -> Any:
+def replace_tags(rule: str, tags: Dict[str, str]) -> Any:
     """Replaces all tags with format @tagname@ in the given rule string with
     the corresponding values from the currently processed series (stored
     in the second argument)."""
@@ -35,7 +42,11 @@ def replace_tags(rule:str, tags:Dict[str, str]) -> Any:
     return rule
 
 
-def parse_rule(rule:str, tags:Dict[str, str]) -> Union[Any, bool]:
+# Allow typecasting the DICOM tags during evaluation of routing rules
+safe_eval_cmds = {"float": float, "int": int, "str": str}
+
+
+def parse_rule(rule: str, tags: Dict[str, str]) -> Union[Any, bool]:
     """Parses the given rule, replaces all tag variables with values from the given tags dictionary, and
     evaluates the rule. If the rule is invalid, an exception will be raised."""
     try:
@@ -52,7 +63,7 @@ def parse_rule(rule:str, tags:Dict[str, str]) -> Union[Any, bool]:
         return False
 
 
-def test_rule(rule:str, tags) -> str:
+def test_rule(rule: str, tags) -> str:
     """Tests the given rule for validity using the given tags dictionary. Similar to parse_rule but with
     more diagnostic output format for the testing dialog. Also warns about invalid tags."""
     try:
@@ -71,7 +82,7 @@ def test_rule(rule:str, tags) -> str:
         return str(e)
 
 
-def test_completion_series(value:str) -> str:
+def test_completion_series(value: str) -> str:
     """Tests if the given string with the list of series required for study completion has valid format. If so, True
     is returned as string, otherwise the error description is returned."""
     if not value:

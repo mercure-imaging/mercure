@@ -3,6 +3,8 @@ webgui.py
 =========
 The web-based graphical user interface of mercure.
 """
+
+# Standard python includes
 import uvicorn
 import base64
 import binascii
@@ -18,7 +20,9 @@ import logging
 import daiquiri
 import html
 from pathlib import Path
+from typing import Tuple, Union, Optional
 
+# Starlette-related includes
 from starlette.applications import Starlette
 from starlette.staticfiles import StaticFiles
 from starlette.responses import HTMLResponse
@@ -28,7 +32,13 @@ from starlette.responses import JSONResponse
 from starlette.responses import RedirectResponse
 from starlette.templating import Jinja2Templates
 from starlette.authentication import requires
-from starlette.authentication import AuthenticationBackend, AuthenticationError, SimpleUser, UnauthenticatedUser, AuthCredentials
+from starlette.authentication import (
+    AuthenticationBackend,
+    AuthenticationError,
+    SimpleUser,
+    UnauthenticatedUser,
+    AuthCredentials,
+)
 from starlette.middleware.authentication import AuthenticationMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.config import Config
@@ -49,7 +59,6 @@ import webinterface.queue as queue
 from webinterface.common import templates
 from webinterface.common import get_user_information
 
-from typing import Tuple, Union, Optional
 
 ###################################################################################
 ## Helper classes
@@ -57,7 +66,13 @@ from typing import Tuple, Union, Optional
 
 daiquiri.setup(
     level=logging.INFO,
-    outputs=(daiquiri.output.Stream(formatter=daiquiri.formatter.ColorFormatter(fmt="%(color)s%(levelname)-8.8s " "%(name)s: %(message)s%(color_stop)s")),),
+    outputs=(
+        daiquiri.output.Stream(
+            formatter=daiquiri.formatter.ColorFormatter(
+                fmt="%(color)s%(levelname)-8.8s " "%(name)s: %(message)s%(color_stop)s"
+            )
+        ),
+    ),
 )
 logger = daiquiri.getLogger("webgui")
 
@@ -172,12 +187,21 @@ async def show_log(request) -> Response:
 
     service_logs = {}
     for service in services.services_list:
-        service_logs[service] = {"id": service, "name": services.services_list[service]["name"], "systemd": services.services_list[service]["systemd_service"]}
+        service_logs[service] = {
+            "id": service,
+            "name": services.services_list[service]["name"],
+            "systemd": services.services_list[service]["systemd_service"],
+        }
 
     if (not requested_service in service_logs) or (not services.services_list[requested_service]["systemd_service"]):
         return PlainTextResponse("Service does not exist or is incorrectly configured.")
 
-    run_result = await async_run("journalctl -n 1000 -u " + services.services_list[requested_service]["systemd_service"] + start_date_cmd + end_date_cmd)
+    run_result = await async_run(
+        "journalctl -n 1000 -u "
+        + services.services_list[requested_service]["systemd_service"]
+        + start_date_cmd
+        + end_date_cmd
+    )
 
     log_content = ""
 
@@ -225,7 +249,12 @@ async def show_rules(request) -> Response:
         return PlainTextResponse("Configuration is being updated. Try again in a minute.")
 
     template = "rules.html"
-    context = {"request": request, "mercure_version": mercure_defs.VERSION, "page": "rules", "rules": config.mercure["rules"]}
+    context = {
+        "request": request,
+        "mercure_version": mercure_defs.VERSION,
+        "page": "rules",
+        "rules": config.mercure["rules"],
+    }
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
 
@@ -314,8 +343,12 @@ async def rules_edit_post(request) -> Response:
     config.mercure["rules"][editrule]["processing_settings"] = form.get("processing_settings", "")
     config.mercure["rules"][editrule]["notification_webhook"] = form.get("notification_webhook", "")
     config.mercure["rules"][editrule]["notification_payload"] = form.get("notification_payload", "")
-    config.mercure["rules"][editrule]["notification_trigger_reception"] = form.get("notification_trigger_reception", "False")
-    config.mercure["rules"][editrule]["notification_trigger_completion"] = form.get("notification_trigger_completion", "False")
+    config.mercure["rules"][editrule]["notification_trigger_reception"] = form.get(
+        "notification_trigger_reception", "False"
+    )
+    config.mercure["rules"][editrule]["notification_trigger_completion"] = form.get(
+        "notification_trigger_completion", "False"
+    )
     config.mercure["rules"][editrule]["notification_trigger_error"] = form.get("notification_trigger_error", "False")
 
     try:
@@ -361,17 +394,26 @@ async def rules_test(request) -> Response:
         testrule = form["rule"]
         testvalues = json.loads(form["testvalues"])
     except:
-        return PlainTextResponse('<span class="tag is-warning is-medium ruleresult"><i class="fas fa-bug"></i>&nbsp;Error</span>&nbsp;&nbsp;Invalid test values')
+        return PlainTextResponse(
+            '<span class="tag is-warning is-medium ruleresult"><i class="fas fa-bug"></i>&nbsp;Error</span>&nbsp;&nbsp;Invalid test values'
+        )
 
     result = rule_evaluation.test_rule(testrule, testvalues)
 
     if result == "True":
-        return PlainTextResponse('<span class="tag is-success is-medium ruleresult"><i class="fas fa-thumbs-up"></i>&nbsp;Route</span>')
+        return PlainTextResponse(
+            '<span class="tag is-success is-medium ruleresult"><i class="fas fa-thumbs-up"></i>&nbsp;Route</span>'
+        )
     else:
         if result == "False":
-            return PlainTextResponse('<span class="tag is-info is-medium ruleresult"><i class="fas fa-thumbs-down"></i>&nbsp;Discard</span>')
+            return PlainTextResponse(
+                '<span class="tag is-info is-medium ruleresult"><i class="fas fa-thumbs-down"></i>&nbsp;Discard</span>'
+            )
         else:
-            return PlainTextResponse('<span class="tag is-danger is-medium ruleresult"><i class="fas fa-bug"></i>&nbsp;Error</span>&nbsp;&nbsp;Invalid rule: ' + result)
+            return PlainTextResponse(
+                '<span class="tag is-danger is-medium ruleresult"><i class="fas fa-bug"></i>&nbsp;Error</span>&nbsp;&nbsp;Invalid rule: '
+                + result
+            )
 
 
 @app.route("/rules/test_completionseries", methods=["POST"])
@@ -382,14 +424,18 @@ async def rules_test_completionseries(request):
         form = dict(await request.form())
         test_series_list = form["study_trigger_series"]
     except:
-        return PlainTextResponse('<span class="tag is-warning is-medium ruleresult"><i class="fas fa-bug"></i>&nbsp;Error</span>&nbsp;&nbsp;Invalid')
+        return PlainTextResponse(
+            '<span class="tag is-warning is-medium ruleresult"><i class="fas fa-bug"></i>&nbsp;Error</span>&nbsp;&nbsp;Invalid'
+        )
 
     result = rule_evaluation.test_completion_series(test_series_list)
 
     if result == "True":
         return PlainTextResponse('<i class="fas fa-check-circle fa-lg has-text-success"></i>&nbsp;&nbsp;Valid')
     else:
-        return PlainTextResponse('<i class="fas fa-times-circle fa-lg has-text-danger"></i>&nbsp;&nbsp;Invalid: ' + result)
+        return PlainTextResponse(
+            '<i class="fas fa-times-circle fa-lg has-text-danger"></i>&nbsp;&nbsp;Invalid: ' + result
+        )
 
 
 ###################################################################################
@@ -412,7 +458,13 @@ async def show_targets(request) -> Response:
         used_targets[used_target] = rule
 
     template = "targets.html"
-    context = {"request": request, "mercure_version": mercure_defs.VERSION, "page": "targets", "targets": config.mercure["targets"], "used_targets": used_targets}
+    context = {
+        "request": request,
+        "mercure_version": mercure_defs.VERSION,
+        "page": "targets",
+        "targets": config.mercure["targets"],
+        "used_targets": used_targets,
+    }
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
 
@@ -446,7 +498,7 @@ async def add_target(request):
 
 @app.route("/targets/edit/{target}", methods=["GET"])
 @requires(["authenticated", "admin"], redirect="login")
-async def targets_edit(request)  -> Response:
+async def targets_edit(request) -> Response:
     """Shows the edit page for the given target."""
     try:
         config.read_config()
@@ -459,14 +511,20 @@ async def targets_edit(request)  -> Response:
         return RedirectResponse(url="/targets", status_code=303)
 
     template = "targets_edit.html"
-    context = {"request": request, "mercure_version": mercure_defs.VERSION, "page": "targets", "targets": config.mercure["targets"], "edittarget": edittarget}
+    context = {
+        "request": request,
+        "mercure_version": mercure_defs.VERSION,
+        "page": "targets",
+        "targets": config.mercure["targets"],
+        "edittarget": edittarget,
+    }
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
 
 
 @app.route("/targets/edit/{target}", methods=["POST"])
 @requires(["authenticated", "admin"], redirect="login")
-async def targets_edit_post(request) -> Union[RedirectResponse,PlainTextResponse]:
+async def targets_edit_post(request) -> Union[RedirectResponse, PlainTextResponse]:
     """Updates the given target using the form values posted with the request."""
     try:
         config.read_config()
@@ -551,7 +609,11 @@ async def targets_test_post(request) -> Response:
         if (await async_run("ping -w 1 -c 1 " + target_ip))[0] == 0:
             ping_response = "True"
             # Only test for c-echo if the ping was successful
-            if (await async_run("echoscu -to 10 -aec " + target_aec + " -aet " + target_aet + " " + target_ip + " " + target_port))[0] == 0:
+            if (
+                await async_run(
+                    "echoscu -to 10 -aec " + target_aec + " -aet " + target_aet + " " + target_ip + " " + target_port
+                )
+            )[0] == 0:
                 cecho_response = "True"
 
     return JSONResponse('{"ping": "' + ping_response + '", "c-echo": "' + cecho_response + '" }')
@@ -620,7 +682,13 @@ async def users_edit(request) -> Response:
         return RedirectResponse(url="/users", status_code=303)
 
     template = "users_edit.html"
-    context = {"request": request, "mercure_version": mercure_defs.VERSION, "page": "users", "edituser": edituser, "edituser_info": users.users_list[edituser]}
+    context = {
+        "request": request,
+        "mercure_version": mercure_defs.VERSION,
+        "page": "users",
+        "edituser": edituser,
+        "edituser_info": users.users_list[edituser],
+    }
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
 
@@ -765,7 +833,12 @@ async def configuration_edit(request) -> Response:
     config_content = json.dumps(config_content, indent=4, sort_keys=False)
 
     template = "configuration_edit.html"
-    context = {"request": request, "mercure_version": mercure_defs.VERSION, "page": "configuration", "config_content": config_content}
+    context = {
+        "request": request,
+        "mercure_version": mercure_defs.VERSION,
+        "page": "configuration",
+        "config_content": config_content,
+    }
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
 
@@ -808,7 +881,11 @@ async def login(request):
         return PlainTextResponse("Error reading configuration file.")
     request.session.clear()
     template = "login.html"
-    context = {"request": request, "mercure_version": mercure_defs.VERSION, "appliance_name": config.mercure.get("appliance_name", "master")}
+    context = {
+        "request": request,
+        "mercure_version": mercure_defs.VERSION,
+        "appliance_name": config.mercure.get("appliance_name", "master"),
+    }
     return templates.TemplateResponse(template, context)
 
 
@@ -829,7 +906,11 @@ async def login_post(request) -> Response:
         if users.is_admin(form["username"]) == True:
             request.session.update({"is_admin": "Jawohl"})
 
-        monitor.send_webgui_event(monitor.w_events.LOGIN, form["username"], "{admin}".format(admin="ADMIN" if users.is_admin(form["username"]) else ""))
+        monitor.send_webgui_event(
+            monitor.w_events.LOGIN,
+            form["username"],
+            "{admin}".format(admin="ADMIN" if users.is_admin(form["username"]) else ""),
+        )
 
         if users.needs_change_password(form["username"]):
             return RedirectResponse(url="/settings", status_code=303)
@@ -843,7 +924,12 @@ async def login_post(request) -> Response:
         monitor.send_webgui_event(monitor.w_events.LOGIN_FAIL, form["username"], source_ip)
 
         template = "login.html"
-        context = {"request": request, "invalid_password": 1, "mercure_version": mercure_defs.VERSION, "appliance_name": config.mercure.get("appliance_name", "mercure Router")}
+        context = {
+            "request": request,
+            "invalid_password": 1,
+            "mercure_version": mercure_defs.VERSION,
+            "appliance_name": config.mercure.get("appliance_name", "mercure Router"),
+        }
         return templates.TemplateResponse(template, context)
 
 
@@ -864,10 +950,10 @@ async def logout(request):
 @requires("authenticated", redirect="login")
 async def homepage(request) -> Response:
     """Renders the index page that shows information about the system status."""
-    used_space:float = 0
-    free_space:Union[int,str] = 0
-    total_space:Union[int,str] = 0
-    disk_total:Union[int,str] = 0
+    used_space: float = 0
+    free_space: Union[int, str] = 0
+    total_space: Union[int, str] = 0
+    disk_total: Union[int, str] = 0
 
     try:
         disk_total, disk_used, disk_free = shutil.disk_usage(config.mercure["incoming_folder"])
@@ -891,7 +977,11 @@ async def homepage(request) -> Response:
             if (await async_run("systemctl is-active " + services.services_list[service]["systemd_service"]))[0] == 0:
                 running_status = "True"
 
-        service_status[service] = {"id": service, "name": services.services_list[service]["name"], "running": running_status}
+        service_status[service] = {
+            "id": service,
+            "name": services.services_list[service]["name"],
+            "running": running_status,
+        }
 
     template = "index.html"
     context = {
@@ -909,7 +999,7 @@ async def homepage(request) -> Response:
 
 @app.route("/services/control", methods=["POST"])
 @requires(["authenticated", "admin"], redirect="homepage")
-async def control_services(request) -> Response: 
+async def control_services(request) -> Response:
     form = dict(await request.form())
     action = ""
 

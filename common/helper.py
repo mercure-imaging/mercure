@@ -1,3 +1,9 @@
+"""
+helper.py
+=========
+Various internal helper functions for mercure.
+"""
+# Standard python includes
 import asyncio
 from pathlib import Path
 import threading
@@ -38,8 +44,10 @@ class RepeatedTimer(object):
     Helper class for running a continuous timer that is suspended
     while the worker function is running
     """
+
     _timer: Optional[threading.Timer]
-    def __init__(self, interval:float, function:Callable, exit_function:Callable, *args, **kwargs):
+
+    def __init__(self, interval: float, function: Callable, exit_function: Callable, *args, **kwargs):
         self._timer = None
         self.interval = interval
         self.function = function
@@ -63,14 +71,14 @@ class RepeatedTimer(object):
         """Starts the timer for triggering the calllback after the defined interval."""
         if not self.is_running:
             self._timer = threading.Timer(self.interval, self._run)
-            assert self._timer is not None 
+            assert self._timer is not None
             self._timer.start()
             self.is_running = True
 
     def stop(self) -> None:
         """Stops the timer and executes the defined exit callback function."""
         if self.is_running:
-            assert self._timer is not None 
+            assert self._timer is not None
             self._timer.cancel()
             self.is_running = False
             self.exit_function(*self.args, **self.kwargs)
@@ -80,7 +88,7 @@ class FileLock:
     """Helper class that implements a file lock. The lock file will be removed also from the destructor so that
     no spurious lock files remain if exceptions are raised."""
 
-    def __init__(self, path_for_lockfile:Path):
+    def __init__(self, path_for_lockfile: Path):
         self.lockCreated = True
         self.lockfile = path_for_lockfile
         self.lockfile.touch()

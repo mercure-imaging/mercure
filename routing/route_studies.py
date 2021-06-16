@@ -1,20 +1,37 @@
+"""
+route_studies.py
+================
+Provides functions for routing and processing of studies (consisting of multiple series). 
+"""
+
+# Standard python includes
 import os
 from pathlib import Path
 import uuid
 import json
 import shutil
 import daiquiri
-from datetime import datetime
-from datetime import timedelta
+from datetime import datetime, timedelta
+
 # App-specific includes
 import common.config as config
 import common.rule_evaluation as rule_evaluation
 import common.monitor as monitor
 import common.helper as helper
 from common.types import EmptyDict, Task, TaskStudy
-from common.constants import mercure_defs, mercure_names, mercure_actions, mercure_rule, mercure_config, mercure_options, mercure_folders, mercure_sections, mercure_study
+from common.constants import (
+    mercure_defs,
+    mercure_names,
+    mercure_actions,
+    mercure_rule,
+    mercure_config,
+    mercure_options,
+    mercure_folders,
+    mercure_sections,
+    mercure_study,
+)
 
-
+# Create local logger instance
 logger = daiquiri.getLogger("route_studies")
 
 
@@ -50,7 +67,11 @@ def route_studies() -> None:
 def is_study_locked(folder: str):
     """Returns true if the given folder is locked, i.e. if another process is already working on the study"""
     path = Path(folder)
-    folder_status = (path / mercure_names.LOCK).exists() or (path / mercure_names.PROCESSING).exists() or len(list(path.glob(mercure_names.DCMFILTER))) == 0
+    folder_status = (
+        (path / mercure_names.LOCK).exists()
+        or (path / mercure_names.PROCESSING).exists()
+        or len(list(path.glob(mercure_names.DCMFILTER))) == 0
+    )
     return folder_status
 
 
@@ -59,7 +80,7 @@ def is_study_complete(folder: str):
     try:
         # Read stored task file to determine completeness criteria
         with open(Path(folder) / mercure_names.TASKFILE, "r") as json_file:
-            task:Task = json.load(json_file)
+            task: Task = json.load(json_file)
 
         study = task.get("study", EmptyDict())
         # Check if processing of the study has been enforced (e.g., via UI selection)
@@ -76,7 +97,9 @@ def is_study_complete(folder: str):
         complete_required_series = study.get(mercure_study.COMPLETE_REQUIRED_SERIES, "")
 
         # If trigger condition is received series but list of required series is missing, then switch to timeout mode instead
-        if (complete_trigger == mercure_rule.STUDY_TRIGGER_CONDITION_RECEIVED_SERIES) and (not complete_required_series):
+        if (complete_trigger == mercure_rule.STUDY_TRIGGER_CONDITION_RECEIVED_SERIES) and (
+            not complete_required_series
+        ):
             complete_trigger = mercure_rule.STUDY_TRIGGER_CONDITION_TIMEOUT
             warning_text = f"Missing series for trigger condition in study folder {folder}. Using timeout instead"
             logger.warning(warning_text)

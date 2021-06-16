@@ -1,3 +1,10 @@
+"""
+notification.py
+===============
+Helper functions for triggering webhook calls.
+"""
+
+# Standard python includes
 import os
 from pathlib import Path
 import uuid
@@ -12,11 +19,17 @@ import traceback
 import common.config as config
 import common.monitor as monitor
 import common.helper as helper
-import traceback
+from common.constants import (
+    mercure_defs,
+    mercure_names,
+    mercure_sections,
+    mercure_rule,
+    mercure_config,
+    mercure_options,
+    mercure_events,
+)
 
-from common.constants import mercure_defs, mercure_names, mercure_sections, mercure_rule, mercure_config, mercure_options, mercure_events
-
-
+# Create local logger instance
 logger = daiquiri.getLogger("notification")
 
 
@@ -33,8 +46,12 @@ def send_webhook(url, payload, event) -> None:
     if event == mercure_events.ERROR:
         pass
 
+    # TODO: Incomplete implementation
+
     try:
-        response = requests.post(url, data=json.dumps("{" + payload + "}"), headers={"Content-Type": "application/json"})
+        response = requests.post(
+            url, data=json.dumps("{" + payload + "}"), headers={"Content-Type": "application/json"}
+        )
         if response.status_code != 200:
             logger.error(f"ERROR: Webhook notification failed (status code {response.status_code})")
             logger.error(f"ERROR: {response.text}")

@@ -1,3 +1,10 @@
+"""
+constants.py
+============
+mercure-wide constants, used for standardizing key names and extensions.
+"""
+
+
 class mercure_defs:
     VERSION = "0.2a"
     SEPARATOR = "#"

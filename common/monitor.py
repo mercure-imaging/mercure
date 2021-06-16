@@ -1,8 +1,16 @@
+"""
+monitor.py
+==========
+Helper functions and definitions for monitoring mercure's operations via the bookkeeper module.
+"""
+
+# Standard python includes
 from typing import Dict
 import requests
 import daiquiri
 import logging
 
+# Create local logger instance
 logger = daiquiri.getLogger("config")
 
 sender_name = ""

@@ -1,5 +1,15 @@
+"""
+types.py
+========
+Definitions for using TypedDicts throughout mercure.
+"""
+
+# Standard python includes
 from typing import Dict, List, Optional, Union
 from typing_extensions import Literal, TypedDict
+
+
+# TODO: Add description for the individual classes
 
 
 class Target(TypedDict, total=False):
