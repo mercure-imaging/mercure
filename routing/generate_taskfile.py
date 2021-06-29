@@ -60,14 +60,13 @@ def add_processing(applied_rule: str, tags_list) -> Optional[Module]:
         applied_rule = next(iter(applied_rule.keys()))
 
     logger.info("add_processing")
-    applied_rule_info: Rule = config.mercure["rules"][applied_rule]
+    applied_rule_info: Rule = config.mercure[mercure_config.RULES][applied_rule]
     logger.info(applied_rule_info)
 
     if applied_rule_info.get(mercure_rule.ACTION, mercure_actions.PROCESS) in (
         mercure_actions.PROCESS,
         mercure_actions.BOTH,
     ):
-
         logger.info("adding processing section")
         # TODO: This should be changed into an array?
         # Get the module that should be triggered
@@ -76,7 +75,7 @@ def add_processing(applied_rule: str, tags_list) -> Optional[Module]:
         logger.info(module)
 
         # Get the configuration on this module
-        module_config = config.mercure["modules"].get(module, {})
+        module_config = config.mercure[mercure_config.MODULES].get(module, {})
 
         logger.info({"module_config": module_config})
 
@@ -95,14 +94,14 @@ def add_dispatching(applied_rule: str, tags_list, target) -> Optional[TaskDispat
         applied_rule = next(iter(applied_rule.keys()))
     # If no target is provided already (as done in routing-only mode), read the target defined in the applied rule
     if not target:
-        target = config.mercure["rules"][applied_rule].get(mercure_rule.TARGET, "")
+        target = config.mercure[mercure_config.RULES][applied_rule].get(mercure_rule.TARGET, "")
 
     # Fill the dispatching section, if routing has been selected and a target has been provided
     if (
-        config.mercure["rules"][applied_rule].get(mercure_rule.ACTION, mercure_actions.PROCESS)
+        config.mercure[mercure_config.RULES][applied_rule].get(mercure_rule.ACTION, mercure_actions.PROCESS)
         in (mercure_actions.ROUTE, mercure_actions.BOTH)
     ) and target:
-        target_info: Target = config.mercure["targets"][target]
+        target_info: Target = config.mercure[mercure_config.TARGETS][target]
         return {
             "target_name": target,
             "target_ip": target_info["ip"],

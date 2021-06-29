@@ -39,7 +39,7 @@ def route_studies() -> None:
     """Searches for completed studies and initiates the routing of the completed studies"""
     studies_ready = {}
 
-    with os.scandir(config.mercure["studies_folder"]) as it:
+    with os.scandir(config.mercure[mercure_folders.STUDIES]) as it:
         for entry in it:
             if entry.is_dir() and not is_study_locked(entry.path) and is_study_complete(entry.path):
                 modificationTime = entry.stat().st_mtime
@@ -54,9 +54,7 @@ def route_studies() -> None:
             # TODO: Add study events to bookkeeper
             # monitor.send_series_event(monitor.s_events.ERROR, entry, 0, "", "Exception while processing")
             monitor.send_event(
-                monitor.h_events.PROCESSING,
-                monitor.severity.ERROR,
-                f"Exception while processing study {dir_entry}",
+                monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Exception while processing study {dir_entry}",
             )
 
         # If termination is requested, stop processing after the active study has been completed
@@ -64,7 +62,7 @@ def route_studies() -> None:
             return
 
 
-def is_study_locked(folder: str):
+def is_study_locked(folder: str) -> bool:
     """Returns true if the given folder is locked, i.e. if another process is already working on the study"""
     path = Path(folder)
     folder_status = (
@@ -75,7 +73,7 @@ def is_study_locked(folder: str):
     return folder_status
 
 
-def is_study_complete(folder: str):
+def is_study_complete(folder: str) -> bool:
     """Returns true if the study in the given folder is ready for processing, i.e. if the completeness criteria of the triggered rule has been met"""
     try:
         # Read stored task file to determine completeness criteria
@@ -145,7 +143,7 @@ def check_study_series(task, required_series) -> bool:
 
 
 def route_study(study) -> bool:
-    if is_study_locked(config.mercure["studies_folder"] + "/" + study):
+    if is_study_locked(config.mercure[mercure_folders.STUDIES] + "/" + study):
         # If the study folder has been locked in the meantime, then skip and proceed with the next one
         return True
 

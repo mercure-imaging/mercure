@@ -3,6 +3,8 @@ config.py
 =========
 mercure's configuration management, used by various mercure modules 
 """
+
+# Standard python includes
 import json
 import os
 from pathlib import Path
@@ -10,15 +12,19 @@ from typing_extensions import Literal
 import daiquiri
 from typing import cast
 
+# App-specific includes
 import common.monitor as monitor
 import common.helper as helper
-from common.constants import mercure_names
+from common.constants import mercure_names, mercure_folders
 from common.types import Config
 
+# Create local logger instance
 logger = daiquiri.getLogger("config")
 
 configuration_timestamp: float = 0
-configuration_filename = os.path.realpath(os.path.dirname(os.path.realpath(__file__)) + "/../configuration/mercure.json")
+configuration_filename = os.path.realpath(
+    os.path.dirname(os.path.realpath(__file__)) + "/../configuration/mercure.json"
+)
 
 mercure_defaults = {
     "appliance_name": "master",
@@ -141,7 +147,9 @@ def save_config() -> None:
     except:
         # Can't delete lock file, so something must be seriously wrong
         logger.error(f"Unable to remove lock file {lock_file}")
-        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Unable to remove lock file {lock_file}")
+        monitor.send_event(
+            monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Unable to remove lock file {lock_file}"
+        )
         return
 
 
@@ -171,7 +179,9 @@ def write_configfile(json_content) -> None:
     except:
         # Can't delete lock file, so something must be seriously wrong
         logger.error(f"Unable to remove lock file {lock_file}")
-        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Unable to remove lock file {lock_file}")
+        monitor.send_event(
+            monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Unable to remove lock file {lock_file}"
+        )
         return
 
 
@@ -179,8 +189,27 @@ def check_folders() -> bool:
     """Checks if all required folders for handling the DICOM files exist."""
     global mercure
 
-    for entry in ["incoming_folder", "studies_folder", "outgoing_folder", "success_folder", "error_folder", "discard_folder", "processing_folder"]:
-        entry = cast(Literal["incoming_folder", "studies_folder", "outgoing_folder", "success_folder", "error_folder", "discard_folder", "processing_folder"], entry)
+    for entry in [
+        "incoming_folder",
+        "studies_folder",
+        "outgoing_folder",
+        "success_folder",
+        "error_folder",
+        "discard_folder",
+        "processing_folder",
+    ]:
+        entry = cast(
+            Literal[
+                "incoming_folder",
+                "studies_folder",
+                "outgoing_folder",
+                "success_folder",
+                "error_folder",
+                "discard_folder",
+                "processing_folder",
+            ],
+            entry,
+        )
         if not Path(mercure[entry]).exists():
             logger.error(f"Folder not found {mercure[entry]}")
             monitor.send_event(monitor.h_events.CONFIG_UPDATE, monitor.severity.CRITICAL, "Folders are missing")
