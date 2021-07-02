@@ -40,10 +40,10 @@ logger = daiquiri.getLogger("route_series")
 
 
 def route_series(series_UID: str) -> None:
-    """Processes the series with the given series UID from the incoming folder."""
-
+    """
+    Processes the series with the given series UID from the incoming folder.
+    """
     lock_file = Path(config.mercure[mercure_folders.INCOMING] + "/" + str(series_UID) + mercure_names.LOCK)
-
     if lock_file.exists():
         # Series is locked, so another instance might be working on it
         return
@@ -119,7 +119,9 @@ def route_series(series_UID: str) -> None:
 
 
 def get_triggered_rules(tagList: Dict[str, str]) -> Tuple[Dict[str, Literal[True]], Union[Any, Literal[""]]]:
-    """Evaluates the routing rules and returns a list with triggered rules."""
+    """
+    Evaluates the routing rules and returns a list with triggered rules.
+    """
     triggered_rules: Dict[str, Literal[True]] = {}
     discard_rule = ""
     fallback_rule = ""
@@ -163,7 +165,9 @@ def get_triggered_rules(tagList: Dict[str, str]) -> Tuple[Dict[str, Literal[True
 
 
 def push_series_discard(fileList: List[str], series_UID, discard_series) -> None:
-    """Discards the series by moving all files into the "discard" folder, which is periodically cleared."""
+    """
+    Discards the series by moving all files into the "discard" folder, which is periodically cleared.
+    """
     # Define the source and target folder. Use UUID as name for the target folder in the
     # discard directory to avoid collisions
     discard_path = config.mercure[mercure_folders.DISCARD] + "/" + str(uuid.uuid1())
@@ -234,8 +238,9 @@ def push_series_discard(fileList: List[str], series_UID, discard_series) -> None
 def push_series_studylevel(
     triggered_rules: Dict[str, Literal[True]], file_list: List[str], series_UID, tags_list
 ) -> None:
-    """Prepeares study-level routing for the current series."""
-
+    """
+    Prepeares study-level routing for the current series.
+    """
     # Move series into individual study-level folder for every rule
     for current_rule in triggered_rules:
         if (
@@ -284,7 +289,9 @@ def push_series_studylevel(
 def push_series_serieslevel(
     triggered_rules: Dict[str, Literal[True]], file_list: List[str], series_UID, tags_list
 ) -> None:
-    """Prepeares all series-level routings for the current series."""
+    """
+    Prepeares all series-level routings for the current series.
+    """
     push_serieslevel_routing(triggered_rules, file_list, series_UID, tags_list)
     push_serieslevel_processing(triggered_rules, file_list, series_UID, tags_list)
     push_serieslevel_notification(triggered_rules, file_list, series_UID, tags_list)
@@ -304,7 +311,8 @@ def push_serieslevel_routing(
     selected_targets = {}
     # Collect the dispatch-only targets to avoid that a series is sent twice to the
     # same target due to multiple targets triggered (note: this only makes sense for routing-only
-    # series tasks as study-level rules might have different completion criteria)
+    # series tasks, as study-level rules might have different completion criteria and tasks involving
+    # processing steps might create different results so that they cannot be pooled)
     for current_rule in triggered_rules:
         if (
             config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.ACTION_TRIGGER, mercure_options.SERIES)
@@ -425,7 +433,9 @@ def push_serieslevel_notification(triggered_rules: Dict[str, Literal[True]], fil
 def push_serieslevel_outgoing(
     triggered_rules: Dict[str, Literal[True]], file_list, series_UID, tags_list, selected_targets
 ) -> None:
-    """Move the DICOM files of the series to a separate subfolder for each target in the outgoing folder."""
+    """
+    Move the DICOM files of the series to a separate subfolder for each target in the outgoing folder.
+    """
     source_folder = config.mercure[mercure_folders.INCOMING] + "/"
 
     # Determine if the files should be copied or moved. If only one rule triggered, files can
@@ -540,7 +550,9 @@ def push_files(file_list: List[str], target_path: str, copy_files: bool) -> bool
 
 
 def remove_series(file_list: List[str]) -> None:
-    """Deletes the given files from the incoming folder."""
+    """
+    Deletes the given files from the incoming folder.
+    """
     source_folder = config.mercure[mercure_folders.INCOMING] + "/"
     for entry in file_list:
         try:

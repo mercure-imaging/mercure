@@ -43,25 +43,35 @@ def compose_task(
     uid: str,
     uid_type: Literal["series", "study"],
     triggered_rules: Dict[str, Literal[True]],
-    current_rule: str,
+    applied_rule: str,
     tags_list: Dict[str, str],
     target: str,
 ) -> Task:
+    """
+    Composes the JSON content that is written into a task file when submitting a job (for processing, dispatching, or both)
+    """
     return {
-        "info": add_info(uid, uid_type, triggered_rules, tags_list),
-        "dispatch": add_dispatching(uid, current_rule, tags_list, target) or {},  # type: ignore
-        "process": add_processing(uid, current_rule, tags_list) or {},  # type: ignore
+        # Add general information about the job
+        "info": add_info(uid, uid_type, triggered_rules, applied_rule, tags_list),
+        # Add dispatch information -- completed only if the job includes a dispatching step
+        # type: ignore
+        "dispatch": add_dispatching(uid, applied_rule, tags_list, target) or {},
+        # Add processing information -- completed only if the job includes a processing step
+        # type: ignore
+        "process": add_processing(uid, applied_rule, tags_list) or {},
+        # Add information about the study, included all collected series
         "study": EmptyDict(),
     }
 
 
 def add_processing(uid: str, applied_rule: str, tags_list) -> Optional[Module]:
-
-    # If the applied_rule name is empty, don't add processing information (rules with processing action always have applied_rule set)
+    """
+    Adds information about the desired processing step into the task file, which is evaluated by the processing module
+    """
+    # If the applied_rule name is empty, don't add processing information (rules with processing steps always have applied_rule set)
     if not applied_rule:
         return None
 
-    logger.info("add_processing")
     applied_rule_info: Rule = config.mercure[mercure_config.RULES][applied_rule]
     logger.info(applied_rule_info)
 
@@ -69,37 +79,32 @@ def add_processing(uid: str, applied_rule: str, tags_list) -> Optional[Module]:
         mercure_actions.PROCESS,
         mercure_actions.BOTH,
     ):
-        logger.info("adding processing section")
-        # TODO: This should be changed into an array?
         # Get the module that should be triggered
+        # TODO: Revise this part. Needs to be prepared for sequential execution of modules
         module: str = applied_rule_info.get("processing_module", "")
-        logger.info("module:")
-        logger.info(module)
+        logger.info(f"module: {module}")
 
-        # Get the configuration on this module
+        # Get the configuration of this module
         module_config = config.mercure[mercure_config.MODULES].get(module, {})
 
         logger.info({"module_config": module_config})
 
         # TODO: Probably Still incomplete, but this seems to make the current processing happy
+        # TODO: Write the setting into a subsection and also store the module name
+
         return module_config
 
-        # = config.mercure[mercure_config.MODULES].get(module,{})
-        # task_json[mercure_sections.INFO].update({"module": module })
-
-    logger.info("finished adding processing section")
     return None
 
 
 def add_dispatching(uid: str, applied_rule: str, tags_list, target: str) -> Optional[TaskDispatch]:
-
+    """
+    Adds information about the desired dispatching step into the task file, which is evaluated by the dispatcher
+    """
     if not applied_rule and not target:
         # applied_rule and target should not be empty at the same time!
         logger.warning(f"Applied_rule and target empty. Cannot add dispatch information for UID {uid}")
         return None
-
-    if isinstance(applied_rule, dict):
-        applied_rule = next(iter(applied_rule.keys()))
 
     # If no target is provided already (as done in routing-only mode), read the target defined in the applied rule
     if not target:
@@ -127,13 +132,18 @@ def add_dispatching(uid: str, applied_rule: str, tags_list, target: str) -> Opti
 def add_info(
     uid: str,
     uid_type: Literal["series", "study"],
-    triggered_rules: Union[Dict[str, Literal[True]], str],
+    triggered_rules: Dict[str, Literal[True]],
+    applied_rule: str,
     tags_list: Dict[str, str],
 ) -> TaskInfo:
+    """
+    Adds general information into the task file
+    """
     return {
         "uid": uid,
         "uid_type": uid_type,
         "triggered_rules": triggered_rules,
+        "applied_rule": applied_rule,
         "mrn": tags_list.get("PatientID", mercure_options.MISSING),
         "acc": tags_list.get("AccessionNumber", mercure_options.MISSING),
         "mercure_version": mercure_defs.VERSION,
@@ -142,9 +152,38 @@ def add_info(
     }
 
 
-def create_study_task(folder_name: str, applied_rule: str, study_UID: str, tags_list: Dict[str, str]) -> bool:
-    """Generate task file with information on the study"""
+def create_series_task(
+    folder_name: str,
+    triggered_rules: Dict[str, Literal[True]],
+    applied_rule: str,
+    series_UID: str,
+    tags_list: Dict[str, str],
+    target: str,
+) -> bool:
+    """
+    Writes a task file for the received series, containing all information needed by the processor and dispatcher. Additional information is written into the file as well
+    """
+    # Compose the JSON content for the file
+    task_json = compose_task(series_UID, "series", triggered_rules, applied_rule, tags_list, target)
 
+    task_filename = folder_name + mercure_names.TASKFILE
+    try:
+        with open(task_filename, "w") as task_file:
+            json.dump(task_json, task_file)
+    except:
+        logger.error(f"Unable to create task file {task_filename}")
+        monitor.send_event(
+            monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Unable to create task file {task_filename}"
+        )
+        return False
+
+    return True
+
+
+def create_study_task(folder_name: str, applied_rule: str, study_UID: str, tags_list: Dict[str, str]) -> bool:
+    """
+    Generate task file with information on the study
+    """
     task_filename = folder_name + mercure_names.TASKFILE
 
     # TODO: Move into add_... function
@@ -180,8 +219,9 @@ def create_study_task(folder_name: str, applied_rule: str, study_UID: str, tags_
 
 
 def update_study_task(folder_name: str, applied_rule: str, study_UID, tags_list: Dict[str, str]) -> bool:
-    """Update the study task file with information from the latest received series"""
-
+    """
+    Update the study task file with information from the latest received series
+    """
     series_description = tags_list.get("SeriesDescription", mercure_options.INVALID)
     task_filename = folder_name + mercure_names.TASKFILE
 
@@ -223,35 +263,6 @@ def update_study_task(folder_name: str, applied_rule: str, study_UID, tags_list:
         error_message = f"Unable to write task file {task_filename}"
         logger.error(error_message)
         monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, error_message)
-        return False
-
-    return True
-
-
-def create_series_task(
-    folder_name: str,
-    triggered_rules: Dict[str, Literal[True]],
-    current_rule: str,
-    series_UID: str,
-    tags_list: Dict[str, str],
-    target: str,
-) -> bool:
-    """Create task file for the received series"""
-
-    # For routing-only: target is string containing the target name and current_rule is empty, as multiple rules could be dispatching to the target
-    # For processing-only and both: target is empty and current_rule contains the name of the rule that is being processed
-
-    task_filename = folder_name + mercure_names.TASKFILE
-    task_json = compose_task(series_UID, "series", triggered_rules, current_rule, tags_list, target)
-
-    try:
-        with open(task_filename, "w") as task_file:
-            json.dump(task_json, task_file)
-    except:
-        logger.error(f"Unable to create task file {task_filename}")
-        monitor.send_event(
-            monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Unable to create task file {task_filename}"
-        )
         return False
 
     return True

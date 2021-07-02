@@ -36,7 +36,9 @@ logger = daiquiri.getLogger("route_studies")
 
 
 def route_studies() -> None:
-    """Searches for completed studies and initiates the routing of the completed studies"""
+    """
+    Searches for completed studies and initiates the routing of the completed studies
+    """
     studies_ready = {}
 
     with os.scandir(config.mercure[mercure_folders.STUDIES]) as it:
@@ -63,7 +65,9 @@ def route_studies() -> None:
 
 
 def is_study_locked(folder: str) -> bool:
-    """Returns true if the given folder is locked, i.e. if another process is already working on the study"""
+    """
+    Returns true if the given folder is locked, i.e. if another process is already working on the study
+    """
     path = Path(folder)
     folder_status = (
         (path / mercure_names.LOCK).exists()
@@ -74,7 +78,9 @@ def is_study_locked(folder: str) -> bool:
 
 
 def is_study_complete(folder: str) -> bool:
-    """Returns true if the study in the given folder is ready for processing, i.e. if the completeness criteria of the triggered rule has been met"""
+    """
+    Returns true if the study in the given folder is ready for processing, i.e. if the completeness criteria of the triggered rule has been met
+    """
     try:
         # Read stored task file to determine completeness criteria
         with open(Path(folder) / mercure_names.TASKFILE, "r") as json_file:
@@ -101,7 +107,9 @@ def is_study_complete(folder: str) -> bool:
             complete_trigger = mercure_rule.STUDY_TRIGGER_CONDITION_TIMEOUT
             warning_text = f"Missing series for trigger condition in study folder {folder}. Using timeout instead"
             logger.warning(warning_text)
-            monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.WARNING, warning_text)
+            monitor.send_event(
+                monitor.h_events.PROCESSING, monitor.severity.WARNING, warning_text,
+            )
 
         # Check for trigger condition
         if complete_trigger == mercure_rule.STUDY_TRIGGER_CONDITION_TIMEOUT:
@@ -124,7 +132,9 @@ def is_study_complete(folder: str) -> bool:
 
 
 def check_study_timeout(task) -> bool:
-    """Checks if the duration since the last series of the study was received exceeds the study completion timeout"""
+    """
+    Checks if the duration since the last series of the study was received exceeds the study completion timeout
+    """
     last_received_string = task.get(mercure_sections.STUDY, {}).get(mercure_study.LAST_RECEIVE_TIME, "")
     if not last_received_string:
         return False
@@ -137,7 +147,9 @@ def check_study_timeout(task) -> bool:
 
 
 def check_study_series(task, required_series) -> bool:
-    """Checks if all series required for study completion have been received"""
+    """
+    Checks if all series required for study completion have been received
+    """
     # TODO
     return False
 

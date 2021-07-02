@@ -94,8 +94,8 @@ The most convenient way for installing Graphite and Grafana is using `Docker Com
         external: true
 
 
-Bookkeeer with Redash
----------------------
+Bookkeeper with Redash
+----------------------
 
 All mercure components transfer real-time information about their activities to mercure' bookkeeper service, which acts as central monitoring hub. The bookkeeper service can be disabled if not needed, but it's highly recommended to use it, as it allows analyzing which series have been processed (or discarded) and what the processing times were. Of course, it also keeps track of all errors and processing abnormalities that might occur. Moreover, because bookkeeper tracks all DICOM files that pass through the router, including series that are discarded, the bookkeeper can be used for data mining that exceeds the capabilities of many PACS systems (e.g., searching for series where a certain contrast agent has been administered).
 

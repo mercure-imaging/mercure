@@ -38,7 +38,9 @@ logger = daiquiri.getLogger("router")
 
 
 def terminate_process(signalNumber, frame) -> None:
-    """Triggers the shutdown of the service."""
+    """
+    Triggers the shutdown of the service
+    """
     helper.g_log("events.shutdown", 1)
     logger.info("Shutdown requested")
     monitor.send_event(monitor.h_events.SHUTDOWN_REQUEST, monitor.severity.INFO)
@@ -49,7 +51,9 @@ def terminate_process(signalNumber, frame) -> None:
 
 
 def run_router(args=None) -> None:
-    """Main processing function that is called every second."""
+    """
+    Main processing function that is called every second
+    """
     if helper.is_terminated():
         return
 
@@ -122,7 +126,9 @@ def run_router(args=None) -> None:
 
 
 def exit_router(args) -> None:
-    """Callback function that is triggered when the process terminates. Stops the asyncio event loop."""
+    """
+    Callback function that is triggered when the process terminates. Stops the asyncio event loop
+    """
     helper.loop.call_soon_threadsafe(helper.loop.stop)
 
 
