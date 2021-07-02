@@ -244,7 +244,7 @@ def push_series_studylevel(
         ):
             first_series = False
 
-            # Create folder to buffer the series until study completion
+            # Check if folder exists for buffering series until study completion. If not, create it
             study_UID = tags_list["StudyInstanceUID"]
             folder_name = study_UID + mercure_defs.SEPARATOR + current_rule
             if not os.path.exists(folder_name):
@@ -319,6 +319,8 @@ def push_serieslevel_routing(
 
 
 def push_serieslevel_processing(triggered_rules: Dict[str, Literal[True]], file_list, series_UID, tags_list) -> bool:
+    # Rules with action "processing" or "processing & routing" need to be processed separately (because the processing step can create varying results).
+    # Thus, loop over all series-level rules that have triggered.
     for current_rule in triggered_rules:
         if (
             config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.ACTION_TRIGGER, mercure_options.SERIES)
@@ -339,6 +341,7 @@ def push_serieslevel_processing(triggered_rules: Dict[str, Literal[True]], file_
                 folder_name = config.mercure[mercure_folders.PROCESSING] + "/" + str(uuid.uuid1())
                 target_folder = folder_name + "/"
 
+                # Create processing folder
                 try:
                     os.mkdir(folder_name)
                 except Exception:
@@ -359,6 +362,7 @@ def push_serieslevel_processing(triggered_rules: Dict[str, Literal[True]], file_
                     )
                     return False
 
+                # Lock the case
                 lock_file = Path(folder_name) / mercure_names.LOCK
                 try:
                     lock = helper.FileLock(lock_file)

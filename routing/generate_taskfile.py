@@ -42,22 +42,24 @@ logger = daiquiri.getLogger("generate_taskfile")
 def compose_task(
     uid: str,
     uid_type: Literal["series", "study"],
-    triggered_rules: Union[Dict[str, Literal[True]], str],
+    triggered_rules: Dict[str, Literal[True]],
+    current_rule: str,
     tags_list: Dict[str, str],
     target: str,
 ) -> Task:
-    # TODO: triggered_rules is sometimes several strings, and sometimes only one. add_dispatching and add_processing both expect a string.
     return {
         "info": add_info(uid, uid_type, triggered_rules, tags_list),
-        "dispatch": add_dispatching(triggered_rules, tags_list, target) or {},  # type: ignore
-        "process": add_processing(triggered_rules, tags_list) or {},  # type: ignore
+        "dispatch": add_dispatching(uid, current_rule, tags_list, target) or {},  # type: ignore
+        "process": add_processing(uid, current_rule, tags_list) or {},  # type: ignore
         "study": EmptyDict(),
     }
 
 
-def add_processing(applied_rule: str, tags_list) -> Optional[Module]:
-    if isinstance(applied_rule, dict):
-        applied_rule = next(iter(applied_rule.keys()))
+def add_processing(uid: str, applied_rule: str, tags_list) -> Optional[Module]:
+
+    # If the applied_rule name is empty, don't add processing information (rules with processing action always have applied_rule set)
+    if not applied_rule:
+        return None
 
     logger.info("add_processing")
     applied_rule_info: Rule = config.mercure[mercure_config.RULES][applied_rule]
@@ -79,7 +81,7 @@ def add_processing(applied_rule: str, tags_list) -> Optional[Module]:
 
         logger.info({"module_config": module_config})
 
-        # TODO: Probably Still incomplete, but this seems to make the current Processing happy
+        # TODO: Probably Still incomplete, but this seems to make the current processing happy
         return module_config
 
         # = config.mercure[mercure_config.MODULES].get(module,{})
@@ -89,9 +91,16 @@ def add_processing(applied_rule: str, tags_list) -> Optional[Module]:
     return None
 
 
-def add_dispatching(applied_rule: str, tags_list, target) -> Optional[TaskDispatch]:
+def add_dispatching(uid: str, applied_rule: str, tags_list, target: str) -> Optional[TaskDispatch]:
+
+    if not applied_rule and not target:
+        # applied_rule and target should not be empty at the same time!
+        logger.warning(f"Applied_rule and target empty. Cannot add dispatch information for UID {uid}")
+        return None
+
     if isinstance(applied_rule, dict):
         applied_rule = next(iter(applied_rule.keys()))
+
     # If no target is provided already (as done in routing-only mode), read the target defined in the applied rule
     if not target:
         target = config.mercure[mercure_config.RULES][applied_rule].get(mercure_rule.TARGET, "")
@@ -221,18 +230,19 @@ def update_study_task(folder_name: str, applied_rule: str, study_UID, tags_list:
 
 def create_series_task(
     folder_name: str,
-    triggered_rules: Union[Dict[str, Literal[True]], str],
+    triggered_rules: Dict[str, Literal[True]],
+    current_rule: str,
     series_UID: str,
     tags_list: Dict[str, str],
     target: str,
 ) -> bool:
     """Create task file for the received series"""
 
-    # For routing-only: triggered_rules is dict and target is string containing the target name
-    # For processing-only and both: triggered_rule is string and target is empty
+    # For routing-only: target is string containing the target name and current_rule is empty, as multiple rules could be dispatching to the target
+    # For processing-only and both: target is empty and current_rule contains the name of the rule that is being processed
 
     task_filename = folder_name + mercure_names.TASKFILE
-    task_json = compose_task(series_UID, "series", triggered_rules, tags_list, target)
+    task_json = compose_task(series_UID, "series", triggered_rules, current_rule, tags_list, target)
 
     try:
         with open(task_filename, "w") as task_file:
