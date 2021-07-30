@@ -53,10 +53,9 @@ def route_series(series_UID: str) -> None:
         lock = helper.FileLock(lock_file)
     except:
         # Can't create lock file, so something must be seriously wrong
-        logger.error(f"Unable to create lock file {lock_file}")
-        monitor.send_event(
-            monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Unable to create lock file {lock_file}"
-        )
+        error_message = f"Unable to create lock file {lock_file}"
+        logger.error(error_message)
+        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, error_message)
         return
 
     logger.info(f"Processing series {series_UID}")
@@ -70,21 +69,28 @@ def route_series(series_UID: str) -> None:
             fileList.append(stemName)
 
     logger.info("DICOM files found: " + str(len(fileList)))
+    if not len(fileList):
+        error_message = f"No tags files found for series {series_UID}"
+        monitor.send_series_event(monitor.s_events.ERROR, series_UID, 0, "", error_message)
+        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, error_message)
+        return
 
     # Use the tags file from the first slice for evaluating the routing rules
     tagsMasterFile = Path(config.mercure[mercure_folders.INCOMING] + "/" + fileList[0] + mercure_names.TAGS)
     if not tagsMasterFile.exists():
-        logger.error(f"Missing file! {tagsMasterFile.name}")
-        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Missing file {tagsMasterFile.name}")
+        error_message = f"Missing file! {tagsMasterFile.name}"
+        logger.error(error_message)
+        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, error_message)
         return
 
     try:
         with open(tagsMasterFile, "r") as json_file:
             tagsList: Dict[str, str] = json.load(json_file)
     except Exception:
-        logger.exception(f"Invalid tag information of series {series_UID}")
-        monitor.send_series_event(monitor.s_events.ERROR, entry, 0, "", "Invalid tag information")
-        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Invalid tag for series {series_UID}")
+        error_message = f"Invalid tag for series {series_UID}"
+        logger.exception(error_message)
+        monitor.send_series_event(monitor.s_events.ERROR, series_UID, 0, "", error_message)
+        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, error_message)
         return
 
     monitor.send_register_series(tagsList)
@@ -111,10 +117,9 @@ def route_series(series_UID: str) -> None:
         lock.free()
     except:
         # Can't delete lock file, so something must be seriously wrong
-        logger.error(f"Unable to remove lock file {lock_file}")
-        monitor.send_event(
-            monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Unable to remove lock file {lock_file}"
-        )
+        error_message = f"Unable to remove lock file {lock_file}"
+        logger.error(error_message)
+        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, error_message)
         return
 
 
@@ -149,8 +154,9 @@ def get_triggered_rules(tagList: Dict[str, str]) -> Tuple[Dict[str, Literal[True
 
         except Exception as e:
             logger.error(e)
-            logger.error(f"Invalid rule found: {current_rule}")
-            monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Invalid rule: {current_rule}")
+            error_message = f"Invalid rule found: {current_rule}"
+            logger.error(error_message)
+            monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, error_message)
             continue
 
     # If no rule has triggered but a fallback rule exists, then apply this rule
@@ -164,7 +170,7 @@ def get_triggered_rules(tagList: Dict[str, str]) -> Tuple[Dict[str, Literal[True
     return triggered_rules, discard_rule
 
 
-def push_series_discard(fileList: List[str], series_UID, discard_series) -> None:
+def push_series_discard(fileList: List[str], series_UID: str, discard_series: bool) -> None:
     """
     Discards the series by moving all files into the "discard" folder, which is periodically cleared.
     """
@@ -178,16 +184,14 @@ def push_series_discard(fileList: List[str], series_UID, discard_series) -> None
     try:
         os.mkdir(discard_path)
     except Exception:
-        logger.exception(f"Unable to create outgoing folder {discard_path}")
-        monitor.send_event(
-            monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Unable to create discard folder {discard_path}"
-        )
+        error_message = f"Unable to create outgoing folder {discard_path}"
+        logger.exception(error_message)
+        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, error_message)
         return
     if not Path(discard_path).exists():
-        logger.error(f"Creating discard folder not possible {discard_path}")
-        monitor.send_event(
-            monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Creating discard folder not possible {discard_path}"
-        )
+        error_message = f"Creating discard folder not possible {discard_path}"
+        logger.error(error_message)
+        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, error_message)
         return
 
     # Create lock file in destination folder (to prevent the cleaner module to work on the folder). Note that
@@ -197,11 +201,10 @@ def push_series_discard(fileList: List[str], series_UID, discard_series) -> None
         lock = helper.FileLock(lock_file)
     except:
         # Can't create lock file, so something must be seriously wrong
-        logger.error(f"Unable to create lock file {discard_path}/{mercure_names.LOCK}")
+        error_message = f"Unable to create lock file {discard_path}/{mercure_names.LOCK}"
+        logger.error(error_message)
         monitor.send_event(
-            monitor.h_events.PROCESSING,
-            monitor.severity.ERROR,
-            f"Unable to create lock file in discard folder {discard_path}/{mercure_names.LOCK}",
+            monitor.h_events.PROCESSING, monitor.severity.ERROR, error_message,
         )
         return
 
@@ -215,12 +218,11 @@ def push_series_discard(fileList: List[str], series_UID, discard_series) -> None
             shutil.move(source_folder + entry + mercure_names.DCM, discard_folder + entry + mercure_names.DCM)
             shutil.move(source_folder + entry + mercure_names.TAGS, discard_folder + entry + mercure_names.TAGS)
         except Exception:
-            logger.exception(f"Problem while discarding file {entry}")
+            error_message = f"Problem while discarding file {entry}"
+            logger.exception(error_message)
             logger.exception(f"Source folder {source_folder}")
             logger.exception(f"Target folder {discard_folder}")
-            monitor.send_event(
-                monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Problem during discarding file {entry}"
-            )
+            monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, error_message)
 
     monitor.send_series_event(monitor.s_events.MOVE, series_UID, len(fileList), discard_path, "")
 
@@ -228,15 +230,14 @@ def push_series_discard(fileList: List[str], series_UID, discard_series) -> None
         lock.free()
     except:
         # Can't delete lock file, so something must be seriously wrong
-        logger.error(f"Unable to remove lock file {lock_file}")
-        monitor.send_event(
-            monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Unable to remove lock file {lock_file}"
-        )
+        error_message = f"Unable to remove lock file {lock_file}"
+        logger.error(error_message)
+        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, error_message)
         return
 
 
 def push_series_studylevel(
-    triggered_rules: Dict[str, Literal[True]], file_list: List[str], series_UID, tags_list
+    triggered_rules: Dict[str, Literal[True]], file_list: List[str], series_UID: str, tags_list: Dict[str, str]
 ) -> None:
     """
     Prepeares study-level routing for the current series.
@@ -257,10 +258,9 @@ def push_series_studylevel(
                     os.mkdir(folder_name)
                     first_series = True
                 except:
-                    logger.error(f"Unable to create folder {folder_name}")
-                    monitor.send_event(
-                        monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Unable to create folder {folder_name}"
-                    )
+                    error_message = f"Unable to create folder {folder_name}"
+                    logger.error(error_message)
+                    monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, error_message)
                     continue
 
             lock_file = Path(folder_name) / mercure_names.LOCK
@@ -268,15 +268,14 @@ def push_series_studylevel(
                 lock = helper.FileLock(lock_file)
             except:
                 # Can't create lock file, so something must be seriously wrong
-                logger.error(f"Unable to create lock file {lock_file}")
-                monitor.send_event(
-                    monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Unable to create lock file {lock_file}"
-                )
+                error_message = f"Unable to create lock file {lock_file}"
+                logger.error(error_message)
+                monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, error_message)
                 continue
 
             if first_series:
                 # Create task file with information on complete criteria
-                create_study_task(folder_name, current_rule, study_UID, tags_list)
+                create_study_task(folder_name, triggered_rules, current_rule, study_UID, tags_list)
             else:
                 # Add data from latest series to task file
                 update_study_task(folder_name, current_rule, study_UID, tags_list)
@@ -287,7 +286,7 @@ def push_series_studylevel(
 
 
 def push_series_serieslevel(
-    triggered_rules: Dict[str, Literal[True]], file_list: List[str], series_UID, tags_list
+    triggered_rules: Dict[str, Literal[True]], file_list: List[str], series_UID: str, tags_list: Dict[str, str]
 ) -> None:
     """
     Prepeares all series-level routings for the current series.
@@ -297,7 +296,7 @@ def push_series_serieslevel(
     push_serieslevel_notification(triggered_rules, file_list, series_UID, tags_list)
 
 
-def trigger_serieslevel_notification_reception(current_rule: str, tags_list) -> None:
+def trigger_serieslevel_notification_reception(current_rule: str, tags_list: Dict[str, str]) -> None:
     notification.send_webhook(
         config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.NOTIFICATION_WEBHOOK, ""),
         config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.NOTIFICATION_PAYLOAD, ""),
@@ -306,7 +305,7 @@ def trigger_serieslevel_notification_reception(current_rule: str, tags_list) -> 
 
 
 def push_serieslevel_routing(
-    triggered_rules: Dict[str, Literal[True]], file_list: List[str], series_UID, tags_list
+    triggered_rules: Dict[str, Literal[True]], file_list: List[str], series_UID: str, tags_list: Dict[str, str]
 ) -> None:
     selected_targets = {}
     # Collect the dispatch-only targets to avoid that a series is sent twice to the
@@ -323,10 +322,13 @@ def push_serieslevel_routing(
                 if target:
                     selected_targets[target] = current_rule
                 trigger_serieslevel_notification_reception(current_rule, tags_list)
+
     push_serieslevel_outgoing(triggered_rules, file_list, series_UID, tags_list, selected_targets)
 
 
-def push_serieslevel_processing(triggered_rules: Dict[str, Literal[True]], file_list, series_UID, tags_list) -> bool:
+def push_serieslevel_processing(
+    triggered_rules: Dict[str, Literal[True]], file_list: List[str], series_UID: str, tags_list: Dict[str, str]
+) -> bool:
     # Rules with action "processing" or "processing & routing" need to be processed separately (because the processing step can create varying results).
     # Thus, loop over all series-level rules that have triggered.
     for current_rule in triggered_rules:
@@ -353,20 +355,18 @@ def push_serieslevel_processing(triggered_rules: Dict[str, Literal[True]], file_
                 try:
                     os.mkdir(folder_name)
                 except Exception:
-                    logger.exception(f"Unable to create outgoing folder {folder_name}")
+                    error_message = f"Unable to create outgoing folder {folder_name}"
+                    logger.exception(error_message)
                     monitor.send_event(
-                        monitor.h_events.PROCESSING,
-                        monitor.severity.ERROR,
-                        f"Unable to create processing folder {folder_name}",
+                        monitor.h_events.PROCESSING, monitor.severity.ERROR, error_message,
                     )
                     return False
 
                 if not Path(folder_name).exists():
-                    logger.error(f"Creating folder not possible {folder_name}")
+                    error_message = f"Creating folder not possible {folder_name}"
+                    logger.error(error_message)
                     monitor.send_event(
-                        monitor.h_events.PROCESSING,
-                        monitor.severity.ERROR,
-                        f"Creating folder not possible {folder_name}",
+                        monitor.h_events.PROCESSING, monitor.severity.ERROR, error_message,
                     )
                     return False
 
@@ -376,10 +376,9 @@ def push_serieslevel_processing(triggered_rules: Dict[str, Literal[True]], file_
                     lock = helper.FileLock(lock_file)
                 except:
                     # Can't create lock file, so something must be seriously wrong
-                    logger.error(f"Unable to create lock file {lock_file}")
-                    monitor.send_event(
-                        monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Unable to create lock file {lock_file}"
-                    )
+                    error_message = f"Unable to create lock file {lock_file}"
+                    logger.error(error_message)
+                    monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, error_message)
                     return False
 
                 # Generate task file with processing information
@@ -387,11 +386,10 @@ def push_serieslevel_processing(triggered_rules: Dict[str, Literal[True]], file_
                     return False
 
                 if not push_files(file_list, target_folder, copy_files):
-                    logger.error(f"Unable to push files into processing folder {target_folder}")
+                    error_message = f"Unable to push files into processing folder {target_folder}"
+                    logger.error(error_message)
                     monitor.send_event(
-                        monitor.h_events.PROCESSING,
-                        monitor.severity.ERROR,
-                        f"Unable to push files into processing folder {target_folder}",
+                        monitor.h_events.PROCESSING, monitor.severity.ERROR, error_message,
                     )
                     return False
 
@@ -399,18 +397,18 @@ def push_serieslevel_processing(triggered_rules: Dict[str, Literal[True]], file_
                     lock.free()
                 except:
                     # Can't delete lock file, so something must be seriously wrong
-                    logger.error(f"Unable to remove lock file {lock_file}")
-                    monitor.send_event(
-                        monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Unable to remove lock file {lock_file}"
-                    )
+                    error_message = f"Unable to remove lock file {lock_file}"
+                    logger.error(error_message)
+                    monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, error_message)
                     return False
 
                 trigger_serieslevel_notification_reception(current_rule, tags_list)
-
     return True
 
 
-def push_serieslevel_notification(triggered_rules: Dict[str, Literal[True]], file_list, series_UID, tags_list) -> bool:
+def push_serieslevel_notification(
+    triggered_rules: Dict[str, Literal[True]], file_list: List[str], series_UID: str, tags_list: Dict[str, str]
+) -> bool:
     for current_rule in triggered_rules:
         if (
             config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.ACTION_TRIGGER, mercure_options.SERIES)
@@ -431,7 +429,11 @@ def push_serieslevel_notification(triggered_rules: Dict[str, Literal[True]], fil
 
 
 def push_serieslevel_outgoing(
-    triggered_rules: Dict[str, Literal[True]], file_list, series_UID, tags_list, selected_targets
+    triggered_rules: Dict[str, Literal[True]],
+    file_list: List[str],
+    series_UID: str,
+    tags_list: Dict[str, str],
+    selected_targets: Dict[str, str],
 ) -> None:
     """
     Move the DICOM files of the series to a separate subfolder for each target in the outgoing folder.
@@ -456,17 +458,15 @@ def push_serieslevel_outgoing(
         try:
             os.mkdir(folder_name)
         except Exception:
-            logger.exception(f"Unable to create outgoing folder {folder_name}")
-            monitor.send_event(
-                monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Unable to create outgoing folder {folder_name}"
-            )
+            error_message = f"Unable to create outgoing folder {folder_name}"
+            logger.exception(error_message)
+            monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, error_message)
             return
 
         if not Path(folder_name).exists():
-            logger.error(f"Creating folder not possible {folder_name}")
-            monitor.send_event(
-                monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Creating folder not possible {folder_name}"
-            )
+            error_message = f"Creating folder not possible {folder_name}"
+            logger.error(error_message)
+            monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, error_message)
             return
 
         lock_file = Path(folder_name) / mercure_names.LOCK
@@ -474,10 +474,9 @@ def push_serieslevel_outgoing(
             lock = helper.FileLock(lock_file)
         except:
             # Can't create lock file, so something must be seriously wrong
-            logger.error(f"Unable to create lock file {lock_file}")
-            monitor.send_event(
-                monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Unable to create lock file {lock_file}"
-            )
+            error_message = f"Unable to create lock file {lock_file}"
+            logger.error(error_message)
+            monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, error_message)
             return
 
         # Generate task file with dispatch information
@@ -497,13 +496,12 @@ def push_serieslevel_outgoing(
                 operation(source_folder + entry + mercure_names.DCM, target_folder + entry + mercure_names.DCM)
                 operation(source_folder + entry + mercure_names.TAGS, target_folder + entry + mercure_names.TAGS)
             except Exception:
-                logger.exception(f"Problem while pushing file to outgoing {entry}")
+                error_message = f"Problem while pushing file to outgoing {entry}"
+                logger.exception(error_message)
                 logger.exception(f"Source folder {source_folder}")
                 logger.exception(f"Target folder {target_folder}")
                 monitor.send_event(
-                    monitor.h_events.PROCESSING,
-                    monitor.severity.ERROR,
-                    f"Problem while pushing file to outgoing {entry}",
+                    monitor.h_events.PROCESSING, monitor.severity.ERROR, error_message,
                 )
 
         monitor.send_series_event(monitor.s_events.MOVE, series_UID, len(file_list), folder_name, "")
@@ -512,10 +510,9 @@ def push_serieslevel_outgoing(
             lock.free()
         except:
             # Can't delete lock file, so something must be seriously wrong
-            logger.error(f"Unable to remove lock file {lock_file}")
-            monitor.send_event(
-                monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Unable to remove lock file {lock_file}"
-            )
+            error_message = f"Unable to remove lock file {lock_file}"
+            logger.error(error_message)
+            monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, error_message)
             return
 
 
@@ -538,11 +535,12 @@ def push_files(file_list: List[str], target_path: str, copy_files: bool) -> bool
             operation(source_folder + entry + mercure_names.DCM, target_folder + entry + mercure_names.DCM)
             operation(source_folder + entry + mercure_names.TAGS, target_folder + entry + mercure_names.TAGS)
         except Exception:
-            logger.exception(f"Problem while pushing file to outgoing {entry}")
+            error_message = f"Problem while pushing file to outgoing {entry}"
+            logger.exception(error_message)
             logger.exception(f"Source folder {source_folder}")
             logger.exception(f"Target folder {target_folder}")
             monitor.send_event(
-                monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Problem while pushing file to outgoing {entry}"
+                monitor.h_events.PROCESSING, monitor.severity.ERROR, error_message
             )
             return False
 
@@ -559,9 +557,10 @@ def remove_series(file_list: List[str]) -> None:
             os.remove(source_folder + entry + mercure_names.TAGS)
             os.remove(source_folder + entry + mercure_names.DCM)
         except Exception:
-            logger.exception(f"Error while removing file {entry}")
+            error_message = f"Error while removing file {entry}"
+            logger.exception(error_message)
             monitor.send_event(
-                monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Error while removing file {entry}"
+                monitor.h_events.PROCESSING, monitor.severity.ERROR, error_message
             )
 
 

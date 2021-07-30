@@ -60,11 +60,11 @@ def compose_task(
         # type: ignore
         "process": add_processing(uid, applied_rule, tags_list) or {},
         # Add information about the study, included all collected series
-        "study": EmptyDict(),
+        "study": add_study(uid, uid_type, applied_rule, tags_list) or {},
     }
 
 
-def add_processing(uid: str, applied_rule: str, tags_list) -> Optional[Module]:
+def add_processing(uid: str, applied_rule: str, tags_list: Dict[str, str]) -> Optional[Module]:
     """
     Adds information about the desired processing step into the task file, which is evaluated by the processing module
     """
@@ -97,7 +97,28 @@ def add_processing(uid: str, applied_rule: str, tags_list) -> Optional[Module]:
     return None
 
 
-def add_dispatching(uid: str, applied_rule: str, tags_list, target: str) -> Optional[TaskDispatch]:
+def add_study(uid: str, uid_type: Literal["series", "study"], applied_rule: str, tags_list: Dict[str, str]) -> Optional[Module]:
+    """
+    Adds study information into the task file. Returns nothing if the task is a series-level task
+    """
+    # If the current task is a series task, then don't add study information
+    if uid_type == "series":
+        return None
+
+    study_info: TaskStudy = {
+        "study_uid": uid,
+        "complete_trigger": config.mercure["rules"][applied_rule]["study_trigger_condition"],
+        "complete_required_series": config.mercure["rules"][applied_rule]["study_trigger_series"],
+        "creation_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "last_receive_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "received_series": [tags_list.get("SeriesDescription", mercure_options.INVALID)],
+        "complete_force": "False",
+    }
+
+    return study_info
+
+
+def add_dispatching(uid: str, applied_rule: str, tags_list: Dict[str, str], target: str) -> Optional[TaskDispatch]:
     """
     Adds information about the desired dispatching step into the task file, which is evaluated by the dispatcher
     """
@@ -171,54 +192,51 @@ def create_series_task(
         with open(task_filename, "w") as task_file:
             json.dump(task_json, task_file)
     except:
-        logger.error(f"Unable to create task file {task_filename}")
+        error_message = f"Unable to create series task file {task_filename}"
+        logger.error(error_message)
         monitor.send_event(
-            monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Unable to create task file {task_filename}"
+            monitor.h_events.PROCESSING, monitor.severity.ERROR, error_message
         )
         return False
 
     return True
 
 
-def create_study_task(folder_name: str, applied_rule: str, study_UID: str, tags_list: Dict[str, str]) -> bool:
+def create_study_task(
+    folder_name: str,
+    triggered_rules: Dict[str, Literal[True]],
+    applied_rule: str,
+    study_UID: str,
+    tags_list: Dict[str, str],
+) -> bool:
     """
     Generate task file with information on the study
     """
+    # Compose the JSON content for the file
+    task_json = compose_task(study_UID, "study", triggered_rules, applied_rule, tags_list, "")
+
     task_filename = folder_name + mercure_names.TASKFILE
-
-    # TODO: Move into add_... function
-    study_info: TaskStudy = {
-        "study_uid": study_UID,
-        "complete_trigger": config.mercure["rules"][applied_rule]["study_trigger_condition"],
-        "complete_required_series": config.mercure["rules"][applied_rule]["study_trigger_series"],
-        "creation_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "last_receive_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "received_series": [tags_list.get("SeriesDescription", mercure_options.INVALID)],
-        "complete_force": "False",
-    }
-
-    task_json: Task = {
-        "info": add_info(study_UID, "study", applied_rule, tags_list),
-        "dispatch": EmptyDict(),
-        "process": EmptyDict(),
-        "study": study_info,
-    }
-    # TODO: Incomplete
-
     try:
         with open(task_filename, "w") as task_file:
             json.dump(task_json, task_file)
     except:
-        logger.error(f"Unable to create task file {task_filename}")
+        error_message = f"Unable to create study task file {task_filename}"
+        logger.error(error_message)
         monitor.send_event(
-            monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Unable to create task file {task_filename}"
+            monitor.h_events.PROCESSING, monitor.severity.ERROR, error_message
         )
         return False
 
     return True
 
 
-def update_study_task(folder_name: str, applied_rule: str, study_UID, tags_list: Dict[str, str]) -> bool:
+def update_study_task(
+    folder_name: str,
+    triggered_rules: Dict[str, Literal[True]],
+    applied_rule: str,
+    study_UID: str,
+    tags_list: Dict[str, str],
+) -> bool:
     """
     Update the study task file with information from the latest received series
     """
@@ -232,7 +250,7 @@ def update_study_task(folder_name: str, applied_rule: str, study_UID, tags_list:
             if len(task_json.get("study", {})) == 0:
                 raise Exception("Study information is missing.")
     except:
-        error_message = f"Unable to open task file {task_filename}"
+        error_message = f"Unable to open study task file {task_filename}"
         logger.error(error_message)
         monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, error_message)
         return False

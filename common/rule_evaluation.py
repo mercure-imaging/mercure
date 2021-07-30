@@ -63,7 +63,7 @@ def parse_rule(rule: str, tags: Dict[str, str]) -> Union[Any, bool]:
         return False
 
 
-def test_rule(rule: str, tags) -> str:
+def test_rule(rule: str, tags: Dict[str, str]) -> str:
     """Tests the given rule for validity using the given tags dictionary. Similar to parse_rule but with
     more diagnostic output format for the testing dialog. Also warns about invalid tags."""
     try:

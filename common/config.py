@@ -146,9 +146,10 @@ def save_config() -> None:
         lock.free()
     except:
         # Can't delete lock file, so something must be seriously wrong
-        logger.error(f"Unable to remove lock file {lock_file}")
+        error_message = f"Unable to remove lock file {lock_file}"
+        logger.error(error_message)
         monitor.send_event(
-            monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Unable to remove lock file {lock_file}"
+            monitor.h_events.PROCESSING, monitor.severity.ERROR, error_message
         )
         return
 
@@ -178,9 +179,10 @@ def write_configfile(json_content) -> None:
         lock.free()
     except:
         # Can't delete lock file, so something must be seriously wrong
-        logger.error(f"Unable to remove lock file {lock_file}")
+        error_message = f"Unable to remove lock file {lock_file}"
+        logger.error(error_message)
         monitor.send_event(
-            monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Unable to remove lock file {lock_file}"
+            monitor.h_events.PROCESSING, monitor.severity.ERROR, error_message
         )
         return
 
@@ -211,7 +213,8 @@ def check_folders() -> bool:
             entry,
         )
         if not Path(mercure[entry]).exists():
-            logger.error(f"Folder not found {mercure[entry]}")
-            monitor.send_event(monitor.h_events.CONFIG_UPDATE, monitor.severity.CRITICAL, "Folders are missing")
+            error_message = f"Folder not found {mercure[entry]}"
+            logger.error(error_message)
+            monitor.send_event(monitor.h_events.CONFIG_UPDATE, monitor.severity.CRITICAL, error_message)
             return False
     return True

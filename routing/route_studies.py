@@ -52,11 +52,12 @@ def route_studies() -> None:
         try:
             route_study(dir_entry)
         except Exception:
-            logger.exception(f"Problems while processing study {dir_entry}")
+            error_message = f"Problems while processing study {dir_entry}"
+            logger.exception(error_message)
             # TODO: Add study events to bookkeeper
             # monitor.send_series_event(monitor.s_events.ERROR, entry, 0, "", "Exception while processing")
             monitor.send_event(
-                monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Exception while processing study {dir_entry}",
+                monitor.h_events.PROCESSING, monitor.severity.ERROR, error_message,
             )
 
         # If termination is requested, stop processing after the active study has been completed
@@ -131,7 +132,7 @@ def is_study_complete(folder: str) -> bool:
     return False
 
 
-def check_study_timeout(task) -> bool:
+def check_study_timeout(task: Task) -> bool:
     """
     Checks if the duration since the last series of the study was received exceeds the study completion timeout
     """
@@ -146,7 +147,7 @@ def check_study_timeout(task) -> bool:
         return False
 
 
-def check_study_series(task, required_series) -> bool:
+def check_study_series(task: Task, required_series) -> bool:
     """
     Checks if all series required for study completion have been received
     """

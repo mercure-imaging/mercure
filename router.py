@@ -65,10 +65,9 @@ def run_router(args=None) -> None:
     try:
         config.read_config()
     except Exception:
-        logger.exception("Unable to update configuration. Skipping processing.")
-        monitor.send_event(
-            monitor.h_events.CONFIG_UPDATE, monitor.severity.WARNING, "Unable to update configuration (possibly locked)"
-        )
+        error_message = "Unable to update configuration. Skipping processing."
+        logger.exception(error_message)
+        monitor.send_event(monitor.h_events.CONFIG_UPDATE, monitor.severity.WARNING, error_message)
         return
 
     filecount = 0
@@ -111,9 +110,10 @@ def run_router(args=None) -> None:
         try:
             route_series(entry)
         except Exception:
-            logger.exception(f"Problems while processing series {entry}")
-            monitor.send_series_event(monitor.s_events.ERROR, entry, 0, "", "Exception while processing")
-            monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, "Exception while processing series")
+            error_message = f"Problems while processing series {entry}"
+            logger.exception(error_message)
+            monitor.send_series_event(monitor.s_events.ERROR, entry, 0, "", error_message)
+            monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, error_message)
         # If termination is requested, stop processing series after the active one has been completed
         if helper.is_terminated():
             return
