@@ -123,7 +123,7 @@
                             </div>
                             <div class="control is-expanded" style="margin-left: 10px;">
                                 <div class="field has-addons" id="study_trigger_series_section">
-                                    <input name="study_trigger_series" id="study_trigger_series" pattern="[^{}\x22]+"
+                                    <input name="study_trigger_series" id="study_trigger_series" pattern="[^{}\x22]+" onkeyup="this.value = this.value.replace(/[{}\x22\n]/g, '')"
                                         class="input series_completion_fix" autocomplete='off' type="text"
                                         placeholder="Series required for completion"
                                         value="{{rules[rule]['study_trigger_series']}}">

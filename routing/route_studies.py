@@ -147,12 +147,18 @@ def check_study_timeout(task: Task) -> bool:
         return False
 
 
-def check_study_series(task: Task, required_series) -> bool:
+def check_study_series(task: Task, required_series: str) -> bool:
     """
     Checks if all series required for study completion have been received
     """
-    # TODO
-    return False
+    received_series = []
+
+    # Fetch the list of received series descriptions from the task file
+    if (mercure_study.RECEIVED_SERIES in task["study"]) and (isinstance(task["study"]["received_series"], list)):
+        received_series = task["study"]["received_series"]
+
+    # Check if the completion criteria is fulfilled
+    return rule_evaluation.parse_completion_series(required_series, received_series)
 
 
 def route_study(study) -> bool:

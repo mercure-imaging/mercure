@@ -119,6 +119,71 @@ def test_completion_series(value: str) -> str:
     return "True"
 
 
+def parse_completion_series(completion_str: str, received_series: list) -> bool:
+    """Evaluates the configuration string defining which series are required using the list of received series as input. 
+    Returns true if all required series have arrived, otherwise false is returned."""
+
+    if len(received_series) == 0:
+        return False
+
+    if len(completion_str) == 0:
+        return True
+
+    # Make the comparison case-insensitive (by converting everything to lower case)
+    parsed_str = completion_str.lower()
+    all_series = []
+    for i in range(len(received_series)):
+        all_series.append(received_series[i].lower())
+
+    # print(f"Input: {parsed_str}")
+
+    # Collect the embedded series descriptions (can be substrings of the full names)
+    entries_found = []
+    i = 0
+    while i < len(parsed_str):
+        opening = parsed_str.find("'", i)
+        if opening < 0:
+            break
+        closing = parsed_str.find("'", opening + 1)
+        if closing < 0:
+            break
+        series_string = parsed_str[opening + 1 : closing]
+        entries_found.append(series_string)
+        i = closing + 1
+
+    # print(entries_found)
+
+    # Now, check if series corresponding to the substrings have been received. If so, replace the
+    # substrings with True otherwise False, so that the string can be evaluated later by the
+    # Python parser
+    for entry in entries_found:
+        found = False
+
+        for series in all_series:
+            if entry in series:
+                found = True
+                # Remove found series to speed up further searches?
+                # all_series.remove(series)
+                break
+
+        if found:
+            parsed_str = parsed_str.replace("'" + entry + "'", " True ")
+        else:
+            parsed_str = parsed_str.replace("'" + entry + "'", " False ")
+
+    # print(parsed_str)
+
+    try:
+        result = eval(parsed_str, {"__builtins__": {}}, {})
+        return result
+    except Exception as e:
+        logger.error(f"ERROR: {e}")
+        error_message = f"Invalid completion condition: {parsed_str}"
+        logger.warn(error_message)
+        monitor.send_event(monitor.h_events.CONFIG_UPDATE, monitor.severity.ERROR, error_message)
+        return False
+
+
 # if __name__ == "__main__":
 #    tags = { "Tag1": "One", "TestTag": "Two", "AnotherTag": "Three" }
 #    result = "('Tr' in @Tag1@) | (@Tag1@ == 'Trio') @Three@ @AnotherTag@"
@@ -130,3 +195,7 @@ def test_completion_series(value: str) -> str:
 # sys.exit(result)
 
 # Example: "('Tr' in @ManufacturerModelName@) | (@ManufacturerModelName@ == 'Trio')"
+
+# if __name__ == "__main__":
+#    print(parse_completion_series("'SAG' or ('COR' and 'AX')", ["AX T2", "T1-COR", "SAG", "T2", "T1"]))
+
