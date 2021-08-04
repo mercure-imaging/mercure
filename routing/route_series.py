@@ -480,7 +480,7 @@ def push_serieslevel_outgoing(
             return
 
         # Generate task file with dispatch information
-        if not create_series_task(target_folder, triggered_rules, series_UID, tags_list, target):
+        if not create_series_task(target_folder, triggered_rules, "", series_UID, tags_list, target):
             continue
 
         monitor.send_series_event(monitor.s_events.ROUTE, series_UID, len(file_list), target, selected_targets[target])

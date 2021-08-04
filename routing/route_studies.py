@@ -29,6 +29,7 @@ from common.constants import (
     mercure_folders,
     mercure_sections,
     mercure_study,
+    mercure_info,
 )
 
 # Create local logger instance
@@ -162,10 +163,70 @@ def check_study_series(task: Task, required_series: str) -> bool:
 
 
 def route_study(study) -> bool:
-    if is_study_locked(config.mercure[mercure_folders.STUDIES] + "/" + study):
+    """
+    Processses the study in the folder 'study'. Loads the task file and delegates the action to helper functions
+    """
+    study_folder = config.mercure[mercure_folders.STUDIES] + "/" + study
+
+    if is_study_locked(study_folder):
         # If the study folder has been locked in the meantime, then skip and proceed with the next one
         return True
 
-    # TODO
+    # TODO: Lock study folder
+
+    try:
+        # Read stored task file to determine completeness criteria
+        with open(Path(study_folder) / mercure_names.TASKFILE, "r") as json_file:
+            task: Task = json.load(json_file)
+
+    except Exception:
+        error_text = f"Invalid task file in study folder {study_folder}"
+        logger.exception(error_text)
+        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, error_text)
+        return False
+
+    action = task.get(mercure_sections.INFO, {}).get(mercure_info.ACTION, "")
+    if not action:
+        error_text = f"Missing action in study folder {study_folder}"
+        logger.exception(error_text)
+        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, error_text)
+        return False
+
+    if action == mercure_actions.NOTIFICATION:
+        return push_studylevel_notification(study, task)
+
+    if action == mercure_actions.ROUTE:
+        return push_studylevel_dispatch(study, task)
+
+    if action == mercure_actions.PROCESS or action == mercure_actions.BOTH:
+        return push_studylevel_processing(study, task)
+
+    # This point should not be reached (discard actions should be handled on the series level)
+    error_text = f"Invalid task action in study folder {study_folder}"
+    logger.exception(error_text)
+    monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, error_text)
     return False
-    # pass
+
+
+def push_studylevel_dispatch(study: str, task: Task) -> bool:
+    """
+    Pushes the study folder to the dispatchter, including the generated task file containing the destination information
+    """
+    # TODO
+    return True
+
+
+def push_studylevel_processing(study: str, task: Task) -> bool:
+    """
+    Pushes the study folder to the processor, including the generated task file containing the processing instructions
+    """
+    # TODO
+    return True
+
+
+def push_studylevel_notification(study: str, task: Task) -> bool:
+    """
+    Executes the study-level reception notification
+    """
+    # TODO
+    return True

@@ -84,6 +84,7 @@ class Config(TypedDict):
 
 
 class TaskInfo(TypedDict):
+    action: Literal["route", "both", "process", "discard", "notification"]
     uid: str
     uid_type: Literal["series", "study"]
     triggered_rules: Union[Dict[str, Literal[True]], str]

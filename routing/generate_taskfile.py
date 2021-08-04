@@ -97,7 +97,9 @@ def add_processing(uid: str, applied_rule: str, tags_list: Dict[str, str]) -> Op
     return None
 
 
-def add_study(uid: str, uid_type: Literal["series", "study"], applied_rule: str, tags_list: Dict[str, str]) -> Optional[Module]:
+def add_study(
+    uid: str, uid_type: Literal["series", "study"], applied_rule: str, tags_list: Dict[str, str]
+) -> Optional[Module]:
     """
     Adds study information into the task file. Returns nothing if the task is a series-level task
     """
@@ -160,7 +162,14 @@ def add_info(
     """
     Adds general information into the task file
     """
+    task_action = mercure_actions.ROUTE
+    if applied_rule:
+        task_action = config.mercure[mercure_config.RULES][applied_rule].get(
+            mercure_rule.ACTION, mercure_actions.PROCESS
+        )
+
     return {
+        "action": task_action,
         "uid": uid,
         "uid_type": uid_type,
         "triggered_rules": triggered_rules,
@@ -194,9 +203,7 @@ def create_series_task(
     except:
         error_message = f"Unable to create series task file {task_filename}"
         logger.error(error_message)
-        monitor.send_event(
-            monitor.h_events.PROCESSING, monitor.severity.ERROR, error_message
-        )
+        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, error_message)
         return False
 
     return True
@@ -222,9 +229,7 @@ def create_study_task(
     except:
         error_message = f"Unable to create study task file {task_filename}"
         logger.error(error_message)
-        monitor.send_event(
-            monitor.h_events.PROCESSING, monitor.severity.ERROR, error_message
-        )
+        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, error_message)
         return False
 
     return True

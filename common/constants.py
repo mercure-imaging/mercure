@@ -89,6 +89,7 @@ class mercure_study:
 
 
 class mercure_info:
+    ACTION = "action"
     UID = "uid"
     UID_TYPE = "uid_type"
     TRIGGERED_RULES = "triggered_rules"
