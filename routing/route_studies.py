@@ -17,6 +17,7 @@ from datetime import datetime, timedelta
 import common.config as config
 import common.rule_evaluation as rule_evaluation
 import common.monitor as monitor
+import common.notification as notification
 import common.helper as helper
 from common.types import EmptyDict, Task, TaskStudy
 from common.constants import (
@@ -30,6 +31,7 @@ from common.constants import (
     mercure_sections,
     mercure_study,
     mercure_info,
+    mercure_events,    
 )
 
 # Create local logger instance
@@ -50,8 +52,10 @@ def route_studies() -> None:
 
     # Process all complete studies
     for dir_entry in sorted(studies_ready):
+
+        study_success = False
         try:
-            route_study(dir_entry)
+            study_success=route_study(dir_entry)
         except Exception:
             error_message = f"Problems while processing study {dir_entry}"
             logger.exception(error_message)
@@ -60,6 +64,10 @@ def route_studies() -> None:
             monitor.send_event(
                 monitor.h_events.PROCESSING, monitor.severity.ERROR, error_message,
             )
+
+        if not study_success:
+            # TODO: Now move the study to the error folder
+            pass
 
         # If termination is requested, stop processing after the active study has been completed
         if helper.is_terminated():
@@ -228,5 +236,25 @@ def push_studylevel_notification(study: str, task: Task) -> bool:
     """
     Executes the study-level reception notification
     """
-    # TODO
+    # Check if the applied_rule is available
+    current_rule = task["info"].get("applied_rule","")
+    if not current_rule:
+        error_text = f"Missing applied_rule in task file in study {study}"
+        logger.exception(error_text)
+        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, error_text)
+        return False
+
+    # Check if the mercure configuration still contains that rule
+    if not isinstance(config.mercure[mercure_config.RULES].get(current_rule, "") , dict):
+        error_text = f"Applied rule not existing anymore in mercure configuration {study}"
+        logger.exception(error_text)
+        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, error_text)
+        return False
+
+    # OK, now fire out the webhook
+    notification.send_webhook(
+        config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.NOTIFICATION_WEBHOOK, ""),
+        config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.NOTIFICATION_PAYLOAD, ""),
+        mercure_events.RECEPTION,
+    )
     return True
