@@ -62,7 +62,7 @@ def route_studies() -> None:
             # TODO: Add study events to bookkeeper
             # monitor.send_series_event(monitor.s_events.ERROR, entry, 0, "", "Exception while processing")
             monitor.send_event(
-                monitor.h_events.PROCESSING, monitor.severity.ERROR, error_message,
+                monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message,
             )
 
         if not study_success:
@@ -105,7 +105,7 @@ def is_study_complete(folder: str) -> bool:
         if not complete_trigger:
             error_text = f"Missing trigger condition in task file in study folder {folder}"
             logger.error(error_text)
-            monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, error_text)
+            monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_text)
             return False
 
         complete_required_series = study.get(mercure_study.COMPLETE_REQUIRED_SERIES, "")
@@ -118,7 +118,7 @@ def is_study_complete(folder: str) -> bool:
             warning_text = f"Missing series for trigger condition in study folder {folder}. Using timeout instead"
             logger.warning(warning_text)
             monitor.send_event(
-                monitor.h_events.PROCESSING, monitor.severity.WARNING, warning_text,
+                monitor.m_events.PROCESSING, monitor.severity.WARNING, warning_text,
             )
 
         # Check for trigger condition
@@ -129,13 +129,13 @@ def is_study_complete(folder: str) -> bool:
         else:
             error_text = f"Invalid trigger condition in task file in study folder {folder}"
             logger.error(error_text)
-            monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, error_text)
+            monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_text)
             return False
 
     except Exception:
         error_text = f"Invalid task file in study folder {folder}"
         logger.exception(error_text)
-        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, error_text)
+        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_text)
         return False
 
     return False
@@ -189,7 +189,7 @@ def route_study(study) -> bool:
         # Can't create lock file, so something must be seriously wrong
         error_message = f"Unable to create study lock file {lock_file}"
         logger.error(error_message)
-        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, error_message)
+        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
         return False
 
     try:
@@ -199,7 +199,7 @@ def route_study(study) -> bool:
     except Exception:
         error_text = f"Invalid task file in study folder {study_folder}"
         logger.exception(error_text)
-        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, error_text)
+        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_text)
         # TODO: Move study to error folder
         return False
 
@@ -207,7 +207,7 @@ def route_study(study) -> bool:
     if not action:
         error_text = f"Missing action in study folder {study_folder}"
         logger.exception(error_text)
-        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, error_text)
+        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_text)
         # TODO: Move study to error folder
         return False
 
@@ -235,7 +235,7 @@ def route_study(study) -> bool:
     # This point should not be reached (discard actions should be handled on the series level)
     error_text = f"Invalid task action in study folder {study_folder}"
     logger.exception(error_text)
-    monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, error_text)
+    monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_text)
     return False
 
 
@@ -264,14 +264,14 @@ def push_studylevel_notification(study: str, task: Task) -> bool:
     if not current_rule:
         error_text = f"Missing applied_rule in task file in study {study}"
         logger.exception(error_text)
-        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, error_text)
+        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_text)
         return False
 
     # Check if the mercure configuration still contains that rule
     if not isinstance(config.mercure[mercure_config.RULES].get(current_rule, ""), dict):
         error_text = f"Applied rule not existing anymore in mercure configuration {study}"
         logger.exception(error_text)
-        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, error_text)
+        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_text)
         return False
 
     # OK, now fire out the webhook

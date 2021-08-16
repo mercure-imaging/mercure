@@ -30,7 +30,7 @@ def terminate_process(signalNumber, frame) -> None:
     """Triggers the shutdown of the service."""
     helper.g_log("events.shutdown", 1)
     logger.info("Shutdown requested")
-    monitor.send_event(monitor.h_events.SHUTDOWN_REQUEST, monitor.severity.INFO)
+    monitor.send_event(monitor.m_events.SHUTDOWN_REQUEST, monitor.severity.INFO)
     # Note: main_loop can be read here because it has been declared as global variable
     if "main_loop" in globals() and main_loop.is_running:
         main_loop.stop()
@@ -49,7 +49,7 @@ def dispatch(args) -> None:
     except Exception:
         logger.exception("Unable to read configuration. Skipping processing.")
         monitor.send_event(
-            monitor.h_events.CONFIG_UPDATE,
+            monitor.m_events.CONFIG_UPDATE,
             monitor.severity.WARNING,
             "Unable to read configuration (possibly locked)",
         )
@@ -106,7 +106,7 @@ if __name__ == "__main__":
     logger.info(sys.version)
 
     monitor.configure("dispatcher", instance_name, config.mercure["bookkeeper"])
-    monitor.send_event(monitor.h_events.BOOT, monitor.severity.INFO, f"PID = {os.getpid()}")
+    monitor.send_event(monitor.m_events.BOOT, monitor.severity.INFO, f"PID = {os.getpid()}")
 
     if len(config.mercure["graphite_ip"]) > 0:
         logging.info(f'Sending events to graphite server: {config.mercure["graphite_ip"]}')
@@ -128,5 +128,5 @@ if __name__ == "__main__":
     # Start the asyncio event loop for asynchronous function calls
     helper.loop.run_forever()
 
-    monitor.send_event(monitor.h_events.SHUTDOWN, monitor.severity.INFO)
+    monitor.send_event(monitor.m_events.SHUTDOWN, monitor.severity.INFO)
     logging.info("Going down now")

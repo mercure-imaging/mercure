@@ -62,7 +62,7 @@ mercure_events = sqlalchemy.Table(
     sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
     sqlalchemy.Column("time", sqlalchemy.DateTime),
     sqlalchemy.Column("sender", sqlalchemy.String, default="Unknown"),
-    sqlalchemy.Column("event", sqlalchemy.String, default=monitor.h_events.UNKNOWN),
+    sqlalchemy.Column("event", sqlalchemy.String, default=monitor.m_events.UNKNOWN),
     sqlalchemy.Column("severity", sqlalchemy.Integer, default=monitor.severity.INFO),
     sqlalchemy.Column("description", sqlalchemy.String, default=""),
 )
@@ -201,7 +201,7 @@ async def post_mercure_event(request) -> JSONResponse:
     """Endpoint for receiving mercure system events."""
     payload = dict(await request.form())
     sender = payload.get("sender", "Unknown")
-    event = payload.get("event", monitor.h_events.UNKNOWN)
+    event = payload.get("event", monitor.m_events.UNKNOWN)
     severity = int(payload.get("severity", monitor.severity.INFO))
     description = payload.get("description", "")
 

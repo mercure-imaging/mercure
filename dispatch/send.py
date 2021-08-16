@@ -13,7 +13,7 @@ from subprocess import CalledProcessError, run
 
 import daiquiri
 
-from common.monitor import s_events, send_series_event, send_event, h_events, severity
+from common.monitor import s_events, send_series_event, send_event, m_events, severity
 from dispatch.retry import increase_retry
 from dispatch.status import is_ready_for_sending
 from common.constants import mercure_names
@@ -76,7 +76,7 @@ def execute(
         target_name = target_info.get("target_name", "target_name-missing")
 
         if (series_uid == "series_uid-missing") or (target_name == "target_name-missing"):
-            send_event(h_events.PROCESSING, severity.WARNING, f"Missing information for folder {source_folder}")
+            send_event(m_events.PROCESSING, severity.WARNING, f"Missing information for folder {source_folder}")
 
         # Create a .sending file to indicate that this folder is being sent,
         # otherwise the dispatcher would pick it up again if the transfer is
@@ -85,7 +85,7 @@ def execute(
         try:
             lock_file.touch()
         except:
-            send_event(h_events.PROCESSING, severity.ERROR, f"Error sending {series_uid} to {target_name}")
+            send_event(m_events.PROCESSING, severity.ERROR, f"Error sending {series_uid} to {target_name}")
             send_series_event(s_events.ERROR, series_uid, 0, target_name, "Unable to create lock file")
             logger.exception(f"Unable to create lock file {lock_file.name}")
             return
@@ -109,7 +109,7 @@ def execute(
         except CalledProcessError as e:
             dcmsend_error_message = DCMSEND_ERROR_CODES.get(e.returncode, None)
             logger.exception(f"Failed command:\n {command} \nbecause of {dcmsend_error_message}")
-            send_event(h_events.PROCESSING, severity.ERROR, f"Error sending {series_uid} to {target_name}")
+            send_event(m_events.PROCESSING, severity.ERROR, f"Error sending {series_uid} to {target_name}")
             send_series_event(s_events.ERROR, series_uid, 0, target_name, dcmsend_error_message)
             retry_increased = increase_retry(source_folder, retry_max, retry_delay)
             if retry_increased:
@@ -119,7 +119,7 @@ def execute(
                 send_series_event(s_events.SUSPEND, series_uid, 0, target_name, "Max retries reached")
                 _move_sent_directory(source_folder, error_folder)
                 send_series_event(s_events.MOVE, series_uid, 0, error_folder, "")
-                send_event(h_events.PROCESSING, severity.ERROR, f"Series suspended after reaching max retries")
+                send_event(m_events.PROCESSING, severity.ERROR, f"Series suspended after reaching max retries")
     else:
         pass
         # logger.warning(f"Folder {source_folder} is *not* ready for sending")
@@ -143,4 +143,4 @@ def _move_sent_directory(source_folder, destination_folder) -> None:
             (destination_folder / source_folder.name / mercure_names.PROCESSING).unlink()
     except:
         logger.info(f"Error moving folder {source_folder} to {destination_folder}")
-        send_event(h_events.PROCESSING, severity.ERROR, f"Error moving {source_folder} to {destination_folder}")
+        send_event(m_events.PROCESSING, severity.ERROR, f"Error moving {source_folder} to {destination_folder}")

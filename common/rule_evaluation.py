@@ -59,7 +59,7 @@ def parse_rule(rule: str, tags: Dict[str, str]) -> Union[Any, bool]:
     except Exception as e:
         logger.error(f"ERROR: {e}")
         logger.warn(f"WARNING: Invalid rule expression {rule}", '"' + rule + '"')
-        monitor.send_event(monitor.h_events.CONFIG_UPDATE, monitor.severity.ERROR, f"Invalid rule encountered {rule}")
+        monitor.send_event(monitor.m_events.CONFIG_UPDATE, monitor.severity.ERROR, f"Invalid rule encountered {rule}")
         return False
 
 
@@ -180,7 +180,7 @@ def parse_completion_series(completion_str: str, received_series: list) -> bool:
         logger.error(f"ERROR: {e}")
         error_message = f"Invalid completion condition: {parsed_str}"
         logger.warn(error_message)
-        monitor.send_event(monitor.h_events.CONFIG_UPDATE, monitor.severity.ERROR, error_message)
+        monitor.send_event(monitor.m_events.CONFIG_UPDATE, monitor.severity.ERROR, error_message)
         return False
 
 

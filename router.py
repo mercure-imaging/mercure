@@ -43,7 +43,7 @@ def terminate_process(signalNumber, frame) -> None:
     """
     helper.g_log("events.shutdown", 1)
     logger.info("Shutdown requested")
-    monitor.send_event(monitor.h_events.SHUTDOWN_REQUEST, monitor.severity.INFO)
+    monitor.send_event(monitor.m_events.SHUTDOWN_REQUEST, monitor.severity.INFO)
     # Note: main_loop can be read here because it has been declared as global variable
     if "main_loop" in globals() and main_loop.is_running:
         main_loop.stop()
@@ -67,7 +67,7 @@ def run_router(args=None) -> None:
     except Exception:
         error_message = "Unable to update configuration. Skipping processing."
         logger.exception(error_message)
-        monitor.send_event(monitor.h_events.CONFIG_UPDATE, monitor.severity.WARNING, error_message)
+        monitor.send_event(monitor.m_events.CONFIG_UPDATE, monitor.severity.WARNING, error_message)
         return
 
     filecount = 0
@@ -113,7 +113,7 @@ def run_router(args=None) -> None:
             error_message = f"Problems while processing series {entry}"
             logger.exception(error_message)
             monitor.send_series_event(monitor.s_events.ERROR, entry, 0, "", error_message)
-            monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, error_message)
+            monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
         # If termination is requested, stop processing series after the active one has been completed
         if helper.is_terminated():
             return
@@ -164,7 +164,7 @@ if __name__ == "__main__":
     logger.info(sys.version)
 
     monitor.configure("router", instance_name, config.mercure["bookkeeper"])
-    monitor.send_event(monitor.h_events.BOOT, monitor.severity.INFO, f"PID = {os.getpid()}")
+    monitor.send_event(monitor.m_events.BOOT, monitor.severity.INFO, f"PID = {os.getpid()}")
 
     if len(config.mercure["graphite_ip"]) > 0:
         logger.info(f'Sending events to graphite server: {config.mercure["graphite_ip"]}')
@@ -187,5 +187,5 @@ if __name__ == "__main__":
     helper.loop.run_forever()
 
     # Process will exit here once the asyncio loop has been stopped
-    monitor.send_event(monitor.h_events.SHUTDOWN, monitor.severity.INFO)
+    monitor.send_event(monitor.m_events.SHUTDOWN, monitor.severity.INFO)
     logger.info("Going down now")

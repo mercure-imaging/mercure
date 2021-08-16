@@ -35,7 +35,7 @@ def process_series(folder) -> None:
         # Can't create lock file, so something must be seriously wrong
         logger.error(f"Unable to create lock file {lock_file}")
         logger.error(traceback.format_exc())
-        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Unable to create lock file in processing folder {lock_file}")
+        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, f"Unable to create lock file in processing folder {lock_file}")
         return
 
     processing_success = True
@@ -70,7 +70,7 @@ def process_series(folder) -> None:
     except:
         logger.info(f"Error locking folder to be moved {folder}")
         logger.error(traceback.format_exc())
-        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Error locking folder to be moved {folder}")
+        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, f"Error locking folder to be moved {folder}")
 
     # Remove the processing lock
     lock.free()
@@ -103,4 +103,4 @@ def move_folder(source_folder_str, destination_folder_str) -> None:
     except:
         logger.info(f"Error moving folder {source_folder} to {destination_folder}")
         logger.error(traceback.format_exc())
-        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Error moving {source_folder} to {destination_folder}")
+        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, f"Error moving {source_folder} to {destination_folder}")

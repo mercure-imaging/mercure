@@ -17,7 +17,7 @@ sender_name = ""
 bookkeeper_address = ""
 
 
-class h_events:
+class m_events:
     """Event types for general mercure monitoring."""
 
     UNKNOWN = "UNKNOWN"

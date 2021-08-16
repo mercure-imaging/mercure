@@ -107,7 +107,7 @@ def read_config() -> Config:
             # logger.info("")
 
             configuration_timestamp = timestamp
-            monitor.send_event(monitor.h_events.CONFIG_UPDATE, monitor.severity.INFO, "Configuration updated")
+            monitor.send_event(monitor.m_events.CONFIG_UPDATE, monitor.severity.INFO, "Configuration updated")
             return mercure
     else:
         raise FileNotFoundError(f"Configuration file not found: {configuration_file}")
@@ -139,7 +139,7 @@ def save_config() -> None:
     except AttributeError:
         configuration_timestamp = 0
 
-    monitor.send_event(monitor.h_events.CONFIG_UPDATE, monitor.severity.INFO, "Saved new configuration.")
+    monitor.send_event(monitor.m_events.CONFIG_UPDATE, monitor.severity.INFO, "Saved new configuration.")
     logger.info(f"Stored configuration into: {configuration_file}")
 
     try:
@@ -149,7 +149,7 @@ def save_config() -> None:
         error_message = f"Unable to remove lock file {lock_file}"
         logger.error(error_message)
         monitor.send_event(
-            monitor.h_events.PROCESSING, monitor.severity.ERROR, error_message
+            monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message
         )
         return
 
@@ -172,7 +172,7 @@ def write_configfile(json_content) -> None:
     with open(configuration_file, "w") as json_file:
         json.dump(json_content, json_file, indent=4)
 
-    monitor.send_event(monitor.h_events.CONFIG_UPDATE, monitor.severity.INFO, "Wrote configuration file.")
+    monitor.send_event(monitor.m_events.CONFIG_UPDATE, monitor.severity.INFO, "Wrote configuration file.")
     logger.info(f"Wrote configuration into: {configuration_file}")
 
     try:
@@ -182,7 +182,7 @@ def write_configfile(json_content) -> None:
         error_message = f"Unable to remove lock file {lock_file}"
         logger.error(error_message)
         monitor.send_event(
-            monitor.h_events.PROCESSING, monitor.severity.ERROR, error_message
+            monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message
         )
         return
 
@@ -215,6 +215,6 @@ def check_folders() -> bool:
         if not Path(mercure[entry]).exists():
             error_message = f"Folder not found {mercure[entry]}"
             logger.error(error_message)
-            monitor.send_event(monitor.h_events.CONFIG_UPDATE, monitor.severity.CRITICAL, error_message)
+            monitor.send_event(monitor.m_events.CONFIG_UPDATE, monitor.severity.CRITICAL, error_message)
             return False
     return True

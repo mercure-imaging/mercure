@@ -203,7 +203,7 @@ def create_series_task(
     except:
         error_message = f"Unable to create series task file {task_filename}"
         logger.error(error_message)
-        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, error_message)
+        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
         return False
 
     return True
@@ -229,7 +229,7 @@ def create_study_task(
     except:
         error_message = f"Unable to create study task file {task_filename}"
         logger.error(error_message)
-        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, error_message)
+        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
         return False
 
     return True
@@ -257,14 +257,14 @@ def update_study_task(
     except:
         error_message = f"Unable to open study task file {task_filename}"
         logger.error(error_message)
-        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, error_message)
+        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
         return False
 
     # Ensure that the task file contains the study information
     if not (mercure_sections.STUDY in task_json):
         error_message = f"Study information missing in task file {task_filename}"
         logger.error(error_message)
-        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, error_message)
+        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
         return False
 
     study = cast(TaskStudy, task_json["study"])
@@ -285,7 +285,7 @@ def update_study_task(
     except:
         error_message = f"Unable to write task file {task_filename}"
         logger.error(error_message)
-        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, error_message)
+        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
         return False
 
     return True

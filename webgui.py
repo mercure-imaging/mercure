@@ -1101,7 +1101,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     monitor.configure("webgui", "main", config.mercure["bookkeeper"])
-    monitor.send_event(monitor.h_events.BOOT, monitor.severity.INFO, f"PID = {os.getpid()}")
+    monitor.send_event(monitor.m_events.BOOT, monitor.severity.INFO, f"PID = {os.getpid()}")
 
     try:
         tagslist.read_tagslist()
@@ -1112,4 +1112,4 @@ if __name__ == "__main__":
     uvicorn.run(app, host=WEBGUI_HOST, port=WEBGUI_PORT)
 
     # Process will exit here
-    monitor.send_event(monitor.h_events.SHUTDOWN, monitor.severity.INFO, "")
+    monitor.send_event(monitor.m_events.SHUTDOWN, monitor.severity.INFO, "")
