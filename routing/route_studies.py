@@ -31,7 +31,7 @@ from common.constants import (
     mercure_sections,
     mercure_study,
     mercure_info,
-    mercure_events,    
+    mercure_events,
 )
 
 # Create local logger instance
@@ -55,7 +55,7 @@ def route_studies() -> None:
 
         study_success = False
         try:
-            study_success=route_study(dir_entry)
+            study_success = route_study(dir_entry)
         except Exception:
             error_message = f"Problems while processing study {dir_entry}"
             logger.exception(error_message)
@@ -175,22 +175,32 @@ def route_study(study) -> bool:
     Processses the study in the folder 'study'. Loads the task file and delegates the action to helper functions
     """
     study_folder = config.mercure[mercure_folders.STUDIES] + "/" + study
-
     if is_study_locked(study_folder):
         # If the study folder has been locked in the meantime, then skip and proceed with the next one
         return True
 
-    # TODO: Lock study folder
+    # Create lock file in the study folder and prevent other instances from working on this study
+    lock_file = Path(study_folder + "/" + study + mercure_names.LOCK)
+    if lock_file.exists():
+        return True
+    try:
+        lock = helper.FileLock(lock_file)
+    except:
+        # Can't create lock file, so something must be seriously wrong
+        error_message = f"Unable to create study lock file {lock_file}"
+        logger.error(error_message)
+        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, error_message)
+        return False
 
     try:
         # Read stored task file to determine completeness criteria
         with open(Path(study_folder) / mercure_names.TASKFILE, "r") as json_file:
             task: Task = json.load(json_file)
-
     except Exception:
         error_text = f"Invalid task file in study folder {study_folder}"
         logger.exception(error_text)
         monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, error_text)
+        # TODO: Move study to error folder
         return False
 
     action = task.get(mercure_sections.INFO, {}).get(mercure_info.ACTION, "")
@@ -198,16 +208,29 @@ def route_study(study) -> bool:
         error_text = f"Missing action in study folder {study_folder}"
         logger.exception(error_text)
         monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, error_text)
+        # TODO: Move study to error folder
         return False
 
     if action == mercure_actions.NOTIFICATION:
-        return push_studylevel_notification(study, task)
+        if not push_studylevel_notification(study, task):
+            # TODO: Move study to error folder
+            return False
+        else:
+            return True
 
     if action == mercure_actions.ROUTE:
-        return push_studylevel_dispatch(study, task)
+        if not push_studylevel_dispatch(study, task):
+            # TODO: Move study to error folder
+            return False
+        else:
+            return True
 
     if action == mercure_actions.PROCESS or action == mercure_actions.BOTH:
-        return push_studylevel_processing(study, task)
+        if not push_studylevel_processing(study, task):
+            # TODO: Move study to error folder
+            return False
+        else:
+            return True
 
     # This point should not be reached (discard actions should be handled on the series level)
     error_text = f"Invalid task action in study folder {study_folder}"
@@ -237,7 +260,7 @@ def push_studylevel_notification(study: str, task: Task) -> bool:
     Executes the study-level reception notification
     """
     # Check if the applied_rule is available
-    current_rule = task["info"].get("applied_rule","")
+    current_rule = task["info"].get("applied_rule", "")
     if not current_rule:
         error_text = f"Missing applied_rule in task file in study {study}"
         logger.exception(error_text)
@@ -245,7 +268,7 @@ def push_studylevel_notification(study: str, task: Task) -> bool:
         return False
 
     # Check if the mercure configuration still contains that rule
-    if not isinstance(config.mercure[mercure_config.RULES].get(current_rule, "") , dict):
+    if not isinstance(config.mercure[mercure_config.RULES].get(current_rule, ""), dict):
         error_text = f"Applied rule not existing anymore in mercure configuration {study}"
         logger.exception(error_text)
         monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, error_text)
