@@ -103,7 +103,7 @@ def route_series(series_UID: str) -> None:
 
     if (len(triggered_rules) == 0) or (discard_series):
         # If no routing rule has triggered or discarding has been enforced, discard the series
-        push_series_discard(fileList, series_UID, discard_series, False)
+        push_series_complete(fileList, series_UID, "DISCARD", discard_series, False)
     else:
         # File handling strategy: If only one triggered rule, move files (faster than copying). If multiple rules, copy files
         push_series_studylevel(triggered_rules, fileList, series_UID, tagsList)
@@ -170,36 +170,42 @@ def get_triggered_rules(tagList: Dict[str, str]) -> Tuple[Dict[str, Literal[True
     return triggered_rules, discard_rule
 
 
-def push_series_discard(file_list: List[str], series_UID: str, discard_rule: str, copy_files: bool) -> None:
+def push_series_complete(
+    file_list: List[str], series_UID: str, destination: str, discard_rule: str, copy_files: bool
+) -> None:
     """
-    Discards the series by moving all files into the "discard" folder, which is periodically cleared.
+    Moves all files of the series into either the "discard" or "success" folders, which both are periodically cleared.
     """
     # Define the source and target folder. Use UUID as name for the target folder in the
-    # discard directory to avoid collisions
-    discard_path = config.mercure[mercure_folders.DISCARD] + "/" + str(uuid.uuid1())
+    # discard or success directory to avoid collisions
+    if destination == "DISCARD":
+        destination_path = config.mercure[mercure_folders.DISCARD] + "/" + str(uuid.uuid1())
+    else:
+        destination_path = config.mercure[mercure_folders.SUCCESS] + "/" + str(uuid.uuid1())
 
     # Create subfolder in the discard directory and validate that is has been created
     try:
-        os.mkdir(discard_path)
+        os.mkdir(destination_path)
     except Exception:
-        error_message = f"Unable to create outgoing folder {discard_path}"
+        error_message = f"Unable to create outgoing folder {destination_path}"
         logger.exception(error_message)
         monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
         return
-    if not Path(discard_path).exists():
-        error_message = f"Creating discard folder not possible {discard_path}"
+
+    if not Path(destination_path).exists():
+        error_message = f"Creating discard folder not possible {destination_path}"
         logger.error(error_message)
         monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
         return
 
     # Create lock file in destination folder (to prevent the cleaner module to work on the folder). Note that
     # the DICOM series in the incoming folder has already been locked in the parent function.
-    lock_file = Path(discard_path) / mercure_names.LOCK
+    lock_file = Path(destination_path) / mercure_names.LOCK
     try:
         lock = helper.FileLock(lock_file)
     except:
         # Can't create lock file, so something must be seriously wrong
-        error_message = f"Unable to create lock file {discard_path}/{mercure_names.LOCK}"
+        error_message = f"Unable to create lock file {destination_path}/{mercure_names.LOCK}"
         logger.error(error_message)
         monitor.send_event(
             monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message,
@@ -210,12 +216,12 @@ def push_series_discard(file_list: List[str], series_UID: str, discard_rule: str
         info_text = "Discard by rule " + discard_rule
         monitor.send_series_event(monitor.s_events.DISCARD, series_UID, len(file_list), "", info_text)
 
-    if not push_files(file_list, discard_path, copy_files):
+    if not push_files(file_list, destination_path, copy_files):
         error_message = f"Problem while discarding files from {series_UID}"
         logger.exception(error_message)
         monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
 
-    monitor.send_series_event(monitor.s_events.MOVE, series_UID, len(file_list), discard_path, "")
+    monitor.send_series_event(monitor.s_events.MOVE, series_UID, len(file_list), destination_path, "")
 
     try:
         lock.free()
@@ -285,14 +291,6 @@ def push_series_serieslevel(
     push_serieslevel_routing(triggered_rules, file_list, series_UID, tags_list)
     push_serieslevel_processing(triggered_rules, file_list, series_UID, tags_list)
     push_serieslevel_notification(triggered_rules, file_list, series_UID, tags_list)
-
-
-def trigger_serieslevel_notification_reception(current_rule: str, tags_list: Dict[str, str]) -> None:
-    notification.send_webhook(
-        config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.NOTIFICATION_WEBHOOK, ""),
-        config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.NOTIFICATION_PAYLOAD, ""),
-        mercure_events.RECEPTION,
-    )
 
 
 def push_serieslevel_routing(
@@ -419,10 +417,8 @@ def push_serieslevel_notification(
     # than one rule has triggered, the parent function will remove the files from the incoming
     # folder. However, it multiple rules have triggered and all such rules are notifications,
     # make a copy of the files into the discard folder, so that the files can be recovered
-
-    # TODO: Move to success folder instead
     if (len(triggered_rules) == 1) or (len(triggered_rules) == notification_rules_count):
-        push_series_discard(file_list, series_UID, "", len(triggered_rules)>1)
+        push_series_complete(file_list, series_UID, "SUCCESS", "", len(triggered_rules) > 1)
 
     return True
 
@@ -538,9 +534,7 @@ def push_files(file_list: List[str], target_path: str, copy_files: bool) -> bool
             logger.exception(error_message)
             logger.exception(f"Source folder {source_folder}")
             logger.exception(f"Target folder {target_folder}")
-            monitor.send_event(
-                monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message
-            )
+            monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
             return False
 
     return True
@@ -559,9 +553,7 @@ def remove_series(file_list: List[str]) -> bool:
         except Exception:
             error_message = f"Error while removing file {entry}"
             logger.exception(error_message)
-            monitor.send_event(
-                monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message
-            )
+            monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
             is_success = False
     return is_success
 
@@ -607,3 +599,11 @@ def route_error_files() -> None:
             monitor.m_events.PROCESSING, monitor.severity.ERROR, f"Error parsing {error_files_found} incoming files"
         )
     return
+
+
+def trigger_serieslevel_notification_reception(current_rule: str, tags_list: Dict[str, str]) -> None:
+    notification.send_webhook(
+        config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.NOTIFICATION_WEBHOOK, ""),
+        config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.NOTIFICATION_PAYLOAD, ""),
+        mercure_events.RECEPTION,
+    )

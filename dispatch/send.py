@@ -51,11 +51,7 @@ def _create_command(target_info, folder) -> str:
 
 
 def execute(
-    source_folder: Path,
-    success_folder: Path,
-    error_folder: Path,
-    retry_max,
-    retry_delay,
+    source_folder: Path, success_folder: Path, error_folder: Path, retry_max, retry_delay,
 ):
     """
     Execute the dcmsend command. It will create a .sending file to indicate that
@@ -64,7 +60,7 @@ def execute(
     Folder with .error files are _not_ ready for sending.
     """
     target_info = is_ready_for_sending(source_folder)
-    delay:float
+    delay: float
 
     if target_info:
         delay = target_info.get("next_retry_at", 0)

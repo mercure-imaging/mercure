@@ -27,7 +27,13 @@ from common.constants import mercure_defs, mercure_folders
 
 daiquiri.setup(
     level=logging.INFO,
-    outputs=(daiquiri.output.Stream(formatter=daiquiri.formatter.ColorFormatter(fmt="%(color)s%(levelname)-8.8s " "%(name)s: %(message)s%(color_stop)s")),),
+    outputs=(
+        daiquiri.output.Stream(
+            formatter=daiquiri.formatter.ColorFormatter(
+                fmt="%(color)s%(levelname)-8.8s " "%(name)s: %(message)s%(color_stop)s"
+            )
+        ),
+    ),
 )
 logger = daiquiri.getLogger("cleaner")
 
@@ -55,19 +61,13 @@ def clean(args) -> None:
     except Exception:
         logger.exception("Unable to read configuration. Skipping processing.")
         monitor.send_event(
-            monitor.m_events.CONFIG_UPDATE,
-            monitor.severity.WARNING,
-            "Unable to read configuration (possibly locked)",
+            monitor.m_events.CONFIG_UPDATE, monitor.severity.WARNING, "Unable to read configuration (possibly locked)",
         )
         return
 
     # TODO: Adaptively reduce the retention time if the disk space is running low
 
-    if _is_offpeak(
-        config.mercure["offpeak_start"],
-        config.mercure["offpeak_end"],
-        datetime.now().time(),
-    ):
+    if _is_offpeak(config.mercure["offpeak_start"], config.mercure["offpeak_end"], datetime.now().time(),):
         success_folder = config.mercure["success_folder"]
         discard_folder = config.mercure["discard_folder"]
         retention = timedelta(seconds=config.mercure["retention"])
@@ -75,7 +75,7 @@ def clean(args) -> None:
         clean_dir(discard_folder, retention)
 
 
-def _is_offpeak(offpeak_start:str, offpeak_end:str, current_time:_time) -> bool:
+def _is_offpeak(offpeak_start: str, offpeak_end: str, current_time: _time) -> bool:
     try:
         start_time = datetime.strptime(offpeak_start, "%H:%M").time()
         end_time = datetime.strptime(offpeak_end, "%H:%M").time()
@@ -95,7 +95,11 @@ def clean_dir(discard_folder, retention) -> None:
     Cleans the discard folder if it is older than the retention time, starting
     from oldest first.
     """
-    candidates = [(f, f.stat().st_mtime) for f in Path(discard_folder).iterdir() if f.is_dir() and retention < timedelta(seconds=(time.time() - f.stat().st_mtime))]
+    candidates = [
+        (f, f.stat().st_mtime)
+        for f in Path(discard_folder).iterdir()
+        if f.is_dir() and retention < timedelta(seconds=(time.time() - f.stat().st_mtime))
+    ]
     oldest_first = sorted(candidates, key=lambda x: x[1], reverse=True)
     for entry in oldest_first:
         delete_folder(entry)
@@ -114,9 +118,7 @@ def delete_folder(entry) -> None:
         logger.exception(e)
         send_series_event(s_events.ERROR, series_uid, 0, delete_path, "Unable to delete folder")
         monitor.send_event(
-            monitor.m_events.PROCESSING,
-            monitor.severity.ERROR,
-            f"Unable to delete folder {delete_path}",
+            monitor.m_events.PROCESSING, monitor.severity.ERROR, f"Unable to delete folder {delete_path}",
         )
 
 
@@ -130,6 +132,7 @@ def find_series_uid(work_dir) -> str:
             return entry.name.split(mercure_defs.SEPARATOR)[0]
         return "series_uid-not-found"
     return "series_uid-not-found"
+
 
 def exit_cleaner(args) -> None:
     """ Stop the asyncio event loop. """
@@ -171,9 +174,7 @@ if __name__ == "__main__":
         logger.info(f"Sending events to graphite server: {config.mercure['graphite_ip']}")
         graphite_prefix = "mercure." + appliance_name + ".cleaner." + instance_name
         graphyte.init(
-            config.mercure["graphite_ip"],
-            config.mercure["graphite_port"],
-            prefix=graphite_prefix,
+            config.mercure["graphite_ip"], config.mercure["graphite_port"], prefix=graphite_prefix,
         )
 
     global main_loop

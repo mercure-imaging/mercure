@@ -13,6 +13,7 @@ import shutil
 import daiquiri
 from datetime import datetime, timedelta
 
+
 # App-specific includes
 import common.config as config
 import common.rule_evaluation as rule_evaluation
@@ -52,7 +53,6 @@ def route_studies() -> None:
 
     # Process all complete studies
     for dir_entry in sorted(studies_ready):
-
         study_success = False
         try:
             study_success = route_study(dir_entry)
@@ -64,7 +64,6 @@ def route_studies() -> None:
             monitor.send_event(
                 monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message,
             )
-
         if not study_success:
             # TODO: Now move the study to the error folder
             pass
@@ -138,8 +137,6 @@ def is_study_complete(folder: str) -> bool:
         monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_text)
         return False
 
-    return False
-
 
 def check_study_timeout(task: Task) -> bool:
     """
@@ -203,6 +200,7 @@ def route_study(study) -> bool:
         # TODO: Move study to error folder
         return False
 
+    action_result = True
     action = task.get(mercure_sections.INFO, {}).get(mercure_info.ACTION, "")
     if not action:
         error_text = f"Missing action in study folder {study_folder}"
@@ -212,47 +210,41 @@ def route_study(study) -> bool:
         return False
 
     if action == mercure_actions.NOTIFICATION:
-        if not push_studylevel_notification(study, task):
-            # TODO: Move study to error folder
-            return False
-        else:
-            return True
+        action_result = push_studylevel_notification(study, task)
+    elif action == mercure_actions.ROUTE:
+        action_result = push_studylevel_dispatch(study, task)
+    elif action == mercure_actions.PROCESS or action == mercure_actions.BOTH:
+        action_result = push_studylevel_processing(study, task)
+    else:
+        # This point should not be reached (discard actions should be handled on the series level)
+        error_text = f"Invalid task action in study folder {study_folder}"
+        logger.exception(error_text)
+        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_text)
+        return False
 
-    if action == mercure_actions.ROUTE:
-        if not push_studylevel_dispatch(study, task):
-            # TODO: Move study to error folder
-            return False
-        else:
-            return True
+    # TODO: Try moving the study folder to the error folder if the action was not successful
 
-    if action == mercure_actions.PROCESS or action == mercure_actions.BOTH:
-        if not push_studylevel_processing(study, task):
-            # TODO: Move study to error folder
-            return False
-        else:
-            return True
+    if not remove_study_folder(study, lock):
+        error_text = f"Error removing folder for study {study}"
+        logger.exception(error_text)
+        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_text)
+        return False
 
-    # This point should not be reached (discard actions should be handled on the series level)
-    error_text = f"Invalid task action in study folder {study_folder}"
-    logger.exception(error_text)
-    monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_text)
-    return False
+    return True
 
 
 def push_studylevel_dispatch(study: str, task: Task) -> bool:
     """
     Pushes the study folder to the dispatchter, including the generated task file containing the destination information
     """
-    # TODO
-    return True
+    return move_study_folder(study, "OUTGOING")
 
 
 def push_studylevel_processing(study: str, task: Task) -> bool:
     """
     Pushes the study folder to the processor, including the generated task file containing the processing instructions
     """
-    # TODO
-    return True
+    return move_study_folder(study, "PROCESSING")
 
 
 def push_studylevel_notification(study: str, task: Task) -> bool:
@@ -280,4 +272,101 @@ def push_studylevel_notification(study: str, task: Task) -> bool:
         config.mercure[mercure_config.RULES][current_rule].get(mercure_rule.NOTIFICATION_PAYLOAD, ""),
         mercure_events.RECEPTION,
     )
+
+    move_study_folder(study, "SUCCESS")
+    return True
+
+
+def move_study_folder(study: str, destination: str) -> bool:
+    """
+    Moves the study subfolder to the specified destination with proper locking of the folders
+    """
+    source_folder = config.mercure[mercure_folders.STUDIES] + "/" + study
+    destination_folder = config.mercure[mercure_folders.DISCARD]
+    if destination == "PROCESSING":
+        destination_folder = config.mercure[mercure_folders.PROCESSING]
+
+    # Create unique name of destination folder
+    destination_folder += "/" + str(uuid.uuid1())
+
+    # Create the destination folder and validate that is has been created
+    try:
+        os.mkdir(destination_folder)
+    except Exception:
+        error_message = f"Unable to create study destination folder {destination_folder}"
+        logger.exception(error_message)
+        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
+        return False
+
+    if not Path(destination_folder).exists():
+        error_message = f"Creating study destination folder not possible {destination_folder}"
+        logger.error(error_message)
+        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
+        return False
+
+    # Create lock file in destination folder (to prevent any other module to work on the folder). Note that
+    # the source folder has already been locked in the parent function.
+    lock_file = Path(destination_folder) / mercure_names.LOCK
+    try:
+        lock = helper.FileLock(lock_file)
+    except:
+        # Can't create lock file, so something must be seriously wrong
+        error_message = f"Unable to create lock file {destination_folder}/{mercure_names.LOCK}"
+        logger.error(error_message)
+        monitor.send_event(
+            monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message,
+        )
+        return False
+
+    # Move all files except the lock file
+    for entry in os.scandir(source_folder):
+        if not entry.name.endswith(mercure_names.LOCK):
+            try:
+                shutil.move(source_folder + "/" + entry.name, destination_folder + "/" + entry.name)
+            except Exception:
+                error_message = f"Problem while pushing file {entry} from {source_folder} to {destination_folder}"
+                logger.exception(error_message)
+                monitor.send_event(
+                    monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message,
+                )
+
+    # Remove the lock file. Would happen automatically when leaving the function, but better to do
+    # explicitly to provide error handling
+    try:
+        lock.free()
+    except:
+        # Can't delete lock file, so something must be seriously wrong
+        error_message = f"Unable to remove lock file {lock_file}"
+        logger.error(error_message)
+        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
+        return False
+
+    return True
+
+
+def remove_study_folder(study: str, lock: helper.FileLock) -> bool:
+    """
+    Removes a study folder containing nothing but the lock file (called during cleanup after all files have 
+    been moved somewhere else already)
+    """
+    study_folder = config.mercure[mercure_folders.STUDIES] + "/" + study
+    # Remove the lock file
+    try:
+        lock.free()
+    except:
+        # Can't delete lock file, so something must be seriously wrong
+        error_message = f"Unable to remove lock file while removing study folder {study}"
+        logger.error(error_message)
+        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
+        return False
+    # Remove the empty study folder
+    try:
+        shutil.rmtree(study_folder)
+    except Exception as e:
+        error_message = f"Unable to delete folder {study_folder}"
+        logger.error(error_message)
+        logger.exception(e)
+        monitor.send_event(
+            monitor.m_events.PROCESSING, monitor.severity.ERROR, f"Unable to delete study folder {study_folder}",
+        )
     return True
