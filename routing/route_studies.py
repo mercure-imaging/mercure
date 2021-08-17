@@ -13,7 +13,6 @@ import shutil
 import daiquiri
 from datetime import datetime, timedelta
 
-
 # App-specific includes
 import common.config as config
 import common.rule_evaluation as rule_evaluation
@@ -65,8 +64,8 @@ def route_studies() -> None:
                 monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message,
             )
         if not study_success:
-            # TODO: Now move the study to the error folder
-            pass
+            # Move the study to the error folder to avoid repeated processing
+            push_studylevel_error(dir_entry)
 
         # If termination is requested, stop processing after the active study has been completed
         if helper.is_terminated():
@@ -197,7 +196,6 @@ def route_study(study) -> bool:
         error_text = f"Invalid task file in study folder {study_folder}"
         logger.exception(error_text)
         monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_text)
-        # TODO: Move study to error folder
         return False
 
     action_result = True
@@ -206,7 +204,6 @@ def route_study(study) -> bool:
         error_text = f"Missing action in study folder {study_folder}"
         logger.exception(error_text)
         monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_text)
-        # TODO: Move study to error folder
         return False
 
     if action == mercure_actions.NOTIFICATION:
@@ -222,10 +219,14 @@ def route_study(study) -> bool:
         monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_text)
         return False
 
-    # TODO: Try moving the study folder to the error folder if the action was not successful
+    if not action_result:
+        error_text = f"Error during processing of study {study}"
+        logger.exception(error_text)
+        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_text)
+        return False
 
     if not remove_study_folder(study, lock):
-        error_text = f"Error removing folder for study {study}"
+        error_text = f"Error removing folder of study {study}"
         logger.exception(error_text)
         monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_text)
         return False
@@ -277,6 +278,37 @@ def push_studylevel_notification(study: str, task: Task) -> bool:
     return True
 
 
+def push_studylevel_error(study: str) -> None:
+    """
+    Pushes the study folder to the error folder after unsuccessful processing
+    """
+    study_folder = config.mercure[mercure_folders.STUDIES] + "/" + study
+    lock_file = Path(study_folder + "/" + study + mercure_names.LOCK)
+    if lock_file.exists():
+        # Study normally shouldn't be locked at this point, but since it is, just exit and wait.
+        # Might require manual intervention if a former process terminated without removing the lock file
+        return
+    try:
+        lock = helper.FileLock(lock_file)
+    except:
+        # Can't create lock file, so something must be seriously wrong
+        error_message = f"Unable to lock study for removal {lock_file}"
+        logger.error(error_message)
+        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
+        return
+    if not move_study_folder(study, "ERROR"):
+        # At this point, we can only wait for manual intervention
+        error_message = f"Unable to move study to ERROR folder {lock_file}"
+        logger.error(error_message)
+        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
+        return
+    if not remove_study_folder(study, lock):
+        error_message = f"Unable to delete study folder {lock_file}"
+        logger.error(error_message)
+        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
+        return
+
+
 def move_study_folder(study: str, destination: str) -> bool:
     """
     Moves the study subfolder to the specified destination with proper locking of the folders
@@ -285,6 +317,10 @@ def move_study_folder(study: str, destination: str) -> bool:
     destination_folder = config.mercure[mercure_folders.DISCARD]
     if destination == "PROCESSING":
         destination_folder = config.mercure[mercure_folders.PROCESSING]
+    elif destination == "SUCCESS":
+        destination_folder = config.mercure[mercure_folders.SUCCESS]
+    elif destination == "ERROR":
+        destination_folder = config.mercure[mercure_folders.ERROR]
 
     # Create unique name of destination folder
     destination_folder += "/" + str(uuid.uuid1())
@@ -320,6 +356,7 @@ def move_study_folder(study: str, destination: str) -> bool:
 
     # Move all files except the lock file
     for entry in os.scandir(source_folder):
+        # Move all files but exclude the lock file in the source folder
         if not entry.name.endswith(mercure_names.LOCK):
             try:
                 shutil.move(source_folder + "/" + entry.name, destination_folder + "/" + entry.name)
@@ -330,8 +367,8 @@ def move_study_folder(study: str, destination: str) -> bool:
                     monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message,
                 )
 
-    # Remove the lock file. Would happen automatically when leaving the function, but better to do
-    # explicitly to provide error handling
+    # Remove the lock file in the target folder. Would happen automatically when leaving the function,
+    # but better to do explicitly with error handling
     try:
         lock.free()
     except:
