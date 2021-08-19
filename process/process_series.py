@@ -80,21 +80,21 @@ def docker_runtime(task: Task, folder: str) -> bool:
         # Returns: logs (stdout), pass stderr=True if you want stderr too.
         logger.info(logs)
         """Raises:	
-            docker.errors.ContainerError – If the container exits with a non-zero exit code
-            docker.errors.ImageNotFound – If the specified image does not exist.
-            docker.errors.APIError – If the server returns an error."""
+            docker.errors.ContainerError ï¿½ If the container exits with a non-zero exit code
+            docker.errors.ImageNotFound ï¿½ If the specified image does not exist.
+            docker.errors.APIError ï¿½ If the server returns an error."""
     except (docker.errors.APIError, docker.errors.ImageNotFound):
         # Something really serious happened
         logger.info("There was a problem running the specified Docker container")
         logger.error(traceback.format_exc())
         monitor.send_event(
-            monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Error starting Docker container {docker_tag}"
+            monitor.m_events.PROCESSING, monitor.severity.ERROR, f"Error starting Docker container {docker_tag}"
         )
         processing_success = False
     except docker.errors.ContainerError as err:
         logger.info("The container returned a non-zero exit code")
         monitor.send_event(
-            monitor.h_events.PROCESSING,
+            monitor.m_events.PROCESSING,
             monitor.severity.ERROR,
             f"Error while running Docker container {docker_tag} - {err.exit_status}",
         )
@@ -119,7 +119,7 @@ def process_series(folder) -> None:
             # but if we do nothing we'll just loop forever
             logger.error(f"Unable to create lock file {lock_file}")
             monitor.send_event(
-                monitor.h_events.PROCESSING,
+                monitor.m_events.PROCESSING,
                 monitor.severity.ERROR,
                 f"Unable to create lock file in processing folder {lock_file}",
             )
@@ -179,7 +179,7 @@ def move_results(
         logger.info(f"Error locking folder to be moved {folder}")
         logger.error(traceback.format_exc())
         monitor.send_event(
-            monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Error locking folder to be moved {folder}"
+            monitor.m_events.PROCESSING, monitor.severity.ERROR, f"Error locking folder to be moved {folder}"
         )
     if lock is not None:
         lock.free()
@@ -218,6 +218,6 @@ def move_out_folder(source_folder_str, destination_folder_str, move_all=False) -
         logger.info(f"Error moving folder {source_folder} to {destination_folder}")
         logger.error(traceback.format_exc())
         monitor.send_event(
-            monitor.h_events.PROCESSING, monitor.severity.ERROR, f"Error moving {source_folder} to {destination_folder}"
+            monitor.m_events.PROCESSING, monitor.severity.ERROR, f"Error moving {source_folder} to {destination_folder}"
         )
 
