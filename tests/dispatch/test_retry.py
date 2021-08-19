@@ -28,14 +28,7 @@ def test_execute_increase(fs, mocker):
 def test_execute_increase_fail(fs, mocker):
     source = "/var/data"
     fs.create_dir(source)
-    target = {
-        "dispatch": {
-            "target_ip": "0.0.0.0",
-            "target_aet_target": "a",
-            "target_port": 90,
-            "retries": 5,
-        }
-    }
+    target = {"dispatch": {"target_ip": "0.0.0.0", "target_aet_target": "a", "target_port": 90, "retries": 5,}}
     fs.create_file("/var/data/" + mercure_names.TASKFILE, contents=json.dumps(target))
     result = increase_retry(source, 5, 50)
 

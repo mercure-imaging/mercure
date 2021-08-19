@@ -1,11 +1,17 @@
 from starlette.applications import Starlette
-from starlette.responses import HTMLResponse
+from starlette.responses import HTMLResponse, Response
 from starlette.responses import PlainTextResponse
 from starlette.responses import JSONResponse
 from starlette.responses import RedirectResponse
 from starlette.templating import Jinja2Templates
 from starlette.authentication import requires
-from starlette.authentication import AuthenticationBackend, AuthenticationError, SimpleUser, UnauthenticatedUser, AuthCredentials
+from starlette.authentication import (
+    AuthenticationBackend,
+    AuthenticationError,
+    SimpleUser,
+    UnauthenticatedUser,
+    AuthCredentials,
+)
 from starlette.middleware.authentication import AuthenticationMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.config import Config
@@ -21,11 +27,31 @@ from webinterface.common import templates
 
 modules_app = Starlette()
 
+
+###################################################################################
+## Common functions
+###################################################################################
+async def save_module(form, name) -> Response:
+    """We already read the config by this time"""
+
+    config.mercure["modules"][name] = {
+        "url": form.get("url", ""),
+        "docker_tag": form.get("docker_tag", None),
+        "additional_volumes": form.get("additional_volumes", None),
+        "environment": form.get("environment", None),
+        "docker_arguments": form.get("docker_arguments", None),
+    }
+    try:
+        config.save_config()
+    except:
+        return PlainTextResponse("ERROR: Unable to write configuration. Try again.")
+
+    return RedirectResponse(url="/modules/", status_code=303)
+
+
 ###################################################################################
 ## Modules endpoints
 ###################################################################################
-
-
 @modules_app.route("/", methods=["GET"])
 @requires("authenticated", redirect="login")
 async def show_modules(request):
@@ -42,7 +68,13 @@ async def show_modules(request):
         used_modules[used_module] = rule
 
     template = "modules.html"
-    context = {"request": request, "mercure_version": mercure_defs.VERSION, "page": "modules", "modules": config.mercure["modules"], "used_modules": used_modules}
+    context = {
+        "request": request,
+        "mercure_version": mercure_defs.VERSION,
+        "page": "modules",
+        "modules": config.mercure["modules"],
+        "used_modules": used_modules,
+    }
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
 
@@ -62,14 +94,10 @@ async def add_module(request):
     if name in config.mercure["modules"]:
         return PlainTextResponse("Name already exists.")
 
-    config.mercure["modules"][name] = {"url": form.get("url", ""), "docker_tag": form.get("docker_tag", None)}
-    try:
-        config.save_config()
-    except:
-        return PlainTextResponse("ERROR: Unable to write configuration. Try again.")
-    # logger.info(f'Created rule {newrule}')
-    # monitor.send_webgui_event(monitor.w_events.RULE_CREATE, request.user.display_name, newrule)
-    return RedirectResponse(url="/modules/", status_code=303)
+    # logger.info(f'Created rule {name}')
+    # monitor.send_webgui_event(monitor.w_events.RULE_CREATE, request.user.display_name, name)
+
+    return await save_module(form, name)
 
 
 @modules_app.route("/edit/{module}", methods=["GET"])
@@ -83,7 +111,13 @@ async def edit_module(request):
         return PlainTextResponse("Configuration is being updated. Try again in a minute.")
 
     template = "modules_edit.html"
-    context = {"request": request, "mercure_version": mercure_defs.VERSION, "page": "modules", "module": config.mercure["modules"][module], "module_name": module}
+    context = {
+        "request": request,
+        "mercure_version": mercure_defs.VERSION,
+        "page": "modules",
+        "module": config.mercure["modules"][module],
+        "module_name": module,
+    }
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
 
@@ -100,15 +134,10 @@ async def edit_module_POST(request):
     form = dict(await request.form())
 
     name = request.path_params["module"]
-    if name in config.mercure["modules"]:
-        config.mercure["modules"][name] = {"url": form.get("url", ""), "docker_tag": form.get("docker_tag", None)}
-    try:
-        config.save_config()
-    except:
-        return PlainTextResponse("ERROR: Unable to write configuration. Try again.")
-    # logger.info(f'Created rule {newrule}')
-    # monitor.send_webgui_event(monitor.w_events.RULE_CREATE, request.user.display_name, newrule)
-    return RedirectResponse(url="/modules/", status_code=303)
+    if name not in config.mercure["modules"]:
+        return PlainTextResponse("Invalid module name - perhaps it was deleted?")
+
+    return await save_module(form, name)
 
 
 @modules_app.route("/delete/{module}", methods=["POST"])

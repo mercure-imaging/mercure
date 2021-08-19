@@ -3,95 +3,71 @@
 {% block title %}Modules{% endblock %}
 
 {% block content %}
-<main role="main">
-    <div class="container">
-        <h1 class="title">Processing Modules</h1>
-        {% for x in modules %}
-        <div class="card rulecard">
-            <header class="card-header has-background-light">
-                <p class="card-header-title card-toggle">
-                    <span class="icon"><i class="fas fa-cogs fa-lg"></i></span>&nbsp;&nbsp;{{ x }}
-                </p>
-                <a class="card-header-icon card-toggle">
-                    <i class="fa fa-angle-down"></i>
-                </a>
-            </header>
-            <div class="card-content rulecard-content is-hidden">
-                <div class="content">
-                    <table class="table is-narrow" style="margin-bottom: 8px;">
-                        <col width="150">
-                        <tr>
-                            <td>Git URL:</td>
-                            <td>{{ modules[x]['url'] }}</td>
-                        </tr>
-                        <tr>
-                            <td>Docker tag:</td>
-                            <td>{{ modules[x]['docker_tag'] }}</td>
-                        </tr>
-                    </table>
-                    <div class="buttons is-right">
-                        {% if is_admin %}
-                        <a class="button is-success" href="/modules/edit/{{x}}"><i
-                                class="fas fa-pen"></i>&nbsp;Settings</a>
-                        <button class="button is-danger" id="confirm-me" value="{{x}}"
-                            onclick="confirmDelete(this.value)" {% if x in used_modules%}disabled
-                            title="Cannot delete because target is used by rule '{{ used_modules[x] }}'" {% endif %}><i
-                                class="fas fa-trash-alt"></i>&nbsp;Uninstall</button>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-        </div>
-        {% endfor %}
-
-        {% if is_admin %}
-        <div class="buttons is-left" style="margin-top: 20px;">
-            <button class="button is-success" onclick="showAddModal()"><i class="fas fa-plus"></i>&nbsp;Install
-                Module</button>
-        </div>
-        {% endif %}
-    </div>
-
-    <div class="modal" id="deletemodal">
-        <div class="modal-background">
-        </div>
-        <div class="modal-card">
-            <header class="modal-card-head">
-                <p class="modal-card-title">Delete Module?</p>
-            </header>
-            <section class="modal-card-body">
-                <div class="field">
-                    Are you sure to delete the module? This cannot be undone.
-                </div>
-                <div class="field" style="margin-top: 20px;">
-                    <p class="control">
-                        <button id="confirmmodal" class="button is-danger">Delete</button>
-                        <button id="closemodal" class="button">Cancel</button>
-                    </p>
-                </div>
-            </section>
-        </div>
-    </div>
-
-    <div class="modal" id="addmodal">
-        <div class="modal-background">
-        </div>
-        <div class="modal-card">
-            <header class="modal-card-head">
-                <p class="modal-card-title">Install New Module</p>
-            </header>
-            <section class="modal-card-body">
-                <form method="post">
-                    <div class="field">
-                        <p class="control">
-                            <input class="input" id="addnewname" type="text" required pattern="[-_A-Za-z0-9]+"
-                                placeholder="Name of target" name="name" autofocus>
+    <main role="main">
+        <div class="container">
+            <h1 class="title">Processing Modules</h1>
+            {% for x in modules %}
+                <div class="card rulecard">
+                    <header class="card-header has-background-light">
+                        <p class="card-header-title card-toggle">
+                            <span class="icon"><i class="fas fa-cogs fa-lg"></i></span>&nbsp;&nbsp;{{ x }}
                         </p>
+                        <a class="card-header-icon card-toggle">
+                            <i class="fa fa-angle-down"></i>
+                        </a>
+                    </header>
+                    <div class="card-content rulecard-content is-hidden">
+                        <div class="content">
+                            <table class="table is-narrow" style="margin-bottom: 8px;">
+                                <col width="150">
+                                <tr>
+                                    <td>Git URL:</td>
+                                    <td>{{ modules[x]['url'] }}</td>
+                                </tr>
+                                <tr>
+                                    <td>Docker tag:</td>
+                                    <td>{{ modules[x]['docker_tag'] }}</td>
+                                </tr>
+                            </table>
+                            <div class="buttons is-right">
+                                {% if is_admin %}
+                                    <a class="button is-success" href="/modules/edit/{{x}}"><i
+                                            class="fas fa-pen"></i>&nbsp;Settings</a>
+                                    <button class="button is-danger" id="confirm-me" value="{{x}}"
+                                            onclick="confirmDelete(this.value)" {% if x in used_modules%}disabled
+                                            title="Cannot delete because target is used by rule '{{ used_modules[x] }}'" {% endif %}><i
+                                            class="fas fa-trash-alt"></i>&nbsp;Uninstall</button>
+                                {% endif %}
+                            </div>
+                        </div>
                     </div>
+                </div>
+            {% endfor %}
+
+            {% if is_admin %}
+                <div class="buttons is-left" style="margin-top: 20px;">
+                    <button class="button is-success" onclick="showAddModal()"><i class="fas fa-plus"></i>&nbsp;Install
+                        Module</button>
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="modal" id="deletemodal">
+            <div class="modal-background">
+            </div>
+            <div class="modal-card">
+                <header class="modal-card-head">
+                    <p class="modal-card-title">Delete Module?</p>
+                </header>
+                <section class="modal-card-body">
                     <div class="field">
+                        Are you sure to delete the module? This cannot be undone.
+                    </div>
+                    <form method="post">
+                    <div class="field" style="margin-top: 20px;">
                         <p class="control">
-                            <input class="input" id="url" type="url" required pattern="https://.*" placeholder="Git URL"
-                                name="url" autofocus>
+                            <button id="confirmmodal" class="button is-danger">Delete</button>
+                            <button id="closemodal" class="button">Cancel</button>
                         </p>
                     </div>
                     <div class="field">
@@ -100,61 +76,130 @@
                         </p>
                     </div>
                     <div class="field">
+                        <p class="control">
+                            <input class="input" id="url" type="text" 
+                                placeholder="Docker tag" name="docker_tag">
+                        </p>
+                    </div>
+                    <div class="field">
                         <p class="control" style="margin-top: 20px;">
                             <button id="confirmaddmodal" class="button is-success">Install</button>
                             <a id="closeaddmodal" class="button">Cancel</a>
                         </p>
                     </div>
-                </form>
+                    </form>
             </section>
+            </div>
         </div>
-    </div>
-</main>
+        <div class="modal" id="addmodal">
+            <div class="modal-background">
+            </div>
+            <div class="modal-card">
+                <header class="modal-card-head">
+                    <p class="modal-card-title">Install New Module</p>
+                </header>
+                <section class="modal-card-body">
+                    <form method="post">
+                        <div class="field">
+                            <p class="control">
+                                <input class="input" id="addnewname" type="text" required pattern="[-_A-Za-z0-9]+"
+                                       placeholder="Name of target" name="name" autofocus>
+                            </p>
+                        </div>
+                        <div class="field">
+                            <p class="control">
+                                <input class="input" id="url" type="url" required pattern="https://.*" placeholder="Git URL"
+                                       name="url" autofocus>
+                            </p>
+                        </div>
+                        <div class="field">
+                            <p class="control">
+                                <input class="input" id="docker_tag" type="text" placeholder="Docker tag" name="docker_tag">
+                            </p>
+                        </div>
+                        <div class="field">
+                            <p class="control">
+                                <input class="input"
+                                       id="additional_volumes"
+                                       type="text"
+                                       placeholder="{&quot;/host&quot;: {&quot;bind&quot;: &quot;/config&quot;, &quot;mode&quot;: &quot;r&quot;}}"
+                                       name="additional_volumes">
+                            </p>
+                        </div>
+                        <div class="field">
+                            <p class="control">
+                                <input class="input"
+                                       id="environment"
+                                       type="text"
+                                       placeholder="{foo=&quot;bar&quot;}"
+                                       name="environment">
+                            </p>
+                        </div>
+                        <div class="field">
+                            <p class="control">
+                                <input class="input"
+                                       id="docker_arguments"
+                                       type="text"
+                                       placeholder="Additional arguments (https://docker-py.readthedocs.io/en/stable/containers.html)"
+                                       name="docker_arguments">
+                            </p>
+                        </div>
+                        <div class="field">
+                            <p class="control" style="margin-top: 20px;">
+                                <button id="confirmaddmodal" class="button is-success">Install</button>
+                                <a id="closeaddmodal" class="button">Cancel</a>
+                            </p>
+                        </div>
+                    </form>
+                </section>
+            </div>
+        </div>
+    </main>
 
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        let cardToggles = document.getElementsByClassName('card-toggle');
-        for (let i = 0; i < cardToggles.length; i++) {
-            cardToggles[i].addEventListener('click', e => {
-                e.currentTarget.parentElement.parentElement.childNodes[3].classList.toggle('is-hidden');
-            });
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            let cardToggles = document.getElementsByClassName('card-toggle');
+            for (let i = 0; i < cardToggles.length; i++) {
+                cardToggles[i].addEventListener('click', e => {
+                    e.currentTarget.parentElement.parentElement.childNodes[3].classList.toggle('is-hidden');
+                });
+            }
+        });
+
+        function showAddModal(val) {
+            $("#addnewname").val("");
+            $("#addmodal").addClass("is-active");
+            $("#addnewname").focus();
         }
-    });
 
-    function showAddModal(val) {
-        $("#addnewname").val("");
-        $("#addmodal").addClass("is-active");
-        $("#addnewname").focus();
-    }
+        var moduleToDelete = "";
 
-    var moduleToDelete = "";
+        function confirmDelete(val) {
+            moduleToDelete = val;
+            $("#deletemodal").addClass("is-active");
+        }
 
-    function confirmDelete(val) {
-        moduleToDelete = val;
-        $("#deletemodal").addClass("is-active");
-    }
+        $(function () {
+            $('#closeaddmodal').click(function () {
+                $("#addmodal").removeClass("is-active");
+            })
 
-    $(function () {
-        $('#closeaddmodal').click(function () {
-            $("#addmodal").removeClass("is-active");
-        })
+            $('#closemodal').click(function () {
+                $("#deletemodal").removeClass("is-active");
+            })
 
-        $('#closemodal').click(function () {
-            $("#deletemodal").removeClass("is-active");
-        })
+            $('#confirmmodal').click(function () {
+                $("#deletemodal").removeClass("is-active");
+                var url = '/modules/delete/' + moduleToDelete;
+                var form = $('<form action="' + url + '" method="post"></form>');
+                $('body').append(form);
+                form.submit();
+            })
 
-        $('#confirmmodal').click(function () {
-            $("#deletemodal").removeClass("is-active");
-            var url = '/modules/delete/' + moduleToDelete;
-            var form = $('<form action="' + url + '" method="post"></form>');
-            $('body').append(form);
-            form.submit();
-        })
-
-        $('#closetestmodal').click(function () {
-            $("#testmodal").removeClass("is-active");
-        })
-    });
-</script>
+            $('#closetestmodal').click(function () {
+                $("#testmodal").removeClass("is-active");
+            })
+        });
+    </script>
 
 {% endblock %}

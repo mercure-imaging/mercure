@@ -6,6 +6,7 @@ from common.monitor import s_events, send_series_event
 from common.constants import mercure_names
 from common.types import Task
 
+
 def is_ready_for_sending(folder) -> Optional[Any]:
     """Checks if a case in the outgoing folder is ready for sending by the dispatcher.
 
@@ -44,14 +45,10 @@ def is_target_json_valid(folder) -> Optional[Any]:
 
     try:
         with open(path, "r") as f:
-            target:Task = json.load(f)
+            target: Task = json.load(f)
     except:
         send_series_event(
-            s_events.ERROR,
-            "None",
-            0,
-            "None",
-            f"task.json has invalid format",
+            s_events.ERROR, "None", 0, "None", f"task.json has invalid format",
         )
         return None
 
@@ -59,9 +56,9 @@ def is_target_json_valid(folder) -> Optional[Any]:
     if not all([key in dispatch for key in ["target_ip", "target_port", "target_aet_target"]]):
         send_series_event(
             s_events.ERROR,
-            dispatch.get("series_uid", "None"), # type: ignore
+            dispatch.get("series_uid", "None"),  # type: ignore
             0,
-            dispatch.get("target_name", "None"), # type: ignore
+            dispatch.get("target_name", "None"),  # type: ignore
             f"task.json is missing a mandatory key {target}",
         )
         return None

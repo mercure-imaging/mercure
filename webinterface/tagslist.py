@@ -6,7 +6,7 @@ from typing import Dict
 
 tagslist_source = os.path.realpath(os.path.dirname(os.path.realpath(__file__)) + "/../getdcmtags/main.cpp")
 
-alltags:Dict[str,str] = {}
+alltags: Dict[str, str] = {}
 sortedtags = []
 
 

@@ -20,7 +20,8 @@ import logging
 import daiquiri
 import html
 from pathlib import Path
-from typing import Tuple, Union, Optional
+from typing import Dict, Optional, Tuple, Union, List
+import docker
 
 # Starlette-related includes
 from starlette.applications import Starlette
@@ -50,6 +51,8 @@ import common.helper as helper
 import common.config as config
 import common.monitor as monitor
 from common.constants import mercure_defs, mercure_names
+from common.types import Rule
+
 import common.rule_evaluation as rule_evaluation
 import webinterface.users as users
 import webinterface.tagslist as tagslist
@@ -159,54 +162,71 @@ async def show_log(request) -> Response:
 
     try:
         start_date = request.query_params.get("from", "")
-        start_time = request.query_params.get("from_time", "")
-        datetime.datetime.strptime(start_date, "%Y-%m-%d")
-        start_date_cmd = ' --since "' + start_date
-        if start_date and start_time:
-            datetime.datetime.strptime(start_time, "%H:%M")
-            start_date_cmd = start_date_cmd + " " + start_time
-        start_date_cmd = start_date_cmd + '"'
-    except:
-        start_date = ""
-        start_time = ""
-        start_date_cmd = ""
+        start_time = request.query_params.get("from_time", "00:00")
+        start_timestamp = f"{start_date} {start_time}"
+        start_obj = datetime.datetime.strptime(start_timestamp, "%Y-%m-%d %H:%M")
+    except ValueError:
+        start_obj = None
+        start_timestamp = ""
 
     try:
         end_date = request.query_params.get("to", "")
-        end_time = request.query_params.get("to_time", "")
-        datetime.datetime.strptime(end_date, "%Y-%m-%d")
-        end_date_cmd = ' --until "' + end_date
-        if end_date and end_time:
-            datetime.datetime.strptime(end_time, "%H:%M")
-            end_date_cmd = end_date_cmd + " " + end_time
-        end_date_cmd = end_date_cmd + '"'
-    except:
-        end_date = ""
-        end_time = ""
-        end_date_cmd = ""
+        # Make sure end time includes the day-of, unless otherwise specified
+        end_time = request.query_params.get("to_time", "23:59")
+        end_timestamp = f"{end_date} {end_time}"
+        datetime.datetime.strptime(end_timestamp, "%Y-%m-%d %H:%M")
+    except ValueError:
+        end_timestamp = ""
 
     service_logs = {}
     for service in services.services_list:
         service_logs[service] = {
             "id": service,
             "name": services.services_list[service]["name"],
-            "systemd": services.services_list[service]["systemd_service"],
+            "systemd": services.services_list[service].get("systemd_service", ""),
+            "docker": services.services_list[service].get("docker_service", ""),
         }
 
-    if (not requested_service in service_logs) or (not services.services_list[requested_service]["systemd_service"]):
-        return PlainTextResponse("Service does not exist or is incorrectly configured.")
+    if requested_service not in service_logs:
+        return PlainTextResponse("Service does not exist.")
 
-    run_result = await async_run(
-        "journalctl -n 1000 -u "
-        + services.services_list[requested_service]["systemd_service"]
-        + start_date_cmd
-        + end_date_cmd
-    )
+    if (
+        "systemd_service" not in services.services_list[requested_service]
+        and "docker_service" not in services.services_list[requested_service]
+    ):
+        return PlainTextResponse("Service incorrectly configured.")
 
-    log_content = ""
+    return_code = -1
+    raw_logs = bytes()
 
-    if run_result[0] == 0:
-        log_content = html.escape(str(run_result[1].decode()))
+    if "systemd_service" in services.services_list[requested_service]:
+        start_date_cmd = ""
+        end_date_cmd = ""
+        if start_timestamp:
+            start_date_cmd = f"--since {start_timestamp}"
+        if end_timestamp:
+            end_date_cmd = f"--until {end_timestamp}"
+
+        run_result = await async_run(
+            f"journalctl -n 1000 -u "
+            f'{services.services_list[requested_service]["systemd_service"]} '
+            f"{start_date_cmd} {end_date_cmd}"
+        )
+        return_code = run_result[0] or -1
+        raw_logs = run_result[1]
+
+    elif "docker_service" in services.services_list[requested_service]:
+        client = docker.from_env()
+        try:
+            container = client.containers.get(services.services_list[requested_service]["docker_service"])
+            container.reload()
+            raw_logs = container.logs(since=start_obj)
+            return_code = 0
+        except (docker.errors.NotFound, docker.errors.APIError):
+            return_code = 1
+
+    if return_code == 0:
+        log_content = html.escape(str(raw_logs.decode()))
         line_list = log_content.split("\n")
         if len(line_list) and (not line_list[-1]):
             del line_list[-1]
@@ -288,7 +308,7 @@ async def add_rule(request) -> Response:
 
 @app.route("/rules/edit/{rule}", methods=["GET"])
 @requires(["authenticated", "admin"], redirect="login")
-async def rules_edit(request):
+async def rules_edit(request) -> Response:
     """Shows the edit page for the given routing rule."""
     try:
         config.read_config()
@@ -327,29 +347,28 @@ async def rules_edit_post(request) -> Response:
     if not editrule in config.mercure["rules"]:
         return PlainTextResponse("Rule does not exist anymore.")
 
-    config.mercure["rules"][editrule]["rule"] = form.get("rule", "False")
-    config.mercure["rules"][editrule]["target"] = form.get("target", "")
-    config.mercure["rules"][editrule]["disabled"] = form.get("status_disabled", "False")
-    config.mercure["rules"][editrule]["fallback"] = form.get("status_fallback", "False")
-    config.mercure["rules"][editrule]["contact"] = form.get("contact", "")
-    config.mercure["rules"][editrule]["comment"] = form.get("comment", "")
-    config.mercure["rules"][editrule]["tags"] = form.get("tags", "")
-    config.mercure["rules"][editrule]["action"] = form.get("action", "route")
-    config.mercure["rules"][editrule]["action_trigger"] = form.get("action_trigger", "series")
-    config.mercure["rules"][editrule]["study_trigger_condition"] = form.get("study_trigger_condition", "timeout")
-    config.mercure["rules"][editrule]["study_trigger_series"] = form.get("study_trigger_series", "")
-    config.mercure["rules"][editrule]["priority"] = form.get("priority", "normal")
-    config.mercure["rules"][editrule]["processing_module"] = form.get("processing_module", "")
-    config.mercure["rules"][editrule]["processing_settings"] = form.get("processing_settings", "")
-    config.mercure["rules"][editrule]["notification_webhook"] = form.get("notification_webhook", "")
-    config.mercure["rules"][editrule]["notification_payload"] = form.get("notification_payload", "")
-    config.mercure["rules"][editrule]["notification_trigger_reception"] = form.get(
-        "notification_trigger_reception", "False"
-    )
-    config.mercure["rules"][editrule]["notification_trigger_completion"] = form.get(
-        "notification_trigger_completion", "False"
-    )
-    config.mercure["rules"][editrule]["notification_trigger_error"] = form.get("notification_trigger_error", "False")
+    new_rule: Rule = {
+        "rule": form.get("rule", "False"),
+        "target": form.get("target", ""),
+        "disabled": form.get("status_disabled", "False"),
+        "fallback": form.get("status_fallback", "False"),
+        "contact": form.get("contact", ""),
+        "comment": form.get("comment", ""),
+        "tags": form.get("tags", ""),
+        "action": form.get("action", "route"),
+        "action_trigger": form.get("action_trigger", "series"),
+        "study_trigger_condition": form.get("study_trigger_condition", "timeout"),
+        "study_trigger_series": form.get("study_trigger_series", ""),
+        "priority": form.get("priority", "normal"),
+        "processing_module": form.get("processing_module", ""),
+        "processing_settings": form.get("processing_settings", ""),
+        "notification_webhook": form.get("notification_webhook", ""),
+        "notification_payload": form.get("notification_payload", ""),
+        "notification_trigger_reception": form.get("notification_trigger_reception", ""),
+        "notification_trigger_completion": form.get("notification_trigger_completion", ""),
+        "notification_trigger_error": form.get("notification_trigger_error", "False"),
+    }
+    config.mercure["rules"][editrule] = new_rule
 
     try:
         config.save_config()
@@ -418,7 +437,7 @@ async def rules_test(request) -> Response:
 
 @app.route("/rules/test_completionseries", methods=["POST"])
 @requires(["authenticated", "admin"], redirect="login")
-async def rules_test_completionseries(request):
+async def rules_test_completionseries(request) -> Response:
     """Evalutes if a given value for the series list for study completion is valid."""
     try:
         form = dict(await request.form())
@@ -471,7 +490,7 @@ async def show_targets(request) -> Response:
 
 @app.route("/targets", methods=["POST"])
 @requires(["authenticated", "admin"], redirect="login")
-async def add_target(request):
+async def add_target(request) -> Response:
     """Creates a new target."""
     try:
         config.read_config()
@@ -555,7 +574,7 @@ async def targets_edit_post(request) -> Union[RedirectResponse, PlainTextRespons
 
 @app.route("/targets/delete/{target}", methods=["POST"])
 @requires(["authenticated", "admin"], redirect="login")
-async def targets_delete_post(request):
+async def targets_delete_post(request) -> Response:
     """Deletes the given target."""
     try:
         config.read_config()
@@ -605,7 +624,7 @@ async def targets_test_post(request) -> Response:
 
     logger.info(f"Testing target {testtarget}")
 
-    if (target_ip) and (target_port):
+    if target_ip and target_port:
         if (await async_run("ping -w 1 -c 1 " + target_ip))[0] == 0:
             ping_response = "True"
             # Only test for c-echo if the ping was successful
@@ -641,7 +660,7 @@ async def show_users(request) -> Response:
 
 @app.route("/users", methods=["POST"])
 @requires(["authenticated", "admin"], redirect="homepage")
-async def add_new_user(request):
+async def add_new_user(request) -> Response:
     """Creates a new user and redirects to the user-edit page."""
     try:
         users.read_users()
@@ -695,7 +714,7 @@ async def users_edit(request) -> Response:
 
 @app.route("/settings", methods=["GET"])
 @requires(["authenticated"], redirect="login")
-async def settings_edit(request):
+async def settings_edit(request) -> Response:
     """Shows the settings for the current user. Renders the same template as the normal user edit, but with parameter own_settings=True."""
     try:
         users.read_users()
@@ -741,11 +760,11 @@ async def users_edit_post(request) -> Response:
 
     # Only admins are allowed to change the admin status, and the current user
     # cannot change the status for himself (which includes the settings page)
-    if (request.user.is_admin) and (request.user.display_name != edituser):
-        users.users_list[edituser]["is_admin"] = form["is_admin"]
+    if request.user.is_admin and (request.user.display_name != edituser):
+        to_edit["is_admin"] = form["is_admin"]
 
-    if request.user.is_admin and form.get("permissions", ""):
-        users.users_list[edituser]["permissions"] = form["permissions"]
+    if request.user.is_admin and form["permissions"]:
+        to_edit["permissions"] = form["permissions"]
 
     try:
         users.save_users()
@@ -762,7 +781,7 @@ async def users_edit_post(request) -> Response:
 
 @app.route("/users/delete/{user}", methods=["POST"])
 @requires(["authenticated", "admin"], redirect="login")
-async def users_delete_post(request):
+async def users_delete_post(request) -> Response:
     """Deletes the given users."""
     try:
         config.read_config()
@@ -845,7 +864,7 @@ async def configuration_edit(request) -> Response:
 
 @app.route("/configuration/edit", methods=["POST"])
 @requires(["authenticated", "admin"], redirect="homepage")
-async def configuration_edit_post(request):
+async def configuration_edit_post(request) -> Response:
     """Updates the configuration after post from editor"""
 
     form = dict(await request.form())
@@ -873,7 +892,7 @@ async def configuration_edit_post(request):
 
 
 @app.route("/login", methods=["GET"])
-async def login(request):
+async def login(request) -> Response:
     """Shows the login page."""
     try:
         config.read_config()
@@ -977,6 +996,19 @@ async def homepage(request) -> Response:
             if (await async_run("systemctl is-active " + services.services_list[service]["systemd_service"]))[0] == 0:
                 running_status = "True"
 
+        elif services.services_list[service].get("docker_service", ""):
+            client = docker.from_env()
+            try:
+                container = client.containers.get(services.services_list[service]["docker_service"])
+                container.reload()
+                status = container.status
+                """restarting, running, paused, exited"""
+                if status == "running":
+                    running_status = "True"
+
+            except (docker.errors.NotFound, docker.errors.APIError):
+                running_status = "False"
+
         service_status[service] = {
             "id": service,
             "name": services.services_list[service]["name"],
@@ -1018,9 +1050,30 @@ async def control_services(request) -> Response:
         for service in controlservices:
             if not str(service) in services.services_list:
                 continue
-            command = "systemctl " + action + " " + services.services_list[service]["systemd_service"]
-            logger.info(f"Executing: {command}")
-            await async_run(command)
+
+            if services.services_list[service].get("systemd_service", ""):
+                command = "systemctl " + action + " " + services.services_list[service]["systemd_service"]
+                logger.info(f"Executing: {command}")
+                await async_run(command)
+
+            elif services.services_list[service].get("docker_service", ""):
+                client = docker.from_env()
+                logger.info(f'Executing: {action} on {services.services_list[service]["docker_service"]}')
+                try:
+                    container = client.containers.get(services.services_list[service]["docker_service"])
+                    container.reload()
+                    if action == "start":
+                        container.start()
+                    if action == "stop":
+                        container.stop()
+                    if action == "restart":
+                        container.restart()
+                    if action == "kill":
+                        container.kill()
+
+                except (docker.errors.NotFound, docker.errors.APIError) as docker_error:
+                    logger.error(f"{docker_error}")
+                    pass
 
     monitor_string = "action: " + action + "; services: " + form.get("services", "")
     monitor.send_webgui_event(monitor.w_events.SERVICE_CONTROL, request.user.display_name, monitor_string)
@@ -1072,12 +1125,8 @@ async def emergency_response(request) -> Response:
 
 def launch_emergency_app() -> None:
     """Launches a minimal application to inform the user about the incorrect configuration"""
-    emergency_app = Starlette(debug=True)
-    emergency_app = Router(
-        [
-            Route("/{whatever:path}", endpoint=emergency_response, methods=["GET", "POST"]),
-        ]
-    )
+    # emergency_app = Starlette(debug=True)
+    emergency_app = Router([Route("/{whatever:path}", endpoint=emergency_response, methods=["GET", "POST"]),])
     uvicorn.run(emergency_app, host=WEBGUI_HOST, port=WEBGUI_PORT)
 
 

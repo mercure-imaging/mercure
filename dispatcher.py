@@ -21,7 +21,13 @@ from common.constants import mercure_defs, mercure_folders
 
 daiquiri.setup(
     level=logging.INFO,
-    outputs=(daiquiri.output.Stream(formatter=daiquiri.formatter.ColorFormatter(fmt="%(color)s%(levelname)-8.8s " "%(name)s: %(message)s%(color_stop)s")),),
+    outputs=(
+        daiquiri.output.Stream(
+            formatter=daiquiri.formatter.ColorFormatter(
+                fmt="%(color)s%(levelname)-8.8s " "%(name)s: %(message)s%(color_stop)s"
+            )
+        ),
+    ),
 )
 logger = daiquiri.getLogger("dispatcher")
 
@@ -112,9 +118,7 @@ if __name__ == "__main__":
         logging.info(f'Sending events to graphite server: {config.mercure["graphite_ip"]}')
         graphite_prefix = "mercure." + appliance_name + ".dispatcher." + instance_name
         graphyte.init(
-            config.mercure["graphite_ip"],
-            config.mercure["graphite_port"],
-            prefix=graphite_prefix,
+            config.mercure["graphite_ip"], config.mercure["graphite_port"], prefix=graphite_prefix,
         )
 
     logger.info(f"Dispatching folder: {config.mercure['outgoing_folder']}")

@@ -11,12 +11,14 @@ from mypy_extensions import TypedDict
 from typing_extensions import Literal
 from typing import Dict, Any
 
-class User(TypedDict,total=False):
+
+class User(TypedDict, total=False):
     email: str
     password: str
     is_admin: Literal["True", "False"]
     change_password: Literal["True", "False"]
     permissions: Any
+
 
 daiquiri.setup(level=logging.INFO)
 logger = daiquiri.getLogger("users")
@@ -96,7 +98,7 @@ def save_users() -> None:
     logger.info(f"Stored user list into: {users_filename}")
 
 
-def evaluate_password(username, password)-> bool:
+def evaluate_password(username, password) -> bool:
     """Check if the given password for the given user is correct. Hashed passwords are stored with salt."""
     if (len(username) == 0) or (len(password) == 0):
         return False
@@ -119,7 +121,7 @@ def evaluate_password(username, password)-> bool:
 
 def hash_password(password) -> str:
     """Hash the password using the passlib library."""
-    return cast(str,pwd_context.hash(password))
+    return cast(str, pwd_context.hash(password))
 
 
 def is_admin(username) -> bool:

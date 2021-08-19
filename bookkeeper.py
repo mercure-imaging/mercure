@@ -13,7 +13,7 @@ import logging
 # 3rd party
 import daiquiri
 from starlette.applications import Starlette
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, Response
 from starlette.responses import PlainTextResponse
 from starlette.responses import JSONResponse
 from starlette.responses import RedirectResponse
@@ -34,7 +34,13 @@ from common.constants import mercure_defs
 
 daiquiri.setup(
     level=logging.INFO,
-    outputs=(daiquiri.output.Stream(formatter=daiquiri.formatter.ColorFormatter(fmt="%(color)s%(levelname)-8.8s " "%(name)s: %(message)s%(color_stop)s")),),
+    outputs=(
+        daiquiri.output.Stream(
+            formatter=daiquiri.formatter.ColorFormatter(
+                fmt="%(color)s%(levelname)-8.8s " "%(name)s: %(message)s%(color_stop)s"
+            )
+        ),
+    ),
 )
 logger = daiquiri.getLogger("bookkeeper")
 
@@ -43,6 +49,7 @@ bookkeeper_config = Config("configuration/bookkeeper.env")
 BOOKKEEPER_PORT = bookkeeper_config("PORT", cast=int, default=8080)
 BOOKKEEPER_HOST = bookkeeper_config("HOST", default="0.0.0.0")
 DATABASE_URL = bookkeeper_config("DATABASE_URL", default="postgresql://mercure@localhost")
+DATABASE_SCHEMA = bookkeeper_config("DATABASE_SCHEMA", default=None)
 
 database = databases.Database(DATABASE_URL)
 app = Starlette(debug=True)
@@ -52,9 +59,9 @@ app = Starlette(debug=True)
 ## Definition of database tables
 ###################################################################################
 
-metadata = sqlalchemy.MetaData()
+metadata = sqlalchemy.MetaData(schema=DATABASE_SCHEMA)
 engine = sqlalchemy.create_engine(DATABASE_URL)
-connection:Connection
+connection: Connection
 
 mercure_events = sqlalchemy.Table(
     "mercure_events",
@@ -147,9 +154,18 @@ file_events = sqlalchemy.Table(
 )
 
 dicom_series_map = sqlalchemy.Table(
-    "dicom_series_map", metadata, sqlalchemy.Column("id_file", sqlalchemy.Integer, primary_key=True), sqlalchemy.Column("id_series", sqlalchemy.Integer)
+    "dicom_series_map",
+    metadata,
+    sqlalchemy.Column("id_file", sqlalchemy.Integer, primary_key=True),
+    sqlalchemy.Column("id_series", sqlalchemy.Integer),
 )
 
+series_sequence_data = sqlalchemy.Table(
+    "series_sequence_data",
+    metadata,
+    sqlalchemy.Column("uid", sqlalchemy.String, primary_key=True),
+    sqlalchemy.Column("data", sqlalchemy.JSON),
+)
 
 ###################################################################################
 ## Event handlers
@@ -205,7 +221,9 @@ async def post_mercure_event(request) -> JSONResponse:
     severity = int(payload.get("severity", monitor.severity.INFO))
     description = payload.get("description", "")
 
-    query = mercure_events.insert().values(sender=sender, event=event, severity=severity, description=description, time=datetime.datetime.now())
+    query = mercure_events.insert().values(
+        sender=sender, event=event, severity=severity, description=description, time=datetime.datetime.now()
+    )
     tasks = BackgroundTasks()
     tasks.add_task(execute_db_operation, operation=query)
     return JSONResponse({"ok": ""}, background=tasks)
@@ -220,7 +238,9 @@ async def post_webgui_event(request) -> JSONResponse:
     user = payload.get("user", "UNKNOWN")
     description = payload.get("description", "")
 
-    query = webgui_events.insert().values(sender=sender, event=event, user=user, description=description, time=datetime.datetime.now())
+    query = webgui_events.insert().values(
+        sender=sender, event=event, user=user, description=description, time=datetime.datetime.now()
+    )
     tasks = BackgroundTasks()
     tasks.add_task(execute_db_operation, operation=query)
     return JSONResponse({"ok": ""}, background=tasks)
@@ -234,7 +254,9 @@ async def register_dicom(request) -> JSONResponse:
     file_uid = payload.get("file_uid", "")
     series_uid = payload.get("series_uid", "")
 
-    query = dicom_files.insert().values(filename=filename, file_uid=file_uid, series_uid=series_uid, time=datetime.datetime.now())
+    query = dicom_files.insert().values(
+        filename=filename, file_uid=file_uid, series_uid=series_uid, time=datetime.datetime.now()
+    )
     tasks = BackgroundTasks()
     tasks.add_task(execute_db_operation, operation=query)
     return JSONResponse({"ok": ""}, background=tasks)
@@ -303,7 +325,15 @@ async def post_series_event(request) -> JSONResponse:
     target = payload.get("target", "")
     info = payload.get("info", "")
 
-    query = series_events.insert().values(sender=sender, event=event, series_uid=series_uid, file_count=file_count, target=target, info=info, time=datetime.datetime.now())
+    query = series_events.insert().values(
+        sender=sender,
+        event=event,
+        series_uid=series_uid,
+        file_count=file_count,
+        target=target,
+        info=info,
+        time=datetime.datetime.now(),
+    )
     tasks = BackgroundTasks()
     tasks.add_task(execute_db_operation, operation=query)
     return JSONResponse({"ok": ""}, background=tasks)

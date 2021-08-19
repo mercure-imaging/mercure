@@ -81,6 +81,7 @@ class Config(TypedDict):
     targets: Dict[str, Target]
     rules: Dict[str, Rule]
     modules: Dict[str, Module]
+    process_runner: Literal["docker", "nomad"]
 
 
 class TaskInfo(TypedDict):

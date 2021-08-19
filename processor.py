@@ -4,13 +4,16 @@ processor.py
 mercure' processor that executes processing modules on DICOM series filtered for processing. 
 """
 # Standard python includes
+import shutil
 import time
 import signal
 import os
 import sys
+import json
 import graphyte
 import logging
 import daiquiri
+import nomad
 from pathlib import Path
 
 # App-specific includes
@@ -20,38 +23,107 @@ import common.monitor as monitor
 from common.constants import mercure_defs
 
 from process.status import is_ready_for_processing
-from process.process_series import process_series
+from process.process_series import process_series, move_results
 
 
 daiquiri.setup(
-    level=logging.INFO,
-    outputs=(daiquiri.output.Stream(formatter=daiquiri.formatter.ColorFormatter(fmt="%(color)s%(levelname)-8.8s " "%(name)s: %(message)s%(color_stop)s")),),
+    level=logging.DEBUG,
+    outputs=(
+        daiquiri.output.Stream(
+            formatter=daiquiri.formatter.ColorFormatter(
+                fmt="%(color)s%(levelname)-8.8s " "%(name)s: %(message)s%(color_stop)s"
+            )
+        ),
+    ),
 )
 logger = daiquiri.getLogger("processor")
 
 
-processor_lockfile = Path("")
+processor_lockfile = None
 processor_is_locked = False
+
+try:
+    nomad_connection = nomad.Nomad(host="172.17.0.1", timeout=5)
+    logger.info("Connected to Nomad")
+except:
+    nomad_connection = None
 
 
 def search_folder(counter) -> bool:
     global processor_lockfile
     global processor_is_locked
-
+    global nomad_connection
     helper.g_log("events.run", 1)
-
+    logger.debug("Search folder...")
     tasks = {}
 
+    complete = []
     for entry in os.scandir(config.mercure["processing_folder"]):
-        if entry.is_dir() and is_ready_for_processing(entry.path):
-            modification_time = entry.stat().st_mtime
-            tasks[entry.path] = modification_time
+        logger.debug(f"Scanning folder {entry.name}")
+        if entry.is_dir():
+            if is_ready_for_processing(entry.path):
+                logger.debug(f"{entry.name} ready for processing")
+                modification_time = entry.stat().st_mtime
+                tasks[entry.path] = modification_time
+                continue
+
+            # Some tasks are actually currently processing
+            if (Path(entry.path) / ".processing").exists() and (Path(entry.path) / "nomad_job.json").exists():
+                logger.debug(f"{entry.name} currently processing")
+                with open(Path(entry.path) / "nomad_job.json", "r") as f:
+                    id = json.load(f).get("DispatchedJobID")
+                logger.debug(f"Job id: {id}")
+                job_info = nomad_connection.job.get_job(id)
+                # job_allocations = nomad_connection.job.get_allocations(id)
+                status = job_info.get("Status")
+                if status == "dead":
+                    logger.debug(f"{entry.name} is complete")
+                    # logger.debug(job_allocations)
+                    complete.append(dict(path=Path(entry.path)))  # , info=job_info, allocations=job_allocations))
+                else:
+                    logger.debug(f"Status: {status}")
+
+    # Move complete tasks
+    for c in complete:
+        p_folder = c["path"]
+        in_folder = p_folder / "in"
+        out_folder = p_folder / "out"
+
+        logger.debug(f"Complete task: {p_folder.name}")
+
+        with open(p_folder / "nomad_job.json", "r") as f:
+            job_info = json.load(f)
+
+        # Move task.json over to the output directory if it wasn't moved by the processing module
+        task_json = out_folder / "task.json"
+        if not task_json.exists():
+            shutil.copyfile(in_folder / "task.json", out_folder / "task.json")
+
+        # Patch the nomad info into the task file.
+        with task_json.open("r") as f:
+            task = json.load(f)
+        with task_json.open("w") as f:
+            task = {**task, "nomad_info": job_info}
+            json.dump(task, f)
+
+        # If the only file is task.json, the processing failed
+        if [p.name for p in out_folder.rglob("*")] == ["task.json"]:
+            logger.error("Processing failed.")
+            move_results(str(p_folder), None, False, False)
+            continue
+
+        needs_dispatching = True if task.get("dispatch") else False
+        move_results(str(p_folder), None, True, needs_dispatching)
+        shutil.rmtree(in_folder)
+        (p_folder / "nomad_job.json").unlink()
+        (p_folder / ".processing").unlink()
+        p_folder.rmdir()
 
     # Check if processing has been suspended via the UI
-    if processor_lockfile.exists():
+    if processor_lockfile and processor_lockfile.exists():
         if not processor_is_locked:
             processor_is_locked = True
-            logger.info("Processing halted")
+            logger.info(f"Processing halted")
         return False
     else:
         if processor_is_locked:
@@ -78,20 +150,22 @@ def search_folder(counter) -> bool:
     except Exception:
         logger.exception(f"Problems while processing series {task}")
         monitor.send_series_event(monitor.s_events.ERROR, entry, 0, "", "Exception while processing")
-        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, "Exception while processing series")
+        monitor.send_event(monitor.h_events.PROCESSING, monitor.severity.ERROR, "Exception while processing series")
         return False
 
 
-def run_processor(args) -> None:
+def run_processor(args=None) -> None:
     """Main processing function that is called every second."""
     if helper.is_terminated():
         return
-
+    logger.debug("Running processor")
     try:
         config.read_config()
     except Exception:
         logger.exception("Unable to update configuration. Skipping processing.")
-        monitor.send_event(monitor.m_events.CONFIG_UPDATE, monitor.severity.WARNING, "Unable to update configuration (possibly locked)")
+        monitor.send_event(
+            monitor.h_events.CONFIG_UPDATE, monitor.severity.WARNING, "Unable to update configuration (possibly locked)"
+        )
         return
 
     call_counter = 0
@@ -112,7 +186,7 @@ def terminate_process(signalNumber, frame) -> None:
     """Triggers the shutdown of the service."""
     helper.g_log("events.shutdown", 1)
     logger.info("Shutdown requested")
-    monitor.send_event(monitor.m_events.SHUTDOWN_REQUEST, monitor.severity.INFO)
+    monitor.send_event(monitor.h_events.SHUTDOWN_REQUEST, monitor.severity.INFO)
     # Note: main_loop can be read here because it has been declared as global variable
     if "main_loop" in globals() and main_loop.is_running:
         main_loop.stop()
@@ -147,9 +221,9 @@ if __name__ == "__main__":
     logger.info(f"Instance  name = {instance_name}")
     logger.info(f"Instance  PID  = {os.getpid()}")
     logger.info(sys.version)
-    
+
     monitor.configure("processor", instance_name, config.mercure["bookkeeper"])
-    monitor.send_event(monitor.m_events.BOOT, monitor.severity.INFO, f"PID = {os.getpid()}")
+    monitor.send_event(monitor.h_events.BOOT, monitor.severity.INFO, f"PID = {os.getpid()}")
 
     if len(config.mercure["graphite_ip"]) > 0:
         logger.info(f'Sending events to graphite server: {config.mercure["graphite_ip"]}')
@@ -170,5 +244,5 @@ if __name__ == "__main__":
     helper.loop.run_forever()
 
     # Process will exit here once the asyncio loop has been stopped
-    monitor.send_event(monitor.m_events.SHUTDOWN, monitor.severity.INFO)
+    monitor.send_event(monitor.h_events.SHUTDOWN, monitor.severity.INFO)
     logger.info("Going down now")

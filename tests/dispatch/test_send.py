@@ -95,7 +95,15 @@ def test_execute_error_case_delay_is_not_over(fs, mocker):
     fs.create_dir(success)
     fs.create_dir(error)
     fs.create_file("/var/data/source/a/one.dcm")
-    target = {"dispatch": {"target_ip": "0.0.0.0", "target_aet_target": "a", "target_port": 90, "retries": 5, "next_retry_at": time.time() + 500}}
+    target = {
+        "dispatch": {
+            "target_ip": "0.0.0.0",
+            "target_aet_target": "a",
+            "target_port": 90,
+            "retries": 5,
+            "next_retry_at": time.time() + 500,
+        }
+    }
     fs.create_file("/var/data/source/a/" + mercure_names.TASKFILE, contents=json.dumps(target))
 
     mock = mocker.patch("dispatch.send.run", side_effect=CalledProcessError("Mock", cmd="None"))
