@@ -129,18 +129,20 @@ def add_dispatching(uid: str, applied_rule: str, tags_list: Dict[str, str], targ
         logger.warning(f"Applied_rule and target empty. Cannot add dispatch information for UID {uid}")
         return None
 
+    target_used: str = target
+
     # If no target is provided already (as done in routing-only mode), read the target defined in the applied rule
-    if not target:
-        target = config.mercure[mercure_config.RULES][applied_rule].get(mercure_rule.TARGET, "")
+    if not target_used:
+        target_used = config.mercure[mercure_config.RULES][applied_rule].get(mercure_rule.TARGET, "")
 
     # Fill the dispatching section, if routing has been selected and a target has been provided
     if (
         config.mercure[mercure_config.RULES][applied_rule].get(mercure_rule.ACTION, mercure_actions.PROCESS)
         in (mercure_actions.ROUTE, mercure_actions.BOTH)
-    ) and target:
-        target_info: Target = config.mercure[mercure_config.TARGETS][target]
+    ) and target_used:
+        target_info: Target = config.mercure[mercure_config.TARGETS][target_used]
         return {
-            "target_name": target,
+            "target_name": target_used,
             "target_ip": target_info["ip"],
             "target_port": target_info["port"],
             "target_aet_target": target_info.get("aet_target", "ANY-SCP"),

@@ -6,6 +6,7 @@ typing_extensions
 graphyte
 daiquiri
 requests
+types-requests
 
 # documentation
 sphinx

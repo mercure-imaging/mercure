@@ -174,7 +174,7 @@ def parse_completion_series(completion_str: str, received_series: list) -> bool:
     # print(parsed_str)
 
     try:
-        result = eval(parsed_str, {"__builtins__": {}}, {})
+        result: bool = eval(parsed_str, {"__builtins__": {}}, {})
         return result
     except Exception as e:
         logger.error(f"ERROR: {e}")
