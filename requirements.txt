@@ -5,6 +5,7 @@ typing_extensions
 # logging / monitoring
 graphyte
 daiquiri
+requests
 
 # documentation
 sphinx
