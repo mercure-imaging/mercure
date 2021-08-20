@@ -56,7 +56,7 @@ def test_route_series(fs, mocker):
     )
 
     mocker.patch("router.route_series", new=mocker.spy(router, "route_series"))
-    mocker.patch("routing.route_series.parse_ascconv", new=lambda x: {})
+    #mocker.patch("routing.route_series.parse_ascconv", new=lambda x: {})
 
     uid = "UIDUIDUID"
     fs.create_file(f"/var/incoming/{uid}#bar.dcm", contents="asdfasdfafd")

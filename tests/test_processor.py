@@ -70,7 +70,7 @@ def create_and_route(fs, mocker, uid="TESTFAKEUID"):
         "routing.generate_taskfile.create_series_task", new=mocker.spy(routing.generate_taskfile, "create_series_task")
     )
     mocker.patch("router.route_series", new=mocker.spy(router, "route_series"))
-    mocker.patch("routing.route_series.parse_ascconv", new=lambda x: {})
+    #mocker.patch("routing.route_series.parse_ascconv", new=lambda x: {})
 
     fs.create_file(f"/var/incoming/{uid}#bar.dcm", contents="asdfasdfafd")
     fs.create_file(f"/var/incoming/{uid}#bar.tags", contents="{}")
