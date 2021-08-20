@@ -95,9 +95,9 @@ def run_router(args=None) -> None:
             error_files_found = True
 
     # Check if any of the series exceeds the "series complete" threshold
-    for entry in series:
-        if (time.time() - series[entry]) > config.mercure["series_complete_trigger"]:
-            complete_series[entry] = series[entry]
+    for series_entry in series:
+        if (time.time() - series[series_entry]) > config.mercure["series_complete_trigger"]:
+            complete_series[series_entry] = series[series_entry]
 
     # logger.info(f'Files found     = {filecount}')
     # logger.info(f'Series found    = {len(series)}')
@@ -106,13 +106,13 @@ def run_router(args=None) -> None:
     helper.g_log("incoming.series", len(series))
 
     # Process all complete series
-    for entry in sorted(complete_series):
+    for complete_entry in sorted(complete_series):
         try:
-            route_series(entry)
+            route_series(complete_entry)
         except Exception:
-            error_message = f"Problems while processing series {entry}"
+            error_message = f"Problems while processing series {complete_entry}"
             logger.exception(error_message)
-            monitor.send_series_event(monitor.s_events.ERROR, entry, 0, "", error_message)
+            monitor.send_series_event(monitor.s_events.ERROR, complete_entry, 0, "", error_message)
             monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
         # If termination is requested, stop processing series after the active one has been completed
         if helper.is_terminated():

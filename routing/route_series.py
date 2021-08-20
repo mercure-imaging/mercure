@@ -275,7 +275,7 @@ def push_series_studylevel(
                 create_study_task(folder_name, triggered_rules, current_rule, study_UID, tags_list)
             else:
                 # Add data from latest series to task file
-                update_study_task(folder_name, current_rule, study_UID, tags_list)
+                update_study_task(folder_name, triggered_rules, current_rule, study_UID, tags_list)
 
             # Copy (or move) the files into the study folder
             push_files(file_list, folder_name, (len(triggered_rules) > 1))
@@ -371,7 +371,7 @@ def push_serieslevel_processing(
                     return False
 
                 # Generate task file with processing information
-                if not create_series_task(target_folder, current_rule, series_UID, tags_list, ""):
+                if not create_series_task(target_folder, triggered_rules, current_rule, series_UID, tags_list, ""):
                     return False
 
                 if not push_files(file_list, target_folder, copy_files):

@@ -85,7 +85,7 @@ def add_processing(uid: str, applied_rule: str, tags_list: Dict[str, str]) -> Op
         logger.info(f"module: {module}")
 
         # Get the configuration of this module
-        module_config = config.mercure[mercure_config.MODULES].get(module, {})
+        module_config: Module = config.mercure[mercure_config.MODULES].get(module, {})
 
         logger.info({"module_config": module_config})
 
@@ -99,7 +99,7 @@ def add_processing(uid: str, applied_rule: str, tags_list: Dict[str, str]) -> Op
 
 def add_study(
     uid: str, uid_type: Literal["series", "study"], applied_rule: str, tags_list: Dict[str, str]
-) -> Optional[Module]:
+) -> Optional[TaskStudy]:
     """
     Adds study information into the task file. Returns nothing if the task is a series-level task
     """
@@ -171,7 +171,7 @@ def add_info(
         )
 
     return {
-        "action": task_action,
+        "action": Literal[task_action],
         "uid": uid,
         "uid_type": uid_type,
         "triggered_rules": triggered_rules,
