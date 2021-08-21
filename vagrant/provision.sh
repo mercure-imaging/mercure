@@ -1,7 +1,4 @@
-# -*- mode: ruby -*-
-# vi: set ft=ruby :
-
-$script = <<SCRIPT
+# -------- Install Docker ------
 echo "Installing Docker..."
 sudo apt-get update
 sudo apt-get remove docker docker-engine docker.io
@@ -21,6 +18,8 @@ sudo service docker restart
 sudo usermod -aG docker vagrant
 sudo docker --version
 
+# -------- Install Nomad and Consul ------
+
 # Packages required for nomad & consul
 sudo apt-get install unzip curl vim -y
 
@@ -32,7 +31,22 @@ unzip nomad.zip
 sudo install nomad /usr/bin/nomad
 sudo mkdir -p /etc/nomad.d
 sudo chmod a+w /etc/nomad.d
+(
+cat <<-EOFB
+  [Unit]
+  Description=nomad
+  Requires=network-online.target
+  After=network-online.target
+  [Service]
+  Restart=on-failure
+  ExecStart=/usr/bin/nomad agent -dev-connect -bind 0.0.0.0 -log-level INFO -config /home/vagrant/mercure/nomad/server.conf
+  ExecReload=/bin/kill -HUP 
+  [Install]
+  WantedBy=multi-user.target
+EOFB
+) | sudo tee /etc/systemd/system/nomad.service
 
+sudo systemctl enable nomad.service
 
 echo "Installing Consul..."
 CONSUL_VERSION=1.9.0
@@ -40,7 +54,7 @@ curl -sSL https://releases.hashicorp.com/consul/${CONSUL_VERSION}/consul_${CONSU
 unzip /tmp/consul.zip
 sudo install consul /usr/bin/consul
 (
-cat <<-EOF
+cat <<-EOFA
   [Unit]
   Description=consul agent
   Requires=network-online.target
@@ -48,34 +62,16 @@ cat <<-EOF
 
   [Service]
   Restart=on-failure
-  ExecStart=/usr/bin/consul agent -dev -client 0.0.0.0
+  ExecStart=/usr/bin/consul agent -dev
   ExecReload=/bin/kill -HUP $MAINPID
 
   [Install]
   WantedBy=multi-user.target
-EOF
+EOFA
 ) | sudo tee /etc/systemd/system/consul.service
 sudo systemctl enable consul.service
 sudo systemctl start consul
 
-(
-cat <<-EOF
-  [Unit]
-  Description=nomad
-  Requires=network-online.target
-  After=network-online.target
-
-  [Service]
-  Restart=on-failure
-  ExecStart=/usr/bin/nomad agent -dev-connect -bind 0.0.0.0 -log-level INFO -config /home/vagrant/mercure/nomad/server.conf
-  ExecReload=/bin/kill -HUP 
-
-  [Install]
-  WantedBy=multi-user.target
-EOF
-) | sudo tee /etc/systemd/system/nomad.service
-# sudo systemctl enable nomad.service
-# sudo systemctl start nomad
 
 
 for bin in cfssl cfssl-certinfo cfssljson
@@ -90,31 +86,37 @@ curl -L -o cni-plugins.tgz https://github.com/containernetworking/plugins/releas
 sudo mkdir -p /opt/cni/bin
 sudo tar -C /opt/cni/bin -xzf cni-plugins.tgz
 
-SCRIPT
+mkdir ~/mercure-docker/processor-keys
 
-Vagrant.configure(2) do |config|
-  config.vm.box = "bento/ubuntu-18.04" # 18.04 LTS
-  config.vm.hostname = "nomad"
-  config.vm.provision "shell", inline: $script, privileged: false
+sudo systemctl start nomad
+echo "Waiting for Nomad to start..."
+until [[ $(curl http://localhost:4646) ]];
+do
+  echo -n "."
+  sleep 1s;
+done;
 
-  # Expose the nomad api and ui to the host
-  config.vm.network "forwarded_port", guest: 4646, host: 4646, auto_correct: true, host_ip: "127.0.0.1"
-  config.vm.network "private_network", ip: "192.168.33.11"
 
-  # Increase memory for Parallels Desktop
-  config.vm.provider "parallels" do |p, o|
-    p.memory = "4096"
-  end
+# -------- Install Mercure ------
+echo "Cloning mercure..."
+sudo cp /vagrant/mercure_deploy.pem ~/.ssh
+sudo chmod 0400 ~/.ssh/mercure_deploy.pem
+sudo chown vagrant ~/.ssh/mercure_deploy.pem
 
-  # Increase memory for Virtualbox
-  config.vm.provider "virtualbox" do |vb|
-        vb.memory = "4096"
-  end
+GIT_SSH_COMMAND='ssh -i ~/.ssh/mercure_deploy.pem -o IdentitiesOnly=yes -o StrictHostKeyChecking=no' git clone git@github.com:mercure-imaging/mercure.git
 
-  # Increase memory for VMware
-  ["vmware_fusion", "vmware_workstation"].each do |p|
-    config.vm.provider p do |v|
-      v.vmx["memsize"] = "4096"
-    end
-  end
-end
+echo "Installing mercure..."
+cd ~/mercure
+MERCURE_SECRET=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1) ./build-docker.sh || exit 1
+
+cp /vagrant/mercure.json ~/mercure-docker/mercure-config/mercure.json
+ssh-keygen -f ~/mercure-docker/processor-keys/id_rsa -N ""
+sed -i "s#SSHPUBKEY#$(cat ~/mercure-docker/processor-keys/id_rsa.pub)#g" mercure.nomad
+
+cd nomad/processing && make
+cd ../dummy-processor && make
+cd ../sshd && make
+
+cd ~/mercure/nomad/
+/usr/bin/nomad run mercure.nomad
+/usr/bin/nomad run mercure-processor.nomad
