@@ -78,7 +78,7 @@ def run_router(args=None) -> None:
 
     # Check the incoming folder for completed series. To this end, generate a map of all
     # series in the folder with the timestamp of the latest DICOM file as value
-    for entry in os.scandir(config.mercure[mercure_folders.INCOMING]):
+    for entry in os.scandir(config.mercure["incoming_folder"]):
         if entry.name.endswith(mercure_names.TAGS) and not entry.is_dir():
             filecount += 1
             seriesString = entry.name.split(mercure_defs.SEPARATOR, 1)[0]
@@ -171,10 +171,10 @@ if __name__ == "__main__":
         graphite_prefix = "mercure." + appliance_name + ".router." + instance_name
         graphyte.init(config.mercure["graphite_ip"], config.mercure["graphite_port"], prefix=graphite_prefix)
 
-    logger.info(f"Incoming   folder: {config.mercure[mercure_folders.INCOMING]}")
-    logger.info(f"Studies    folder: {config.mercure[mercure_folders.STUDIES]}")
-    logger.info(f"Outgoing   folder: {config.mercure[mercure_folders.OUTGOING]}")
-    logger.info(f"Processing folder: {config.mercure[mercure_folders.PROCESSING]}")
+    logger.info(f"""Incoming folder: {config.mercure["incoming_folder"]}
+        Studies folder: {config.mercure["studies_folder"]}
+        Outgoing folder: {config.mercure["outgoing_folder"]}
+        Processing folder: {config.mercure["processing_folder"]}""")
 
     # Start the timer that will periodically trigger the scan of the incoming folder
     global main_loop

@@ -13,7 +13,7 @@ import common.monitor as monitor
 import common.helper as helper
 import common.config as config
 from common.constants import mercure_names
-from common.types import Task, Module
+from common.types import EmptyDict, Task, Module
 import traceback
 
 import nomad
@@ -23,7 +23,7 @@ logger = daiquiri.getLogger("process_series")
 
 def nomad_runtime(task: Task, folder: str) -> bool:
     nomad_connection = nomad.Nomad(host="172.17.0.1", timeout=5)
-    module: Module = task["process"]
+    module: Module = cast(Module,task["process"])
 
     f_path = Path(folder)
 
@@ -38,11 +38,12 @@ def nomad_runtime(task: Task, folder: str) -> bool:
 
 def docker_runtime(task: Task, folder: str) -> bool:
     docker_client = docker.from_env()
+    module:Module = cast(Module,task["process"])
 
     def decode_task(option: str) -> Any:
         option_dict: Any
         try:
-            val = cast(str, task["process"].get(option, "{}"))
+            val = cast(str, module.get(option, "{}"))
             option_dict = json.loads(val)
         except json.decoder.JSONDecodeError:
             # The decoder bails if the JSON is an empty string
@@ -54,8 +55,8 @@ def docker_runtime(task: Task, folder: str) -> bool:
         folder + "/in": {"bind": "/data", "mode": "rw"},
         folder + "/out": {"bind": "/output", "mode": "rw"},
     }
-
-    docker_tag: str = task["process"]["docker_tag"]
+    
+    docker_tag: str = module["docker_tag"]
     additional_volumes: Dict[str, Dict[str, str]] = decode_task("additional_volumes")
     environment = decode_task("environment")
     arguments = decode_task("arguments")

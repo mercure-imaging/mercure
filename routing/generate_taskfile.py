@@ -7,15 +7,18 @@ Helper functions for generating task files in json format, which describe the jo
 # Standard python includes
 import os
 from pathlib import Path
+import traceback
 import uuid
 import json
 import shutil
 import daiquiri
 import socket
 from datetime import datetime
-from mypy_extensions import TypedDict
+
+# from mypy_extensions import TypedDict
 from typing_extensions import Literal
 from typing import Dict, Optional, Union, List, cast
+from common.types import *
 
 # App-specific includes
 import common.config as config
@@ -60,7 +63,7 @@ def compose_task(
         # type: ignore
         "process": add_processing(uid, applied_rule, tags_list) or {},
         # Add information about the study, included all collected series
-        "study": add_study(uid, uid_type, applied_rule, tags_list) or {},
+        "study": add_study(uid, uid_type, applied_rule, tags_list) or EmptyDict(),
     }
 
 
@@ -72,7 +75,7 @@ def add_processing(uid: str, applied_rule: str, tags_list: Dict[str, str]) -> Op
     if not applied_rule:
         return None
 
-    applied_rule_info: Rule = config.mercure[mercure_config.RULES][applied_rule]
+    applied_rule_info: Rule = config.mercure["rules"][applied_rule]
     logger.info(applied_rule_info)
 
     if applied_rule_info.get(mercure_rule.ACTION, mercure_actions.PROCESS) in (
@@ -85,7 +88,7 @@ def add_processing(uid: str, applied_rule: str, tags_list: Dict[str, str]) -> Op
         logger.info(f"module: {module}")
 
         # Get the configuration of this module
-        module_config: Module = config.mercure[mercure_config.MODULES].get(module, {})
+        module_config: Module = config.mercure["modules"].get(module, {})
 
         logger.info({"module_config": module_config})
 
@@ -97,9 +100,7 @@ def add_processing(uid: str, applied_rule: str, tags_list: Dict[str, str]) -> Op
     return None
 
 
-def add_study(
-    uid: str, uid_type: Literal["series", "study"], applied_rule: str, tags_list: Dict[str, str]
-) -> Optional[TaskStudy]:
+def add_study(uid: str, uid_type: Literal["series", "study"], applied_rule: str, tags_list: Dict[str, str]) -> Optional[TaskStudy]:
     """
     Adds study information into the task file. Returns nothing if the task is a series-level task
     """
@@ -133,14 +134,11 @@ def add_dispatching(uid: str, applied_rule: str, tags_list: Dict[str, str], targ
 
     # If no target is provided already (as done in routing-only mode), read the target defined in the applied rule
     if not target_used:
-        target_used = config.mercure[mercure_config.RULES][applied_rule].get(mercure_rule.TARGET, "")
+        target_used = config.mercure["rules"][applied_rule].get("target", "")
 
     # Fill the dispatching section, if routing has been selected and a target has been provided
-    if (
-        config.mercure[mercure_config.RULES][applied_rule].get(mercure_rule.ACTION, mercure_actions.PROCESS)
-        in (mercure_actions.ROUTE, mercure_actions.BOTH)
-    ) and target_used:
-        target_info: Target = config.mercure[mercure_config.TARGETS][target_used]
+    if (config.mercure["rules"][applied_rule].get(mercure_rule.ACTION, mercure_actions.PROCESS) in (mercure_actions.ROUTE, mercure_actions.BOTH)) and target_used:
+        target_info: Target = config.mercure["targets"][target_used]
         return {
             "target_name": target_used,
             "target_ip": target_info["ip"],
@@ -166,12 +164,10 @@ def add_info(
     """
     task_action = mercure_actions.ROUTE
     if applied_rule:
-        task_action = config.mercure[mercure_config.RULES][applied_rule].get(
-            mercure_rule.ACTION, mercure_actions.PROCESS
-        )
+        task_action = config.mercure["rules"][applied_rule].get("action", "process")
 
     return {
-        "action": Literal[task_action],
+        "action": "task_action",
         "uid": uid,
         "uid_type": uid_type,
         "triggered_rules": triggered_rules,
@@ -204,7 +200,8 @@ def create_series_task(
             json.dump(task_json, task_file)
     except:
         error_message = f"Unable to create series task file {task_filename}"
-        logger.error(error_message)
+        logger.exception(error_message)
+        logger.error(task_json)
         monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
         return False
 
@@ -230,7 +227,7 @@ def create_study_task(
             json.dump(task_json, task_file)
     except:
         error_message = f"Unable to create study task file {task_filename}"
-        logger.error(error_message)
+        logger.exception(error_message)
         monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
         return False
 
@@ -258,7 +255,7 @@ def update_study_task(
                 raise Exception("Study information is missing.")
     except:
         error_message = f"Unable to open study task file {task_filename}"
-        logger.error(error_message)
+        logger.exception(error_message)
         monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
         return False
 
@@ -286,7 +283,7 @@ def update_study_task(
             json.dump(task_json, task_file)
     except:
         error_message = f"Unable to write task file {task_filename}"
-        logger.error(error_message)
+        logger.exception(error_message)
         monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
         return False
 

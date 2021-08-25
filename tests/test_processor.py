@@ -7,7 +7,7 @@ from pytest_mock import MockerFixture
 
 import process.process_series
 import router
-
+import daiquiri
 import processor
 
 import json
@@ -22,6 +22,9 @@ from docker.models.containers import ContainerCollection
 
 from nomad.api.job import Job
 
+logger = daiquiri.getLogger("test_processor")
+
+processor_path = Path()
 config_partial = {
     "modules": {
         "test_module": {
@@ -58,35 +61,27 @@ config_partial = {
 }
 
 
-def create_and_route(fs, mocker, uid="TESTFAKEUID"):
-    mocker.patch(
-        "routing.route_series.push_series_serieslevel", new=mocker.spy(routing.route_series, "push_series_serieslevel")
-    )
+def create_and_route(fs, mocker, uid="TESTFAKEUID") -> List[str]:
+    mocker.patch("routing.route_series.push_series_serieslevel", new=mocker.spy(routing.route_series, "push_series_serieslevel"))
     mocker.patch(
         "routing.route_series.push_serieslevel_outgoing",
         new=mocker.spy(routing.route_series, "push_serieslevel_outgoing"),
     )
-    mocker.patch(
-        "routing.generate_taskfile.create_series_task", new=mocker.spy(routing.generate_taskfile, "create_series_task")
-    )
+    mocker.patch("routing.generate_taskfile.create_series_task", new=mocker.spy(routing.generate_taskfile, "create_series_task"))
     mocker.patch("router.route_series", new=mocker.spy(router, "route_series"))
-    #mocker.patch("routing.route_series.parse_ascconv", new=lambda x: {})
+    # mocker.patch("routing.route_series.parse_ascconv", new=lambda x: {})
 
     fs.create_file(f"/var/incoming/{uid}#bar.dcm", contents="asdfasdfafd")
     fs.create_file(f"/var/incoming/{uid}#bar.tags", contents="{}")
 
     router.run_router()
 
-    router.route_series.assert_called_once_with(uid)
-    routing.route_series.push_series_serieslevel.assert_called_once_with({"catchall": True}, [f"{uid}#bar"], uid, {})
-    routing.route_series.push_serieslevel_outgoing.assert_called_once_with(
-        {"catchall": True}, [f"{uid}#bar"], uid, {}, {}
-    )
+    router.route_series.assert_called_once_with(uid)  # type: ignore
+    routing.route_series.push_series_serieslevel.assert_called_once_with({"catchall": True}, [f"{uid}#bar"], uid, {})  # type: ignore
+    routing.route_series.push_serieslevel_outgoing.assert_called_once_with({"catchall": True}, [f"{uid}#bar"], uid, {}, {})  # type: ignore
 
     processor_path = next(Path("/var/processing").iterdir())
-    assert ["task.json", f"{uid}#bar.dcm", f"{uid}#bar.tags"] == [
-        k.name for k in Path("/var/processing").glob("**/*") if k.is_file()
-    ]
+    assert ["task.json", f"{uid}#bar.dcm", f"{uid}#bar.tags"] == [k.name for k in Path("/var/processing").glob("**/*") if k.is_file()]
 
     mocker.patch("processor.process_series", new=mocker.spy(process.process_series, "process_series"))
     return ["task.json", f"{uid}#bar.dcm", f"{uid}#bar.tags"]
@@ -94,7 +89,8 @@ def create_and_route(fs, mocker, uid="TESTFAKEUID"):
 
 def test_process_series_nomad(fs, mocker: MockerFixture):
     load_config(
-        fs, {"process_runner": "nomad", **config_partial},
+        fs,
+        {"process_runner": "nomad", **config_partial},
     )
 
     files = create_and_route(fs, mocker)
@@ -120,18 +116,16 @@ def test_process_series_nomad(fs, mocker: MockerFixture):
     mocker.patch.object(Job, "dispatch_job", new=fake_run)
     mocker.patch.object(Job, "get_job", new=lambda x, y: dict(Status="dead"))
 
+    logger.info("Run processing...")
     processor.run_processor()
-    process.process_series.process_series.assert_called_once_with(str(processor_path))
+    process.process_series.process_series.assert_called_once_with(str(processor_path))  # type: ignore
 
-    fake_run.assert_called_once_with(
-        "mercure-processor", meta={"IMAGE_ID": "busybox:stable", "PATH": processor_path.name}
-    )
+    fake_run.assert_called_once_with("mercure-processor", meta={"IMAGE_ID": "busybox:stable", "PATH": processor_path.name})
 
     for k in Path("/var/processing").rglob("*"):
-        print(k)
+        logger.info(k)
     for k in Path("/var/success").rglob("*"):
-        print(k)
-
+        logger.info(k)
     # (processor_path / ".complete").touch()
     # processor.run_processor()
 
@@ -142,8 +136,10 @@ def test_process_series_nomad(fs, mocker: MockerFixture):
     assert task == {
         "info": {
             "uid": "TESTFAKEUID",
+            "action": "task_action",
+            "applied_rule": "catchall",
             "uid_type": "series",
-            "triggered_rules": "catchall",
+            "triggered_rules": {"catchall": True},
             "mrn": "MISSING",
             "acc": "MISSING",
             "mercure_version": "0.2a",
@@ -187,22 +183,19 @@ def test_process_series_nomad(fs, mocker: MockerFixture):
     processor.run_processor()
 
     assert (Path("/var/error") / processor_path.name).exists()
-    assert ["task.json", "FAILEDFAILED#bar.dcm", "FAILEDFAILED#bar.tags"] == [
-        k.name for k in (Path("/var/error") / processor_path.name / "in").rglob("*") if k.is_file()
-    ]
-    assert ["task.json"] == [
-        k.name for k in (Path("/var/error") / processor_path.name / "out").rglob("*") if k.is_file()
-    ]
+    assert ["task.json", "FAILEDFAILED#bar.dcm", "FAILEDFAILED#bar.tags"] == [k.name for k in (Path("/var/error") / processor_path.name / "in").rglob("*") if k.is_file()]
+    assert ["task.json"] == [k.name for k in (Path("/var/error") / processor_path.name / "out").rglob("*") if k.is_file()]
 
 
 def test_process_series(fs, mocker: MockerFixture):
     global processor_path
     load_config(
-        fs, {"process_runner": "docker", **config_partial},
+        fs,
+        {"process_runner": "docker", **config_partial},
     )
 
     files = create_and_route(fs, mocker)
-    processor_path = None
+    processor_path = Path()
 
     def fake_processor(tag, environment, volumes: Dict):
         global processor_path
@@ -221,7 +214,7 @@ def test_process_series(fs, mocker: MockerFixture):
     processor.run_processor()
 
     # processor_path = next(Path("/var/processing").iterdir())
-    process.process_series.process_series.assert_called_once_with(str(processor_path))
+    process.process_series.process_series.assert_called_once_with(str(processor_path))  # type: ignore
 
     fake_run.assert_called_once_with(
         "busybox:stable",

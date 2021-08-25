@@ -3,16 +3,16 @@ test_cleaner.py
 ===============
 """
 from datetime import datetime
-
+from datetime import time
 import cleaner as c
 
 # helper func
-def _to_time(time):
+def _to_time(time) -> time:
     return datetime.strptime(time, "%H:%M").time()
 
 
 def test_cleaner_no_syntax_errors():
-    """ Checks if cleaner.py can be started. """
+    """Checks if cleaner.py can be started."""
     assert c
 
 

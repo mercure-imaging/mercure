@@ -44,19 +44,15 @@ def test_route_series(fs, mocker):
         },
     )
 
-    mocker.patch(
-        "routing.route_series.push_series_serieslevel", new=mocker.spy(routing.route_series, "push_series_serieslevel")
-    )
+    mocker.patch("routing.route_series.push_series_serieslevel", new=mocker.spy(routing.route_series, "push_series_serieslevel"))
     mocker.patch(
         "routing.route_series.push_serieslevel_outgoing",
         new=mocker.spy(routing.route_series, "push_serieslevel_outgoing"),
     )
-    mocker.patch(
-        "routing.generate_taskfile.create_series_task", new=mocker.spy(routing.generate_taskfile, "create_series_task")
-    )
+    mocker.patch("routing.generate_taskfile.create_series_task", new=mocker.spy(routing.generate_taskfile, "create_series_task"))
 
     mocker.patch("router.route_series", new=mocker.spy(router, "route_series"))
-    #mocker.patch("routing.route_series.parse_ascconv", new=lambda x: {})
+    # mocker.patch("routing.route_series.parse_ascconv", new=lambda x: {})
 
     uid = "UIDUIDUID"
     fs.create_file(f"/var/incoming/{uid}#bar.dcm", contents="asdfasdfafd")
@@ -64,22 +60,18 @@ def test_route_series(fs, mocker):
 
     router.run_router()
 
-    router.route_series.assert_called_once_with(uid)
-    routing.route_series.push_series_serieslevel.assert_called_once_with({"catchall": True}, [f"{uid}#bar"], uid, {})
-    routing.route_series.push_serieslevel_outgoing.assert_called_once_with(
-        {"catchall": True}, [f"{uid}#bar"], uid, {}, {"test_target": "catchall"}
-    )
+    router.route_series.assert_called_once_with(uid)  # type: ignore
+    routing.route_series.push_series_serieslevel.assert_called_once_with({"catchall": True}, [f"{uid}#bar"], uid, {})  # type: ignore
+    routing.route_series.push_serieslevel_outgoing.assert_called_once_with({"catchall": True}, [f"{uid}#bar"], uid, {}, {"test_target": "catchall"})  # type: ignore
 
     out_path = next(Path("/var/outgoing").iterdir())
-    assert ["task.json", f"{uid}#bar.dcm", f"{uid}#bar.tags"] == [
-        k.name for k in Path("/var/outgoing").glob("**/*") if k.is_file()
-    ]
+    assert ["task.json", f"{uid}#bar.dcm", f"{uid}#bar.tags"] == [k.name for k in Path("/var/outgoing").glob("**/*") if k.is_file()]
     with open(out_path / "task.json") as e:
         task: Task = json.load(e)
-        assert task["dispatch"]["target_name"] == "test_target"
+        assert task["dispatch"]["target_name"] == "test_target"  # type: ignore
         assert task["info"]["uid"] == uid
         assert task["info"]["uid_type"] == "series"
-        assert task["info"]["triggered_rules"]["catchall"] == True
+        assert task["info"]["triggered_rules"]["catchall"] == True  # type: ignore
         assert task["process"] == {}
         assert task["study"] == {}
 

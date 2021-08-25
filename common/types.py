@@ -84,7 +84,7 @@ class Config(TypedDict):
     process_runner: Literal["docker", "nomad"]
 
 
-class TaskInfo(TypedDict):
+class TaskInfo(TypedDict, total=False):
     action: Literal["route", "both", "process", "discard", "notification"]
     uid: str
     uid_type: Literal["series", "study"]
@@ -126,3 +126,9 @@ class Task(TypedDict):
     dispatch: Union[TaskDispatch, EmptyDict]
     process: Union[Module, EmptyDict]
     study: Union[TaskStudy, EmptyDict]
+
+class TaskHasStudy(TypedDict):
+    info: TaskInfo
+    dispatch: Union[TaskDispatch, EmptyDict]
+    process: Union[Module, EmptyDict]
+    study: TaskStudy
