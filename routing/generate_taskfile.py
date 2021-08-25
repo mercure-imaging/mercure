@@ -162,12 +162,13 @@ def add_info(
     """
     Adds general information into the task file
     """
-    task_action = mercure_actions.ROUTE
     if applied_rule:
         task_action = config.mercure["rules"][applied_rule].get("action", "process")
+    else:
+        task_action = "route"
 
     return {
-        "action": "task_action",
+        "action": task_action,
         "uid": uid,
         "uid_type": uid_type,
         "triggered_rules": triggered_rules,
