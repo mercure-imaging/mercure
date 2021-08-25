@@ -136,7 +136,7 @@ def test_process_series_nomad(fs, mocker: MockerFixture):
     assert task == {
         "info": {
             "uid": "TESTFAKEUID",
-            "action": "task_action",
+            "action": "process",
             "applied_rule": "catchall",
             "uid_type": "series",
             "triggered_rules": {"catchall": True},
