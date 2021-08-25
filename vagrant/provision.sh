@@ -15,13 +15,14 @@ sudo apt-get install -y docker-ce
 # Restart docker to make sure we get the latest version of the daemon if there is an upgrade
 sudo service docker restart
 # Make sure we can actually use docker as the vagrant user
-sudo usermod -aG docker vagrant
+sudo usermod -a -G docker vagrant
 sudo docker --version
+
 
 # -------- Install Nomad and Consul ------
 
 # Packages required for nomad & consul
-sudo apt-get install unzip curl vim -y
+sudo apt-get install unzip curl vim build-essential -y 
 
 echo "Installing Nomad..."
 NOMAD_VERSION=1.0.1
@@ -45,7 +46,6 @@ cat <<-EOFB
   WantedBy=multi-user.target
 EOFB
 ) | sudo tee /etc/systemd/system/nomad.service
-
 sudo systemctl enable nomad.service
 
 echo "Installing Consul..."
@@ -72,8 +72,6 @@ EOFA
 sudo systemctl enable consul.service
 sudo systemctl start consul
 
-
-
 for bin in cfssl cfssl-certinfo cfssljson
 do
   echo "Installing $bin..."
@@ -86,7 +84,35 @@ curl -L -o cni-plugins.tgz https://github.com/containernetworking/plugins/releas
 sudo mkdir -p /opt/cni/bin
 sudo tar -C /opt/cni/bin -xzf cni-plugins.tgz
 
+
+# -------- Install Mercure ------
+echo "Cloning mercure..."
+sudo cp /vagrant/mercure_deploy.pem ~/.ssh
+sudo chmod 0400 ~/.ssh/mercure_deploy.pem
+sudo chown vagrant ~/.ssh/mercure_deploy.pem
+cd ~
+GIT_SSH_COMMAND='ssh -i ~/.ssh/mercure_deploy.pem -o IdentitiesOnly=yes -o StrictHostKeyChecking=no' git clone git@github.com:mercure-imaging/mercure.git
+
+echo "Installing mercure..."
+mkdir ~/mercure-docker
 mkdir ~/mercure-docker/processor-keys
+echo "Generating SSH key..."
+ssh-keygen -t rsa -N '' -f /home/vagrant/mercure-docker/processor-keys/id_rsa
+
+echo "Building mercure core containers..."
+cd ~/mercure
+sudo su vagrant -c "MERCURE_SECRET=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1) ./build-docker.sh || exit 1"
+echo "Done building docker containers..."
+
+cp /vagrant/mercure.json ~/mercure-docker/mercure-config/mercure.json
+cd ~/mercure/nomad/
+sed -i "s#SSHPUBKEY#$(cat ~/mercure-docker/processor-keys/id_rsa.pub)#g" mercure.nomad
+
+echo "Building mercure processing containers..."
+sudo su vagrant -c "cd ~/mercure/nomad/processing && make"
+sudo su vagrant -c "cd ~/mercure/nomad/dummy-processor && make"
+sudo su vagrant -c "cd ~/mercure/nomad/sshd && make"
+echo "Done building processing containers..."
 
 sudo systemctl start nomad
 echo "Waiting for Nomad to start..."
@@ -97,26 +123,8 @@ do
 done;
 
 
-# -------- Install Mercure ------
-echo "Cloning mercure..."
-sudo cp /vagrant/mercure_deploy.pem ~/.ssh
-sudo chmod 0400 ~/.ssh/mercure_deploy.pem
-sudo chown vagrant ~/.ssh/mercure_deploy.pem
-
-GIT_SSH_COMMAND='ssh -i ~/.ssh/mercure_deploy.pem -o IdentitiesOnly=yes -o StrictHostKeyChecking=no' git clone git@github.com:mercure-imaging/mercure.git
-
-echo "Installing mercure..."
-cd ~/mercure
-MERCURE_SECRET=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1) ./build-docker.sh || exit 1
-
-cp /vagrant/mercure.json ~/mercure-docker/mercure-config/mercure.json
-ssh-keygen -f ~/mercure-docker/processor-keys/id_rsa -N ""
-sed -i "s#SSHPUBKEY#$(cat ~/mercure-docker/processor-keys/id_rsa.pub)#g" mercure.nomad
-
-cd nomad/processing && make
-cd ../dummy-processor && make
-cd ../sshd && make
-
+# -------- Start Mercure ------
+echo "Starting mercure..."
 cd ~/mercure/nomad/
 /usr/bin/nomad run mercure.nomad
 /usr/bin/nomad run mercure-processor.nomad
