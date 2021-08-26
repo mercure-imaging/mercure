@@ -1,4 +1,3 @@
-from mercure.common.types import Module
 from starlette.applications import Starlette
 from starlette.responses import HTMLResponse, Response
 from starlette.responses import PlainTextResponse
@@ -23,6 +22,7 @@ import common.helper as helper
 import common.config as config
 import common.monitor as monitor
 from common.constants import mercure_defs
+from common.types import Module
 from webinterface.common import get_user_information
 from webinterface.common import templates
 

@@ -364,8 +364,8 @@ async def rules_edit_post(request) -> Response:
         processing_settings=form.get("processing_settings", ""),
         notification_webhook=form.get("notification_webhook", ""),
         notification_payload=form.get("notification_payload", ""),
-        notification_trigger_reception=form.get("notification_trigger_reception", ""),
-        notification_trigger_completion=form.get("notification_trigger_completion", ""),
+        notification_trigger_reception=form.get("notification_trigger_reception", "False"),
+        notification_trigger_completion=form.get("notification_trigger_completion", "False"),
         notification_trigger_error=form.get("notification_trigger_error", "False"),
     )
     config.mercure.rules[editrule] = new_rule
