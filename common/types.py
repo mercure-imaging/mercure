@@ -19,8 +19,8 @@ class Compat:
     # def __getitem__(self, item):
     #     return self.__dict__[item]
 
-    def __setitem__(self, item, val):
-        self.__dict__[item] = val
+    # def __setitem__(self, item, val):
+    #     self.__dict__[item] = val
 
     def get(self, item, els=None) -> Any:
         return self.__dict__.get(item, els) or els

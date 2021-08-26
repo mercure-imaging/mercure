@@ -558,11 +558,11 @@ async def targets_edit_post(request) -> Union[RedirectResponse, PlainTextRespons
     if not edittarget in config.mercure.targets:
         return PlainTextResponse("Target does not exist anymore.")
 
-    config.mercure.targets[edittarget]["ip"] = form["ip"]
-    config.mercure.targets[edittarget]["port"] = form["port"]
-    config.mercure.targets[edittarget]["aet_target"] = form["aet_target"]
-    config.mercure.targets[edittarget]["aet_source"] = form["aet_source"]
-    config.mercure.targets[edittarget]["contact"] = form["contact"]
+    config.mercure.targets[edittarget].ip = form["ip"]
+    config.mercure.targets[edittarget].port = form["port"]
+    config.mercure.targets[edittarget].aet_target = form["aet_target"]
+    config.mercure.targets[edittarget].aet_source = form["aet_source"]
+    config.mercure.targets[edittarget].contact = form["contact"]
 
     try:
         config.save_config()
