@@ -611,18 +611,15 @@ async def targets_test_post(request) -> Response:
 
     ping_response = "False"
     cecho_response = "False"
-    target_ip = ""
-    target_port = ""
-    target_aec = "ANY-SCP"
-    target_aet = "ECHOSCU"
+    # target_ip = ""
+    # target_port = ""
+    # target_aec = "ANY-SCP"
+    # target_aet = "ECHOSCU"
 
-    try:
-        target_ip = config.mercure.targets[testtarget]["ip"]
-        target_port = config.mercure.targets[testtarget]["port"]
-        target_aec = config.mercure.targets[testtarget]["aet_target"]
-        target_aet = config.mercure.targets[testtarget]["aet_source"]
-    except:
-        pass
+    target_ip = config.mercure.targets[testtarget].ip or ""
+    target_port = config.mercure.targets[testtarget].port or ""
+    target_aec = config.mercure.targets[testtarget].aet_target or "ANY-SCP"
+    target_aet = config.mercure.targets[testtarget].aet_source or "ECHOSCU"
 
     logger.info(f"Testing target {testtarget}")
 
@@ -1128,7 +1125,11 @@ async def emergency_response(request) -> Response:
 def launch_emergency_app() -> None:
     """Launches a minimal application to inform the user about the incorrect configuration"""
     # emergency_app = Starlette(debug=True)
-    emergency_app = Router([Route("/{whatever:path}", endpoint=emergency_response, methods=["GET", "POST"]),])
+    emergency_app = Router(
+        [
+            Route("/{whatever:path}", endpoint=emergency_response, methods=["GET", "POST"]),
+        ]
+    )
     uvicorn.run(emergency_app, host=WEBGUI_HOST, port=WEBGUI_PORT)
 
 

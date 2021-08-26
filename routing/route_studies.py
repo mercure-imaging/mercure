@@ -96,13 +96,13 @@ def is_study_complete(folder: str) -> bool:
         with open(Path(folder) / mercure_names.TASKFILE, "r") as json_file:
             task: TaskHasStudy = TaskHasStudy(**json.load(json_file))
 
-        study = task["study"]
+        study = task.study
 
         # Check if processing of the study has been enforced (e.g., via UI selection)
         if study.get("complete_force", "False") == "True":
             return True
 
-        complete_trigger = study["complete_trigger"] if "complete_trigger" in study else ""
+        complete_trigger = study.complete_trigger
 
         if not complete_trigger:
             error_text = f"Missing trigger condition in task file in study folder {folder}"
@@ -206,7 +206,7 @@ def route_study(study) -> bool:
         return False
 
     action_result = True
-    info: TaskInfo = task["info"]
+    info: TaskInfo = task.info
     action = info.get("action", "")
 
     if not action:

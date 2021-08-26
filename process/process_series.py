@@ -26,8 +26,11 @@ def nomad_runtime(task: Task, folder: str) -> bool:
     module: Module = cast(Module, task.process)
 
     f_path = Path(folder)
+    if not module.docker_tag:
+        logger.error("No docker tag supplied")
+        return False
 
-    meta = {"IMAGE_ID": module["docker_tag"], "PATH": f_path.name}
+    meta = {"IMAGE_ID": module.docker_tag, "PATH": f_path.name}
     logger.debug(meta)
     job_info = nomad_connection.job.dispatch_job("mercure-processor", meta=meta)
     with open(f_path / "nomad_job.json", "w") as json_file:
@@ -56,7 +59,11 @@ def docker_runtime(task: Task, folder: str) -> bool:
         folder + "/out": {"bind": "/output", "mode": "rw"},
     }
 
-    docker_tag: str = module["docker_tag"]
+    if module.docker_tag:
+        docker_tag: str = module.docker_tag
+    else:
+        logger.error("No docker tag supplied")
+        return False
     additional_volumes: Dict[str, Dict[str, str]] = decode_task("additional_volumes")
     environment = decode_task("environment")
     arguments = decode_task("arguments")

@@ -123,7 +123,7 @@ if __name__ == "__main__":
             prefix=graphite_prefix,
         )
 
-    logger.info(f"Dispatching folder: {config.mercure['outgoing_folder']}")
+    logger.info(f"Dispatching folder: {config.mercure.outgoing_folder}")
 
     global main_loop
     main_loop = helper.RepeatedTimer(config.mercure.dispatcher_scan_interval, dispatch, exit_dispatcher, {})

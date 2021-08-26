@@ -115,8 +115,8 @@ def add_study(
     study_info: TaskStudy = TaskStudy(
         **{
             "study_uid": uid,
-            "complete_trigger": config.mercure.rules[applied_rule]["study_trigger_condition"],
-            "complete_required_series": config.mercure.rules[applied_rule]["study_trigger_series"],
+            "complete_trigger": config.mercure.rules[applied_rule].study_trigger_condition,
+            "complete_required_series": config.mercure.rules[applied_rule].study_trigger_series,
             "creation_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "last_receive_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "received_series": [tags_list.get("SeriesDescription", mercure_options.INVALID)],
@@ -151,8 +151,8 @@ def add_dispatching(uid: str, applied_rule: str, tags_list: Dict[str, str], targ
         return TaskDispatch(
             **{
                 "target_name": target_used,
-                "target_ip": target_info["ip"],
-                "target_port": target_info["port"],
+                "target_ip": target_info.ip,
+                "target_port": target_info.port,
                 "target_aet_target": target_info.get("aet_target", "ANY-SCP"),
                 "target_aet_source": target_info.get("aet_source", "mercure"),
                 "retries": None,

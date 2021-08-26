@@ -20,11 +20,11 @@ def increase_retry(source_folder, retry_max, retry_delay) -> bool:
     if not task.get("dispatch", None):
         task["dispatch"] = {}
 
-    dispatch = cast(TaskDispatch, task["dispatch"])
+    dispatch = cast(TaskDispatch, task.dispatch)
     dispatch["retries"] = (dispatch.get("retries") or 0) + 1
     dispatch["next_retry_at"] = time.time() + retry_delay
 
-    if dispatch["retries"] >= retry_max:
+    if dispatch.retries >= retry_max:
         return False
 
     with open(target_json_path, "w") as file:

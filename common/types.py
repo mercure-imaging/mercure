@@ -16,8 +16,8 @@ logger = daiquiri.getLogger("test")
 
 
 class Compat:
-    def __getitem__(self, item):
-        return self.__dict__[item]
+    # def __getitem__(self, item):
+    #     return self.__dict__[item]
 
     def __setitem__(self, item, val):
         self.__dict__[item] = val
@@ -127,7 +127,7 @@ class TaskDispatch(BaseModel, Compat):
 
 class TaskStudy(BaseModel):
     study_uid: str
-    complete_trigger: str
+    complete_trigger: Optional[str]
     complete_required_series: str
     creation_time: str
     last_receive_time: str

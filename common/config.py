@@ -212,7 +212,7 @@ def check_folders() -> bool:
             entry,
         )
         if not Path(mercure.dict()[entry]).exists():
-            error_message = f"Folder not found {mercure[entry]}"
+            error_message = f"Folder not found {mercure.dict()[entry]}"
             logger.error(error_message)
             monitor.send_event(monitor.m_events.CONFIG_UPDATE, monitor.severity.CRITICAL, error_message)
             return False
