@@ -54,18 +54,14 @@ def compose_task(
     Composes the JSON content that is written into a task file when submitting a job (for processing, dispatching, or both)
     """
     return Task(
-        **{
-            # Add general information about the job
-            "info": add_info(uid, uid_type, triggered_rules, applied_rule, tags_list),
-            # Add dispatch information -- completed only if the job includes a dispatching step
-            # type: ignore
-            "dispatch": add_dispatching(uid, applied_rule, tags_list, target) or {},
-            # Add processing information -- completed only if the job includes a processing step
-            # type: ignore
-            "process": add_processing(uid, applied_rule, tags_list) or {},
-            # Add information about the study, included all collected series
-            "study": add_study(uid, uid_type, applied_rule, tags_list) or EmptyDict(),
-        }
+        # Add general information about the job
+        info=add_info(uid, uid_type, triggered_rules, applied_rule, tags_list),
+        # Add dispatch information -- completed only if the job includes a dispatching step
+        dispatch=add_dispatching(uid, applied_rule, tags_list, target) or {},
+        # Add processing information -- completed only if the job includes a processing step
+        process=add_processing(uid, applied_rule, tags_list) or {},
+        # Add information about the study, included all collected series
+        study=add_study(uid, uid_type, applied_rule, tags_list) or EmptyDict(),
     )
 
 
@@ -113,15 +109,13 @@ def add_study(
         return None
 
     study_info: TaskStudy = TaskStudy(
-        **{
-            "study_uid": uid,
-            "complete_trigger": config.mercure.rules[applied_rule].study_trigger_condition,
-            "complete_required_series": config.mercure.rules[applied_rule].study_trigger_series,
-            "creation_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "last_receive_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "received_series": [tags_list.get("SeriesDescription", mercure_options.INVALID)],
-            "complete_force": "False",
-        }
+        study_uid=uid,
+        complete_trigger=config.mercure.rules[applied_rule].study_trigger_condition,
+        complete_required_series=config.mercure.rules[applied_rule].study_trigger_series,
+        creation_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        last_receive_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        received_series=[tags_list.get("SeriesDescription", mercure_options.INVALID)],
+        complete_force="False",
     )
 
     return study_info
@@ -149,15 +143,13 @@ def add_dispatching(uid: str, applied_rule: str, tags_list: Dict[str, str], targ
     ) and target_used:
         target_info: Target = config.mercure.targets[target_used]
         return TaskDispatch(
-            **{
-                "target_name": target_used,
-                "target_ip": target_info.ip,
-                "target_port": target_info.port,
-                "target_aet_target": target_info.get("aet_target", "ANY-SCP"),
-                "target_aet_source": target_info.get("aet_source", "mercure"),
-                "retries": None,
-                "next_retry_at": None,
-            }
+            target_name=target_used,
+            target_ip=target_info.ip,
+            target_port=target_info.port,
+            target_aet_target=target_info.get("aet_target", "ANY-SCP"),
+            target_aet_source=target_info.get("aet_source", "mercure"),
+            retries=None,
+            next_retry_at=None,
         )
 
     return None
@@ -179,18 +171,16 @@ def add_info(
         task_action = "route"
 
     return TaskInfo(
-        **{
-            "action": task_action,
-            "uid": uid,
-            "uid_type": uid_type,
-            "triggered_rules": triggered_rules,
-            "applied_rule": applied_rule,
-            "mrn": tags_list.get("PatientID", mercure_options.MISSING),
-            "acc": tags_list.get("AccessionNumber", mercure_options.MISSING),
-            "mercure_version": mercure_defs.VERSION,
-            "mercure_appliance": config.mercure.appliance_name,
-            "mercure_server": socket.gethostname(),
-        }
+        action=task_action,
+        uid=uid,
+        uid_type=uid_type,
+        triggered_rules=triggered_rules,
+        applied_rule=applied_rule,
+        mrn=tags_list.get("PatientID", mercure_options.MISSING),
+        acc=tags_list.get("AccessionNumber", mercure_options.MISSING),
+        mercure_version=mercure_defs.VERSION,
+        mercure_appliance=config.mercure.appliance_name,
+        mercure_server=socket.gethostname(),
     )
 
 

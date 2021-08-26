@@ -348,27 +348,25 @@ async def rules_edit_post(request) -> Response:
         return PlainTextResponse("Rule does not exist anymore.")
 
     new_rule: Rule = Rule(
-        **{
-            "rule": form.get("rule", "False"),
-            "target": form.get("target", ""),
-            "disabled": form.get("status_disabled", "False"),
-            "fallback": form.get("status_fallback", "False"),
-            "contact": form.get("contact", ""),
-            "comment": form.get("comment", ""),
-            "tags": form.get("tags", ""),
-            "action": form.get("action", "route"),
-            "action_trigger": form.get("action_trigger", "series"),
-            "study_trigger_condition": form.get("study_trigger_condition", "timeout"),
-            "study_trigger_series": form.get("study_trigger_series", ""),
-            "priority": form.get("priority", "normal"),
-            "processing_module": form.get("processing_module", ""),
-            "processing_settings": form.get("processing_settings", ""),
-            "notification_webhook": form.get("notification_webhook", ""),
-            "notification_payload": form.get("notification_payload", ""),
-            "notification_trigger_reception": form.get("notification_trigger_reception", ""),
-            "notification_trigger_completion": form.get("notification_trigger_completion", ""),
-            "notification_trigger_error": form.get("notification_trigger_error", "False"),
-        }
+        rule=form.get("rule", "False"),
+        target=form.get("target", ""),
+        disabled=form.get("status_disabled", "False"),
+        fallback=form.get("status_fallback", "False"),
+        contact=form.get("contact", ""),
+        comment=form.get("comment", ""),
+        tags=form.get("tags", ""),
+        action=form.get("action", "route"),
+        action_trigger=form.get("action_trigger", "series"),
+        study_trigger_condition=form.get("study_trigger_condition", "timeout"),
+        study_trigger_series=form.get("study_trigger_series", ""),
+        priority=form.get("priority", "normal"),
+        processing_module=form.get("processing_module", ""),
+        processing_settings=form.get("processing_settings", ""),
+        notification_webhook=form.get("notification_webhook", ""),
+        notification_payload=form.get("notification_payload", ""),
+        notification_trigger_reception=form.get("notification_trigger_reception", ""),
+        notification_trigger_completion=form.get("notification_trigger_completion", ""),
+        notification_trigger_error=form.get("notification_trigger_error", "False"),
     )
     config.mercure.rules[editrule] = new_rule
 
@@ -505,7 +503,7 @@ async def add_target(request) -> Response:
     if newtarget in config.mercure.targets:
         return PlainTextResponse("Target already exists.")
 
-    config.mercure.targets[newtarget] = Target(**{"ip": "", "port": ""})
+    config.mercure.targets[newtarget] = Target(ip="", port="")
 
     try:
         config.save_config()

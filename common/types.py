@@ -14,15 +14,12 @@ import daiquiri
 
 logger = daiquiri.getLogger("test")
 
+# import traceback
+
 
 class Compat:
-    # def __getitem__(self, item):
-    #     return self.__dict__[item]
-
-    # def __setitem__(self, item, val):
-    #     self.__dict__[item] = val
-
     def get(self, item, els=None) -> Any:
+        # logger.info(repr(traceback.format_stack()[-2].splitlines()[1]))
         return self.__dict__.get(item, els) or els
 
 
@@ -98,7 +95,7 @@ class Config(BaseModel, Compat):
     process_runner: Literal["docker", "nomad"]
 
 
-class TaskInfo(BaseModel):
+class TaskInfo(BaseModel, Compat):
     action: Literal["route", "both", "process", "discard", "notification"]
     uid: str
     uid_type: Literal["series", "study"]
@@ -109,9 +106,6 @@ class TaskInfo(BaseModel):
     mercure_version: str
     mercure_appliance: str
     mercure_server: str
-
-    def get(self, item, els) -> Any:
-        return self.__dict__.get(item, els) or els
 
 
 class TaskDispatch(BaseModel, Compat):
@@ -125,7 +119,7 @@ class TaskDispatch(BaseModel, Compat):
     series_uid: Optional[str]
 
 
-class TaskStudy(BaseModel):
+class TaskStudy(BaseModel, Compat):
     study_uid: str
     complete_trigger: Optional[str]
     complete_required_series: str
@@ -133,9 +127,6 @@ class TaskStudy(BaseModel):
     last_receive_time: str
     received_series: Optional[List]
     complete_force: Literal["True", "False"]
-
-    def get(self, item, els) -> Any:
-        return self.__dict__.get(item, els) or els
 
 
 class EmptyDict(TypedDict):
