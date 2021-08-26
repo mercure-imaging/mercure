@@ -45,24 +45,24 @@ class UnsetRule(TypedDict):
 
 class Rule(BaseModel, Compat):
     rule: str
-    target: str
-    disabled: Literal["True", "False"]
-    fallback: str
-    contact: str
-    comment: str
-    tags: str
-    action: Literal["route", "both", "process", "discard", "notification"]
-    action_trigger: Literal["series", "study"]
-    study_trigger_condition: Literal["timeout", "received_series"]
+    target: str = ""
+    disabled: Literal["True", "False"] = "False"
+    fallback: str = ""
+    contact: str = ""
+    comment: str = ""
+    tags: str = ""
+    action: Literal["route", "both", "process", "discard", "notification"] = "route"
+    action_trigger: Literal["series", "study"] = "series"
+    study_trigger_condition: Literal["timeout", "received_series"] = "timeout"
     study_trigger_series: str = ""
-    priority: Literal["normal", "urgent", "offpeak"]
+    priority: Literal["normal", "urgent", "offpeak"] = "normal"
     processing_module: str = ""
     processing_settings: str = ""
     notification_webhook: str = ""
     notification_payload: str = ""
-    notification_trigger_reception: Literal["True", "False"]
-    notification_trigger_completion: Literal["True", "False"]
-    notification_trigger_error: Literal["True", "False"]
+    notification_trigger_reception: Literal["True", "False"] = "False"
+    notification_trigger_completion: Literal["True", "False"] = "False"
+    notification_trigger_error: Literal["True", "False"] = "False"
 
 
 class Config(BaseModel, Compat):
