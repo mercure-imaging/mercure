@@ -65,7 +65,15 @@ def test_route_series(fs, mocker):
     routing.route_series.push_serieslevel_outgoing.assert_called_once_with({"catchall": True}, [f"{uid}#bar"], uid, {}, {"test_target": "catchall"})  # type: ignore
 
     out_path = next(Path("/var/outgoing").iterdir())
-    assert ["task.json", f"{uid}#bar.dcm", f"{uid}#bar.tags"] == [k.name for k in Path("/var/outgoing").glob("**/*") if k.is_file()]
+    try:
+        assert ["task.json", f"{uid}#bar.dcm", f"{uid}#bar.tags"] == [
+            k.name for k in Path("/var/outgoing").glob("**/*") if k.is_file()
+        ]
+    except AssertionError as k:
+        message = f"Expected results are missing: {k.args[0]}"
+        k.args = (message,)  # wrap it up in new tuple
+        raise
+
     with open(out_path / "task.json") as e:
         task: Task = json.load(e)
         assert task["dispatch"]["target_name"] == "test_target"  # type: ignore

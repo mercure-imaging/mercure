@@ -44,7 +44,7 @@ def route_studies() -> None:
     """
     studies_ready = {}
 
-    with os.scandir(config.mercure["studies_folder"]) as it:
+    with os.scandir(config.mercure.studies_folder) as it:
         for entry in it:
             if entry.is_dir() and not is_study_locked(entry.path) and is_study_complete(entry.path):
                 modificationTime = entry.stat().st_mtime
@@ -147,7 +147,7 @@ def check_study_timeout(task: TaskHasStudy) -> bool:
         return False
 
     last_receive_time = datetime.strptime(last_received_string, "%Y-%m-%d %H:%M:%S")
-    if datetime.now() > last_receive_time + timedelta(seconds=config.mercure["study_forcecomplete_trigger"]):
+    if datetime.now() > last_receive_time + timedelta(seconds=config.mercure.study_forcecomplete_trigger):
         return True
     else:
         return False
@@ -171,7 +171,7 @@ def route_study(study) -> bool:
     """
     Processses the study in the folder 'study'. Loads the task file and delegates the action to helper functions
     """
-    study_folder = config.mercure["studies_folder"] + "/" + study
+    study_folder = config.mercure.studies_folder + "/" + study
     if is_study_locked(study_folder):
         # If the study folder has been locked in the meantime, then skip and proceed with the next one
         return True
@@ -264,7 +264,7 @@ def push_studylevel_notification(study: str, task: Task) -> bool:
         return False
 
     # Check if the mercure configuration still contains that rule
-    if not isinstance(config.mercure["rules"].get(current_rule, ""), dict):
+    if not isinstance(config.mercure.rules.get(current_rule, ""), dict):
         error_text = f"Applied rule not existing anymore in mercure configuration {study}"
         logger.exception(error_text)
         monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_text)
@@ -272,8 +272,8 @@ def push_studylevel_notification(study: str, task: Task) -> bool:
 
     # OK, now fire out the webhook
     notification.send_webhook(
-        config.mercure["rules"][current_rule].get("notification_webhook", ""),
-        config.mercure["rules"][current_rule].get("notification_payload", ""),
+        config.mercure.rules[current_rule].get("notification_webhook", ""),
+        config.mercure.rules[current_rule].get("notification_payload", ""),
         mercure_events.RECEPTION,
     )
 
@@ -285,7 +285,7 @@ def push_studylevel_error(study: str) -> None:
     """
     Pushes the study folder to the error folder after unsuccessful processing
     """
-    study_folder = config.mercure["studies_folder"] + "/" + study
+    study_folder = config.mercure.studies_folder + "/" + study
     lock_file = Path(study_folder + "/" + study + mercure_names.LOCK)
     if lock_file.exists():
         # Study normally shouldn't be locked at this point, but since it is, just exit and wait.
@@ -316,14 +316,14 @@ def move_study_folder(study: str, destination: str) -> bool:
     """
     Moves the study subfolder to the specified destination with proper locking of the folders
     """
-    source_folder = config.mercure["studies_folder"] + "/" + study
-    destination_folder = config.mercure["discard_folder"]
+    source_folder = config.mercure.studies_folder + "/" + study
+    destination_folder = config.mercure.discard_folder
     if destination == "PROCESSING":
-        destination_folder = config.mercure["processing_folder"]
+        destination_folder = config.mercure.processing_folder
     elif destination == "SUCCESS":
-        destination_folder = config.mercure["success_folder"]
+        destination_folder = config.mercure.success_folder
     elif destination == "ERROR":
-        destination_folder = config.mercure["error_folder"]
+        destination_folder = config.mercure.error_folder
 
     # Create unique name of destination folder
     destination_folder += "/" + str(uuid.uuid1())
@@ -393,7 +393,7 @@ def remove_study_folder(study: str, lock: helper.FileLock) -> bool:
     Removes a study folder containing nothing but the lock file (called during cleanup after all files have
     been moved somewhere else already)
     """
-    study_folder = config.mercure["studies_folder"] + "/" + study
+    study_folder = config.mercure.studies_folder + "/" + study
     # Remove the lock file
     try:
         lock.free()

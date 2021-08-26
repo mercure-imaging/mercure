@@ -75,7 +75,7 @@ def add_processing(uid: str, applied_rule: str, tags_list: Dict[str, str]) -> Op
     if not applied_rule:
         return None
 
-    applied_rule_info: Rule = config.mercure["rules"][applied_rule]
+    applied_rule_info: Rule = config.mercure.rules[applied_rule]
     logger.info(applied_rule_info)
 
     if applied_rule_info.get(mercure_rule.ACTION, mercure_actions.PROCESS) in (
@@ -88,7 +88,7 @@ def add_processing(uid: str, applied_rule: str, tags_list: Dict[str, str]) -> Op
         logger.info(f"module: {module}")
 
         # Get the configuration of this module
-        module_config: Module = config.mercure["modules"].get(module, {})
+        module_config: Module = config.mercure.modules.get(module, {})
 
         logger.info({"module_config": module_config})
 
@@ -100,7 +100,9 @@ def add_processing(uid: str, applied_rule: str, tags_list: Dict[str, str]) -> Op
     return None
 
 
-def add_study(uid: str, uid_type: Literal["series", "study"], applied_rule: str, tags_list: Dict[str, str]) -> Optional[TaskStudy]:
+def add_study(
+    uid: str, uid_type: Literal["series", "study"], applied_rule: str, tags_list: Dict[str, str]
+) -> Optional[TaskStudy]:
     """
     Adds study information into the task file. Returns nothing if the task is a series-level task
     """
@@ -110,8 +112,8 @@ def add_study(uid: str, uid_type: Literal["series", "study"], applied_rule: str,
 
     study_info: TaskStudy = {
         "study_uid": uid,
-        "complete_trigger": config.mercure["rules"][applied_rule]["study_trigger_condition"],
-        "complete_required_series": config.mercure["rules"][applied_rule]["study_trigger_series"],
+        "complete_trigger": config.mercure.rules[applied_rule]["study_trigger_condition"],
+        "complete_required_series": config.mercure.rules[applied_rule]["study_trigger_series"],
         "creation_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "last_receive_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "received_series": [tags_list.get("SeriesDescription", mercure_options.INVALID)],
@@ -134,11 +136,14 @@ def add_dispatching(uid: str, applied_rule: str, tags_list: Dict[str, str], targ
 
     # If no target is provided already (as done in routing-only mode), read the target defined in the applied rule
     if not target_used:
-        target_used = config.mercure["rules"][applied_rule].get("target", "")
+        target_used = config.mercure.rules[applied_rule].get("target", "")
 
     # Fill the dispatching section, if routing has been selected and a target has been provided
-    if (config.mercure["rules"][applied_rule].get(mercure_rule.ACTION, mercure_actions.PROCESS) in (mercure_actions.ROUTE, mercure_actions.BOTH)) and target_used:
-        target_info: Target = config.mercure["targets"][target_used]
+    if (
+        config.mercure.rules[applied_rule].get(mercure_rule.ACTION, mercure_actions.PROCESS)
+        in (mercure_actions.ROUTE, mercure_actions.BOTH)
+    ) and target_used:
+        target_info: Target = config.mercure.targets[target_used]
         return {
             "target_name": target_used,
             "target_ip": target_info["ip"],
@@ -163,7 +168,7 @@ def add_info(
     Adds general information into the task file
     """
     if applied_rule:
-        task_action = config.mercure["rules"][applied_rule].get("action", "process")
+        task_action = config.mercure.rules[applied_rule].get("action", "process")
     else:
         task_action = "route"
 
@@ -176,7 +181,7 @@ def add_info(
         "mrn": tags_list.get("PatientID", mercure_options.MISSING),
         "acc": tags_list.get("AccessionNumber", mercure_options.MISSING),
         "mercure_version": mercure_defs.VERSION,
-        "mercure_appliance": config.mercure["appliance_name"],
+        "mercure_appliance": config.mercure.appliance_name,
         "mercure_server": socket.gethostname(),
     }
 

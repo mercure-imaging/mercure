@@ -5,19 +5,31 @@ Definitions for using TypedDicts throughout mercure.
 """
 
 # Standard python includes
-from typing import Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 from typing_extensions import Literal, TypedDict
-
+from pydantic import BaseModel, create_model_from_typeddict
+import daiquiri
 
 # TODO: Add description for the individual classes
 
+logger = daiquiri.getLogger("test")
 
-class Target(TypedDict, total=False):
-    ip: str
-    port: str
-    aet_target: str
-    aet_source: str
-    contact: str
+
+class Target(BaseModel):
+    ip: Optional[str]
+    port: Optional[str]
+    aet_target: Optional[str]
+    aet_source: Optional[str]
+    contact: Optional[str]
+
+    def __getitem__(self, item):
+        return self.__dict__[item]
+
+    def __setitem__(self, item, val):
+        self.__dict__[item] = val
+
+    def get(self, item, els) -> Any:
+        return self.__dict__.get(item, els)
 
 
 class Module(TypedDict, total=False):
@@ -32,7 +44,7 @@ class UnsetRule(TypedDict):
     rule: str
 
 
-class Rule(TypedDict, total=False):
+class Rule(BaseModel):
     rule: str
     target: str
     disabled: Literal["True", "False"]
@@ -53,8 +65,24 @@ class Rule(TypedDict, total=False):
     notification_trigger_completion: Literal["True", "False"]
     notification_trigger_error: Literal["True", "False"]
 
+    def get(self, item, els) -> Any:
+        return self.__dict__.get(item, els)
 
-class Config(TypedDict):
+    def __getitem__(self, item):
+        return self.__dict__[item]
+
+    def __setitem__(self, item, val):
+        self.__dict__[item] = val
+
+
+# class ConfigForbid:
+#     extra = "forbid"
+
+
+# Rule = create_model_from_typeddict(RuleM, __config__=ConfigForbid)
+
+
+class Config(BaseModel):
     appliance_name: str
     port: int
     incoming_folder: str
@@ -82,6 +110,12 @@ class Config(TypedDict):
     rules: Dict[str, Rule]
     modules: Dict[str, Module]
     process_runner: Literal["docker", "nomad"]
+
+    def __getitem__(self, item):
+        return self.__dict__[item]
+
+    def get(self, item, els) -> Any:
+        return self.__dict__.get(item, els)
 
 
 class TaskInfo(TypedDict, total=False):
@@ -126,6 +160,7 @@ class Task(TypedDict):
     dispatch: Union[TaskDispatch, EmptyDict]
     process: Union[Module, EmptyDict]
     study: Union[TaskStudy, EmptyDict]
+
 
 class TaskHasStudy(TypedDict):
     info: TaskInfo

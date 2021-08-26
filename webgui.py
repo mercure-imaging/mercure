@@ -51,7 +51,7 @@ import common.helper as helper
 import common.config as config
 import common.monitor as monitor
 from common.constants import mercure_defs, mercure_names
-from common.types import Rule
+from common.types import Rule, Target
 
 import common.rule_evaluation as rule_evaluation
 import webinterface.users as users
@@ -273,7 +273,7 @@ async def show_rules(request) -> Response:
         "request": request,
         "mercure_version": mercure_defs.VERSION,
         "page": "rules",
-        "rules": config.mercure["rules"],
+        "rules": config.mercure.rules,
     }
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
@@ -291,10 +291,10 @@ async def add_rule(request) -> Response:
     form = dict(await request.form())
 
     newrule = form.get("name", "")
-    if newrule in config.mercure["rules"]:
+    if newrule in config.mercure.rules:
         return PlainTextResponse("Rule already exists.")
 
-    config.mercure["rules"][newrule] = {"rule": "False"}
+    config.mercure.rules[newrule] = Rule(rule="False")
 
     try:
         config.save_config()
@@ -321,9 +321,9 @@ async def rules_edit(request) -> Response:
         "request": request,
         "mercure_version": mercure_defs.VERSION,
         "page": "rules",
-        "rules": config.mercure["rules"],
-        "targets": config.mercure["targets"],
-        "modules": config.mercure["modules"],
+        "rules": config.mercure.rules,
+        "targets": config.mercure.targets,
+        "modules": config.mercure.modules,
         "rule": rule,
         "alltags": tagslist.alltags,
         "sortedtags": tagslist.sortedtags,
@@ -344,31 +344,33 @@ async def rules_edit_post(request) -> Response:
     editrule = request.path_params["rule"]
     form = dict(await request.form())
 
-    if not editrule in config.mercure["rules"]:
+    if not editrule in config.mercure.rules:
         return PlainTextResponse("Rule does not exist anymore.")
 
-    new_rule: Rule = {
-        "rule": form.get("rule", "False"),
-        "target": form.get("target", ""),
-        "disabled": form.get("status_disabled", "False"),
-        "fallback": form.get("status_fallback", "False"),
-        "contact": form.get("contact", ""),
-        "comment": form.get("comment", ""),
-        "tags": form.get("tags", ""),
-        "action": form.get("action", "route"),
-        "action_trigger": form.get("action_trigger", "series"),
-        "study_trigger_condition": form.get("study_trigger_condition", "timeout"),
-        "study_trigger_series": form.get("study_trigger_series", ""),
-        "priority": form.get("priority", "normal"),
-        "processing_module": form.get("processing_module", ""),
-        "processing_settings": form.get("processing_settings", ""),
-        "notification_webhook": form.get("notification_webhook", ""),
-        "notification_payload": form.get("notification_payload", ""),
-        "notification_trigger_reception": form.get("notification_trigger_reception", ""),
-        "notification_trigger_completion": form.get("notification_trigger_completion", ""),
-        "notification_trigger_error": form.get("notification_trigger_error", "False"),
-    }
-    config.mercure["rules"][editrule] = new_rule
+    new_rule: Rule = Rule(
+        **{
+            "rule": form.get("rule", "False"),
+            "target": form.get("target", ""),
+            "disabled": form.get("status_disabled", "False"),
+            "fallback": form.get("status_fallback", "False"),
+            "contact": form.get("contact", ""),
+            "comment": form.get("comment", ""),
+            "tags": form.get("tags", ""),
+            "action": form.get("action", "route"),
+            "action_trigger": form.get("action_trigger", "series"),
+            "study_trigger_condition": form.get("study_trigger_condition", "timeout"),
+            "study_trigger_series": form.get("study_trigger_series", ""),
+            "priority": form.get("priority", "normal"),
+            "processing_module": form.get("processing_module", ""),
+            "processing_settings": form.get("processing_settings", ""),
+            "notification_webhook": form.get("notification_webhook", ""),
+            "notification_payload": form.get("notification_payload", ""),
+            "notification_trigger_reception": form.get("notification_trigger_reception", ""),
+            "notification_trigger_completion": form.get("notification_trigger_completion", ""),
+            "notification_trigger_error": form.get("notification_trigger_error", "False"),
+        }
+    )
+    config.mercure.rules[editrule] = new_rule
 
     try:
         config.save_config()
@@ -391,8 +393,8 @@ async def rules_delete_post(request) -> Response:
 
     deleterule = request.path_params["rule"]
 
-    if deleterule in config.mercure["rules"]:
-        del config.mercure["rules"][deleterule]
+    if deleterule in config.mercure.rules:
+        del config.mercure.rules[deleterule]
 
     try:
         config.save_config()
@@ -472,8 +474,8 @@ async def show_targets(request) -> Response:
         return PlainTextResponse("Configuration is being updated. Try again in a minute.")
 
     used_targets = {}
-    for rule in config.mercure["rules"]:
-        used_target = config.mercure["rules"][rule].get("target", "NONE")
+    for rule in config.mercure.rules:
+        used_target = config.mercure.rules[rule].get("target", "NONE")
         used_targets[used_target] = rule
 
     template = "targets.html"
@@ -481,7 +483,7 @@ async def show_targets(request) -> Response:
         "request": request,
         "mercure_version": mercure_defs.VERSION,
         "page": "targets",
-        "targets": config.mercure["targets"],
+        "targets": config.mercure.targets,
         "used_targets": used_targets,
     }
     context.update(get_user_information(request))
@@ -500,10 +502,10 @@ async def add_target(request) -> Response:
     form = dict(await request.form())
 
     newtarget = form.get("name", "")
-    if newtarget in config.mercure["targets"]:
+    if newtarget in config.mercure.targets:
         return PlainTextResponse("Target already exists.")
 
-    config.mercure["targets"][newtarget] = {"ip": "", "port": ""}
+    config.mercure.targets[newtarget] = Target(**{"ip": "", "port": ""})
 
     try:
         config.save_config()
@@ -526,7 +528,7 @@ async def targets_edit(request) -> Response:
 
     edittarget = request.path_params["target"]
 
-    if not edittarget in config.mercure["targets"]:
+    if not edittarget in config.mercure.targets:
         return RedirectResponse(url="/targets", status_code=303)
 
     template = "targets_edit.html"
@@ -534,7 +536,7 @@ async def targets_edit(request) -> Response:
         "request": request,
         "mercure_version": mercure_defs.VERSION,
         "page": "targets",
-        "targets": config.mercure["targets"],
+        "targets": config.mercure.targets,
         "edittarget": edittarget,
     }
     context.update(get_user_information(request))
@@ -553,14 +555,14 @@ async def targets_edit_post(request) -> Union[RedirectResponse, PlainTextRespons
     edittarget = request.path_params["target"]
     form = dict(await request.form())
 
-    if not edittarget in config.mercure["targets"]:
+    if not edittarget in config.mercure.targets:
         return PlainTextResponse("Target does not exist anymore.")
 
-    config.mercure["targets"][edittarget]["ip"] = form["ip"]
-    config.mercure["targets"][edittarget]["port"] = form["port"]
-    config.mercure["targets"][edittarget]["aet_target"] = form["aet_target"]
-    config.mercure["targets"][edittarget]["aet_source"] = form["aet_source"]
-    config.mercure["targets"][edittarget]["contact"] = form["contact"]
+    config.mercure.targets[edittarget]["ip"] = form["ip"]
+    config.mercure.targets[edittarget]["port"] = form["port"]
+    config.mercure.targets[edittarget]["aet_target"] = form["aet_target"]
+    config.mercure.targets[edittarget]["aet_source"] = form["aet_source"]
+    config.mercure.targets[edittarget]["contact"] = form["contact"]
 
     try:
         config.save_config()
@@ -583,8 +585,8 @@ async def targets_delete_post(request) -> Response:
 
     deletetarget = request.path_params["target"]
 
-    if deletetarget in config.mercure["targets"]:
-        del config.mercure["targets"][deletetarget]
+    if deletetarget in config.mercure.targets:
+        del config.mercure.targets[deletetarget]
 
     try:
         config.save_config()
@@ -615,10 +617,10 @@ async def targets_test_post(request) -> Response:
     target_aet = "ECHOSCU"
 
     try:
-        target_ip = config.mercure["targets"][testtarget]["ip"]
-        target_port = config.mercure["targets"][testtarget]["port"]
-        target_aec = config.mercure["targets"][testtarget]["aet_target"]
-        target_aet = config.mercure["targets"][testtarget]["aet_source"]
+        target_ip = config.mercure.targets[testtarget]["ip"]
+        target_port = config.mercure.targets[testtarget]["port"]
+        target_aec = config.mercure.targets[testtarget]["aet_target"]
+        target_aet = config.mercure.targets[testtarget]["aet_source"]
     except:
         pass
 
@@ -975,7 +977,7 @@ async def homepage(request) -> Response:
     disk_total: Union[int, str] = 0
 
     try:
-        disk_total, disk_used, disk_free = shutil.disk_usage(config.mercure["incoming_folder"])
+        disk_total, disk_used, disk_free = shutil.disk_usage(config.mercure.incoming_folder)
 
         if disk_total == 0:
             disk_total = 1
@@ -1149,7 +1151,7 @@ if __name__ == "__main__":
         logger.info("Going down.")
         sys.exit(1)
 
-    monitor.configure("webgui", "main", config.mercure["bookkeeper"])
+    monitor.configure("webgui", "main", config.mercure.bookkeeper)
     monitor.send_event(monitor.m_events.BOOT, monitor.severity.INFO, f"PID = {os.getpid()}")
 
     try:

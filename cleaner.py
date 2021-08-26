@@ -50,7 +50,7 @@ def terminate_process(signalNumber, frame) -> None:
 
 
 def clean(args) -> None:
-    """ Main entry function. """
+    """Main entry function."""
     if helper.is_terminated():
         return
 
@@ -61,16 +61,22 @@ def clean(args) -> None:
     except Exception:
         logger.exception("Unable to read configuration. Skipping processing.")
         monitor.send_event(
-            monitor.m_events.CONFIG_UPDATE, monitor.severity.WARNING, "Unable to read configuration (possibly locked)",
+            monitor.m_events.CONFIG_UPDATE,
+            monitor.severity.WARNING,
+            "Unable to read configuration (possibly locked)",
         )
         return
 
     # TODO: Adaptively reduce the retention time if the disk space is running low
 
-    if _is_offpeak(config.mercure["offpeak_start"], config.mercure["offpeak_end"], datetime.now().time(),):
-        success_folder = config.mercure["success_folder"]
-        discard_folder = config.mercure["discard_folder"]
-        retention = timedelta(seconds=config.mercure["retention"])
+    if _is_offpeak(
+        config.mercure.offpeak_start,
+        config.mercure.offpeak_end,
+        datetime.now().time(),
+    ):
+        success_folder = config.mercure.success_folder
+        discard_folder = config.mercure.discard_folder
+        retention = timedelta(seconds=config.mercure.retention)
         clean_dir(success_folder, retention)
         clean_dir(discard_folder, retention)
 
@@ -106,7 +112,7 @@ def clean_dir(discard_folder, retention) -> None:
 
 
 def delete_folder(entry) -> None:
-    """ Deletes given folder. """
+    """Deletes given folder."""
     delete_path = entry[0]
     series_uid = find_series_uid(delete_path)
     try:
@@ -118,7 +124,9 @@ def delete_folder(entry) -> None:
         logger.exception(e)
         send_series_event(s_events.ERROR, series_uid, 0, delete_path, "Unable to delete folder")
         monitor.send_event(
-            monitor.m_events.PROCESSING, monitor.severity.ERROR, f"Unable to delete folder {delete_path}",
+            monitor.m_events.PROCESSING,
+            monitor.severity.ERROR,
+            f"Unable to delete folder {delete_path}",
         )
 
 
@@ -135,7 +143,7 @@ def find_series_uid(work_dir) -> str:
 
 
 def exit_cleaner(args) -> None:
-    """ Stop the asyncio event loop. """
+    """Stop the asyncio event loop."""
     helper.loop.call_soon_threadsafe(helper.loop.stop)
 
 
@@ -160,25 +168,27 @@ if __name__ == "__main__":
         logger.exception("Cannot start service. Going down.")
         sys.exit(1)
 
-    appliance_name = config.mercure["appliance_name"]
+    appliance_name = config.mercure.appliance_name
 
     logger.info(f"Appliance name = {appliance_name}")
     logger.info(f"Instance  name = {instance_name}")
     logger.info(f"Instance  PID  = {os.getpid()}")
     logger.info(sys.version)
 
-    monitor.configure("cleaner", instance_name, config.mercure["bookkeeper"])
+    monitor.configure("cleaner", instance_name, config.mercure.bookkeeper)
     monitor.send_event(monitor.m_events.BOOT, monitor.severity.INFO, f"PID = {os.getpid()}")
 
-    if len(config.mercure["graphite_ip"]) > 0:
+    if len(config.mercure.graphite_ip) > 0:
         logger.info(f"Sending events to graphite server: {config.mercure['graphite_ip']}")
         graphite_prefix = "mercure." + appliance_name + ".cleaner." + instance_name
         graphyte.init(
-            config.mercure["graphite_ip"], config.mercure["graphite_port"], prefix=graphite_prefix,
+            config.mercure.graphite_ip,
+            config.mercure.graphite_port,
+            prefix=graphite_prefix,
         )
 
     global main_loop
-    main_loop = helper.RepeatedTimer(config.mercure["cleaner_scan_interval"], clean, exit_cleaner, {})
+    main_loop = helper.RepeatedTimer(config.mercure.cleaner_scan_interval, clean, exit_cleaner, {})
     main_loop.start()
 
     helper.g_log("events.boot", 1)

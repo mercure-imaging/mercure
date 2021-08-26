@@ -78,7 +78,7 @@ def run_router(args=None) -> None:
 
     # Check the incoming folder for completed series. To this end, generate a map of all
     # series in the folder with the timestamp of the latest DICOM file as value
-    for entry in os.scandir(config.mercure["incoming_folder"]):
+    for entry in os.scandir(config.mercure.incoming_folder):
         if entry.name.endswith(mercure_names.TAGS) and not entry.is_dir():
             filecount += 1
             seriesString = entry.name.split(mercure_defs.SEPARATOR, 1)[0]
@@ -96,7 +96,7 @@ def run_router(args=None) -> None:
 
     # Check if any of the series exceeds the "series complete" threshold
     for series_entry in series:
-        if (time.time() - series[series_entry]) > config.mercure["series_complete_trigger"]:
+        if (time.time() - series[series_entry]) > config.mercure.series_complete_trigger:
             complete_series[series_entry] = series[series_entry]
 
     # logger.info(f'Files found     = {filecount}')
@@ -156,29 +156,31 @@ if __name__ == "__main__":
         logger.exception("Cannot start service. Going down.")
         sys.exit(1)
 
-    appliance_name = config.mercure["appliance_name"]
+    appliance_name = config.mercure.appliance_name
 
     logger.info(f"Appliance name = {appliance_name}")
     logger.info(f"Instance  name = {instance_name}")
     logger.info(f"Instance  PID  = {os.getpid()}")
     logger.info(sys.version)
 
-    monitor.configure("router", instance_name, config.mercure["bookkeeper"])
+    monitor.configure("router", instance_name, config.mercure.bookkeeper)
     monitor.send_event(monitor.m_events.BOOT, monitor.severity.INFO, f"PID = {os.getpid()}")
 
-    if len(config.mercure["graphite_ip"]) > 0:
-        logger.info(f'Sending events to graphite server: {config.mercure["graphite_ip"]}')
+    if len(config.mercure.graphite_ip) > 0:
+        logger.info(f"Sending events to graphite server: {config.mercure.graphite_ip}")
         graphite_prefix = "mercure." + appliance_name + ".router." + instance_name
-        graphyte.init(config.mercure["graphite_ip"], config.mercure["graphite_port"], prefix=graphite_prefix)
+        graphyte.init(config.mercure.graphite_ip, config.mercure.graphite_port, prefix=graphite_prefix)
 
-    logger.info(f"""Incoming folder: {config.mercure["incoming_folder"]}
-        Studies folder: {config.mercure["studies_folder"]}
-        Outgoing folder: {config.mercure["outgoing_folder"]}
-        Processing folder: {config.mercure["processing_folder"]}""")
+    logger.info(
+        f"""Incoming folder: {config.mercure.incoming_folder}
+        Studies folder: {config.mercure.studies_folder}
+        Outgoing folder: {config.mercure.studies_folder}
+        Processing folder: {config.mercure.studies_folder}"""
+    )
 
     # Start the timer that will periodically trigger the scan of the incoming folder
     global main_loop
-    main_loop = helper.RepeatedTimer(config.mercure["router_scan_interval"], run_router, exit_router, {})
+    main_loop = helper.RepeatedTimer(config.mercure.router_scan_interval, run_router, exit_router, {})
     main_loop.start()
 
     helper.g_log("events.boot", 1)

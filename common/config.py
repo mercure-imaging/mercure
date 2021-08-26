@@ -93,9 +93,10 @@ def read_config() -> Config:
             loaded_config = json.load(json_file)
             # Reset configuration to default values (to ensure all needed
             # keys are present in the configuration)
-            mercure = cast(Config, mercure_defaults)
-            # Now merge with values loaded from configuration file
-            mercure.update(loaded_config)
+            mercure = Config(**{**mercure_defaults, **loaded_config})
+            # mercure = cast(Config, mercure_defaults)
+            # # Now merge with values loaded from configuration file
+            # mercure.update(loaded_config)
 
             # TODO: Check configuration for errors (esp targets and rules)
 
@@ -133,7 +134,7 @@ def save_config() -> None:
         raise ResourceWarning(f"Unable to lock configuration file: {lock_file}")
 
     with open(configuration_file, "w") as json_file:
-        json.dump(mercure, json_file, indent=4)
+        json.dump(mercure.dict(), json_file, indent=4)
 
     try:
         stat = os.stat(configuration_file)
@@ -214,7 +215,7 @@ def check_folders() -> bool:
             ],
             entry,
         )
-        if not Path(mercure[entry]).exists():
+        if not Path(mercure.dict()[entry]).exists():
             error_message = f"Folder not found {mercure[entry]}"
             logger.error(error_message)
             monitor.send_event(monitor.m_events.CONFIG_UPDATE, monitor.severity.CRITICAL, error_message)
