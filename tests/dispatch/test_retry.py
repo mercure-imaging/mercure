@@ -10,10 +10,27 @@ from dispatch.retry import increase_retry
 from common.constants import mercure_names
 
 
+dummy_info = {
+    "action": "route",
+    "uid": "",
+    "uid_type": "series",
+    "triggered_rules": "",
+    "mrn": "",
+    "acc": "",
+    "mercure_version": "",
+    "mercure_appliance": "",
+    "mercure_server": "",
+}
+
+
 def test_execute_increase(fs, mocker):
     source = "/var/data"
     fs.create_dir(source)
-    target = {"dispatch": {"target_ip": "0.0.0.0", "target_aet_target": "a", "target_port": 90}}
+
+    target = {
+        "info": dummy_info,
+        "dispatch": {"target_ip": "0.0.0.0", "target_aet_target": "a", "target_port": 90},
+    }
     fs.create_file("/var/data/" + mercure_names.TASKFILE, contents=json.dumps(target))
     result = increase_retry(source, 5, 50)
 
@@ -28,7 +45,15 @@ def test_execute_increase(fs, mocker):
 def test_execute_increase_fail(fs, mocker):
     source = "/var/data"
     fs.create_dir(source)
-    target = {"dispatch": {"target_ip": "0.0.0.0", "target_aet_target": "a", "target_port": 90, "retries": 5,}}
+    target = {
+        "info": dummy_info,
+        "dispatch": {
+            "target_ip": "0.0.0.0",
+            "target_aet_target": "a",
+            "target_port": 90,
+            "retries": 5,
+        },
+    }
     fs.create_file("/var/data/" + mercure_names.TASKFILE, contents=json.dumps(target))
     result = increase_retry(source, 5, 50)
 

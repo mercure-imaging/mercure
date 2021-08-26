@@ -311,7 +311,9 @@ def push_serieslevel_routing(
     push_serieslevel_outgoing(triggered_rules, file_list, series_UID, tags_list, selected_targets)
 
 
-def push_serieslevel_processing(triggered_rules: Dict[str, Literal[True]], file_list: List[str], series_UID: str, tags_list: Dict[str, str]) -> bool:
+def push_serieslevel_processing(
+    triggered_rules: Dict[str, Literal[True]], file_list: List[str], series_UID: str, tags_list: Dict[str, str]
+) -> bool:
     # Rules with action "processing" or "processing & routing" need to be processed separately (because the processing step can create varying results).
     # Thus, loop over all series-level rules that have triggered.
     for current_rule in triggered_rules:
@@ -389,7 +391,9 @@ def push_serieslevel_processing(triggered_rules: Dict[str, Literal[True]], file_
     return True
 
 
-def push_serieslevel_notification(triggered_rules: Dict[str, Literal[True]], file_list: List[str], series_UID: str, tags_list: Dict[str, str]) -> bool:
+def push_serieslevel_notification(
+    triggered_rules: Dict[str, Literal[True]], file_list: List[str], series_UID: str, tags_list: Dict[str, str]
+) -> bool:
     notification_rules_count = 0
 
     for current_rule in triggered_rules:
@@ -583,7 +587,9 @@ def route_error_files() -> None:
             lock.free()
 
     if error_files_found > 0:
-        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, f"Error parsing {error_files_found} incoming files")
+        monitor.send_event(
+            monitor.m_events.PROCESSING, monitor.severity.ERROR, f"Error parsing {error_files_found} incoming files"
+        )
     return
 
 

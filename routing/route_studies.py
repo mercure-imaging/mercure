@@ -79,7 +79,11 @@ def is_study_locked(folder: str) -> bool:
     Returns true if the given folder is locked, i.e. if another process is already working on the study
     """
     path = Path(folder)
-    folder_status = (path / mercure_names.LOCK).exists() or (path / mercure_names.PROCESSING).exists() or len(list(path.glob(mercure_names.DCMFILTER))) == 0
+    folder_status = (
+        (path / mercure_names.LOCK).exists()
+        or (path / mercure_names.PROCESSING).exists()
+        or len(list(path.glob(mercure_names.DCMFILTER))) == 0
+    )
     return folder_status
 
 
@@ -90,7 +94,7 @@ def is_study_complete(folder: str) -> bool:
     try:
         # Read stored task file to determine completeness criteria
         with open(Path(folder) / mercure_names.TASKFILE, "r") as json_file:
-            task: TaskHasStudy = json.load(json_file)
+            task: TaskHasStudy = TaskHasStudy(**json.load(json_file))
 
         study = task["study"]
 
@@ -106,10 +110,12 @@ def is_study_complete(folder: str) -> bool:
             monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_text)
             return False
 
-        complete_required_series = study["complete_required_series"] if "complete_required_series" in study else ""
+        complete_required_series = study.get("complete_required_series", "")
 
         # If trigger condition is received series but list of required series is missing, then switch to timeout mode instead
-        if (complete_trigger == mercure_rule.STUDY_TRIGGER_CONDITION_RECEIVED_SERIES) and (not complete_required_series):
+        if (complete_trigger == mercure_rule.STUDY_TRIGGER_CONDITION_RECEIVED_SERIES) and (
+            not complete_required_series
+        ):
             complete_trigger = mercure_rule.STUDY_TRIGGER_CONDITION_TIMEOUT
             warning_text = f"Missing series for trigger condition in study folder {folder}. Using timeout instead"
             logger.warning(warning_text)
@@ -141,8 +147,8 @@ def check_study_timeout(task: TaskHasStudy) -> bool:
     """
     Checks if the duration since the last series of the study was received exceeds the study completion timeout
     """
-    study = task["study"]
-    last_received_string = study["last_receive_time"]
+    study = task.study
+    last_received_string = study.last_receive_time
     if not last_received_string:
         return False
 
@@ -160,8 +166,8 @@ def check_study_series(task: TaskHasStudy, required_series: str) -> bool:
     received_series = []
 
     # Fetch the list of received series descriptions from the task file
-    if (mercure_study.RECEIVED_SERIES in task["study"]) and (isinstance(task["study"]["received_series"], list)):
-        received_series = task["study"]["received_series"]
+    if (task.study.received_series) and (isinstance(task.study.received_series, list)):
+        received_series = task.study.received_series
 
     # Check if the completion criteria is fulfilled
     return rule_evaluation.parse_completion_series(required_series, received_series)
@@ -256,7 +262,7 @@ def push_studylevel_notification(study: str, task: Task) -> bool:
     Executes the study-level reception notification
     """
     # Check if the applied_rule is available
-    current_rule = task["info"].get("applied_rule", "")
+    current_rule = task.info.applied_rule
     if not current_rule:
         error_text = f"Missing applied_rule in task file in study {study}"
         logger.exception(error_text)

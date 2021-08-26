@@ -23,7 +23,7 @@ logger = daiquiri.getLogger("process_series")
 
 def nomad_runtime(task: Task, folder: str) -> bool:
     nomad_connection = nomad.Nomad(host="172.17.0.1", timeout=5)
-    module: Module = cast(Module, task["process"])
+    module: Module = cast(Module, task.process)
 
     f_path = Path(folder)
 
@@ -38,7 +38,7 @@ def nomad_runtime(task: Task, folder: str) -> bool:
 
 def docker_runtime(task: Task, folder: str) -> bool:
     docker_client = docker.from_env()
-    module: Module = cast(Module, task["process"])
+    module: Module = cast(Module, task.process)
 
     def decode_task(option: str) -> Any:
         option_dict: Any
@@ -132,11 +132,11 @@ def process_series(folder) -> None:
             raise Exception(f"Task file does not exist")
 
         with open(taskfile_path, "r") as f:
-            task: Task = json.load(f)
+            task: Task = Task(**json.load(f))
 
         # TODO: Something needs to figure out whether to dispatch
 
-        if task.get("dispatch"):
+        if task.dispatch:
             needs_dispatching = True
 
         f_path = Path(folder)

@@ -151,9 +151,7 @@ def save_config() -> None:
         # Can't delete lock file, so something must be seriously wrong
         error_message = f"Unable to remove lock file {lock_file}"
         logger.error(error_message)
-        monitor.send_event(
-            monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message
-        )
+        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
         return
 
 
@@ -184,9 +182,7 @@ def write_configfile(json_content) -> None:
         # Can't delete lock file, so something must be seriously wrong
         error_message = f"Unable to remove lock file {lock_file}"
         logger.error(error_message)
-        monitor.send_event(
-            monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message
-        )
+        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
         return
 
 

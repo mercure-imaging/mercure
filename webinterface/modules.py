@@ -1,3 +1,4 @@
+from mercure.common.types import Module
 from starlette.applications import Starlette
 from starlette.responses import HTMLResponse, Response
 from starlette.responses import PlainTextResponse
@@ -34,13 +35,15 @@ modules_app = Starlette()
 async def save_module(form, name) -> Response:
     """We already read the config by this time"""
 
-    config.mercure.modules[name] = {
-        "url": form.get("url", ""),
-        "docker_tag": form.get("docker_tag", None),
-        "additional_volumes": form.get("additional_volumes", None),
-        "environment": form.get("environment", None),
-        "docker_arguments": form.get("docker_arguments", None),
-    }
+    config.mercure.modules[name] = Module(
+        **{
+            "url": form.get("url", ""),
+            "docker_tag": form.get("docker_tag", None),
+            "additional_volumes": form.get("additional_volumes", None),
+            "environment": form.get("environment", None),
+            "docker_arguments": form.get("docker_arguments", None),
+        }
+    )
     try:
         config.save_config()
     except:

@@ -44,12 +44,16 @@ def test_route_series(fs, mocker):
         },
     )
 
-    mocker.patch("routing.route_series.push_series_serieslevel", new=mocker.spy(routing.route_series, "push_series_serieslevel"))
+    mocker.patch(
+        "routing.route_series.push_series_serieslevel", new=mocker.spy(routing.route_series, "push_series_serieslevel")
+    )
     mocker.patch(
         "routing.route_series.push_serieslevel_outgoing",
         new=mocker.spy(routing.route_series, "push_serieslevel_outgoing"),
     )
-    mocker.patch("routing.generate_taskfile.create_series_task", new=mocker.spy(routing.generate_taskfile, "create_series_task"))
+    mocker.patch(
+        "routing.generate_taskfile.create_series_task", new=mocker.spy(routing.generate_taskfile, "create_series_task")
+    )
 
     mocker.patch("router.route_series", new=mocker.spy(router, "route_series"))
     # mocker.patch("routing.route_series.parse_ascconv", new=lambda x: {})
@@ -76,12 +80,12 @@ def test_route_series(fs, mocker):
 
     with open(out_path / "task.json") as e:
         task: Task = json.load(e)
-        assert task["dispatch"]["target_name"] == "test_target"  # type: ignore
-        assert task["info"]["uid"] == uid
-        assert task["info"]["uid_type"] == "series"
-        assert task["info"]["triggered_rules"]["catchall"] == True  # type: ignore
-        assert task["process"] == {}
-        assert task["study"] == {}
+        assert task.dispatch.target_name == "test_target"  # type: ignore
+        assert task.info.uid == uid
+        assert task.info.uid_type == "series"
+        assert task.info.triggered_rules["catchall"] == True  # type: ignore
+        assert task.process == {}
+        assert task.study == {}
 
     # routing.generate_taskfile.create_series_task.assert_called_once()
 
