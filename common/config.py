@@ -93,10 +93,8 @@ def read_config() -> Config:
             loaded_config = json.load(json_file)
             # Reset configuration to default values (to ensure all needed
             # keys are present in the configuration)
-            mercure = Config(**{**mercure_defaults, **loaded_config})
-            # mercure = cast(Config, mercure_defaults)
-            # # Now merge with values loaded from configuration file
-            # mercure.update(loaded_config)
+            merged: Dict = {**mercure_defaults, **loaded_config}
+            mercure = Config(**merged)
 
             # TODO: Check configuration for errors (esp targets and rules)
 

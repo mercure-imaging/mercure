@@ -57,11 +57,11 @@ def compose_task(
         # Add general information about the job
         info=add_info(uid, uid_type, triggered_rules, applied_rule, tags_list),
         # Add dispatch information -- completed only if the job includes a dispatching step
-        dispatch=add_dispatching(uid, applied_rule, tags_list, target) or {},
+        dispatch=add_dispatching(uid, applied_rule, tags_list, target) or cast(EmptyDict, {}),
         # Add processing information -- completed only if the job includes a processing step
-        process=add_processing(uid, applied_rule, tags_list) or {},
+        process=add_processing(uid, applied_rule, tags_list) or cast(EmptyDict, {}),
         # Add information about the study, included all collected series
-        study=add_study(uid, uid_type, applied_rule, tags_list) or EmptyDict(),
+        study=add_study(uid, uid_type, applied_rule, tags_list) or cast(EmptyDict, {}),
     )
 
 
@@ -142,6 +142,8 @@ def add_dispatching(uid: str, applied_rule: str, tags_list: Dict[str, str], targ
         in (mercure_actions.ROUTE, mercure_actions.BOTH)
     ) and target_used:
         target_info: Target = config.mercure.targets[target_used]
+        assert target_info.ip is not None
+        assert target_info.port is not None
         return TaskDispatch(
             target_name=target_used,
             target_ip=target_info.ip,
