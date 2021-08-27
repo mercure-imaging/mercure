@@ -27,7 +27,7 @@ from process.process_series import process_series, move_results
 
 
 daiquiri.setup(
-    level=logging.DEBUG,
+    level=logging.INFO,
     outputs=(
         daiquiri.output.Stream(
             formatter=daiquiri.formatter.ColorFormatter(
@@ -54,7 +54,7 @@ def search_folder(counter) -> bool:
     global processor_is_locked
     global nomad_connection
     helper.g_log("events.run", 1)
-    logger.debug("Search folder...")
+
     tasks = {}
 
     complete = []
@@ -158,7 +158,6 @@ def run_processor(args=None) -> None:
     """Main processing function that is called every second."""
     if helper.is_terminated():
         return
-    logger.debug("Running processor")
     try:
         config.read_config()
     except Exception:

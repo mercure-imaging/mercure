@@ -24,7 +24,10 @@ daiquiri.setup(level=logging.INFO)
 logger = daiquiri.getLogger("users")
 
 users_timestamp: float = 0.0
-users_filename = os.path.realpath(os.path.dirname(os.path.realpath(__file__)) + "/../configuration/users.json")
+users_filename = (
+    os.getenv("MERCURE_CONFIG_FOLDER")
+    or os.path.realpath(os.path.dirname(os.path.realpath(__file__)) + "/../configuration")
+) + "/users.json"
 
 users_list: Dict[str, User] = {}
 

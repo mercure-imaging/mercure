@@ -1,5 +1,5 @@
 FROM ubuntu:18.04
-RUN apt update && apt -y upgrade && apt install -y build-essential wget git dcmtk jq inetutils-ping
+RUN apt update && apt -y upgrade && apt install -y build-essential wget git dcmtk jq inetutils-ping entr
 RUN useradd -ms /bin/bash mercure
 RUN mkdir -p /home/mercure/mercure/installation /home/mercure/mercure/configuration
 # Note: you must run this Dockerfile from the root directory of the project
@@ -16,7 +16,7 @@ USER root
 # This fixes the issue that every code update rebuilds Conda
 COPY ./ /home/mercure/mercure/
 # The configuration and data folders is probably the only thing that mercure ACTUALLY needs to write to
-RUN chown -R mercure /home/mercure/mercure/configuration
+RUN mkdir /home/mercure/mercure-config && chown -R mercure /home/mercure/mercure-config
 RUN mkdir -p /home/mercure/mercure-data/incoming \
           /home/mercure/mercure-data/studies \
           /home/mercure/mercure-data/outgoing \
@@ -29,3 +29,4 @@ RUN chown -R mercure /home/mercure/mercure-data
 VOLUME /home/mercure/mercure/configuration
 VOLUME /home/mercure/mercure-data
 ENV DEBUG=False
+ENV MERCURE_CONFIG_FOLDER=/home/mercure/mercure-config

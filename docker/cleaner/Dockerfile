@@ -1,2 +1,2 @@
 FROM yarra/mercure-base:latest
-CMD /home/mercure/mercure-env/bin/python /home/mercure/mercure/cleaner.py
+CMD ls /home/mercure/mercure/cleaner.py /home/mercure/mercure/**/*.py | entr -r /home/mercure/mercure-env/bin/python /home/mercure/mercure/cleaner.py

@@ -1,0 +1,10 @@
+docker/
+nomad/
+vagrant/
+.pytest_cache
+.mypy_cache
+.github
+__pycache__
+docs/
+build-docker.sh
+index.html.*

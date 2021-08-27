@@ -107,7 +107,13 @@ class SessionAuthBackend(AuthenticationBackend):
         return AuthCredentials(credentials), ExtendedUser(username, is_admin)
 
 
-webgui_config = Config("configuration/webgui.env")
+webgui_config = Config(
+    (
+        os.getenv("MERCURE_CONFIG_FOLDER")
+        or os.path.realpath(os.path.dirname(os.path.realpath(__file__)) + "/configuration")
+    )
+    + "/webgui.env"
+)
 # Note: PutSomethingRandomHere is the default value in the shipped configuration file.
 #       The app will not start with this value, forcing the users to set their onw secret
 #       key. Therefore, the value is used as default here as well.
