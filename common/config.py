@@ -23,9 +23,10 @@ from common.types import Config
 logger = daiquiri.getLogger("config")
 
 configuration_timestamp: float = 0
-configuration_filename = os.path.realpath(
-    os.path.dirname(os.path.realpath(__file__)) + "/../configuration/mercure.json"
-)
+configuration_filename = (
+    os.getenv("MERCURE_CONFIG_FOLDER")
+    or os.path.realpath(os.path.dirname(os.path.realpath(__file__)) + "/../configuration")
+) + "/mercure.json"
 
 mercure_defaults = {
     "appliance_name": "master",

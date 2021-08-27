@@ -11,7 +11,10 @@ job "mercure" {
         sidecar_service {}
       }
     }
-    
+    volume "code" {
+      type      = "host"
+      source    = "mercure-code"
+    }
     volume "config" {
       type      = "host"
       source    = "mercure-config"
@@ -52,8 +55,13 @@ job "mercure" {
       driver = "docker"
 
       volume_mount {
+        volume      = "code"
+        destination = "/home/mercure/mercure"
+      }
+
+      volume_mount {
         volume      = "config"
-        destination = "/home/mercure/mercure/configuration"
+        destination = "/home/mercure/mercure-config"
       }
 
       config {
@@ -70,7 +78,7 @@ job "mercure" {
 
       volume_mount {
         volume      = "config"
-        destination = "/home/mercure/mercure/configuration"
+        destination = "/home/mercure/mercure-config"
       }
       volume_mount {
         volume      = "data"
@@ -88,10 +96,13 @@ job "mercure" {
 
     task "dispatcher" {
       driver = "docker"
-
+      volume_mount {
+        volume      = "code"
+        destination = "/home/mercure/mercure"
+      }
       volume_mount {
         volume      = "config"
-        destination = "/home/mercure/mercure/configuration"
+        destination = "/home/mercure/mercure-config"
       }
       volume_mount {
         volume      = "data"
@@ -108,15 +119,19 @@ job "mercure" {
     }
     task "router" {
       driver = "docker"
-
+      volume_mount {
+        volume      = "code"
+        destination = "/home/mercure/mercure"
+      }
       volume_mount {
         volume      = "config"
-        destination = "/home/mercure/mercure/configuration"
+        destination = "/home/mercure/mercure-config"
       }
       volume_mount {
         volume      = "data"
         destination = "/home/mercure/mercure-data"
       }
+      
       config {
         image = "yarra/mercure-router:dev"
         ports = ["dicom"]
@@ -128,10 +143,13 @@ job "mercure" {
     }
     task "processor" {
       driver = "docker"
-
+      volume_mount {
+        volume      = "code"
+        destination = "/home/mercure/mercure"
+      }
       volume_mount {
         volume      = "config"
-        destination = "/home/mercure/mercure/configuration"
+        destination = "/home/mercure/mercure-config"
       }
       volume_mount {
         volume      = "data"
@@ -207,7 +225,7 @@ job "mercure" {
       }
       volume_mount {
         volume      = "config"
-        destination = "/home/mercure/mercure/configuration"
+        destination = "/home/mercure/mercure-config"
       }
       volume_mount {
         volume      = "data"

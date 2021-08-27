@@ -120,7 +120,7 @@ def test_completion_series(value: str) -> str:
 
 
 def parse_completion_series(completion_str: str, received_series: list) -> bool:
-    """Evaluates the configuration string defining which series are required using the list of received series as input. 
+    """Evaluates the configuration string defining which series are required using the list of received series as input.
     Returns true if all required series have arrived, otherwise false is returned."""
 
     if len(received_series) == 0:
@@ -198,4 +198,3 @@ def parse_completion_series(completion_str: str, received_series: list) -> bool:
 
 # if __name__ == "__main__":
 #    print(parse_completion_series("'SAG' or ('COR' and 'AX')", ["AX T2", "T1-COR", "SAG", "T2", "T1"]))
-

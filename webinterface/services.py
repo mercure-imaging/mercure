@@ -8,7 +8,10 @@ import daiquiri
 daiquiri.setup(level=logging.INFO)
 logger = daiquiri.getLogger("config")
 
-services_filename = os.path.realpath(os.path.dirname(os.path.realpath(__file__)) + "/../configuration/services.json")
+services_filename = (
+    os.getenv("MERCURE_CONFIG_FOLDER")
+    or os.path.realpath(os.path.dirname(os.path.realpath(__file__)) + "/../configuration")
+) + "/services.json"
 
 services_list = {}
 
