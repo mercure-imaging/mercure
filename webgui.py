@@ -22,6 +22,7 @@ import html
 from pathlib import Path
 from typing import Dict, Optional, Tuple, Union, List
 import docker
+import hupper
 
 # Starlette-related includes
 from starlette.applications import Starlette
@@ -1132,7 +1133,11 @@ async def emergency_response(request) -> Response:
 def launch_emergency_app() -> None:
     """Launches a minimal application to inform the user about the incorrect configuration"""
     # emergency_app = Starlette(debug=True)
-    emergency_app = Router([Route("/{whatever:path}", endpoint=emergency_response, methods=["GET", "POST"]),])
+    emergency_app = Router(
+        [
+            Route("/{whatever:path}", endpoint=emergency_response, methods=["GET", "POST"]),
+        ]
+    )
     uvicorn.run(emergency_app, host=WEBGUI_HOST, port=WEBGUI_PORT)
 
 
@@ -1140,7 +1145,11 @@ def launch_emergency_app() -> None:
 ## Entry function
 ###################################################################################
 
-if __name__ == "__main__":
+
+def main(args=sys.argv[1:]):
+    if "--reload" in args or os.getenv("MERCURE_ENV", "PROD").lower() == "dev":
+        # start_reloader will only return in a monitored subprocess
+        reloader = hupper.start_reloader("webgui.main")
     try:
         services.read_services()
         config.read_config()
@@ -1168,3 +1177,7 @@ if __name__ == "__main__":
 
     # Process will exit here
     monitor.send_event(monitor.m_events.SHUTDOWN, monitor.severity.INFO, "")
+
+
+if __name__ == "__main__":
+    main()

@@ -15,6 +15,7 @@ import logging
 import daiquiri
 import nomad
 from pathlib import Path
+import hupper
 
 # App-specific includes
 import common.helper as helper
@@ -192,7 +193,11 @@ def terminate_process(signalNumber, frame) -> None:
     helper.trigger_terminate()
 
 
-if __name__ == "__main__":
+def main(args=sys.argv[1:]):
+    if "--reload" in args or os.getenv("MERCURE_ENV", "PROD").lower() == "dev":
+        # start_reloader will only return in a monitored subprocess
+        reloader = hupper.start_reloader("processor.main")
+
     logger.info("")
     logger.info(f"mercure DICOM Processor ver {mercure_defs.VERSION}")
     logger.info("--------------------------------")
@@ -245,3 +250,7 @@ if __name__ == "__main__":
     # Process will exit here once the asyncio loop has been stopped
     monitor.send_event(monitor.m_events.SHUTDOWN, monitor.severity.INFO)
     logger.info("Going down now")
+
+
+if __name__ == "__main__":
+    main()

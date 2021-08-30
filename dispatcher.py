@@ -10,6 +10,7 @@ import sys
 from pathlib import Path
 import daiquiri
 import graphyte
+import hupper
 
 import common.config as config
 import common.helper as helper
@@ -44,7 +45,7 @@ def terminate_process(signalNumber, frame) -> None:
 
 
 def dispatch(args) -> None:
-    """ Main entry function. """
+    """Main entry function."""
     if helper.is_terminated():
         return
 
@@ -80,11 +81,14 @@ def dispatch(args) -> None:
 
 
 def exit_dispatcher(args) -> None:
-    """ Stop the asyncio event loop. """
+    """Stop the asyncio event loop."""
     helper.loop.call_soon_threadsafe(helper.loop.stop)
 
 
-if __name__ == "__main__":
+def main(args=sys.argv[1:]):
+    if "--reload" in args or os.getenv("MERCURE_ENV", "PROD").lower() == "dev":
+        # start_reloader will only return in a monitored subprocess
+        reloader = hupper.start_reloader("dispatcher.main")
     logger.info("")
     logger.info(f"mercure DICOM Dispatcher ver {mercure_defs.VERSION}")
     logger.info("-----------------------------")
@@ -118,7 +122,9 @@ if __name__ == "__main__":
         logging.info(f'Sending events to graphite server: {config.mercure["graphite_ip"]}')
         graphite_prefix = "mercure." + appliance_name + ".dispatcher." + instance_name
         graphyte.init(
-            config.mercure["graphite_ip"], config.mercure["graphite_port"], prefix=graphite_prefix,
+            config.mercure["graphite_ip"],
+            config.mercure["graphite_port"],
+            prefix=graphite_prefix,
         )
 
     logger.info(f"Dispatching folder: {config.mercure['outgoing_folder']}")
@@ -134,3 +140,7 @@ if __name__ == "__main__":
 
     monitor.send_event(monitor.m_events.SHUTDOWN, monitor.severity.INFO)
     logging.info("Going down now")
+
+
+if __name__ == "__main__":
+    main()

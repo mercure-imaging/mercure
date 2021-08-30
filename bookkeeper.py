@@ -5,6 +5,8 @@ The bookkeeper service of mercure, which receives notifications from all mercure
 and stores the information in a Postgres database.
 """
 # Standard python includes
+import os
+import sys
 from sqlalchemy.engine.base import Connection
 import uvicorn
 import datetime
@@ -22,6 +24,7 @@ from starlette.config import Config
 from starlette.datastructures import URL, Secret
 import databases
 import sqlalchemy
+import hupper
 
 # App-specific includes
 import common.monitor as monitor
@@ -343,10 +346,18 @@ async def post_series_event(request) -> JSONResponse:
 ## Main entry function
 ###################################################################################
 
-if __name__ == "__main__":
+
+def main(args=sys.argv[1:]):
+    if "--reload" in args or os.getenv("MERCURE_ENV", "PROD").lower() == "dev":
+        # start_reloader will only return in a monitored subprocess
+        reloader = hupper.start_reloader("router.main")
     logger.info("")
     logger.info(f"mercure Bookkeeper ver {mercure_defs.VERSION}")
     logger.info("-----------------------------")
     logger.info("")
 
     uvicorn.run(app, host=BOOKKEEPER_HOST, port=BOOKKEEPER_PORT)
+
+
+if __name__ == "__main__":
+    main()

@@ -8,6 +8,8 @@ COPY ./configuration /home/mercure/mercure/configuration
 COPY ./requirements.txt /home/mercure/mercure/
 # This fixes the install script trying to write the configuration files
 RUN chown -R mercure /home/mercure/mercure/configuration
+# Make sure we can definitely read everything
+RUN chmod -R o+rx /home/mercure/mercure
 USER mercure
 WORKDIR /home/mercure/mercure
 RUN /home/mercure/mercure/installation/install.sh
@@ -15,6 +17,8 @@ RUN /home/mercure/mercure/installation/install.sh
 USER root
 # This fixes the issue that every code update rebuilds Conda
 COPY ./ /home/mercure/mercure/
+RUN chmod -R o+rx /home/mercure/mercure
+
 # The configuration and data folders is probably the only thing that mercure ACTUALLY needs to write to
 RUN mkdir /home/mercure/mercure-config && chown -R mercure /home/mercure/mercure-config
 RUN mkdir -p /home/mercure/mercure-data/incoming \

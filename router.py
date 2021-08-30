@@ -12,6 +12,8 @@ import sys
 import graphyte
 import logging
 import daiquiri
+import hupper
+
 from typing import Dict
 
 # App-specific includes
@@ -133,7 +135,11 @@ def exit_router(args) -> None:
 
 
 # Main entry point of the router module
-if __name__ == "__main__":
+def main(args=sys.argv[1:]):
+    if "--reload" in args or os.getenv("MERCURE_ENV", "PROD").lower() == "dev":
+        # start_reloader will only return in a monitored subprocess
+        reloader = hupper.start_reloader("router.main")
+
     logger.info("")
     logger.info(f"mercure DICOM Router ver {mercure_defs.VERSION}")
     logger.info("-----------------------------")
@@ -171,10 +177,12 @@ if __name__ == "__main__":
         graphite_prefix = "mercure." + appliance_name + ".router." + instance_name
         graphyte.init(config.mercure["graphite_ip"], config.mercure["graphite_port"], prefix=graphite_prefix)
 
-    logger.info(f"""Incoming folder: {config.mercure["incoming_folder"]}
+    logger.info(
+        f"""Incoming folder: {config.mercure["incoming_folder"]}
         Studies folder: {config.mercure["studies_folder"]}
         Outgoing folder: {config.mercure["outgoing_folder"]}
-        Processing folder: {config.mercure["processing_folder"]}""")
+        Processing folder: {config.mercure["processing_folder"]}"""
+    )
 
     # Start the timer that will periodically trigger the scan of the incoming folder
     global main_loop
@@ -189,3 +197,7 @@ if __name__ == "__main__":
     # Process will exit here once the asyncio loop has been stopped
     monitor.send_event(monitor.m_events.SHUTDOWN, monitor.severity.INFO)
     logger.info("Going down now")
+
+
+if __name__ == "__main__":
+    main()

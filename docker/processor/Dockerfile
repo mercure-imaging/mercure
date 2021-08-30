@@ -1,3 +1,4 @@
 FROM yarra/mercure-base:latest
 VOLUME ["/var/run/docker.sock"]
-CMD ls /home/mercure/mercure/processor.py /home/mercure/mercure/**/*.py | entr -r /home/mercure/mercure-env/bin/python -u /home/mercure/mercure/processor.py
+# ls /home/mercure/mercure/processor.py /home/mercure/mercure/**/*.py | entr -r
+CMD /home/mercure/mercure-env/bin/python -u /home/mercure/mercure/processor.py

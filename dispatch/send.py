@@ -51,7 +51,11 @@ def _create_command(target_info, folder) -> str:
 
 
 def execute(
-    source_folder: Path, success_folder: Path, error_folder: Path, retry_max, retry_delay,
+    source_folder: Path,
+    success_folder: Path,
+    error_folder: Path,
+    retry_max,
+    retry_delay,
 ):
     """
     Execute the dcmsend command. It will create a .sending file to indicate that

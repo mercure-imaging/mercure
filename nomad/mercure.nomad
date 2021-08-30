@@ -1,9 +1,12 @@
 job "mercure" {
   datacenters = ["dc1"]
   type        = "service"
-    
-  group "core" {
+  
+  meta {
+    environment = "dev"
+  }
 
+  group "core" {
     service {
       name = "storage"
       port = 22
@@ -53,7 +56,9 @@ job "mercure" {
 
     task "ui" {
       driver = "docker"
-
+      env {
+        MERCURE_ENV = "${NOMAD_META_environment}"
+      }
       volume_mount {
         volume      = "code"
         destination = "/home/mercure/mercure"
@@ -76,6 +81,10 @@ job "mercure" {
     task "receiver" {
       driver = "docker"
 
+      env {
+        MERCURE_ENV = "${NOMAD_META_environment}"
+      }
+
       volume_mount {
         volume      = "config"
         destination = "/home/mercure/mercure-config"
@@ -96,6 +105,9 @@ job "mercure" {
 
     task "dispatcher" {
       driver = "docker"
+      env {
+        MERCURE_ENV = "${NOMAD_META_environment}"
+      }
       volume_mount {
         volume      = "code"
         destination = "/home/mercure/mercure"
@@ -119,6 +131,9 @@ job "mercure" {
     }
     task "router" {
       driver = "docker"
+      env {
+        MERCURE_ENV = "${NOMAD_META_environment}"
+      }
       volume_mount {
         volume      = "code"
         destination = "/home/mercure/mercure"
@@ -143,6 +158,9 @@ job "mercure" {
     }
     task "processor" {
       driver = "docker"
+      env {
+        MERCURE_ENV = "${NOMAD_META_environment}"
+      }
       volume_mount {
         volume      = "code"
         destination = "/home/mercure/mercure"
@@ -233,6 +251,7 @@ job "mercure" {
       }
       env {
         DATABASE_URL = "postgresql://mercure@localhost"
+        MERCURE_ENV = "${NOMAD_META_environment}"
       }
       resources {
         memory=128
