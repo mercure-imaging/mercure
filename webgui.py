@@ -1146,7 +1146,7 @@ def launch_emergency_app() -> None:
 ###################################################################################
 
 
-def main(args=sys.argv[1:]):
+def main(args=sys.argv[1:]) -> None:
     if "--reload" in args or os.getenv("MERCURE_ENV", "PROD").lower() == "dev":
         # start_reloader will only return in a monitored subprocess
         reloader = hupper.start_reloader("webgui.main")

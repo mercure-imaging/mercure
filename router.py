@@ -14,7 +14,7 @@ import logging
 import daiquiri
 import hupper
 
-from typing import Dict
+from typing import Dict, Optional
 
 # App-specific includes
 from common.constants import mercure_config, mercure_defs, mercure_folders, mercure_names
@@ -37,6 +37,7 @@ daiquiri.setup(
 )
 # Create local logger instance
 logger = daiquiri.getLogger("router")
+main_loop = None  # type: helper.RepeatedTimer # type: ignore
 
 
 def terminate_process(signalNumber, frame) -> None:
@@ -135,7 +136,7 @@ def exit_router(args) -> None:
 
 
 # Main entry point of the router module
-def main(args=sys.argv[1:]):
+def main(args=sys.argv[1:]) -> None:
     if "--reload" in args or os.getenv("MERCURE_ENV", "PROD").lower() == "dev":
         # start_reloader will only return in a monitored subprocess
         reloader = hupper.start_reloader("router.main")

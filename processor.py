@@ -38,6 +38,7 @@ daiquiri.setup(
     ),
 )
 logger = daiquiri.getLogger("processor")
+main_loop = None  # type: helper.RepeatedTimer # type: ignore
 
 
 processor_lockfile = None
@@ -193,7 +194,7 @@ def terminate_process(signalNumber, frame) -> None:
     helper.trigger_terminate()
 
 
-def main(args=sys.argv[1:]):
+def main(args=sys.argv[1:]) -> None:
     if "--reload" in args or os.getenv("MERCURE_ENV", "PROD").lower() == "dev":
         # start_reloader will only return in a monitored subprocess
         reloader = hupper.start_reloader("processor.main")

@@ -8,6 +8,7 @@ import os
 import signal
 import sys
 from pathlib import Path
+from typing import Optional
 import daiquiri
 import graphyte
 import hupper
@@ -31,6 +32,7 @@ daiquiri.setup(
     ),
 )
 logger = daiquiri.getLogger("dispatcher")
+main_loop = None  # type: helper.RepeatedTimer # type: ignore
 
 
 def terminate_process(signalNumber, frame) -> None:
@@ -85,7 +87,7 @@ def exit_dispatcher(args) -> None:
     helper.loop.call_soon_threadsafe(helper.loop.stop)
 
 
-def main(args=sys.argv[1:]):
+def main(args=sys.argv[1:]) -> None:
     if "--reload" in args or os.getenv("MERCURE_ENV", "PROD").lower() == "dev":
         # start_reloader will only return in a monitored subprocess
         reloader = hupper.start_reloader("dispatcher.main")
