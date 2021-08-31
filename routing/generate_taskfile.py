@@ -123,8 +123,12 @@ def add_study(uid: str, uid_type: Literal["series", "study"], applied_rule: str,
 
 def add_dispatching(uid: str, applied_rule: str, tags_list: Dict[str, str], target: str) -> Optional[TaskDispatch]:
     """
-    Adds information about the desired dispatching step into the task file, which is evaluated by the dispatcher
+    Adds information about the desired dispatching step into the task file, which is evaluated by the dispatcher. For series-level dispatching,
+    the target information is provided in string "target", as dispatch operations from multiple rules to the same target are combined (to avoid
+    double sending). In all other cases, the applied_rule is provided and the target information is taken from the rule definition.
     """
+    perform_dispatch = False
+
     if not applied_rule and not target:
         # applied_rule and target should not be empty at the same time!
         logger.warning(f"Applied_rule and target empty. Cannot add dispatch information for UID {uid}")
@@ -132,24 +136,38 @@ def add_dispatching(uid: str, applied_rule: str, tags_list: Dict[str, str], targ
 
     target_used: str = target
 
-    # If no target is provided already (as done in routing-only mode), read the target defined in the applied rule
-    if not target_used:
+    # Check if a target string is provided (i.e., job is from series-level dispatching). If so, the images should be dispatched in any case
+    if target_used:
+        perform_dispatch = True
+    else:
+        # If no target string is provided, read the target defined in the provided applied rule
         target_used = config.mercure["rules"][applied_rule].get("target", "")
+        # Applied_rule involves dispatching and target has been set? Then go forward with dispatching
+        if (config.mercure["rules"][applied_rule].get(mercure_rule.ACTION, mercure_actions.PROCESS) in (mercure_actions.ROUTE, mercure_actions.BOTH)) and target_used:            
+            perform_dispatch = True
 
-    # Fill the dispatching section, if routing has been selected and a target has been provided
-    if (config.mercure["rules"][applied_rule].get(mercure_rule.ACTION, mercure_actions.PROCESS) in (mercure_actions.ROUTE, mercure_actions.BOTH)) and target_used:
-        target_info: Target = config.mercure["targets"][target_used]
-        return {
-            "target_name": target_used,
-            "target_ip": target_info["ip"],
-            "target_port": target_info["port"],
-            "target_aet_target": target_info.get("aet_target", "ANY-SCP"),
-            "target_aet_source": target_info.get("aet_source", "mercure"),
-            "retries": None,
-            "next_retry_at": None,
-        }
+    # If dispatching should not be performed, just return
+    if not perform_dispatch:
+        return None
 
-    return None
+    # Check if the selected target actually exists in the configuration (could have been deleted by now)
+    if not config.mercure["targets"].get(target_used, {}):
+        error_message = f"Target {target_used} does not exist for UID {uid}"
+        logger.error(error_message)
+        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
+        return None
+
+    # All looks good, fill the dispatching section and return it    
+    target_info: Target = config.mercure["targets"][target_used]
+    return {
+        "target_name": target_used,
+        "target_ip": target_info["ip"],
+        "target_port": target_info["port"],
+        "target_aet_target": target_info.get("aet_target", "ANY-SCP"),
+        "target_aet_source": target_info.get("aet_source", "mercure"),
+        "retries": None,
+        "next_retry_at": None,
+    }
 
 
 def add_info(
