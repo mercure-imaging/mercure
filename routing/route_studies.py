@@ -42,8 +42,9 @@ def route_studies() -> None:
     """
     Searches for completed studies and initiates the routing of the completed studies
     """
-    studies_ready = {}
+    # TODO: Handle studies that exceed the "force completion" timeout in the "CONDITION_RECEIVED_SERIES" mode
 
+    studies_ready = {}
     with os.scandir(config.mercure["studies_folder"]) as it:
         for entry in it:
             if entry.is_dir() and not is_study_locked(entry.path) and is_study_complete(entry.path):
@@ -61,9 +62,7 @@ def route_studies() -> None:
             # TODO: Add study events to bookkeeper
             # monitor.send_series_event(monitor.s_events.ERROR, entry, 0, "", "Exception while processing")
             monitor.send_event(
-                monitor.m_events.PROCESSING,
-                monitor.severity.ERROR,
-                error_message,
+                monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message,
             )
         if not study_success:
             # Move the study to the error folder to avoid repeated processing
@@ -79,7 +78,11 @@ def is_study_locked(folder: str) -> bool:
     Returns true if the given folder is locked, i.e. if another process is already working on the study
     """
     path = Path(folder)
-    folder_status = (path / mercure_names.LOCK).exists() or (path / mercure_names.PROCESSING).exists() or len(list(path.glob(mercure_names.DCMFILTER))) == 0
+    folder_status = (
+        (path / mercure_names.LOCK).exists()
+        or (path / mercure_names.PROCESSING).exists()
+        or len(list(path.glob(mercure_names.DCMFILTER))) == 0
+    )
     return folder_status
 
 
@@ -109,14 +112,14 @@ def is_study_complete(folder: str) -> bool:
         complete_required_series = study["complete_required_series"] if "complete_required_series" in study else ""
 
         # If trigger condition is received series but list of required series is missing, then switch to timeout mode instead
-        if (complete_trigger == mercure_rule.STUDY_TRIGGER_CONDITION_RECEIVED_SERIES) and (not complete_required_series):
+        if (complete_trigger == mercure_rule.STUDY_TRIGGER_CONDITION_RECEIVED_SERIES) and (
+            not complete_required_series
+        ):
             complete_trigger = mercure_rule.STUDY_TRIGGER_CONDITION_TIMEOUT
             warning_text = f"Missing series for trigger condition in study folder {folder}. Using timeout instead"
             logger.warning(warning_text)
             monitor.send_event(
-                monitor.m_events.PROCESSING,
-                monitor.severity.WARNING,
-                warning_text,
+                monitor.m_events.PROCESSING, monitor.severity.WARNING, warning_text,
             )
 
         # Check for trigger condition
@@ -147,7 +150,7 @@ def check_study_timeout(task: TaskHasStudy) -> bool:
         return False
 
     last_receive_time = datetime.strptime(last_received_string, "%Y-%m-%d %H:%M:%S")
-    if datetime.now() > last_receive_time + timedelta(seconds=config.mercure["study_forcecomplete_trigger"]):
+    if datetime.now() > last_receive_time + timedelta(seconds=config.mercure["study_complete_trigger"]):
         return True
     else:
         return False
@@ -324,6 +327,13 @@ def move_study_folder(study: str, destination: str) -> bool:
         destination_folder = config.mercure["success_folder"]
     elif destination == "ERROR":
         destination_folder = config.mercure["error_folder"]
+    elif destination == "OUTGOING":
+        destination_folder = config.mercure["outgoing_folder"]
+    else:
+        error_message = f"Unknown destination {destination} requested for {study}"
+        logger.exception(error_message)
+        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
+        return False
 
     # Create unique name of destination folder
     destination_folder += "/" + str(uuid.uuid1())
@@ -353,9 +363,7 @@ def move_study_folder(study: str, destination: str) -> bool:
         error_message = f"Unable to create lock file {destination_folder}/{mercure_names.LOCK}"
         logger.error(error_message)
         monitor.send_event(
-            monitor.m_events.PROCESSING,
-            monitor.severity.ERROR,
-            error_message,
+            monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message,
         )
         return False
 
@@ -369,9 +377,7 @@ def move_study_folder(study: str, destination: str) -> bool:
                 error_message = f"Problem while pushing file {entry} from {source_folder} to {destination_folder}"
                 logger.exception(error_message)
                 monitor.send_event(
-                    monitor.m_events.PROCESSING,
-                    monitor.severity.ERROR,
-                    error_message,
+                    monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message,
                 )
 
     # Remove the lock file in the target folder. Would happen automatically when leaving the function,
@@ -411,8 +417,6 @@ def remove_study_folder(study: str, lock: helper.FileLock) -> bool:
         logger.error(error_message)
         logger.exception(e)
         monitor.send_event(
-            monitor.m_events.PROCESSING,
-            monitor.severity.ERROR,
-            f"Unable to delete study folder {study_folder}",
+            monitor.m_events.PROCESSING, monitor.severity.ERROR, f"Unable to delete study folder {study_folder}",
         )
     return True
