@@ -21,6 +21,7 @@ from testing_common import load_config
 from docker.models.containers import ContainerCollection
 
 from nomad.api.job import Job
+import socket
 
 logger = daiquiri.getLogger("test_processor")
 
@@ -144,7 +145,7 @@ def test_process_series_nomad(fs, mocker: MockerFixture):
             "acc": "MISSING",
             "mercure_version": "0.2a",
             "mercure_appliance": "master",
-            "mercure_server": "nomad",
+            "mercure_server": socket.gethostname(),
         },
         "dispatch": {},
         "process": {
