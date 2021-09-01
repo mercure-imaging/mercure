@@ -217,8 +217,8 @@ def push_series_complete(file_list: List[str], series_UID: str, destination: str
         monitor.send_series_event(monitor.s_events.DISCARD, series_UID, len(file_list), "", info_text)
 
     if not push_files(file_list, destination_path, copy_files):
-        error_message = f"Problem while discarding files from {series_UID}"
-        logger.exception(error_message)
+        error_message = f"Problem while moving completed files from {series_UID}"
+        logger.error(error_message)
         monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
 
     monitor.send_series_event(monitor.s_events.MOVE, series_UID, len(file_list), destination_path, "")
@@ -395,8 +395,9 @@ def push_serieslevel_notification(triggered_rules: Dict[str, Literal[True]], fil
     # than one rule has triggered, the parent function will remove the files from the incoming
     # folder. However, it multiple rules have triggered and all such rules are notifications,
     # make a copy of the files into the discard folder, so that the files can be recovered
-    if (len(triggered_rules) == 1) or (len(triggered_rules) == notification_rules_count):
-        push_series_complete(file_list, series_UID, "SUCCESS", "", len(triggered_rules) > 1)
+    if notification_rules_count > 0:
+        if (len(triggered_rules) == 1) or (len(triggered_rules) == notification_rules_count):
+            push_series_complete(file_list, series_UID, "SUCCESS", "", len(triggered_rules) > 1)
 
     return True
 
