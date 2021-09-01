@@ -53,18 +53,16 @@ def compose_task(
     """
     Composes the JSON content that is written into a task file when submitting a job (for processing, dispatching, or both)
     """
-    return {
+    return Task(
         # Add general information about the job
-        "info": add_info(uid, uid_type, triggered_rules, applied_rule, tags_list),
+        info=add_info(uid, uid_type, triggered_rules, applied_rule, tags_list),
         # Add dispatch information -- completed only if the job includes a dispatching step
-        # type: ignore
-        "dispatch": add_dispatching(uid, applied_rule, tags_list, target) or {},
+        dispatch=add_dispatching(uid, applied_rule, tags_list, target) or cast(EmptyDict, {}),
         # Add processing information -- completed only if the job includes a processing step
-        # type: ignore
-        "process": add_processing(uid, applied_rule, tags_list) or {},
+        process=add_processing(uid, applied_rule, tags_list) or cast(EmptyDict, {}),
         # Add information about the study, included all collected series
-        "study": add_study(uid, uid_type, applied_rule, tags_list) or EmptyDict(),
-    }
+        study=add_study(uid, uid_type, applied_rule, tags_list) or cast(EmptyDict, {}),
+    )
 
 
 def add_processing(uid: str, applied_rule: str, tags_list: Dict[str, str]) -> Optional[Module]:
@@ -75,7 +73,7 @@ def add_processing(uid: str, applied_rule: str, tags_list: Dict[str, str]) -> Op
     if not applied_rule:
         return None
 
-    applied_rule_info: Rule = config.mercure["rules"][applied_rule]
+    applied_rule_info: Rule = config.mercure.rules[applied_rule]
     logger.info(applied_rule_info)
 
     if applied_rule_info.get(mercure_rule.ACTION, mercure_actions.PROCESS) in (
@@ -88,7 +86,7 @@ def add_processing(uid: str, applied_rule: str, tags_list: Dict[str, str]) -> Op
         logger.info(f"module: {module}")
 
         # Get the configuration of this module
-        module_config: Module = config.mercure["modules"].get(module, {})
+        module_config = config.mercure.modules.get(module, None)
 
         logger.info({"module_config": module_config})
 
@@ -100,7 +98,9 @@ def add_processing(uid: str, applied_rule: str, tags_list: Dict[str, str]) -> Op
     return None
 
 
-def add_study(uid: str, uid_type: Literal["series", "study"], applied_rule: str, tags_list: Dict[str, str]) -> Optional[TaskStudy]:
+def add_study(
+    uid: str, uid_type: Literal["series", "study"], applied_rule: str, tags_list: Dict[str, str]
+) -> Optional[TaskStudy]:
     """
     Adds study information into the task file. Returns nothing if the task is a series-level task
     """
@@ -108,15 +108,15 @@ def add_study(uid: str, uid_type: Literal["series", "study"], applied_rule: str,
     if uid_type == "series":
         return None
 
-    study_info: TaskStudy = {
-        "study_uid": uid,
-        "complete_trigger": config.mercure["rules"][applied_rule]["study_trigger_condition"],
-        "complete_required_series": config.mercure["rules"][applied_rule]["study_trigger_series"],
-        "creation_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "last_receive_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "received_series": [tags_list.get("SeriesDescription", mercure_options.INVALID)],
-        "complete_force": "False",
-    }
+    study_info: TaskStudy = TaskStudy(
+        study_uid=uid,
+        complete_trigger=config.mercure.rules[applied_rule].study_trigger_condition,
+        complete_required_series=config.mercure.rules[applied_rule].study_trigger_series,
+        creation_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        last_receive_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        received_series=[tags_list.get("SeriesDescription", mercure_options.INVALID)],
+        complete_force="False",
+    )
 
     return study_info
 
@@ -141,9 +141,12 @@ def add_dispatching(uid: str, applied_rule: str, tags_list: Dict[str, str], targ
         perform_dispatch = True
     else:
         # If no target string is provided, read the target defined in the provided applied rule
-        target_used = config.mercure["rules"][applied_rule].get("target", "")
+        target_used = config.mercure.rules[applied_rule].get("target", "")
         # Applied_rule involves dispatching and target has been set? Then go forward with dispatching
-        if (config.mercure["rules"][applied_rule].get(mercure_rule.ACTION, mercure_actions.PROCESS) in (mercure_actions.ROUTE, mercure_actions.BOTH)) and target_used:            
+        if (
+            config.mercure.rules[applied_rule].get(mercure_rule.ACTION, mercure_actions.PROCESS)
+            in (mercure_actions.ROUTE, mercure_actions.BOTH)
+        ) and target_used:
             perform_dispatch = True
 
     # If dispatching should not be performed, just return
@@ -151,23 +154,27 @@ def add_dispatching(uid: str, applied_rule: str, tags_list: Dict[str, str], targ
         return None
 
     # Check if the selected target actually exists in the configuration (could have been deleted by now)
-    if not config.mercure["targets"].get(target_used, {}):
+    if not config.mercure.targets.get(target_used, {}):
         error_message = f"Target {target_used} does not exist for UID {uid}"
         logger.error(error_message)
         monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
         return None
 
-    # All looks good, fill the dispatching section and return it    
-    target_info: Target = config.mercure["targets"][target_used]
-    return {
-        "target_name": target_used,
-        "target_ip": target_info["ip"],
-        "target_port": target_info["port"],
-        "target_aet_target": target_info.get("aet_target", "ANY-SCP"),
-        "target_aet_source": target_info.get("aet_source", "mercure"),
-        "retries": None,
-        "next_retry_at": None,
-    }
+    # All looks good, fill the dispatching section and return it
+    target_info: Target = config.mercure.targets[target_used]
+    assert target_info.ip is not None  # TODO: make sure ip/port is really required
+    assert target_info.port is not None
+    return TaskDispatch(
+        **{
+            "target_name": target_used,
+            "target_ip": target_info.ip,
+            "target_port": target_info.port,
+            "target_aet_target": target_info.get("aet_target", "ANY-SCP"),
+            "target_aet_source": target_info.get("aet_source", "mercure"),
+            "retries": None,
+            "next_retry_at": None,
+        }
+    )
 
 
 def add_info(
@@ -181,22 +188,22 @@ def add_info(
     Adds general information into the task file
     """
     if applied_rule:
-        task_action = config.mercure["rules"][applied_rule].get("action", "process")
+        task_action = config.mercure.rules[applied_rule].get("action", "process")
     else:
         task_action = "route"
 
-    return {
-        "action": task_action,
-        "uid": uid,
-        "uid_type": uid_type,
-        "triggered_rules": triggered_rules,
-        "applied_rule": applied_rule,
-        "mrn": tags_list.get("PatientID", mercure_options.MISSING),
-        "acc": tags_list.get("AccessionNumber", mercure_options.MISSING),
-        "mercure_version": mercure_defs.VERSION,
-        "mercure_appliance": config.mercure["appliance_name"],
-        "mercure_server": socket.gethostname(),
-    }
+    return TaskInfo(
+        action=task_action,
+        uid=uid,
+        uid_type=uid_type,
+        triggered_rules=triggered_rules,
+        applied_rule=applied_rule,
+        mrn=tags_list.get("PatientID", mercure_options.MISSING),
+        acc=tags_list.get("AccessionNumber", mercure_options.MISSING),
+        mercure_version=mercure_defs.VERSION,
+        mercure_appliance=config.mercure.appliance_name,
+        mercure_server=socket.gethostname(),
+    )
 
 
 def create_series_task(
@@ -211,16 +218,16 @@ def create_series_task(
     Writes a task file for the received series, containing all information needed by the processor and dispatcher. Additional information is written into the file as well
     """
     # Compose the JSON content for the file
-    task_json = compose_task(series_UID, "series", triggered_rules, applied_rule, tags_list, target)
+    task = compose_task(series_UID, "series", triggered_rules, applied_rule, tags_list, target)
 
     task_filename = folder_name + mercure_names.TASKFILE
     try:
         with open(task_filename, "w") as task_file:
-            json.dump(task_json, task_file)
+            json.dump(task.dict(), task_file)
     except:
         error_message = f"Unable to create series task file {task_filename}"
         logger.exception(error_message)
-        logger.error(task_json)
+        logger.error(task.dict())
         monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
         return False
 
@@ -269,8 +276,8 @@ def update_study_task(
     # Load existing task file. Raise error if it does not exist
     try:
         with open(task_filename, "r") as task_file:
-            task_json: Task = json.load(task_file)
-            if len(task_json.get("study", {})) == 0:
+            task: Task = Task(**json.load(task_file))
+            if len(task.get("study", {})) == 0:
                 raise Exception("Study information is missing.")
     except:
         error_message = f"Unable to open study task file {task_filename}"
@@ -279,27 +286,27 @@ def update_study_task(
         return False
 
     # Ensure that the task file contains the study information
-    if not (mercure_sections.STUDY in task_json):
+    if not task.study:
         error_message = f"Study information missing in task file {task_filename}"
         logger.error(error_message)
         monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
         return False
 
-    study = cast(TaskStudy, task_json["study"])
+    study = cast(TaskStudy, task.study)
 
     # Remember the time when the last series was received, as needed to determine completion on timeout
-    study["last_receive_time"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    study.last_receive_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     # Remember all received series descriptions, as needed to determine completion on received series
-    if (mercure_study.RECEIVED_SERIES in task_json["study"]) and (isinstance(study["received_series"], list)):
-        study["received_series"].append(series_description)
+    if study.received_series and (isinstance(study.received_series, list)):
+        study.received_series.append(series_description)
     else:
-        study["received_series"] = [series_description]
+        study.received_series = [series_description]
 
     # Safe the updated file back to disk
     try:
         with open(task_filename, "w") as task_file:
-            json.dump(task_json, task_file)
+            json.dump(task.dict(), task_file)
     except:
         error_message = f"Unable to write task file {task_filename}"
         logger.exception(error_message)

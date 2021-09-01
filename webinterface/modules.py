@@ -22,6 +22,7 @@ import common.helper as helper
 import common.config as config
 import common.monitor as monitor
 from common.constants import mercure_defs
+from common.types import Module
 from webinterface.common import get_user_information
 from webinterface.common import templates
 
@@ -34,13 +35,13 @@ modules_app = Starlette()
 async def save_module(form, name) -> Response:
     """We already read the config by this time"""
 
-    config.mercure["modules"][name] = {
-        "url": form.get("url", ""),
-        "docker_tag": form.get("docker_tag", None),
-        "additional_volumes": form.get("additional_volumes", None),
-        "environment": form.get("environment", None),
-        "docker_arguments": form.get("docker_arguments", None),
-    }
+    config.mercure.modules[name] = Module(
+        url=form.get("url", ""),
+        docker_tag=form.get("docker_tag", None),
+        additional_volumes=form.get("additional_volumes", None),
+        environment=form.get("environment", None),
+        docker_arguments=form.get("docker_arguments", None),
+    )
     try:
         config.save_config()
     except:
@@ -63,8 +64,8 @@ async def show_modules(request):
         return PlainTextResponse("Configuration is being updated. Try again in a minute.")
 
     used_modules = {}
-    for rule in config.mercure["rules"]:
-        used_module = config.mercure["rules"][rule].get("processing_module", "NONE")
+    for rule in config.mercure.rules:
+        used_module = config.mercure.rules[rule].get("processing_module", "NONE")
         used_modules[used_module] = rule
 
     template = "modules.html"
@@ -72,7 +73,7 @@ async def show_modules(request):
         "request": request,
         "mercure_version": mercure_defs.VERSION,
         "page": "modules",
-        "modules": config.mercure["modules"],
+        "modules": config.mercure.modules,
         "used_modules": used_modules,
     }
     context.update(get_user_information(request))
@@ -91,7 +92,7 @@ async def add_module(request):
     form = dict(await request.form())
 
     name = form.get("name", "")
-    if name in config.mercure["modules"]:
+    if name in config.mercure.modules:
         return PlainTextResponse("Name already exists.")
 
     # logger.info(f'Created rule {name}')
@@ -115,7 +116,7 @@ async def edit_module(request):
         "request": request,
         "mercure_version": mercure_defs.VERSION,
         "page": "modules",
-        "module": config.mercure["modules"][module],
+        "module": config.mercure.modules[module],
         "module_name": module,
     }
     context.update(get_user_information(request))
@@ -134,7 +135,7 @@ async def edit_module_POST(request):
     form = dict(await request.form())
 
     name = request.path_params["module"]
-    if name not in config.mercure["modules"]:
+    if name not in config.mercure.modules:
         return PlainTextResponse("Invalid module name - perhaps it was deleted?")
 
     return await save_module(form, name)
@@ -150,8 +151,8 @@ async def delete_module(request):
         return PlainTextResponse("Configuration is being updated. Try again in a minute.")
 
     name = request.path_params["module"]
-    if name in config.mercure["modules"]:
-        del config.mercure["modules"][name]
+    if name in config.mercure.modules:
+        del config.mercure.modules[name]
 
     try:
         config.save_config()

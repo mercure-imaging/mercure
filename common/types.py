@@ -5,56 +5,67 @@ Definitions for using TypedDicts throughout mercure.
 """
 
 # Standard python includes
-from typing import Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, cast
 from typing_extensions import Literal, TypedDict
-
+from pydantic import BaseModel, create_model_from_typeddict
+import daiquiri
 
 # TODO: Add description for the individual classes
 
+logger = daiquiri.getLogger("test")
 
-class Target(TypedDict, total=False):
-    ip: str
-    port: str
-    aet_target: str
-    aet_source: str
-    contact: str
+# import traceback
 
 
-class Module(TypedDict, total=False):
-    url: str
-    docker_tag: str
-    additional_volumes: str
-    environment: str
-    docker_arguments: str
+class Compat:
+    def get(self, item, els=None) -> Any:
+        # logger.info(repr(traceback.format_stack()[-2].splitlines()[1]))
+        return self.__dict__.get(item, els) or els
+
+
+class Target(BaseModel, Compat):
+    ip: Optional[str]
+    port: Optional[str]
+    aet_target: Optional[str]
+    aet_source: Optional[str]
+    contact: Optional[str]
+
+
+class Module(BaseModel, Compat):
+    url: Optional[str]
+    docker_tag: Optional[str]
+    additional_volumes: Optional[str]
+    environment: Optional[str]
+    docker_arguments: Optional[str]
 
 
 class UnsetRule(TypedDict):
     rule: str
 
 
-class Rule(TypedDict, total=False):
+class Rule(BaseModel, Compat):
     rule: str
-    target: str
-    disabled: Literal["True", "False"]
-    fallback: str
-    contact: str
-    comment: str
-    tags: str
-    action: Literal["route", "both", "process", "discard", "notification"]
-    action_trigger: Literal["series", "study"]
-    study_trigger_condition: Literal["timeout", "received_series"]
-    study_trigger_series: str
-    priority: Literal["normal", "urgent", "offpeak"]
-    processing_module: str
-    processing_settings: str
-    notification_webhook: str
-    notification_payload: str
-    notification_trigger_reception: Literal["True", "False"]
-    notification_trigger_completion: Literal["True", "False"]
-    notification_trigger_error: Literal["True", "False"]
+    target: str = ""
+    disabled: Literal["True", "False"] = "False"
+    fallback: str = ""
+    contact: str = ""
+    comment: str = ""
+    tags: str = ""
+    action: Literal["route", "both", "process", "discard", "notification"] = "route"
+    action_trigger: Literal["series", "study"] = "series"
+    study_trigger_condition: Literal["timeout", "received_series"] = "timeout"
+    study_trigger_series: str = ""
+    priority: Literal["normal", "urgent", "offpeak"] = "normal"
+    processing_module: str = ""
+    processing_settings: str = ""
+    notification_webhook: str = ""
+    notification_payload: str = ""
+    notification_trigger_reception: Literal["True", "False"] = "False"
+    notification_trigger_completion: Literal["True", "False"] = "False"
+    notification_trigger_error: Literal["True", "False"] = "False"
 
 
-class Config(TypedDict):
+class Config(BaseModel, Compat):
     appliance_name: str
     port: int
     incoming_folder: str
@@ -84,12 +95,12 @@ class Config(TypedDict):
     process_runner: Literal["docker", "nomad"]
 
 
-class TaskInfo(TypedDict, total=False):
+class TaskInfo(BaseModel, Compat):
     action: Literal["route", "both", "process", "discard", "notification"]
     uid: str
     uid_type: Literal["series", "study"]
     triggered_rules: Union[Dict[str, Literal[True]], str]
-    applied_rule: str
+    applied_rule: Optional[str]
     mrn: str
     acc: str
     mercure_version: str
@@ -97,19 +108,20 @@ class TaskInfo(TypedDict, total=False):
     mercure_server: str
 
 
-class TaskDispatch(TypedDict, total=False):
-    target_name: str
+class TaskDispatch(BaseModel, Compat):
+    target_name: Optional[str]
     target_ip: str
     target_port: str
     target_aet_target: str
-    target_aet_source: str
+    target_aet_source: Optional[str]
     retries: Optional[int]
     next_retry_at: Optional[float]
+    series_uid: Optional[str]
 
 
-class TaskStudy(TypedDict):
+class TaskStudy(BaseModel, Compat):
     study_uid: str
-    complete_trigger: str
+    complete_trigger: Optional[str]
     complete_required_series: str
     creation_time: str
     last_receive_time: str
@@ -121,14 +133,18 @@ class EmptyDict(TypedDict):
     pass
 
 
-class Task(TypedDict):
+class Task(BaseModel, Compat):
     info: TaskInfo
-    dispatch: Union[TaskDispatch, EmptyDict]
-    process: Union[Module, EmptyDict]
-    study: Union[TaskStudy, EmptyDict]
+    dispatch: Union[TaskDispatch, EmptyDict] = cast(EmptyDict, {})
+    process: Union[Module, EmptyDict] = cast(EmptyDict, {})
+    study: Union[TaskStudy, EmptyDict] = cast(EmptyDict, {})
 
-class TaskHasStudy(TypedDict):
+    class Config:
+        extra = "forbid"
+
+
+class TaskHasStudy(BaseModel, Compat):
     info: TaskInfo
-    dispatch: Union[TaskDispatch, EmptyDict]
-    process: Union[Module, EmptyDict]
+    dispatch: Union[TaskDispatch, EmptyDict] = cast(EmptyDict, {})
+    process: Union[Module, EmptyDict] = cast(EmptyDict, {})
     study: TaskStudy

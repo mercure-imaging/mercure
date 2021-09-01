@@ -1,4 +1,4 @@
-from typing import cast
+from typing import Dict, cast
 from common.types import Task, TaskDispatch
 import json
 import time
@@ -15,18 +15,15 @@ def increase_retry(source_folder, retry_max, retry_delay) -> bool:
     """
     target_json_path = Path(source_folder) / mercure_names.TASKFILE
     with open(target_json_path, "r") as file:
-        target_json: Task = json.load(file)
+        task: Task = Task(**json.load(file))
 
-    if not target_json.get("dispatch", None):
-        target_json["dispatch"] = {}
+    dispatch = cast(TaskDispatch, task.dispatch)
+    dispatch.retries = (dispatch.get("retries") or 0) + 1
+    dispatch.next_retry_at = time.time() + retry_delay
 
-    dispatch = cast(TaskDispatch, target_json["dispatch"])
-    dispatch["retries"] = (dispatch.get("retries") or 0) + 1
-    dispatch["next_retry_at"] = time.time() + retry_delay
-
-    if dispatch["retries"] >= retry_max:
+    if dispatch.retries >= retry_max:
         return False
 
     with open(target_json_path, "w") as file:
-        json.dump(target_json, file)
+        json.dump(task.dict(), file)
     return True

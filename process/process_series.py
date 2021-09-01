@@ -23,11 +23,14 @@ logger = daiquiri.getLogger("process_series")
 
 def nomad_runtime(task: Task, folder: str) -> bool:
     nomad_connection = nomad.Nomad(host="172.17.0.1", timeout=5)
-    module: Module = cast(Module,task["process"])
+    module: Module = cast(Module, task.process)
 
     f_path = Path(folder)
+    if not module.docker_tag:
+        logger.error("No docker tag supplied")
+        return False
 
-    meta = {"IMAGE_ID": module["docker_tag"], "PATH": f_path.name}
+    meta = {"IMAGE_ID": module.docker_tag, "PATH": f_path.name}
     logger.debug(meta)
     job_info = nomad_connection.job.dispatch_job("mercure-processor", meta=meta)
     with open(f_path / "nomad_job.json", "w") as json_file:
@@ -38,7 +41,7 @@ def nomad_runtime(task: Task, folder: str) -> bool:
 
 def docker_runtime(task: Task, folder: str) -> bool:
     docker_client = docker.from_env()
-    module:Module = cast(Module,task["process"])
+    module: Module = cast(Module, task.process)
 
     def decode_task(option: str) -> Any:
         option_dict: Any
@@ -55,8 +58,12 @@ def docker_runtime(task: Task, folder: str) -> bool:
         folder + "/in": {"bind": "/data", "mode": "rw"},
         folder + "/out": {"bind": "/output", "mode": "rw"},
     }
-    
-    docker_tag: str = module["docker_tag"]
+
+    if module.docker_tag:
+        docker_tag: str = module.docker_tag
+    else:
+        logger.error("No docker tag supplied")
+        return False
     additional_volumes: Dict[str, Dict[str, str]] = decode_task("additional_volumes")
     environment = decode_task("environment")
     arguments = decode_task("arguments")
@@ -132,11 +139,11 @@ def process_series(folder) -> None:
             raise Exception(f"Task file does not exist")
 
         with open(taskfile_path, "r") as f:
-            task: Task = json.load(f)
+            task: Task = Task(**json.load(f))
 
         # TODO: Something needs to figure out whether to dispatch
 
-        if task.get("dispatch"):
+        if task.dispatch:
             needs_dispatching = True
 
         f_path = Path(folder)
@@ -147,16 +154,16 @@ def process_series(folder) -> None:
                 child.rename(f_path / "in" / child.name)
         (f_path / "out").mkdir()
 
-        if config.mercure["process_runner"] == "docker":
+        if config.mercure.process_runner == "docker":
             processing_success = docker_runtime(task, folder)
-        if config.mercure["process_runner"] == "nomad":
+        if config.mercure.process_runner == "nomad":
             processing_success = nomad_runtime(task, folder)
 
     except Exception as e:
         logger.error("Processing error.")
         logger.error(traceback.format_exc())
     finally:
-        if config.mercure["process_runner"] == "docker":
+        if config.mercure.process_runner == "docker":
             logger.debug("Docker processing: immediately move results")
             move_results(folder, lock, processing_success, needs_dispatching)
             shutil.rmtree(folder, ignore_errors=True)
@@ -186,12 +193,12 @@ def move_results(
         lock.free()
 
     if not processing_success:
-        move_out_folder(folder, config.mercure["error_folder"], move_all=True)
+        move_out_folder(folder, config.mercure.error_folder, move_all=True)
     else:
         if needs_dispatching:
-            move_out_folder(folder, config.mercure["outgoing_folder"])
+            move_out_folder(folder, config.mercure.outgoing_folder)
         else:
-            move_out_folder(folder, config.mercure["success_folder"])
+            move_out_folder(folder, config.mercure.success_folder)
 
 
 def move_out_folder(source_folder_str, destination_folder_str, move_all=False) -> None:
@@ -221,4 +228,3 @@ def move_out_folder(source_folder_str, destination_folder_str, move_all=False) -
         monitor.send_event(
             monitor.m_events.PROCESSING, monitor.severity.ERROR, f"Error moving {source_folder} to {destination_folder}"
         )
-

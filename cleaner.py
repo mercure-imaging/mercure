@@ -72,13 +72,13 @@ def clean(args) -> None:
     # TODO: Adaptively reduce the retention time if the disk space is running low
 
     if _is_offpeak(
-        config.mercure["offpeak_start"],
-        config.mercure["offpeak_end"],
+        config.mercure.offpeak_start,
+        config.mercure.offpeak_end,
         datetime.now().time(),
     ):
-        success_folder = config.mercure["success_folder"]
-        discard_folder = config.mercure["discard_folder"]
-        retention = timedelta(seconds=config.mercure["retention"])
+        success_folder = config.mercure.success_folder
+        discard_folder = config.mercure.discard_folder
+        retention = timedelta(seconds=config.mercure.retention)
         clean_dir(success_folder, retention)
         clean_dir(discard_folder, retention)
 
@@ -173,27 +173,27 @@ def main(args=sys.argv[1:]) -> None:
         logger.exception("Cannot start service. Going down.")
         sys.exit(1)
 
-    appliance_name = config.mercure["appliance_name"]
+    appliance_name = config.mercure.appliance_name
 
     logger.info(f"Appliance name = {appliance_name}")
     logger.info(f"Instance  name = {instance_name}")
     logger.info(f"Instance  PID  = {os.getpid()}")
     logger.info(sys.version)
 
-    monitor.configure("cleaner", instance_name, config.mercure["bookkeeper"])
+    monitor.configure("cleaner", instance_name, config.mercure.bookkeeper)
     monitor.send_event(monitor.m_events.BOOT, monitor.severity.INFO, f"PID = {os.getpid()}")
 
-    if len(config.mercure["graphite_ip"]) > 0:
-        logger.info(f"Sending events to graphite server: {config.mercure['graphite_ip']}")
+    if len(config.mercure.graphite_ip) > 0:
+        logger.info(f"Sending events to graphite server: {config.mercure.graphite_ip}")
         graphite_prefix = "mercure." + appliance_name + ".cleaner." + instance_name
         graphyte.init(
-            config.mercure["graphite_ip"],
-            config.mercure["graphite_port"],
+            config.mercure.graphite_ip,
+            config.mercure.graphite_port,
             prefix=graphite_prefix,
         )
 
     global main_loop
-    main_loop = helper.RepeatedTimer(config.mercure["cleaner_scan_interval"], clean, exit_cleaner, {})
+    main_loop = helper.RepeatedTimer(config.mercure.cleaner_scan_interval, clean, exit_cleaner, {})
     main_loop.start()
 
     helper.g_log("events.boot", 1)

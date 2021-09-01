@@ -40,3 +40,4 @@ python-nomad
 
 # other
 pydicom
+pydantic

@@ -64,13 +64,13 @@ def dispatch(args) -> None:
         )
         return
 
-    success_folder = Path(config.mercure["success_folder"])
-    error_folder = Path(config.mercure["error_folder"])
-    retry_max = config.mercure["retry_max"]
-    retry_delay = config.mercure["retry_delay"]
+    success_folder = Path(config.mercure.success_folder)
+    error_folder = Path(config.mercure.error_folder)
+    retry_max = config.mercure.retry_max
+    retry_delay = config.mercure.retry_delay
 
     # TODO: Sort list so that the oldest DICOMs get dispatched first
-    with os.scandir(config.mercure["outgoing_folder"]) as it:
+    with os.scandir(config.mercure.outgoing_folder) as it:
         for entry in it:
             if entry.is_dir() and not has_been_send(entry.path) and is_ready_for_sending(entry.path):
                 logger.info(f"Sending folder {entry.path}")
@@ -110,29 +110,29 @@ def main(args=sys.argv[1:]) -> None:
         logger.exception("Cannot start service. Going down.")
         sys.exit(1)
 
-    appliance_name = config.mercure["appliance_name"]
+    appliance_name = config.mercure.appliance_name
 
     logger.info(f"Appliance name = {appliance_name}")
     logger.info(f"Instance  name = {instance_name}")
     logger.info(f"Instance  PID  = {os.getpid()}")
     logger.info(sys.version)
 
-    monitor.configure("dispatcher", instance_name, config.mercure["bookkeeper"])
+    monitor.configure("dispatcher", instance_name, config.mercure.bookkeeper)
     monitor.send_event(monitor.m_events.BOOT, monitor.severity.INFO, f"PID = {os.getpid()}")
 
-    if len(config.mercure["graphite_ip"]) > 0:
-        logging.info(f'Sending events to graphite server: {config.mercure["graphite_ip"]}')
+    if len(config.mercure.graphite_ip) > 0:
+        logging.info(f"Sending events to graphite server: {config.mercure.graphite_ip}")
         graphite_prefix = "mercure." + appliance_name + ".dispatcher." + instance_name
         graphyte.init(
-            config.mercure["graphite_ip"],
-            config.mercure["graphite_port"],
+            config.mercure.graphite_ip,
+            config.mercure.graphite_port,
             prefix=graphite_prefix,
         )
 
-    logger.info(f"Dispatching folder: {config.mercure['outgoing_folder']}")
+    logger.info(f"Dispatching folder: {config.mercure.outgoing_folder}")
 
     global main_loop
-    main_loop = helper.RepeatedTimer(config.mercure["dispatcher_scan_interval"], dispatch, exit_dispatcher, {})
+    main_loop = helper.RepeatedTimer(config.mercure.dispatcher_scan_interval, dispatch, exit_dispatcher, {})
     main_loop.start()
 
     helper.g_log("events.boot", 1)

@@ -65,6 +65,11 @@ job "mercure" {
       }
 
       volume_mount {
+        volume      = "code"
+        destination = "/home/mercure/mercure"
+      }
+
+      volume_mount {
         volume      = "config"
         destination = "/home/mercure/mercure-config"
       }
@@ -105,9 +110,12 @@ job "mercure" {
 
     task "dispatcher" {
       driver = "docker"
+<<<<<<< HEAD
       env {
         MERCURE_ENV = "${NOMAD_META_environment}"
       }
+=======
+>>>>>>> 9ab5e4a8eb540f0ba86bbe020f5ffb9dc4221b18
       volume_mount {
         volume      = "code"
         destination = "/home/mercure/mercure"
@@ -131,9 +139,12 @@ job "mercure" {
     }
     task "router" {
       driver = "docker"
+<<<<<<< HEAD
       env {
         MERCURE_ENV = "${NOMAD_META_environment}"
       }
+=======
+>>>>>>> 9ab5e4a8eb540f0ba86bbe020f5ffb9dc4221b18
       volume_mount {
         volume      = "code"
         destination = "/home/mercure/mercure"
@@ -158,9 +169,12 @@ job "mercure" {
     }
     task "processor" {
       driver = "docker"
+<<<<<<< HEAD
       env {
         MERCURE_ENV = "${NOMAD_META_environment}"
       }
+=======
+>>>>>>> 9ab5e4a8eb540f0ba86bbe020f5ffb9dc4221b18
       volume_mount {
         volume      = "code"
         destination = "/home/mercure/mercure"

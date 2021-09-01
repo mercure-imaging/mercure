@@ -17,7 +17,7 @@ from common.monitor import s_events, send_series_event, send_event, m_events, se
 from dispatch.retry import increase_retry
 from dispatch.status import is_ready_for_sending
 from common.constants import mercure_names
-
+from common.types import TaskDispatch
 
 logger = daiquiri.getLogger("send")
 
@@ -34,12 +34,13 @@ DCMSEND_ERROR_CODES = {
 }
 
 
-def _create_command(target_info, folder) -> str:
+def _create_command(target_info: TaskDispatch, folder) -> str:
     """Composes the command for calling the dcmsend tool from DCMTK, which is used for sending out the DICOMS."""
-    target_ip = target_info.get("dispatch", {}).get("target_ip", "")
-    target_port = target_info.get("dispatch", {}).get("target_port", "")
-    target_aet_target = target_info.get("dispatch", {}).get("target_aet_target", "")
-    target_aet_source = target_info.get("dispatch", {}).get("target_aet_source", "")
+
+    target_ip = target_info.get("target_ip", "")
+    target_port = target_info.get("target_port", "")
+    target_aet_target = target_info.get("target_aet_target", "")
+    target_aet_source = target_info.get("target_aet_source", "")
 
     dcmsend_status_file = Path(folder) / mercure_names.SENDLOG
 
@@ -65,8 +66,7 @@ def execute(
     """
     target_info = is_ready_for_sending(source_folder)
     delay: float
-
-    if target_info:
+    if target_info is not None:
         delay = target_info.get("next_retry_at", 0)
 
     if target_info and time.time() >= delay:
