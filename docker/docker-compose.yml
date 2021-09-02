@@ -5,6 +5,7 @@ services:
       db:
         condition: service_healthy
     image: yarranyu/mercure-ui
+    restart: always
     ports:
       - "8000:8000"
     volumes:
@@ -14,6 +15,7 @@ services:
 
   db:
     image: library/postgres:alpine
+    restart: always
     env_file:
       - /opt/mercure/config/db.env
     environment:
@@ -29,6 +31,7 @@ services:
 
   receiver:
     image: yarranyu/mercure-receiver
+    restart: always
     depends_on:
       bookkeeper:
         condition: service_healthy
@@ -40,6 +43,7 @@ services:
 
   cleaner:
     image: yarranyu/mercure-cleaner
+    restart: always
     depends_on:
       bookkeeper:
         condition: service_healthy
@@ -49,6 +53,7 @@ services:
 
   dispatcher:
     image: yarranyu/mercure-dispatcher
+    restart: always
     depends_on:
       bookkeeper:
         condition: service_healthy
@@ -58,6 +63,7 @@ services:
 
   processor:
     image: yarranyu/mercure-processor
+    restart: always
     depends_on:
       bookkeeper:
         condition: service_healthy
@@ -68,6 +74,7 @@ services:
 
   router:
     image: yarranyu/mercure-router
+    restart: always
     depends_on:
       bookkeeper:
         condition: service_healthy
@@ -77,6 +84,7 @@ services:
 
   bookkeeper:
     image: yarranyu/mercure-bookkeeper
+    restart: always
     depends_on:
       db:
         condition: service_healthy
