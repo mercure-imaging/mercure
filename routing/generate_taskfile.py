@@ -250,7 +250,7 @@ def create_study_task(
     task_filename = folder_name + mercure_names.TASKFILE
     try:
         with open(task_filename, "w") as task_file:
-            json.dump(task_json, task_file)
+            json.dump(task_json.dict(), task_file)
     except:
         error_message = f"Unable to create study task file {task_filename}"
         logger.exception(error_message)
@@ -277,8 +277,6 @@ def update_study_task(
     try:
         with open(task_filename, "r") as task_file:
             task: Task = Task(**json.load(task_file))
-            if len(task.get("study", {})) == 0:
-                raise Exception("Study information is missing.")
     except:
         error_message = f"Unable to open study task file {task_filename}"
         logger.exception(error_message)

@@ -61,9 +61,7 @@ def route_studies() -> None:
             # TODO: Add study events to bookkeeper
             # monitor.send_series_event(monitor.s_events.ERROR, entry, 0, "", "Exception while processing")
             monitor.send_event(
-                monitor.m_events.PROCESSING,
-                monitor.severity.ERROR,
-                error_message,
+                monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message,
             )
         if not study_success:
             # Move the study to the error folder to avoid repeated processing
@@ -120,9 +118,7 @@ def is_study_complete(folder: str) -> bool:
             warning_text = f"Missing series for trigger condition in study folder {folder}. Using timeout instead"
             logger.warning(warning_text)
             monitor.send_event(
-                monitor.m_events.PROCESSING,
-                monitor.severity.WARNING,
-                warning_text,
+                monitor.m_events.PROCESSING, monitor.severity.WARNING, warning_text,
             )
 
         # Check for trigger condition
@@ -153,7 +149,7 @@ def check_study_timeout(task: TaskHasStudy) -> bool:
         return False
 
     last_receive_time = datetime.strptime(last_received_string, "%Y-%m-%d %H:%M:%S")
-    if datetime.now() > last_receive_time + timedelta(seconds=config.mercure.study_forcecomplete_trigger):
+    if datetime.now() > last_receive_time + timedelta(seconds=config.mercure.study_complete_trigger):
         return True
     else:
         return False
@@ -198,7 +194,7 @@ def route_study(study) -> bool:
     try:
         # Read stored task file to determine completeness criteria
         with open(Path(study_folder) / mercure_names.TASKFILE, "r") as json_file:
-            task: Task = json.load(json_file)
+            task: Task = Task(**json.load(json_file))
     except Exception:
         error_text = f"Invalid task file in study folder {study_folder}"
         logger.exception(error_text)
@@ -214,6 +210,8 @@ def route_study(study) -> bool:
         logger.exception(error_text)
         monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_text)
         return False
+
+    # TODO: Clean folder for duplicate DICOMs (i.e., if series have been sent twice -- check by instance UID)
 
     if action == mercure_actions.NOTIFICATION:
         action_result = push_studylevel_notification(study, task)
@@ -366,9 +364,7 @@ def move_study_folder(study: str, destination: str) -> bool:
         error_message = f"Unable to create lock file {destination_folder}/{mercure_names.LOCK}"
         logger.error(error_message)
         monitor.send_event(
-            monitor.m_events.PROCESSING,
-            monitor.severity.ERROR,
-            error_message,
+            monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message,
         )
         return False
 
@@ -382,9 +378,7 @@ def move_study_folder(study: str, destination: str) -> bool:
                 error_message = f"Problem while pushing file {entry} from {source_folder} to {destination_folder}"
                 logger.exception(error_message)
                 monitor.send_event(
-                    monitor.m_events.PROCESSING,
-                    monitor.severity.ERROR,
-                    error_message,
+                    monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message,
                 )
 
     # Remove the lock file in the target folder. Would happen automatically when leaving the function,
@@ -424,8 +418,6 @@ def remove_study_folder(study: str, lock: helper.FileLock) -> bool:
         logger.error(error_message)
         logger.exception(e)
         monitor.send_event(
-            monitor.m_events.PROCESSING,
-            monitor.severity.ERROR,
-            f"Unable to delete study folder {study_folder}",
+            monitor.m_events.PROCESSING, monitor.severity.ERROR, f"Unable to delete study folder {study_folder}",
         )
     return True
