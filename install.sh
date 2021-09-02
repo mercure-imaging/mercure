@@ -1,5 +1,11 @@
 #!/bin/bash
-set -euo
+set -euo 
+
+OWNER=$USER
+if [ $OWNER = "root" ]
+then
+  OWNER=$(logname)
+fi
 
 SECRET="${MERCURE_SECRET:-unset}"
 if [ "$SECRET" = "unset" ]
@@ -22,7 +28,7 @@ MERCURE_SRC=.
 if [[ ! -e $MERCURE_BASE ]]; then
     echo "Creating $MERCURE_BASE"
     sudo mkdir -p $MERCURE_BASE
-    sudo chown $USER:$USER $MERCURE_BASE
+    sudo chown $OWNER:$OWNER $MERCURE_BASE
 fi
 
 if [[ ! -e $DATA_PATH ]]; then
@@ -30,19 +36,19 @@ if [[ ! -e $DATA_PATH ]]; then
     sudo mkdir "$DATA_PATH"
     sudo mkdir "$DATA_PATH"/incoming "$DATA_PATH"/studies "$DATA_PATH"/outgoing "$DATA_PATH"/success
     sudo mkdir "$DATA_PATH"/error "$DATA_PATH"/discard "$DATA_PATH"/processing
-    sudo chown -R $USER:$USER $DATA_PATH
+    sudo chown -R $OWNER:$OWNER $DATA_PATH
 fi
 
 if [[ ! -e $CONFIG_PATH ]]; then
     echo "Creating $CONFIG_PATH"
     sudo mkdir $CONFIG_PATH
-    sudo chown $USER:$USER $CONFIG_PATH
+    sudo chown $OWNER:$OWNER $CONFIG_PATH
 fi
 
 if [[ ! -e $DB_PATH ]]; then
     echo "Creating $DB_PATH"
     sudo mkdir $DB_PATH
-    sudo chown $USER:$USER $DB_PATH
+    sudo chown $OWNER:$OWNER $DB_PATH
 fi
 
 if [ ! -f "$CONFIG_PATH"/mercure.json ]; then
@@ -61,11 +67,11 @@ fi
 
 if [ ! -f "$MERCURE_BASE"/docker-compose.yml ]; then
   cp $MERCURE_SRC/docker/docker-compose.yml $MERCURE_BASE
-  sudo chown $USER:$USER "$MERCURE_BASE"/docker-compose.yml
+  sudo chown $OWNER:$OWNER "$MERCURE_BASE"/docker-compose.yml
 fi
 
 if [ ! -f "$MERCURE_BASE"/docker-compose.override.yml ]; then
   cp $MERCURE_SRC/docker/docker-compose.override.yml $MERCURE_BASE
-  sudo chown $USER:$USER "$MERCURE_BASE"/docker-compose.override.yml
+  sudo chown $OWNER:$OWNER "$MERCURE_BASE"/docker-compose.override.yml
   sed -i -e "s;MERCURE_SRC;$(readlink -f $MERCURE_SRC);" "$MERCURE_BASE"/docker-compose.override.yml
 fi
