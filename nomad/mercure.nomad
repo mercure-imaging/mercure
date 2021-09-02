@@ -75,7 +75,7 @@ job "mercure" {
       }
 
       config {
-        image = "yarra/mercure-ui:dev"
+        image = "yarranyu/mercure-ui:dev"
         ports = ["http"]
       }
 
@@ -99,7 +99,7 @@ job "mercure" {
         destination = "/home/mercure/mercure-data"
       }
       config {
-        image = "yarra/mercure-receiver:dev"
+        image = "yarranyu/mercure-receiver:dev"
         ports = ["dicom"]
       }
 
@@ -110,12 +110,9 @@ job "mercure" {
 
     task "dispatcher" {
       driver = "docker"
-<<<<<<< HEAD
       env {
         MERCURE_ENV = "${NOMAD_META_environment}"
       }
-=======
->>>>>>> 9ab5e4a8eb540f0ba86bbe020f5ffb9dc4221b18
       volume_mount {
         volume      = "code"
         destination = "/home/mercure/mercure"
@@ -129,7 +126,7 @@ job "mercure" {
         destination = "/home/mercure/mercure-data"
       }
       config {
-        image = "yarra/mercure-dispatcher:dev"
+        image = "yarranyu/mercure-dispatcher:dev"
         ports = ["dicom"]
       }
 
@@ -139,12 +136,9 @@ job "mercure" {
     }
     task "router" {
       driver = "docker"
-<<<<<<< HEAD
       env {
         MERCURE_ENV = "${NOMAD_META_environment}"
       }
-=======
->>>>>>> 9ab5e4a8eb540f0ba86bbe020f5ffb9dc4221b18
       volume_mount {
         volume      = "code"
         destination = "/home/mercure/mercure"
@@ -159,7 +153,7 @@ job "mercure" {
       }
       
       config {
-        image = "yarra/mercure-router:dev"
+        image = "yarranyu/mercure-router:dev"
         ports = ["dicom"]
       }
 
@@ -169,12 +163,9 @@ job "mercure" {
     }
     task "processor" {
       driver = "docker"
-<<<<<<< HEAD
       env {
         MERCURE_ENV = "${NOMAD_META_environment}"
       }
-=======
->>>>>>> 9ab5e4a8eb540f0ba86bbe020f5ffb9dc4221b18
       volume_mount {
         volume      = "code"
         destination = "/home/mercure/mercure"
@@ -188,7 +179,7 @@ job "mercure" {
         destination = "/home/mercure/mercure-data"
       }
       config {
-        image = "yarra/mercure-processor:dev"
+        image = "yarranyu/mercure-processor:dev"
         ports = ["dicom"]
       }
 
@@ -246,7 +237,7 @@ job "mercure" {
     task "bookkeeper" {
       driver = "docker"
       config {
-        image = "yarra/mercure-bookkeeper:dev"
+        image = "yarranyu/mercure-bookkeeper:dev"
         ports = ["bookkeeper"]
       }
 

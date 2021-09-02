@@ -1,0 +1,81 @@
+version: "3.9"
+x-env: &env
+  environment:
+    MERCURE_ENV: DEV
+    MERCURE_CONFIG_FOLDER: /home/mercure/mercure-config
+
+x-volumes: &volumes
+  volumes:
+    - mercure-code:/home/mercure/mercure
+    - mercure-config:/home/mercure/mercure-config
+    - mercure-data:/home/mercure/mercure-data
+
+x-volumes-docker: &volumes-docker
+  volumes:
+    - mercure-code:/home/mercure/mercure
+    - mercure-config:/home/mercure/mercure-config
+    - mercure-data:/home/mercure/mercure-data
+    - /var/run/docker.sock:/var/run/docker.sock
+
+services:
+  receiver:
+    image: yarranyu/mercure-receiver:dev
+    <<: *env
+    <<: *volumes
+  ui:
+    image: yarranyu/mercure-ui:dev
+    <<: *env
+    <<: *volumes-docker
+
+  cleaner:
+    image: yarranyu/mercure-cleaner:dev
+    <<: *env
+    <<: *volumes
+
+  dispatcher:
+    image: yarranyu/mercure-dispatcher:dev
+    <<: *env
+    <<: *volumes
+      
+  processor:
+    image: yarranyu/mercure-processor:dev
+    <<: *env  
+    <<: *volumes-docker
+
+  router:
+    image: yarranyu/mercure-router:dev
+    <<: *env
+    <<: *volumes
+
+  bookkeeper:
+    image: yarranyu/mercure-bookkeeper:dev
+    <<: *env
+    <<: *volumes
+
+volumes:
+  db-data:
+    driver: local
+    driver_opts:
+      type: 'none'
+      o: 'bind'
+      device: '/opt/mercure/db'
+  mercure-code:
+    driver: local
+    driver_opts:
+      type: 'none'
+      o: 'bind'
+      device: '/home/vagrant/mercure'
+
+  mercure-data:
+    driver: local
+    driver_opts:
+      type: 'none'
+      o: 'bind'
+      device: '/opt/mercure/data'
+
+  mercure-config:
+    driver: local
+    driver_opts:
+      type: 'none'
+      o: 'bind'
+      device: '/opt/mercure/config'

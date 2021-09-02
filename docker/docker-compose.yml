@@ -4,7 +4,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    build: ui
+    image: yarranyu/mercure-ui
     ports:
       - "8000:8000"
     volumes:
@@ -14,8 +14,9 @@ services:
 
   db:
     image: library/postgres:alpine
+    env_file:
+      - /opt/mercure/config/db.env
     environment:
-      POSTGRES_PASSWORD: ChangePasswordHere
       POSTGRES_USER: mercure
       POSTGRES_DB: mercure
       PGDATA: /var/lib/postgresql/data/pgdata
@@ -27,7 +28,7 @@ services:
       test: [ "CMD-SHELL", "pg_isready -U mercure" ]
 
   receiver:
-    build: receiver
+    image: yarranyu/mercure-receiver
     depends_on:
       bookkeeper:
         condition: service_healthy
@@ -38,7 +39,7 @@ services:
       - mercure-data:/home/mercure/mercure-data
 
   cleaner:
-    build: cleaner
+    image: yarranyu/mercure-cleaner
     depends_on:
       bookkeeper:
         condition: service_healthy
@@ -47,7 +48,7 @@ services:
       - mercure-data:/home/mercure/mercure-data
 
   dispatcher:
-    build: dispatcher
+    image: yarranyu/mercure-dispatcher
     depends_on:
       bookkeeper:
         condition: service_healthy
@@ -56,7 +57,7 @@ services:
       - mercure-data:/home/mercure/mercure-data
 
   processor:
-    build: processor
+    image: yarranyu/mercure-processor
     depends_on:
       bookkeeper:
         condition: service_healthy
@@ -66,7 +67,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
 
   router:
-    build: router
+    image: yarranyu/mercure-router
     depends_on:
       bookkeeper:
         condition: service_healthy
@@ -75,7 +76,7 @@ services:
       - mercure-data:/home/mercure/mercure-data
 
   bookkeeper:
-    build: bookkeeper
+    image: yarranyu/mercure-bookkeeper
     depends_on:
       db:
         condition: service_healthy
@@ -89,18 +90,18 @@ volumes:
     driver_opts:
       type: 'none'
       o: 'bind'
-      device: '$HOME/mercure-docker/mercure-db'
+      device: '/opt/mercure/db'
 
   mercure-data:
     driver: local
     driver_opts:
       type: 'none'
       o: 'bind'
-      device: '$HOME/mercure-docker/mercure-data'
+      device: '/opt/mercure/data'
 
   mercure-config:
     driver: local
     driver_opts:
       type: 'none'
       o: 'bind'
-      device: '$HOME/mercure-docker/mercure-config'
+      device: '/opt/mercure/config'
