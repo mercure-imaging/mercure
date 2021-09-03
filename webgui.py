@@ -23,6 +23,8 @@ from pathlib import Path
 from typing import Dict, Optional, Tuple, Union, List
 import docker
 import hupper
+import nomad
+import base64
 
 # Starlette-related includes
 from starlette.applications import Starlette
@@ -79,6 +81,13 @@ daiquiri.setup(
     ),
 )
 logger = daiquiri.getLogger("webgui")
+
+
+try:
+    nomad_connection = nomad.Nomad(host="172.17.0.1", timeout=5)
+    logger.info("Connected to Nomad")
+except:
+    nomad_connection = None
 
 
 class ExtendedUser(SimpleUser):
@@ -157,6 +166,17 @@ async def show_first_log(request) -> Response:
         return PlainTextResponse("No services configured")
 
 
+def get_nomad_logs(service):
+    allocations = nomad_connection.job.get_allocations("mercure")
+    alloc_id = next((a["ID"] for a in allocations if a["DeploymentStatus"]["Healthy"]))
+
+    def nomad_log_type(type="stderr"):
+        return nomad_connection.client.stream_logs.stream(alloc_id, service, type, origin="end", offset=10000)
+
+    log_response = nomad_log_type() or nomad_log_type("stdout")
+    return base64.b64decode(json.loads(log_response).get("Data", ""))
+
+
 @app.route("/logs/{service}")
 @requires(["authenticated", "admin"], redirect="login")
 async def show_log(request) -> Response:
@@ -205,8 +225,13 @@ async def show_log(request) -> Response:
 
     return_code = -1
     raw_logs = bytes()
-
-    if "systemd_service" in services.services_list[requested_service]:
+    if nomad_connection is not None:
+        try:
+            raw_logs = get_nomad_logs(requested_service)
+            return_code = 0
+        except:
+            pass
+    elif "systemd_service" in services.services_list[requested_service]:
         start_date_cmd = ""
         end_date_cmd = ""
         if start_timestamp:
@@ -232,6 +257,7 @@ async def show_log(request) -> Response:
         except (docker.errors.NotFound, docker.errors.APIError):
             return_code = 1
 
+    # return_code, raw_logs = (await async_run("/usr/bin/nomad alloc logs -job -stderr -f -tail mercure router"))[:2]
     if return_code == 0:
         log_content = html.escape(str(raw_logs.decode()))
         line_list = log_content.split("\n")
@@ -240,7 +266,7 @@ async def show_log(request) -> Response:
 
         log_content = "<br />".join(line_list)
     else:
-        log_content = "Error reading log information."
+        log_content = f"Error reading log information"
         if start_date or end_date:
             log_content = log_content + "<br /><br />Are the From/To settings valid?"
 
