@@ -20,7 +20,7 @@ import logging
 import daiquiri
 import html
 from pathlib import Path
-from typing import Dict, Optional, Tuple, Union, List
+from typing import Any, Dict, Optional, Tuple, Union, List
 import docker
 import hupper
 import nomad
@@ -166,11 +166,11 @@ async def show_first_log(request) -> Response:
         return PlainTextResponse("No services configured")
 
 
-def get_nomad_logs(service):
+def get_nomad_logs(service) -> bytes:
     allocations = nomad_connection.job.get_allocations("mercure")
     alloc_id = next((a["ID"] for a in allocations if a["ClientStatus"] == "running"))
 
-    def nomad_log_type(type="stderr"):
+    def nomad_log_type(type="stderr") -> Any:
         return nomad_connection.client.stream_logs.stream(alloc_id, service, type, origin="end", offset=10000)
 
     log_response = nomad_log_type() or nomad_log_type("stdout")
@@ -1024,7 +1024,7 @@ async def homepage(request) -> Response:
 
     service_status = {}
     for service in services.services_list:
-        running_status = False
+        running_status: Optional[bool] = False
 
         if runtime == "systemd":
             if (await async_run("systemctl is-active " + services.services_list[service]["systemd_service"]))[0] == 0:
