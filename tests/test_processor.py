@@ -34,6 +34,7 @@ config_partial = {
             "additional_volumes": "",
             "environment": "",
             "docker_arguments": "",
+            "settings": {}
         }
     },
     "rules": {
@@ -149,11 +150,16 @@ def test_process_series_nomad(fs, mocker: MockerFixture):
         },
         "dispatch": {},
         "process": {
-            "url": "",
-            "docker_tag": "busybox:stable",
-            "additional_volumes": "",
-            "environment": "",
-            "docker_arguments": "",
+            "module_name": "test_module",
+            "module_config": {
+                "url": "",
+                "docker_tag": "busybox:stable",
+                "additional_volumes": "",
+                "environment": "",
+                "docker_arguments": "",
+                "settings": {},
+            },
+            "settings": {},
         },
         "study": {},
         "nomad_info": {

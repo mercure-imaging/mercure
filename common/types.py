@@ -10,17 +10,22 @@ from typing_extensions import Literal, TypedDict
 from pydantic import BaseModel, create_model_from_typeddict
 import daiquiri
 
-# TODO: Add description for the individual classes
+# import traceback
 
 logger = daiquiri.getLogger("test")
 
-# import traceback
+
+# TODO: Add description for the individual classes
 
 
 class Compat:
     def get(self, item, els=None) -> Any:
         # logger.info(repr(traceback.format_stack()[-2].splitlines()[1]))
         return self.__dict__.get(item, els) or els
+
+
+class EmptyDict(TypedDict):
+    pass
 
 
 class Target(BaseModel, Compat):
@@ -37,6 +42,7 @@ class Module(BaseModel, Compat):
     additional_volumes: Optional[str]
     environment: Optional[str]
     docker_arguments: Optional[str]
+    settings: Dict[str, Any] = {}
 
 
 class UnsetRule(TypedDict):
@@ -57,7 +63,7 @@ class Rule(BaseModel, Compat):
     study_trigger_series: str = ""
     priority: Literal["normal", "urgent", "offpeak"] = "normal"
     processing_module: str = ""
-    processing_settings: str = ""
+    processing_settings: Dict[str, Any] = {}
     notification_webhook: str = ""
     notification_payload: str = ""
     notification_trigger_reception: Literal["True", "False"] = "False"
@@ -129,14 +135,16 @@ class TaskStudy(BaseModel, Compat):
     complete_force: Literal["True", "False"]
 
 
-class EmptyDict(TypedDict):
-    pass
+class TaskProcessing(BaseModel, Compat):
+    module_name: Optional[str]
+    module_config: Optional[Module]
+    settings: Dict[str, Any] = {}
 
 
 class Task(BaseModel, Compat):
     info: TaskInfo
     dispatch: Union[TaskDispatch, EmptyDict] = cast(EmptyDict, {})
-    process: Union[Module, EmptyDict] = cast(EmptyDict, {})
+    process: Union[TaskProcessing, EmptyDict] = cast(EmptyDict, {})
     study: Union[TaskStudy, EmptyDict] = cast(EmptyDict, {})
 
     class Config:

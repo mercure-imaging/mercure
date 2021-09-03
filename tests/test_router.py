@@ -84,7 +84,7 @@ def test_route_series(fs, mocker):
         assert task.info.uid == uid
         assert task.info.uid_type == "series"
         assert task.info.triggered_rules["catchall"] == True  # type: ignore
-        assert task.process == Module()  # TODO: should this be {}?
+        assert task.process == TaskProcessing()  # TODO: should this be {}?
         assert task.study == {}
 
     # routing.generate_taskfile.create_series_task.assert_called_once()

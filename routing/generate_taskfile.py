@@ -65,7 +65,7 @@ def compose_task(
     )
 
 
-def add_processing(uid: str, applied_rule: str, tags_list: Dict[str, str]) -> Optional[Module]:
+def add_processing(uid: str, applied_rule: str, tags_list: Dict[str, str]) -> Optional[TaskProcessing]:
     """
     Adds information about the desired processing step into the task file, which is evaluated by the processing module
     """
@@ -76,24 +76,30 @@ def add_processing(uid: str, applied_rule: str, tags_list: Dict[str, str]) -> Op
     applied_rule_info: Rule = config.mercure.rules[applied_rule]
     logger.info(applied_rule_info)
 
-    if applied_rule_info.get(mercure_rule.ACTION, mercure_actions.PROCESS) in (
-        mercure_actions.PROCESS,
-        mercure_actions.BOTH,
-    ):
-        # Get the module that should be triggered
+    if applied_rule_info.action in (mercure_actions.PROCESS, mercure_actions.BOTH,):
         # TODO: Revise this part. Needs to be prepared for sequential execution of modules
-        module: str = applied_rule_info.get("processing_module", "")
-        logger.info(f"module: {module}")
+
+        # Get the name of the module that should be triggered
+        module_name: str = applied_rule_info.processing_module
+        logger.info(f"module: {module_name}")
 
         # Get the configuration of this module
-        module_config = config.mercure.modules.get(module, None)
+        module_config = config.mercure.modules.get(module_name, None)
 
-        logger.info({"module_config": module_config})
+        # Compose the processing settings that should be used (module level + rule level)
+        settings: Dict[str, Any] = {}
+        if module_config is not None:
+            settings.update(module_config.settings)
+        settings.update(applied_rule_info.processing_settings)
+
+        # Store in the target structure
+        process_info: TaskProcessing = TaskProcessing(
+            module_name=module_name, module_config=module_config, settings=settings
+        )
 
         # TODO: Probably Still incomplete, but this seems to make the current processing happy
-        # TODO: Write the setting into a subsection and also store the module name
 
-        return module_config
+        return process_info
 
     return None
 
