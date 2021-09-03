@@ -1,0 +1,11 @@
+{
+    "python.linting.enabled": true,
+    "html.format.enable": false,
+    "cSpell.words": [
+        "starlette"
+    ],
+    "python.formatting.blackArgs": [
+        "--line-length=120  "
+    ],
+    "python.formatting.provider": "black"
+}

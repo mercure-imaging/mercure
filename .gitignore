@@ -113,7 +113,6 @@ tasks.db
 
 .mypy_cache
 .DS_Store
-.vscode
 scripts/list.txt
 build-getdcmtags-Desktop-Release/Makefile
 build-getdcmtags-Desktop-Release/getdcmtags
