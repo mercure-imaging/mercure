@@ -11,16 +11,20 @@
     <div class="column">
       <div class="container">
         <div class="field is-grouped is-pulled-right">
+          {% if start_time_available %}
           <label class="label">From:&nbsp;</label>
           <div class="control" style="margin-right: 2px;"><input class="input is-small" type="date" id="startdate"
               value="{{start_date}}"></div>
           <div class="control"><input class="input is-small" type="time" id="starttime" value="{{start_time}}"></div>
+          {% endif %}
+          {% if end_time_available %}
           <label class="label">To:&nbsp;</label>
           <div class="control" style="margin-right: 2px;"><input class="input is-small" type="date" id="enddate"
               value="{{end_date}}"></div>
           <div class="control"><input class="input is-small" type="time" id="endtime" value="{{end_time}}"></div>
           <button class="button is-dark is-small" onclick="refreshDate()">
             <i class="fas fa-sync"></i></button>
+          {% endif %}
         </div>
       </div>
     </div>

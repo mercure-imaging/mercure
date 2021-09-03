@@ -168,7 +168,7 @@ async def show_first_log(request) -> Response:
 
 def get_nomad_logs(service):
     allocations = nomad_connection.job.get_allocations("mercure")
-    alloc_id = next((a["ID"] for a in allocations if a["DeploymentStatus"]["Healthy"]))
+    alloc_id = next((a["ID"] for a in allocations if a["ClientStatus"] == "running"))
 
     def nomad_log_type(type="stderr"):
         return nomad_connection.client.stream_logs.stream(alloc_id, service, type, origin="end", offset=10000)
@@ -225,13 +225,16 @@ async def show_log(request) -> Response:
 
     return_code = -1
     raw_logs = bytes()
-    if nomad_connection is not None:
+
+    runtime = config.get_runner()
+
+    if runtime == "nomad" and nomad_connection is not None:
         try:
             raw_logs = get_nomad_logs(requested_service)
             return_code = 0
         except:
             pass
-    elif "systemd_service" in services.services_list[requested_service]:
+    elif runtime == "systemd":
         start_date_cmd = ""
         end_date_cmd = ""
         if start_timestamp:
@@ -246,8 +249,7 @@ async def show_log(request) -> Response:
         )
         return_code = run_result[0] or -1
         raw_logs = run_result[1]
-
-    elif "docker_service" in services.services_list[requested_service]:
+    elif runtime == "docker":
         client = docker.from_env()
         try:
             container = client.containers.get(services.services_list[requested_service]["docker_service"])
@@ -281,7 +283,8 @@ async def show_log(request) -> Response:
         "start_date": start_date,
         "start_time": start_time,
         "end_date": end_date,
-        "end_time": end_time,
+        "end_time_available": runtime == "systemd",
+        "start_time_available": runtime in ("docker", "systemd"),
     }
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
@@ -1003,6 +1006,7 @@ async def homepage(request) -> Response:
     free_space: Union[int, str] = 0
     total_space: Union[int, str] = 0
     disk_total: Union[int, str] = 0
+    runtime = config.get_runner()
 
     try:
         disk_total, disk_used, disk_free = shutil.disk_usage(config.mercure.incoming_folder)
@@ -1020,13 +1024,13 @@ async def homepage(request) -> Response:
 
     service_status = {}
     for service in services.services_list:
-        running_status = "False"
+        running_status = False
 
-        if services.services_list[service].get("systemd_service", ""):
+        if runtime == "systemd":
             if (await async_run("systemctl is-active " + services.services_list[service]["systemd_service"]))[0] == 0:
-                running_status = "True"
+                running_status = True
 
-        elif services.services_list[service].get("docker_service", ""):
+        elif runtime == "docker":
             client = docker.from_env()
             try:
                 container = client.containers.get(services.services_list[service]["docker_service"])
@@ -1034,11 +1038,24 @@ async def homepage(request) -> Response:
                 status = container.status
                 """restarting, running, paused, exited"""
                 if status == "running":
-                    running_status = "True"
+                    running_status = True
 
             except (docker.errors.NotFound, docker.errors.APIError):
-                running_status = "False"
-
+                running_status = False
+        elif runtime == "nomad":
+            if nomad_connection is None:
+                running_status = None
+            else:
+                allocations = nomad_connection.job.get_allocations("mercure")
+                running_alloc = [a for a in allocations if a["ClientStatus"] == "running"]
+                if not running_alloc:
+                    running_status = False
+                else:
+                    alloc = running_alloc[0]
+                    if not alloc["TaskStates"].get(service):
+                        running_status = False
+                    else:
+                        running_status = alloc["TaskStates"][service]["State"] == "running"
         service_status[service] = {
             "id": service,
             "name": services.services_list[service]["name"],

@@ -1,4 +1,7 @@
 version: "3.9"
+x-env: &env
+  environment:
+    MERCURE_RUNNER: docker
 
 x-volumes: &volumes
   volumes:
@@ -21,7 +24,7 @@ services:
     ports:
       - "8000:8000"
     <<: *volumes-docker
-
+    <<: *env
   db:
     image: library/postgres:alpine
     restart: always
@@ -47,7 +50,7 @@ services:
     ports:
       - "104:104"
     <<: *volumes
-
+    <<: *env
 
   cleaner:
     image: yarranyu/mercure-cleaner
@@ -56,6 +59,7 @@ services:
       bookkeeper:
         condition: service_healthy
     <<: *volumes
+    <<: *env
 
   dispatcher:
     image: yarranyu/mercure-dispatcher
@@ -64,6 +68,7 @@ services:
       bookkeeper:
         condition: service_healthy
     <<: *volumes
+    <<: *env
 
   processor:
     image: yarranyu/mercure-processor
@@ -72,6 +77,7 @@ services:
       bookkeeper:
         condition: service_healthy
     <<: *volumes-docker
+    <<: *env
 
   router:
     image: yarranyu/mercure-router
@@ -80,6 +86,7 @@ services:
       bookkeeper:
         condition: service_healthy
     <<: *volumes
+    <<: *env
 
   bookkeeper:
     image: yarranyu/mercure-bookkeeper
@@ -88,6 +95,7 @@ services:
       db:
         condition: service_healthy
     <<: *volumes
+    <<: *env
 
 volumes:
   db-data:

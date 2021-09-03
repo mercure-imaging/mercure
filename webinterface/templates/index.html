@@ -17,8 +17,11 @@
           <div class="control">
             <div class="tags has-addons">
               <span class="tag is-dark">{{ service_status[service]['name'] }}</span>
-              <span {% if service_status[service]['running']=='True' %} class="tag is-success">UP{% else %} class="tag
-                is-danger">DOWN{% endif %}</span>
+              <span {% if service_status[service]['running'] == True %} class="tag is-success">
+                UP
+                {% elif service_status[service]['running'] == False %} class="tag is-danger">DOWN
+                {% else %} class="tag">UNKNOWN
+                {% endif %}</span>
             </div>
           </div>
           {% endfor %}

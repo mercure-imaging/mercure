@@ -61,6 +61,10 @@ mercure_defaults = {
 mercure: Config
 
 
+def get_runner() -> str:
+    return os.getenv("MERCURE_RUNNER", "systemd")
+
+
 def read_config() -> Config:
     """Reads the configuration settings (rules, targets, general settings) from the configuration file. The configuration will
     only be updated if the file has changed compared the the last function call. If the configuration file is locked by

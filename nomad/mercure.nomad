@@ -4,6 +4,7 @@ job "mercure" {
   
   meta {
     environment = "dev"
+    runner = "nomad"
   }
 
   group "core" {
@@ -58,6 +59,7 @@ job "mercure" {
       driver = "docker"
       env {
         MERCURE_ENV = "${NOMAD_META_environment}"
+        MERCURE_RUNNER = "${NOMAD_META_runner}"
       }
       volume_mount {
         volume      = "code"
@@ -88,6 +90,7 @@ job "mercure" {
 
       env {
         MERCURE_ENV = "${NOMAD_META_environment}"
+        MERCURE_RUNNER = "${NOMAD_META_runner}"
       }
 
       volume_mount {
@@ -112,6 +115,7 @@ job "mercure" {
       driver = "docker"
       env {
         MERCURE_ENV = "${NOMAD_META_environment}"
+        MERCURE_RUNNER = "${NOMAD_META_runner}"
       }
       volume_mount {
         volume      = "code"
@@ -138,6 +142,7 @@ job "mercure" {
       driver = "docker"
       env {
         MERCURE_ENV = "${NOMAD_META_environment}"
+        MERCURE_RUNNER = "${NOMAD_META_runner}"
       }
       volume_mount {
         volume      = "code"
@@ -165,6 +170,7 @@ job "mercure" {
       driver = "docker"
       env {
         MERCURE_ENV = "${NOMAD_META_environment}"
+        MERCURE_RUNNER = "${NOMAD_META_runner}"
       }
       volume_mount {
         volume      = "code"
@@ -257,6 +263,7 @@ job "mercure" {
       env {
         DATABASE_URL = "postgresql://mercure@localhost"
         MERCURE_ENV = "${NOMAD_META_environment}"
+        MERCURE_RUNNER = "${NOMAD_META_runner}"
       }
       resources {
         memory=128
