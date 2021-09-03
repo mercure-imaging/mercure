@@ -18,13 +18,13 @@ fi
 
 SECRET="${MERCURE_SECRET:-unset}"
 if [ "$SECRET" = "unset" ]
-then 
+then
   SECRET=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1 || true)
 fi
 
 DB_PWD="${MERCURE_PASSWORD:-unset}"
 if [ "$DB_PWD" = "unset" ]
-then 
+then
   DB_PWD=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1 || true)
 fi
 
@@ -38,6 +38,7 @@ if [[ ! -e $MERCURE_BASE ]]; then
     echo "Creating $MERCURE_BASE..."
     sudo mkdir -p $MERCURE_BASE
     sudo chown $OWNER:$OWNER $MERCURE_BASE
+    sudo chmod a+x $MERCURE_BASE
 fi
 
 if [[ ! -e $DATA_PATH ]]; then
@@ -46,18 +47,21 @@ if [[ ! -e $DATA_PATH ]]; then
     sudo mkdir "$DATA_PATH"/incoming "$DATA_PATH"/studies "$DATA_PATH"/outgoing "$DATA_PATH"/success
     sudo mkdir "$DATA_PATH"/error "$DATA_PATH"/discard "$DATA_PATH"/processing
     sudo chown -R $OWNER:$OWNER $DATA_PATH
+    sudo chmod a+x $DATA_PATH
 fi
 
 if [[ ! -e $CONFIG_PATH ]]; then
     echo "Creating $CONFIG_PATH..."
     sudo mkdir $CONFIG_PATH
     sudo chown $OWNER:$OWNER $CONFIG_PATH
+    sudo chmod a+x $CONFIG_PATH
 fi
 
 if [[ ! -e $DB_PATH ]]; then
     echo "Creating $DB_PATH..."
     sudo mkdir $DB_PATH
     sudo chown $OWNER:$OWNER $DB_PATH
+    sudo chmod a+x $DB_PATH
 fi
 
 if [ ! -f "$CONFIG_PATH"/mercure.json ]; then
@@ -72,6 +76,8 @@ if [ ! -f "$CONFIG_PATH"/mercure.json ]; then
   sed -i -e "s/mercure:ChangePasswordHere@localhost/mercure:$DB_PWD@db/" "$CONFIG_PATH"/bookkeeper.env
   sed -i -e "s/0.0.0.0:8080/bookkeeper:8080/" "$CONFIG_PATH"/mercure.json
   sed -i -e "s/PutSomethingRandomHere/$SECRET/" "$CONFIG_PATH"/webgui.env
+  sudo chown -R $OWNER:$OWNER "$CONFIG_PATH"
+  sudo chmod -R a+r "$CONFIG_PATH"
 fi
 
 if [ ! -f "$MERCURE_BASE"/docker-compose.yml ]; then
@@ -83,8 +89,8 @@ fi
 if [ ! -f "$MERCURE_BASE"/docker-compose.override.yml ]; then
   echo "Copying docker-compose.override.yml..."
   cp $MERCURE_SRC/docker/docker-compose.override.yml $MERCURE_BASE
-  sudo chown $OWNER:$OWNER "$MERCURE_BASE"/docker-compose.override.yml
   sed -i -e "s;MERCURE_SRC;$(readlink -f $MERCURE_SRC);" "$MERCURE_BASE"/docker-compose.override.yml
+  sudo chown $OWNER:$OWNER "$MERCURE_BASE"/docker-compose.override.yml
 fi
 
 echo "Installation complete"

@@ -2,19 +2,19 @@ version: "3.9"
 x-env: &env
   environment:
     MERCURE_ENV: DEV
-    MERCURE_CONFIG_FOLDER: /home/mercure/mercure-config
+    MERCURE_CONFIG_FOLDER: /home/mercure/config
 
 x-volumes: &volumes
   volumes:
-    - mercure-code:/home/mercure/mercure
-    - mercure-config:/home/mercure/mercure-config
-    - mercure-data:/home/mercure/mercure-data
+    - code:/home/mercure/mercure
+    - config:/home/mercure/config
+    - data:/home/mercure/data
 
 x-volumes-docker: &volumes-docker
   volumes:
-    - mercure-code:/home/mercure/mercure
-    - mercure-config:/home/mercure/mercure-config
-    - mercure-data:/home/mercure/mercure-data
+    - code:/home/mercure/mercure
+    - config:/home/mercure/config
+    - data:/home/mercure/data
     - /var/run/docker.sock:/var/run/docker.sock
 
 services:
@@ -59,21 +59,21 @@ volumes:
       type: 'none'
       o: 'bind'
       device: '/opt/mercure/db'
-  mercure-code:
+  code:
     driver: local
     driver_opts:
       type: 'none'
       o: 'bind'
-      device: '/home/vagrant/mercure'
+      device: 'MERCURE_SRC'
 
-  mercure-data:
+  data:
     driver: local
     driver_opts:
       type: 'none'
       o: 'bind'
       device: '/opt/mercure/data'
 
-  mercure-config:
+  config:
     driver: local
     driver_opts:
       type: 'none'

@@ -1,4 +1,16 @@
 version: "3.9"
+
+x-volumes: &volumes
+  volumes:
+    - config:/home/mercure/mercure/configuration
+    - data:/home/mercure/data
+
+x-volumes-docker: &volumes-docker
+  volumes:
+    - config:/home/mercure/mercure/configuration
+    - data:/home/mercure/data
+    - /var/run/docker.sock:/var/run/docker.sock
+
 services:
   ui:
     depends_on:
@@ -8,10 +20,7 @@ services:
     restart: always
     ports:
       - "8000:8000"
-    volumes:
-      - mercure-config:/home/mercure/mercure/configuration
-      - mercure-data:/home/mercure/mercure-data
-      - /var/run/docker.sock:/var/run/docker.sock
+    <<: *volumes-docker
 
   db:
     image: library/postgres:alpine
@@ -37,9 +46,8 @@ services:
         condition: service_healthy
     ports:
       - "104:104"
-    volumes:
-      - mercure-config:/home/mercure/mercure/configuration
-      - mercure-data:/home/mercure/mercure-data
+    <<: *volumes
+
 
   cleaner:
     image: yarranyu/mercure-cleaner
@@ -47,9 +55,7 @@ services:
     depends_on:
       bookkeeper:
         condition: service_healthy
-    volumes:
-      - mercure-config:/home/mercure/mercure/configuration
-      - mercure-data:/home/mercure/mercure-data
+    <<: *volumes
 
   dispatcher:
     image: yarranyu/mercure-dispatcher
@@ -57,9 +63,7 @@ services:
     depends_on:
       bookkeeper:
         condition: service_healthy
-    volumes:
-      - mercure-config:/home/mercure/mercure/configuration
-      - mercure-data:/home/mercure/mercure-data
+    <<: *volumes
 
   processor:
     image: yarranyu/mercure-processor
@@ -67,10 +71,7 @@ services:
     depends_on:
       bookkeeper:
         condition: service_healthy
-    volumes:
-      - mercure-config:/home/mercure/mercure/configuration
-      - mercure-data:/home/mercure/mercure-data
-      - /var/run/docker.sock:/var/run/docker.sock
+    <<: *volumes-docker
 
   router:
     image: yarranyu/mercure-router
@@ -78,9 +79,7 @@ services:
     depends_on:
       bookkeeper:
         condition: service_healthy
-    volumes:
-      - mercure-config:/home/mercure/mercure/configuration
-      - mercure-data:/home/mercure/mercure-data
+    <<: *volumes
 
   bookkeeper:
     image: yarranyu/mercure-bookkeeper
@@ -88,9 +87,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    volumes:
-      - mercure-config:/home/mercure/mercure/configuration
-      - mercure-data:/home/mercure/mercure-data
+    <<: *volumes
 
 volumes:
   db-data:
@@ -100,14 +97,14 @@ volumes:
       o: 'bind'
       device: '/opt/mercure/db'
 
-  mercure-data:
+  data:
     driver: local
     driver_opts:
       type: 'none'
       o: 'bind'
       device: '/opt/mercure/data'
 
-  mercure-config:
+  config:
     driver: local
     driver_opts:
       type: 'none'
