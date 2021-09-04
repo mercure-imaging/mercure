@@ -1,3 +1,10 @@
+"""
+tagslist.py
+===========
+Helper functions for displaying a list of DICOM tags available for routing in the graphical user interface of mercure.
+"""
+
+# Standard python includes
 import json
 import os
 from pathlib import Path

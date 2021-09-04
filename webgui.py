@@ -56,14 +56,14 @@ import common.monitor as monitor
 from common.constants import mercure_defs, mercure_names
 from common.types import Rule, Target
 
-import common.rule_evaluation as rule_evaluation
 import webinterface.users as users
 import webinterface.tagslist as tagslist
 import webinterface.services as services
+import webinterface.rules as rules
+import webinterface.targets as targets
 import webinterface.modules as modules
 import webinterface.queue as queue
-from webinterface.common import templates
-from webinterface.common import get_user_information
+from webinterface.common import *
 
 
 ###################################################################################
@@ -124,6 +124,8 @@ webgui_config = Config(
     )
     + "/webgui.env"
 )
+
+
 # Note: PutSomethingRandomHere is the default value in the shipped configuration file.
 #       The app will not start with this value, forcing the users to set their onw secret
 #       key. Therefore, the value is used as default here as well.
@@ -132,22 +134,18 @@ WEBGUI_PORT = webgui_config("PORT", cast=int, default=8000)
 WEBGUI_HOST = webgui_config("HOST", default="0.0.0.0")
 DEBUG_MODE = webgui_config("DEBUG", cast=bool, default=True)
 
+
 app = Starlette(debug=DEBUG_MODE)
 # Don't check the existence of the static folder because the wrong parent folder is used if the
 # source code is parsed by sphinx. This would raise an exception and lead to failure of sphinx.
 app.mount("/static", StaticFiles(directory="webinterface/statics", check_dir=False), name="static")
 app.add_middleware(AuthenticationMiddleware, backend=SessionAuthBackend())
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY, session_cookie="mercure_session")
+app.mount("/rules", rules.rules_app)
+app.mount("/targets", targets.targets_app)
 app.mount("/modules", modules.modules_app)
+app.mount("/users", users.users_app)
 app.mount("/queue", queue.queue_app)
-
-
-async def async_run(cmd) -> Tuple[Optional[int], bytes, bytes]:
-    """Executes the given command in a way compatible with ayncio."""
-    proc = await asyncio.create_subprocess_shell(cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
-
-    stdout, stderr = await proc.communicate()
-    return proc.returncode, stdout, stderr
 
 
 ###################################################################################
@@ -183,8 +181,7 @@ async def show_log(request) -> Response:
     """Render the log for the given service. The time range can be specified via URL parameters."""
     requested_service = request.path_params["service"]
 
-    # Get optional start and end dates from the URL. Make sure
-    # that the date format is clean.
+    # Get optional start and end dates from the URL. Make sure that the date format is clean.
     start_obj: Optional[datetime.datetime]
 
     try:
@@ -226,8 +223,10 @@ async def show_log(request) -> Response:
     return_code = -1
     raw_logs = bytes()
 
+    # Get information about the type of mercure installation on the server
     runtime = config.get_runner()
 
+    # Fetch the log files depending on how mercure has been installed
     if runtime == "nomad" and nomad_connection is not None:
         try:
             raw_logs = get_nomad_logs(requested_service)
@@ -265,7 +264,6 @@ async def show_log(request) -> Response:
         line_list = log_content.split("\n")
         if len(line_list) and (not line_list[-1]):
             del line_list[-1]
-
         log_content = "<br />".join(line_list)
     else:
         log_content = f"Error reading log information"
@@ -290,550 +288,6 @@ async def show_log(request) -> Response:
     return templates.TemplateResponse(template, context)
 
 
-###################################################################################
-## Rules endpoints
-###################################################################################
-
-
-@app.route("/rules", methods=["GET"])
-@requires("authenticated", redirect="login")
-async def show_rules(request) -> Response:
-    """Show all defined routing rules. Can be executed by all logged-in users."""
-    try:
-        config.read_config()
-    except:
-        return PlainTextResponse("Configuration is being updated. Try again in a minute.")
-
-    template = "rules.html"
-    context = {
-        "request": request,
-        "mercure_version": mercure_defs.VERSION,
-        "page": "rules",
-        "rules": config.mercure.rules,
-    }
-    context.update(get_user_information(request))
-    return templates.TemplateResponse(template, context)
-
-
-@app.route("/rules", methods=["POST"])
-@requires(["authenticated", "admin"], redirect="login")
-async def add_rule(request) -> Response:
-    """Creates a new routing rule and forwards the user to the rule edit page."""
-    try:
-        config.read_config()
-    except:
-        return PlainTextResponse("Configuration is being updated. Try again in a minute.")
-
-    form = dict(await request.form())
-
-    newrule = form.get("name", "")
-    if newrule in config.mercure.rules:
-        return PlainTextResponse("Rule already exists.")
-
-    config.mercure.rules[newrule] = Rule(rule="False")
-
-    try:
-        config.save_config()
-    except:
-        return PlainTextResponse("ERROR: Unable to write configuration. Try again.")
-
-    logger.info(f"Created rule {newrule}")
-    monitor.send_webgui_event(monitor.w_events.RULE_CREATE, request.user.display_name, newrule)
-    return RedirectResponse(url="/rules/edit/" + newrule, status_code=303)
-
-
-@app.route("/rules/edit/{rule}", methods=["GET"])
-@requires(["authenticated", "admin"], redirect="login")
-async def rules_edit(request) -> Response:
-    """Shows the edit page for the given routing rule."""
-    try:
-        config.read_config()
-    except:
-        return PlainTextResponse("Configuration is being updated. Try again in a minute.")
-
-    rule = request.path_params["rule"]
-    template = "rules_edit.html"
-    context = {
-        "request": request,
-        "mercure_version": mercure_defs.VERSION,
-        "page": "rules",
-        "rules": config.mercure.rules,
-        "targets": config.mercure.targets,
-        "modules": config.mercure.modules,
-        "rule": rule,
-        "alltags": tagslist.alltags,
-        "sortedtags": tagslist.sortedtags,
-    }
-    context.update(get_user_information(request))
-    return templates.TemplateResponse(template, context)
-
-
-@app.route("/rules/edit/{rule}", methods=["POST"])
-@requires(["authenticated", "admin"], redirect="login")
-async def rules_edit_post(request) -> Response:
-    """Updates the settings for the given routing rule."""
-    try:
-        config.read_config()
-    except:
-        return PlainTextResponse("Configuration is being updated. Try again in a minute.")
-
-    editrule = request.path_params["rule"]
-    form = dict(await request.form())
-
-    if not editrule in config.mercure.rules:
-        return PlainTextResponse("Rule does not exist anymore.")
-
-    new_rule: Rule = Rule(
-        rule=form.get("rule", "False"),
-        target=form.get("target", ""),
-        disabled=form.get("status_disabled", "False"),
-        fallback=form.get("status_fallback", "False"),
-        contact=form.get("contact", ""),
-        comment=form.get("comment", ""),
-        tags=form.get("tags", ""),
-        action=form.get("action", "route"),
-        action_trigger=form.get("action_trigger", "series"),
-        study_trigger_condition=form.get("study_trigger_condition", "timeout"),
-        study_trigger_series=form.get("study_trigger_series", ""),
-        priority=form.get("priority", "normal"),
-        processing_module=form.get("processing_module", ""),
-        processing_settings=form.get("processing_settings", ""),
-        notification_webhook=form.get("notification_webhook", ""),
-        notification_payload=form.get("notification_payload", ""),
-        notification_trigger_reception=form.get("notification_trigger_reception", "False"),
-        notification_trigger_completion=form.get("notification_trigger_completion", "False"),
-        notification_trigger_error=form.get("notification_trigger_error", "False"),
-    )
-    config.mercure.rules[editrule] = new_rule
-
-    try:
-        config.save_config()
-    except:
-        return PlainTextResponse("ERROR: Unable to write configuration. Try again.")
-
-    logger.info(f"Edited rule {editrule}")
-    monitor.send_webgui_event(monitor.w_events.RULE_EDIT, request.user.display_name, editrule)
-    return RedirectResponse(url="/rules", status_code=303)
-
-
-@app.route("/rules/delete/{rule}", methods=["POST"])
-@requires(["authenticated", "admin"], redirect="login")
-async def rules_delete_post(request) -> Response:
-    """Deletes the given routing rule"""
-    try:
-        config.read_config()
-    except:
-        return PlainTextResponse("Configuration is being updated. Try again in a minute.")
-
-    deleterule = request.path_params["rule"]
-
-    if deleterule in config.mercure.rules:
-        del config.mercure.rules[deleterule]
-
-    try:
-        config.save_config()
-    except:
-        return PlainTextResponse("ERROR: Unable to write configuration. Try again.")
-
-    logger.info(f"Deleted rule {deleterule}")
-    monitor.send_webgui_event(monitor.w_events.RULE_DELETE, request.user.display_name, deleterule)
-    return RedirectResponse(url="/rules", status_code=303)
-
-
-@app.route("/rules/test", methods=["POST"])
-@requires(["authenticated", "admin"], redirect="login")
-async def rules_test(request) -> Response:
-    """Evalutes if a given routing rule is valid. The rule and testing dictionary have to be passed as form parameters."""
-    try:
-        form = dict(await request.form())
-        testrule = form["rule"]
-        testvalues = json.loads(form["testvalues"])
-    except:
-        return PlainTextResponse(
-            '<span class="tag is-warning is-medium ruleresult"><i class="fas fa-bug"></i>&nbsp;Error</span>&nbsp;&nbsp;Invalid test values'
-        )
-
-    result = rule_evaluation.test_rule(testrule, testvalues)
-
-    if result == "True":
-        return PlainTextResponse(
-            '<span class="tag is-success is-medium ruleresult"><i class="fas fa-thumbs-up"></i>&nbsp;Route</span>'
-        )
-    else:
-        if result == "False":
-            return PlainTextResponse(
-                '<span class="tag is-info is-medium ruleresult"><i class="fas fa-thumbs-down"></i>&nbsp;Discard</span>'
-            )
-        else:
-            return PlainTextResponse(
-                '<span class="tag is-danger is-medium ruleresult"><i class="fas fa-bug"></i>&nbsp;Error</span>&nbsp;&nbsp;Invalid rule: '
-                + result
-            )
-
-
-@app.route("/rules/test_completionseries", methods=["POST"])
-@requires(["authenticated", "admin"], redirect="login")
-async def rules_test_completionseries(request) -> Response:
-    """Evalutes if a given value for the series list for study completion is valid."""
-    try:
-        form = dict(await request.form())
-        test_series_list = form["study_trigger_series"]
-    except:
-        return PlainTextResponse(
-            '<span class="tag is-warning is-medium ruleresult"><i class="fas fa-bug"></i>&nbsp;Error</span>&nbsp;&nbsp;Invalid'
-        )
-
-    result = rule_evaluation.test_completion_series(test_series_list)
-
-    if result == "True":
-        return PlainTextResponse('<i class="fas fa-check-circle fa-lg has-text-success"></i>&nbsp;&nbsp;Valid')
-    else:
-        return PlainTextResponse(
-            '<i class="fas fa-times-circle fa-lg has-text-danger"></i>&nbsp;&nbsp;Invalid: ' + result
-        )
-
-
-###################################################################################
-## Targets endpoints
-###################################################################################
-
-
-@app.route("/targets", methods=["GET"])
-@requires("authenticated", redirect="login")
-async def show_targets(request) -> Response:
-    """Shows all configured targets."""
-    try:
-        config.read_config()
-    except:
-        return PlainTextResponse("Configuration is being updated. Try again in a minute.")
-
-    used_targets = {}
-    for rule in config.mercure.rules:
-        used_target = config.mercure.rules[rule].get("target", "NONE")
-        used_targets[used_target] = rule
-
-    template = "targets.html"
-    context = {
-        "request": request,
-        "mercure_version": mercure_defs.VERSION,
-        "page": "targets",
-        "targets": config.mercure.targets,
-        "used_targets": used_targets,
-    }
-    context.update(get_user_information(request))
-    return templates.TemplateResponse(template, context)
-
-
-@app.route("/targets", methods=["POST"])
-@requires(["authenticated", "admin"], redirect="login")
-async def add_target(request) -> Response:
-    """Creates a new target."""
-    try:
-        config.read_config()
-    except:
-        return PlainTextResponse("Configuration is being updated. Try again in a minute.")
-
-    form = dict(await request.form())
-
-    newtarget = form.get("name", "")
-    if newtarget in config.mercure.targets:
-        return PlainTextResponse("Target already exists.")
-
-    config.mercure.targets[newtarget] = Target(ip="", port="")
-
-    try:
-        config.save_config()
-    except:
-        return PlainTextResponse("ERROR: Unable to write configuration. Try again.")
-
-    logger.info(f"Created target {newtarget}")
-    monitor.send_webgui_event(monitor.w_events.TARGET_CREATE, request.user.display_name, newtarget)
-    return RedirectResponse(url="/targets/edit/" + newtarget, status_code=303)
-
-
-@app.route("/targets/edit/{target}", methods=["GET"])
-@requires(["authenticated", "admin"], redirect="login")
-async def targets_edit(request) -> Response:
-    """Shows the edit page for the given target."""
-    try:
-        config.read_config()
-    except:
-        return PlainTextResponse("Configuration is being updated. Try again in a minute.")
-
-    edittarget = request.path_params["target"]
-
-    if not edittarget in config.mercure.targets:
-        return RedirectResponse(url="/targets", status_code=303)
-
-    template = "targets_edit.html"
-    context = {
-        "request": request,
-        "mercure_version": mercure_defs.VERSION,
-        "page": "targets",
-        "targets": config.mercure.targets,
-        "edittarget": edittarget,
-    }
-    context.update(get_user_information(request))
-    return templates.TemplateResponse(template, context)
-
-
-@app.route("/targets/edit/{target}", methods=["POST"])
-@requires(["authenticated", "admin"], redirect="login")
-async def targets_edit_post(request) -> Union[RedirectResponse, PlainTextResponse]:
-    """Updates the given target using the form values posted with the request."""
-    try:
-        config.read_config()
-    except:
-        return PlainTextResponse("Configuration is being updated. Try again in a minute.")
-
-    edittarget = request.path_params["target"]
-    form = dict(await request.form())
-
-    if not edittarget in config.mercure.targets:
-        return PlainTextResponse("Target does not exist anymore.")
-
-    config.mercure.targets[edittarget].ip = form["ip"]
-    config.mercure.targets[edittarget].port = form["port"]
-    config.mercure.targets[edittarget].aet_target = form["aet_target"]
-    config.mercure.targets[edittarget].aet_source = form["aet_source"]
-    config.mercure.targets[edittarget].contact = form["contact"]
-
-    try:
-        config.save_config()
-    except:
-        return PlainTextResponse("ERROR: Unable to write configuration. Try again.")
-
-    logger.info(f"Edited target {edittarget}")
-    monitor.send_webgui_event(monitor.w_events.TARGET_EDIT, request.user.display_name, edittarget)
-    return RedirectResponse(url="/targets", status_code=303)
-
-
-@app.route("/targets/delete/{target}", methods=["POST"])
-@requires(["authenticated", "admin"], redirect="login")
-async def targets_delete_post(request) -> Response:
-    """Deletes the given target."""
-    try:
-        config.read_config()
-    except:
-        return PlainTextResponse("Configuration is being updated. Try again in a minute.")
-
-    deletetarget = request.path_params["target"]
-
-    if deletetarget in config.mercure.targets:
-        del config.mercure.targets[deletetarget]
-
-    try:
-        config.save_config()
-    except:
-        return PlainTextResponse("ERROR: Unable to write configuration. Try again.")
-
-    logger.info(f"Deleted target {deletetarget}")
-    monitor.send_webgui_event(monitor.w_events.TARGET_DELETE, request.user.display_name, deletetarget)
-    return RedirectResponse(url="/targets", status_code=303)
-
-
-@app.route("/targets/test/{target}", methods=["POST"])
-@requires(["authenticated"], redirect="login")
-async def targets_test_post(request) -> Response:
-    """Tests the connectivity of the given target by executing ping and c-echo requests."""
-    try:
-        config.read_config()
-    except:
-        return PlainTextResponse("Configuration is being updated. Try again in a minute.")
-
-    testtarget = request.path_params["target"]
-
-    ping_response = "False"
-    cecho_response = "False"
-    # target_ip = ""
-    # target_port = ""
-    # target_aec = "ANY-SCP"
-    # target_aet = "ECHOSCU"
-
-    target_ip = config.mercure.targets[testtarget].ip or ""
-    target_port = config.mercure.targets[testtarget].port or ""
-    target_aec = config.mercure.targets[testtarget].aet_target or "ANY-SCP"
-    target_aet = config.mercure.targets[testtarget].aet_source or "ECHOSCU"
-
-    logger.info(f"Testing target {testtarget}")
-
-    if target_ip and target_port:
-        if (await async_run("ping -w 1 -c 1 " + target_ip))[0] == 0:
-            ping_response = "True"
-            # Only test for c-echo if the ping was successful
-            if (
-                await async_run(
-                    "echoscu -to 10 -aec " + target_aec + " -aet " + target_aet + " " + target_ip + " " + target_port
-                )
-            )[0] == 0:
-                cecho_response = "True"
-
-    return JSONResponse('{"ping": "' + ping_response + '", "c-echo": "' + cecho_response + '" }')
-
-
-###################################################################################
-## Users endpoints
-###################################################################################
-
-
-@app.route("/users", methods=["GET"])
-@requires(["authenticated", "admin"], redirect="homepage")
-async def show_users(request) -> Response:
-    """Shows all available users."""
-    try:
-        users.read_users()
-    except:
-        return PlainTextResponse("Configuration is being updated. Try again in a minute.")
-
-    template = "users.html"
-    context = {"request": request, "mercure_version": mercure_defs.VERSION, "page": "users", "users": users.users_list}
-    context.update(get_user_information(request))
-    return templates.TemplateResponse(template, context)
-
-
-@app.route("/users", methods=["POST"])
-@requires(["authenticated", "admin"], redirect="homepage")
-async def add_new_user(request) -> Response:
-    """Creates a new user and redirects to the user-edit page."""
-    try:
-        users.read_users()
-    except:
-        return PlainTextResponse("Configuration is being updated. Try again in a minute.")
-
-    form = dict(await request.form())
-
-    newuser = form.get("name", "")
-    if newuser in users.users_list:
-        return PlainTextResponse("User already exists.")
-
-    newpassword = users.hash_password(form.get("password", "here_should_be_a_password"))
-    users.users_list[newuser] = {"password": newpassword, "is_admin": "False", "change_password": "True"}
-
-    try:
-        users.save_users()
-    except:
-        return PlainTextResponse("ERROR: Unable to write user list. Try again.")
-
-    logger.info(f"Created user {newuser}")
-    monitor.send_webgui_event(monitor.w_events.USER_CREATE, request.user.display_name, newuser)
-    return RedirectResponse(url="/users/edit/" + newuser, status_code=303)
-
-
-@app.route("/users/edit/{user}", methods=["GET"])
-@requires(["authenticated", "admin"], redirect="login")
-async def users_edit(request) -> Response:
-    """Shows the settings for a given user."""
-    try:
-        users.read_users()
-    except:
-        return PlainTextResponse("Configuration is being updated. Try again in a minute.")
-
-    edituser = request.path_params["user"]
-
-    if not edituser in users.users_list:
-        return RedirectResponse(url="/users", status_code=303)
-
-    template = "users_edit.html"
-    context = {
-        "request": request,
-        "mercure_version": mercure_defs.VERSION,
-        "page": "users",
-        "edituser": edituser,
-        "edituser_info": users.users_list[edituser],
-    }
-    context.update(get_user_information(request))
-    return templates.TemplateResponse(template, context)
-
-
-@app.route("/settings", methods=["GET"])
-@requires(["authenticated"], redirect="login")
-async def settings_edit(request) -> Response:
-    """Shows the settings for the current user. Renders the same template as the normal user edit, but with parameter own_settings=True."""
-    try:
-        users.read_users()
-    except:
-        return PlainTextResponse("Configuration is being updated. Try again in a minute.")
-
-    own_name = request.user.display_name
-
-    template = "users_edit.html"
-    context = {
-        "request": request,
-        "mercure_version": mercure_defs.VERSION,
-        "page": "settings",
-        "edituser": own_name,
-        "edituser_info": users.users_list[own_name],
-        "own_settings": "True",
-        "change_password": users.users_list[own_name].get("change_password", "False"),
-    }
-    context.update(get_user_information(request))
-    return templates.TemplateResponse(template, context)
-
-
-@app.route("/users/edit/{user}", methods=["POST"])
-@requires(["authenticated"], redirect="login")
-async def users_edit_post(request) -> Response:
-    """Updates the given user with settings passed as form parameters."""
-    try:
-        users.read_users()
-    except:
-        return PlainTextResponse("Configuration is being updated. Try again in a minute.")
-
-    edituser = request.path_params["user"]
-    form = dict(await request.form())
-
-    if not edituser in users.users_list:
-        return PlainTextResponse("User does not exist anymore.")
-
-    to_edit = users.users_list[edituser]
-    to_edit["email"] = form["email"]
-    if form["password"]:
-        to_edit["password"] = users.hash_password(form["password"])
-        to_edit["change_password"] = "False"
-
-    # Only admins are allowed to change the admin status, and the current user
-    # cannot change the status for himself (which includes the settings page)
-    if request.user.is_admin and (request.user.display_name != edituser):
-        to_edit["is_admin"] = form["is_admin"]
-
-    if request.user.is_admin and form.get("permissions", ""):
-        to_edit["permissions"] = form["permissions"]
-
-    try:
-        users.save_users()
-    except:
-        return PlainTextResponse("ERROR: Unable to write user list. Try again.")
-
-    logger.info(f"Edited user {edituser}")
-    monitor.send_webgui_event(monitor.w_events.USER_EDIT, request.user.display_name, edituser)
-    if "own_settings" in form:
-        return RedirectResponse(url="/", status_code=303)
-    else:
-        return RedirectResponse(url="/users", status_code=303)
-
-
-@app.route("/users/delete/{user}", methods=["POST"])
-@requires(["authenticated", "admin"], redirect="login")
-async def users_delete_post(request) -> Response:
-    """Deletes the given users."""
-    try:
-        config.read_config()
-    except:
-        return PlainTextResponse("Configuration is being updated. Try again in a minute.")
-
-    deleteuser = request.path_params["user"]
-
-    if deleteuser in users.users_list:
-        del users.users_list[deleteuser]
-
-    try:
-        users.save_users()
-    except:
-        return PlainTextResponse("ERROR: Unable to write user list. Try again.")
-
-    logger.info(f"Deleted user {deleteuser}")
-    monitor.send_webgui_event(monitor.w_events.USER_DELETE, request.user.display_name, deleteuser)
-    return RedirectResponse(url="/users", status_code=303)
 
 
 ###################################################################################
@@ -853,6 +307,7 @@ async def configuration(request) -> Response:
     config_edited = int(request.query_params.get("edited", 0))
     os_info = distro.linux_distribution()
     os_string = f"{os_info[0]} Version {os_info[1]} ({os_info[2]})"
+    runtime = config.get_runner()
     context = {
         "request": request,
         "mercure_version": mercure_defs.VERSION,
@@ -860,6 +315,7 @@ async def configuration(request) -> Response:
         "config": config.mercure,
         "os_string": os_string,
         "config_edited": config_edited,
+        "runtime": runtime,
     }
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
@@ -991,6 +447,31 @@ async def logout(request):
     monitor.send_webgui_event(monitor.w_events.LOGOUT, request.user.display_name, "")
     request.session.clear()
     return RedirectResponse(url="/login")
+
+
+@app.route("/settings", methods=["GET"])
+@requires(["authenticated"], redirect="login")
+async def settings_edit(request) -> Response:
+    """Shows the settings for the current user. Renders the same template as the normal user edit, but with parameter own_settings=True."""
+    try:
+        users.read_users()
+    except:
+        return PlainTextResponse("Configuration is being updated. Try again in a minute.")
+
+    own_name = request.user.display_name
+
+    template = "users_edit.html"
+    context = {
+        "request": request,
+        "mercure_version": mercure_defs.VERSION,
+        "page": "settings",
+        "edituser": own_name,
+        "edituser_info": users.users_list[own_name],
+        "own_settings": "True",
+        "change_password": users.users_list[own_name].get("change_password", "False"),
+    }
+    context.update(get_user_information(request))
+    return templates.TemplateResponse(template, context)
 
 
 ###################################################################################
@@ -1173,11 +654,7 @@ async def emergency_response(request) -> Response:
 def launch_emergency_app() -> None:
     """Launches a minimal application to inform the user about the incorrect configuration"""
     # emergency_app = Starlette(debug=True)
-    emergency_app = Router(
-        [
-            Route("/{whatever:path}", endpoint=emergency_response, methods=["GET", "POST"]),
-        ]
-    )
+    emergency_app = Router([Route("/{whatever:path}", endpoint=emergency_response, methods=["GET", "POST"]),])
     uvicorn.run(emergency_app, host=WEBGUI_HOST, port=WEBGUI_PORT)
 
 

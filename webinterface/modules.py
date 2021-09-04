@@ -1,3 +1,10 @@
+"""
+modules.py
+==========
+Modules page for the graphical user interface of mercure.
+"""
+
+# Starlette-related includes
 from starlette.applications import Starlette
 from starlette.responses import HTMLResponse, Response
 from starlette.responses import PlainTextResponse
@@ -18,6 +25,7 @@ from starlette.config import Config
 from starlette.datastructures import URL, Secret
 from starlette.routing import Route, Router
 
+# App-specific includes
 import common.helper as helper
 import common.config as config
 import common.monitor as monitor
@@ -26,12 +34,12 @@ from common.types import Module
 from webinterface.common import get_user_information
 from webinterface.common import templates
 
-modules_app = Starlette()
-
 
 ###################################################################################
 ## Common functions
 ###################################################################################
+
+
 async def save_module(form, name) -> Response:
     """We already read the config by this time"""
 
@@ -53,6 +61,11 @@ async def save_module(form, name) -> Response:
 ###################################################################################
 ## Modules endpoints
 ###################################################################################
+
+
+modules_app = Starlette()
+
+
 @modules_app.route("/", methods=["GET"])
 @requires("authenticated", redirect="login")
 async def show_modules(request):

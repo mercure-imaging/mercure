@@ -1,6 +1,14 @@
+"""
+queue.py
+========
+Queue page for the graphical user interface of mercure.
+"""
+
+# Standard python includes
 import os
 from pathlib import Path
 
+# Starlette-related includes
 from starlette.applications import Starlette
 from starlette.responses import HTMLResponse
 from starlette.responses import PlainTextResponse
@@ -21,6 +29,7 @@ from starlette.config import Config
 from starlette.datastructures import URL, Secret
 from starlette.routing import Route, Router
 
+# App-specific includes
 import common.helper as helper
 import common.config as config
 import common.monitor as monitor
@@ -29,11 +38,12 @@ from webinterface.common import get_user_information
 from webinterface.common import templates
 
 
-queue_app = Starlette()
-
 ###################################################################################
 ## Queue endpoints
 ###################################################################################
+
+
+queue_app = Starlette()
 
 
 @queue_app.route("/", methods=["GET"])

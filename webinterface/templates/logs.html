@@ -52,13 +52,17 @@
 <script>
   function refreshDate(val) {
     var url = window.location.href.split('?')[0];
-
+    url += "?"
+    {% if start_time_available %}
     startDate = $("#startdate").val();
     startTime = $("#starttime").val();
+    url += "from=" + startDate + "&from_time=" + startTime 
+    {% if end_time_available %}
     endDate = $("#enddate").val();
     endTime = $("#endtime").val();
-
-    url += "?from=" + startDate + "&from_time=" + startTime + "&to=" + endDate + "&to_time=" + endTime
+    url += "&to=" + endDate + "&to_time=" + endTime
+    {% endif %}
+    {% endif %}
     window.location.href = url;
   }
 

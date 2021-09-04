@@ -1,4 +1,16 @@
+"""
+common.py
+=========
+Helper functions for the graphical user interface of mercure.
+"""
+
+# Standard python includes
+from typing import Any, Dict, Optional, Tuple, Union, List
+import asyncio
+
+# Starlette-related includes
 from starlette.templating import Jinja2Templates
+
 
 templates = Jinja2Templates(directory="webinterface/templates")
 
@@ -10,3 +22,11 @@ def get_user_information(request) -> dict:
         "user": request.user.display_name,
         "is_admin": request.user.is_admin,
     }
+
+
+async def async_run(cmd) -> Tuple[Optional[int], bytes, bytes]:
+    """Executes the given command in a way compatible with ayncio."""
+    proc = await asyncio.create_subprocess_shell(cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+
+    stdout, stderr = await proc.communicate()
+    return proc.returncode, stdout, stderr

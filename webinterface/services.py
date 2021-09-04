@@ -1,8 +1,14 @@
+"""
+services.py
+===========
+Helper functions for controlling the services from the graphical user interface of mercure.
+"""
+
+# Standard python includes
 import json
 import os
 import logging
 from pathlib import Path
-
 import daiquiri
 
 daiquiri.setup(level=logging.INFO)

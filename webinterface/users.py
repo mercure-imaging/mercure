@@ -1,3 +1,10 @@
+"""
+users.py
+========
+Users page and user support functions for the graphical user interface of mercure.
+"""
+
+# Standard python includes
 import json
 import os
 import logging
@@ -5,11 +12,43 @@ from pathlib import Path
 from typing import Dict, cast
 from passlib.apps import custom_app_context as pwd_context
 import daiquiri
-
-from common.constants import mercure_names
 from mypy_extensions import TypedDict
 from typing_extensions import Literal
 from typing import Dict, Any
+
+
+# Starlette-related includes
+from starlette.applications import Starlette
+from starlette.responses import HTMLResponse, Response
+from starlette.responses import PlainTextResponse
+from starlette.responses import JSONResponse
+from starlette.responses import RedirectResponse
+from starlette.templating import Jinja2Templates
+from starlette.authentication import requires
+from starlette.authentication import (
+    AuthenticationBackend,
+    AuthenticationError,
+    SimpleUser,
+    UnauthenticatedUser,
+    AuthCredentials,
+)
+from starlette.middleware.authentication import AuthenticationMiddleware
+from starlette.middleware.sessions import SessionMiddleware
+from starlette.config import Config
+from starlette.datastructures import URL, Secret
+from starlette.routing import Route, Router
+
+# App-specific includes
+from common.constants import mercure_names
+from webinterface.common import *
+from common.constants import mercure_defs, mercure_names
+import common.monitor as monitor
+import common.config as config
+
+
+###################################################################################
+## Helper functions
+###################################################################################
 
 
 class User(TypedDict, total=False):
@@ -147,3 +186,146 @@ def needs_change_password(username) -> bool:
         return True
     else:
         return False
+
+
+###################################################################################
+## Users endpoints
+###################################################################################
+
+
+users_app = Starlette()
+
+
+@users_app.route("/", methods=["GET"])
+@requires(["authenticated", "admin"], redirect="homepage")
+async def show_users(request) -> Response:
+    """Shows all available users."""
+    try:
+        read_users()
+    except:
+        return PlainTextResponse("Configuration is being updated. Try again in a minute.")
+
+    template = "users.html"
+    context = {"request": request, "mercure_version": mercure_defs.VERSION, "page": "users", "users": users_list}
+    context.update(get_user_information(request))
+    return templates.TemplateResponse(template, context)
+
+
+@users_app.route("/", methods=["POST"])
+@requires(["authenticated", "admin"], redirect="homepage")
+async def add_new_user(request) -> Response:
+    """Creates a new user and redirects to the user-edit page."""
+    try:
+        read_users()
+    except:
+        return PlainTextResponse("Configuration is being updated. Try again in a minute.")
+
+    form = dict(await request.form())
+
+    newuser = form.get("name", "")
+    if newuser in users_list:
+        return PlainTextResponse("User already exists.")
+
+    newpassword = hash_password(form.get("password", "here_should_be_a_password"))
+    users_list[newuser] = {"password": newpassword, "is_admin": "False", "change_password": "True"}
+
+    try:
+        save_users()
+    except:
+        return PlainTextResponse("ERROR: Unable to write user list. Try again.")
+
+    logger.info(f"Created user {newuser}")
+    monitor.send_webgui_event(monitor.w_events.USER_CREATE, request.user.display_name, newuser)
+    return RedirectResponse(url="/users/edit/" + newuser, status_code=303)
+
+
+@users_app.route("/edit/{user}", methods=["GET"])
+@requires(["authenticated", "admin"], redirect="login")
+async def users_edit(request) -> Response:
+    """Shows the settings for a given user."""
+    try:
+        read_users()
+    except:
+        return PlainTextResponse("Configuration is being updated. Try again in a minute.")
+
+    edituser = request.path_params["user"]
+
+    if not edituser in users_list:
+        return RedirectResponse(url="/users", status_code=303)
+
+    template = "users_edit.html"
+    context = {
+        "request": request,
+        "mercure_version": mercure_defs.VERSION,
+        "page": "users",
+        "edituser": edituser,
+        "edituser_info": users_list[edituser],
+    }
+    context.update(get_user_information(request))
+    return templates.TemplateResponse(template, context)
+
+
+@users_app.route("/edit/{user}", methods=["POST"])
+@requires(["authenticated"], redirect="login")
+async def users_edit_post(request) -> Response:
+    """Updates the given user with settings passed as form parameters."""
+    try:
+        read_users()
+    except:
+        return PlainTextResponse("Configuration is being updated. Try again in a minute.")
+
+    edituser = request.path_params["user"]
+    form = dict(await request.form())
+
+    if not edituser in users_list:
+        return PlainTextResponse("User does not exist anymore.")
+
+    to_edit = users_list[edituser]
+    to_edit["email"] = form["email"]
+    if form["password"]:
+        to_edit["password"] = hash_password(form["password"])
+        to_edit["change_password"] = "False"
+
+    # Only admins are allowed to change the admin status, and the current user
+    # cannot change the status for himself (which includes the settings page)
+    if request.user.is_admin and (request.user.display_name != edituser):
+        to_edit["is_admin"] = form["is_admin"]
+
+    if request.user.is_admin and form.get("permissions", ""):
+        to_edit["permissions"] = form["permissions"]
+
+    try:
+        save_users()
+    except:
+        return PlainTextResponse("ERROR: Unable to write user list. Try again.")
+
+    logger.info(f"Edited user {edituser}")
+    monitor.send_webgui_event(monitor.w_events.USER_EDIT, request.user.display_name, edituser)
+    if "own_settings" in form:
+        return RedirectResponse(url="/", status_code=303)
+    else:
+        return RedirectResponse(url="/users", status_code=303)
+
+
+@users_app.route("/delete/{user}", methods=["POST"])
+@requires(["authenticated", "admin"], redirect="login")
+async def users_delete_post(request) -> Response:
+    """Deletes the given users."""
+    try:
+        config.read_config()
+    except:
+        return PlainTextResponse("Configuration is being updated. Try again in a minute.")
+
+    deleteuser = request.path_params["user"]
+
+    if deleteuser in users_list:
+        del users_list[deleteuser]
+
+    try:
+        save_users()
+    except:
+        return PlainTextResponse("ERROR: Unable to write user list. Try again.")
+
+    logger.info(f"Deleted user {deleteuser}")
+    monitor.send_webgui_event(monitor.w_events.USER_DELETE, request.user.display_name, deleteuser)
+    return RedirectResponse(url="/users", status_code=303)
