@@ -5,9 +5,7 @@ Helper functions for displaying a list of DICOM tags available for routing in th
 """
 
 # Standard python includes
-import json
 import os
-from pathlib import Path
 import re
 from typing import Dict
 

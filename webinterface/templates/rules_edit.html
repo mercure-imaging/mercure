@@ -12,7 +12,7 @@
             syntax.
         </div>
 
-        <div class="tabs is-centered is-toggle is-toggle-rounded" id="tabs">
+        <div class="tabs is-centered is-toggle is-toggle-rounded" style="margin-top: 30px;" id="tabs">
             <ul>
                 <li data-tab="filtering" class="is-active">
                     <a>
@@ -424,6 +424,9 @@
     function validate() {
         var field = "";
         try {
+            if ($('#processing_settings').val() == "") {
+                $('#processing_settings').val("{}");
+            }
             field = "Processing > Settings";
             JSON.parse($('#processing_settings').val());
             field = "Notification > Payload";

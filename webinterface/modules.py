@@ -4,31 +4,17 @@ modules.py
 Modules page for the graphical user interface of mercure.
 """
 
+# Standard python includes
+import json
+from typing import Dict
+
 # Starlette-related includes
 from starlette.applications import Starlette
-from starlette.responses import HTMLResponse, Response
-from starlette.responses import PlainTextResponse
-from starlette.responses import JSONResponse
-from starlette.responses import RedirectResponse
-from starlette.templating import Jinja2Templates
+from starlette.responses import Response, PlainTextResponse, RedirectResponse
 from starlette.authentication import requires
-from starlette.authentication import (
-    AuthenticationBackend,
-    AuthenticationError,
-    SimpleUser,
-    UnauthenticatedUser,
-    AuthCredentials,
-)
-from starlette.middleware.authentication import AuthenticationMiddleware
-from starlette.middleware.sessions import SessionMiddleware
-from starlette.config import Config
-from starlette.datastructures import URL, Secret
-from starlette.routing import Route, Router
 
 # App-specific includes
-import common.helper as helper
 import common.config as config
-import common.monitor as monitor
 from common.constants import mercure_defs
 from common.types import Module
 from webinterface.common import get_user_information
@@ -43,12 +29,20 @@ from webinterface.common import templates
 async def save_module(form, name) -> Response:
     """We already read the config by this time"""
 
+    # Ensure that the processing settings are valid. Should happen on the client side too, but can't hurt
+    # to check again
+    try:
+        new_settings: Dict = json.loads(form.get("settings", "{}"))
+    except:
+        new_settings = {}
+
     config.mercure.modules[name] = Module(
         url=form.get("url", ""),
         docker_tag=form.get("docker_tag", None),
         additional_volumes=form.get("additional_volumes", None),
         environment=form.get("environment", None),
         docker_arguments=form.get("docker_arguments", None),
+        settings=new_settings,
     )
     try:
         config.save_config()
@@ -124,6 +118,10 @@ async def edit_module(request):
     except:
         return PlainTextResponse("Configuration is being updated. Try again in a minute.")
 
+    settings_string = ""
+    if config.mercure.modules[module].settings:
+        settings_string = json.dumps(config.mercure.modules[module].settings, indent=4, sort_keys=False)
+
     template = "modules_edit.html"
     context = {
         "request": request,
@@ -131,6 +129,7 @@ async def edit_module(request):
         "page": "modules",
         "module": config.mercure.modules[module],
         "module_name": module,
+        "settings": settings_string
     }
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
@@ -173,4 +172,4 @@ async def delete_module(request):
         return PlainTextResponse("ERROR: Unable to write configuration. Try again.")
     # logger.info(f'Created rule {newrule}')
     # monitor.send_webgui_event(monitor.w_events.RULE_CREATE, request.user.display_name, newrule)
-    return RedirectResponse(url="/modules/", status_code=303)
+    return RedirectResponse(url="/modules", status_code=303)

@@ -28,15 +28,19 @@
                                     <td>Docker tag:</td>
                                     <td>{{ modules[x]['docker_tag'] }}</td>
                                 </tr>
+                                <tr>
+                                    <td>Contact:</td>
+                                    <td>{{ modules[x]['contact'] }}</td>
+                                </tr>                                
                             </table>
                             <div class="buttons is-right">
                                 {% if is_admin %}
                                     <a class="button is-success" href="/modules/edit/{{x}}"><i
-                                            class="fas fa-pen"></i>&nbsp;Settings</a>
+                                            class="fas fa-pen"></i>&nbsp;Edit</a>
                                     <button class="button is-danger" id="confirm-me" value="{{x}}"
                                             onclick="confirmDelete(this.value)" {% if x in used_modules%}disabled
                                             title="Cannot delete because target is used by rule '{{ used_modules[x] }}'" {% endif %}><i
-                                            class="fas fa-trash-alt"></i>&nbsp;Uninstall</button>
+                                            class="fas fa-trash-alt"></i>&nbsp;Delete</button>
                                 {% endif %}
                             </div>
                         </div>
@@ -52,28 +56,6 @@
             {% endif %}
         </div>
 
-        <div class="modal" id="deletemodal">
-            <div class="modal-background">
-            </div>
-            <div class="modal-card">
-                <header class="modal-card-head">
-                    <p class="modal-card-title">Delete Module?</p>
-                </header>
-                <section class="modal-card-body">
-                    <div class="field">
-                        Are you sure to delete the module? This cannot be undone.
-                    </div>
-                    <form method="post">
-                    <div class="field" style="margin-top: 20px;">
-                        <p class="control">
-                            <button id="confirmmodal" class="button is-danger">Delete</button>
-                            <button id="closemodal" class="button">Cancel</button>
-                        </p>
-                    </div>
-                    </form>
-            </section>
-            </div>
-        </div>
         <div class="modal" id="addmodal">
             <div class="modal-background">
             </div>
@@ -91,7 +73,7 @@
                         </div>
                         <div class="field">
                             <p class="control">
-                                <input class="input" id="url" type="url" required pattern="https://.*" placeholder="Git URL"
+                                <input class="input" id="url" type="url" pattern="https://.*" placeholder="Git URL"
                                        name="url" autofocus>
                             </p>
                         </div>
@@ -137,6 +119,26 @@
                 </section>
             </div>
         </div>
+        <div class="modal" id="deletemodal">
+            <div class="modal-background">
+            </div>
+            <div class="modal-card">
+                <header class="modal-card-head">
+                    <p class="modal-card-title">Delete Module?</p>
+                </header>
+                <section class="modal-card-body">
+                    <div class="field">
+                        Are you sure to delete the module? This cannot be undone.
+                    </div>
+                    <div class="field" style="margin-top: 20px;">
+                        <p class="control">
+                            <button id="confirmdeletemodal" class="button is-danger">Delete</button>
+                            <a id="closedeletemodal" class="button">Cancel</a>
+                        </p>
+                    </div>
+            </section>
+            </div>
+        </div>
     </main>
 
     <script>
@@ -167,20 +169,16 @@
                 $("#addmodal").removeClass("is-active");
             })
 
-            $('#closemodal').click(function () {
+            $('#closedeletemodal').click(function () {
                 $("#deletemodal").removeClass("is-active");
             })
 
-            $('#confirmmodal').click(function () {
+            $('#confirmdeletemodal').click(function () {
                 $("#deletemodal").removeClass("is-active");
                 var url = '/modules/delete/' + moduleToDelete;
                 var form = $('<form action="' + url + '" method="post"></form>');
                 $('body').append(form);
                 form.submit();
-            })
-
-            $('#closetestmodal').click(function () {
-                $("#testmodal").removeClass("is-active");
             })
         });
     </script>

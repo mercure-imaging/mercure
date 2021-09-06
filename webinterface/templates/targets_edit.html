@@ -9,6 +9,17 @@
 
         <form method="post">
             <div class="field">
+                <label class="label">Type</label>
+                <div class="select">
+                    <div class="control">
+                        <select name="target_type" id="target_type">
+                            <option value="dicom" selected>DICOM Node</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="field" style="margin-top: 30px;">
                 <label class="label">IP</label>
                 <div class="control">
                     <input name="ip" class="input" autofocus required autocomplete='off' type="text"
@@ -39,7 +50,7 @@
                         pattern="[A-Za-z0-9_-]+">
                 </div>
             </div>
-            <div class="field">
+            <div class="field" style="margin-top: 40px;">
                 <label class="label">Contact</label>
                 <div class="control">
                     <input name="contact" class="input" autocomplete='off' type="email" placeholder="Email address"
@@ -47,7 +58,7 @@
                 </div>
             </div>
             <div class="field">
-                <p class="control buttons" style="margin-top: 30px;">
+                <p class="control buttons" style="margin-top: 50px;">
                     <button type="submit" class="button is-success" value="default action">
                         <i class="fas fa-save"></i>&nbsp;Save
                     </button>

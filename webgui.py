@@ -7,14 +7,11 @@ The web-based graphical user interface of mercure.
 # Standard python includes
 import uvicorn
 import base64
-import binascii
 import sys
 import shutil
 import json
 import distro
-import random
 import os
-import asyncio
 import datetime
 import logging
 import daiquiri
@@ -29,18 +26,14 @@ import base64
 # Starlette-related includes
 from starlette.applications import Starlette
 from starlette.staticfiles import StaticFiles
-from starlette.responses import HTMLResponse
 from starlette.responses import Response
 from starlette.responses import PlainTextResponse
 from starlette.responses import JSONResponse
 from starlette.responses import RedirectResponse
-from starlette.templating import Jinja2Templates
 from starlette.authentication import requires
 from starlette.authentication import (
     AuthenticationBackend,
-    AuthenticationError,
     SimpleUser,
-    UnauthenticatedUser,
     AuthCredentials,
 )
 from starlette.middleware.authentication import AuthenticationMiddleware
@@ -50,11 +43,9 @@ from starlette.datastructures import URL, Secret
 from starlette.routing import Route, Router
 
 # App-specific includes
-import common.helper as helper
 import common.config as config
 import common.monitor as monitor
 from common.constants import mercure_defs, mercure_names
-from common.types import Rule, Target
 
 import webinterface.users as users
 import webinterface.tagslist as tagslist

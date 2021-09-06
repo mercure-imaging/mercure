@@ -7,39 +7,18 @@ Rules page for the graphical user interface of mercure.
 # Standard python includes
 import logging
 import daiquiri
-from pathlib import Path
-from typing import Any, Dict, Optional, Tuple, Union, List, cast
-from typing_extensions import Literal
+from typing import Dict
 import json
-
 
 # Starlette-related includes
 from starlette.applications import Starlette
-from starlette.responses import HTMLResponse, Response
-from starlette.responses import PlainTextResponse
-from starlette.responses import JSONResponse
-from starlette.responses import RedirectResponse
-from starlette.templating import Jinja2Templates
+from starlette.responses import Response, PlainTextResponse, RedirectResponse
 from starlette.authentication import requires
-from starlette.authentication import (
-    AuthenticationBackend,
-    AuthenticationError,
-    SimpleUser,
-    UnauthenticatedUser,
-    AuthCredentials,
-)
-from starlette.middleware.authentication import AuthenticationMiddleware
-from starlette.middleware.sessions import SessionMiddleware
-from starlette.config import Config
-from starlette.datastructures import URL, Secret
-from starlette.routing import Route, Router
 
 # App-specific includes
-import common.helper as helper
 import common.config as config
 import common.monitor as monitor
 from common.constants import mercure_defs
-from common.types import Module
 from common.types import Rule
 import common.rule_evaluation as rule_evaluation
 from webinterface.common import *
@@ -115,7 +94,11 @@ async def rules_edit(request) -> Response:
         return PlainTextResponse("Configuration is being updated. Try again in a minute.")
 
     rule = request.path_params["rule"]
-    template = "rules_edit.html"
+
+    settings_string = ""
+    if config.mercure.rules[rule].processing_settings:
+        settings_string = json.dumps(config.mercure.rules[rule].processing_settings, indent=4, sort_keys=False)
+
     context = {
         "request": request,
         "mercure_version": mercure_defs.VERSION,
@@ -126,9 +109,11 @@ async def rules_edit(request) -> Response:
         "rule": rule,
         "alltags": tagslist.alltags,
         "sortedtags": tagslist.sortedtags,
-        "processing_settings": json.dumps(config.mercure.rules[rule].processing_settings, indent=4, sort_keys=False),
+        "processing_settings": settings_string,
     }
     context.update(get_user_information(request))
+
+    template = "rules_edit.html"
     return templates.TemplateResponse(template, context)
 
 

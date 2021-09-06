@@ -7,32 +7,14 @@ Targets page for the graphical user interface of mercure.
 # Standard python includes
 import logging
 import daiquiri
-from pathlib import Path
-from typing import Any, Dict, Optional, Tuple, Union, List
+from typing import Union
 
 # Starlette-related includes
 from starlette.applications import Starlette
-from starlette.responses import HTMLResponse, Response
-from starlette.responses import PlainTextResponse
-from starlette.responses import JSONResponse
-from starlette.responses import RedirectResponse
-from starlette.templating import Jinja2Templates
+from starlette.responses import Response, PlainTextResponse, JSONResponse, RedirectResponse
 from starlette.authentication import requires
-from starlette.authentication import (
-    AuthenticationBackend,
-    AuthenticationError,
-    SimpleUser,
-    UnauthenticatedUser,
-    AuthCredentials,
-)
-from starlette.middleware.authentication import AuthenticationMiddleware
-from starlette.middleware.sessions import SessionMiddleware
-from starlette.config import Config
-from starlette.datastructures import URL, Secret
-from starlette.routing import Route, Router
 
 # App-specific includes
-import common.helper as helper
 import common.config as config
 import common.monitor as monitor
 from common.constants import mercure_defs

@@ -16,27 +16,10 @@ from mypy_extensions import TypedDict
 from typing_extensions import Literal
 from typing import Dict, Any
 
-
 # Starlette-related includes
 from starlette.applications import Starlette
-from starlette.responses import HTMLResponse, Response
-from starlette.responses import PlainTextResponse
-from starlette.responses import JSONResponse
-from starlette.responses import RedirectResponse
-from starlette.templating import Jinja2Templates
+from starlette.responses import Response, PlainTextResponse, RedirectResponse
 from starlette.authentication import requires
-from starlette.authentication import (
-    AuthenticationBackend,
-    AuthenticationError,
-    SimpleUser,
-    UnauthenticatedUser,
-    AuthCredentials,
-)
-from starlette.middleware.authentication import AuthenticationMiddleware
-from starlette.middleware.sessions import SessionMiddleware
-from starlette.config import Config
-from starlette.datastructures import URL, Secret
-from starlette.routing import Route, Router
 
 # App-specific includes
 from common.constants import mercure_names

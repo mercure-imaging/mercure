@@ -7,11 +7,16 @@
     <div class="container">
         <h1 class="title">Processing Modules - {{module_name}}</h1>
 
-        <form method="post">
+        <div class="notification is-danger" id="erroralert" style="display: none;">
+            <i class="fas fa-bug"></i>&nbsp;&nbsp;Error in configuration detected. Please check input fields for correct
+            syntax.
+        </div>
+
+        <form method="post" onsubmit="return validate()">
             <div class="field">
                 <label class="label" for="url">Git URL</label>
                 <p class="control">
-                    <input class="input" id="url" type="url" required pattern="https://.*" placeholder="Git URL"
+                    <input class="input" id="url" type="url" pattern="https://.*" placeholder="Git URL"
                         name="url" autofocus value="{{module['url']}}">
                 </p>
             </div>
@@ -56,7 +61,7 @@
                 </p>
             </div>
             <div class="field" style="margin-top: 40px;">
-                <label class="label" for="docker_arguments">Settings</label>
+                <label class="label" for="settings">Settings</label>
                 <div class="control">
                     <textarea name="settings" id="settings" class="textarea"
                         autocomplete='off' rows="10"
@@ -71,7 +76,7 @@
                 </div>
             </div>
             <div class="field">
-                <p class="control buttons" style="margin-top: 30px;">
+                <p class="control buttons" style="margin-top: 50px;">
                     <button type="submit" class="button is-success" value="default action">
                         <i class="fas fa-save"></i>&nbsp;Save
                     </button>
@@ -81,5 +86,31 @@
         </form>
     </div>
 </main>
+
+
+<script>
+    function validate() {
+        var field = "";
+        try {
+            field = "Settings";
+            if ($('#settings').val() == "") {
+                $('#settings').val("{}");
+            }
+            JSON.parse($('#settings').val());
+        } catch (e) {
+            $('#erroralert').html('<i class="fas fa-bug"></i>&nbsp;&nbsp;Invalid content in field "' + field + '". Please check for correct syntax.');
+            $('#erroralert').show();
+            if (field == "Settings")
+            {
+                $('#settings').addClass("is-danger");
+                $('#settings').focus();
+            }
+            return false;
+        }
+        console.log("PASSED");
+        return true;
+    }
+</script>
+
 
 {% endblock %}

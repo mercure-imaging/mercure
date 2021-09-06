@@ -10,29 +10,11 @@ from pathlib import Path
 
 # Starlette-related includes
 from starlette.applications import Starlette
-from starlette.responses import HTMLResponse
-from starlette.responses import PlainTextResponse
-from starlette.responses import JSONResponse
-from starlette.responses import RedirectResponse
-from starlette.templating import Jinja2Templates
+from starlette.responses import PlainTextResponse, JSONResponse
 from starlette.authentication import requires
-from starlette.authentication import (
-    AuthenticationBackend,
-    AuthenticationError,
-    SimpleUser,
-    UnauthenticatedUser,
-    AuthCredentials,
-)
-from starlette.middleware.authentication import AuthenticationMiddleware
-from starlette.middleware.sessions import SessionMiddleware
-from starlette.config import Config
-from starlette.datastructures import URL, Secret
-from starlette.routing import Route, Router
 
 # App-specific includes
-import common.helper as helper
 import common.config as config
-import common.monitor as monitor
 from common.constants import mercure_defs, mercure_names
 from webinterface.common import get_user_information
 from webinterface.common import templates
