@@ -50,10 +50,10 @@ class UnsetRule(TypedDict):
 
 
 class Rule(BaseModel, Compat):
-    rule: str
+    rule: str = "False"
     target: str = ""
     disabled: Literal["True", "False"] = "False"
-    fallback: str = ""
+    fallback: Literal["True", "False"] = "False"
     contact: str = ""
     comment: str = ""
     tags: str = ""

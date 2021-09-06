@@ -55,10 +55,27 @@
                            value="{{module['docker_arguments']}}">
                 </p>
             </div>
+            <div class="field" style="margin-top: 40px;">
+                <label class="label" for="docker_arguments">Settings</label>
+                <div class="control">
+                    <textarea name="settings" id="settings" class="textarea"
+                        autocomplete='off' rows="10"
+                        placeholder="Global module settings">{{settings}}</textarea>
+                </div>
+            </div>            
             <div class="field">
-                <p class="control" style="margin-top: 20px;">
-                    <button id="confirmaddmodal" class="button is-success">Submit</button>
-                    <!-- <a id="closeaddmodal" class="button">Cancel</a> -->
+                <label class="label">Contact</label>
+                <div class="control">
+                    <input name="contact" class="input" autocomplete='off' type="email" placeholder="Email address"
+                        value="{{module['contact']}}">
+                </div>
+            </div>
+            <div class="field">
+                <p class="control buttons" style="margin-top: 30px;">
+                    <button type="submit" class="button is-success" value="default action">
+                        <i class="fas fa-save"></i>&nbsp;Save
+                    </button>
+                    <a class="button" href="/modules"><i class="fas fa-ban"></i>&nbsp;Cancel</a>
                 </p>
             </div>
         </form>

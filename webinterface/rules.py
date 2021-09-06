@@ -8,7 +8,8 @@ Rules page for the graphical user interface of mercure.
 import logging
 import daiquiri
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple, Union, List
+from typing import Any, Dict, Optional, Tuple, Union, List, cast
+from typing_extensions import Literal
 import json
 
 
@@ -125,6 +126,7 @@ async def rules_edit(request) -> Response:
         "rule": rule,
         "alltags": tagslist.alltags,
         "sortedtags": tagslist.sortedtags,
+        "processing_settings": json.dumps(config.mercure.rules[rule].processing_settings, indent=4, sort_keys=False),
     }
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
@@ -145,6 +147,13 @@ async def rules_edit_post(request) -> Response:
     if not editrule in config.mercure.rules:
         return PlainTextResponse("Rule does not exist anymore.")
 
+    # Ensure that the processing settings are valid. Should happen on the client side too, but can't hurt
+    # to check again
+    try:
+        new_processing_settings: Dict = json.loads(form.get("processing_settings", "{}"))
+    except:
+        new_processing_settings = {}
+
     new_rule: Rule = Rule(
         rule=form.get("rule", "False"),
         target=form.get("target", ""),
@@ -159,7 +168,7 @@ async def rules_edit_post(request) -> Response:
         study_trigger_series=form.get("study_trigger_series", ""),
         priority=form.get("priority", "normal"),
         processing_module=form.get("processing_module", ""),
-        processing_settings=form.get("processing_settings", ""),
+        processing_settings=new_processing_settings,
         notification_webhook=form.get("notification_webhook", ""),
         notification_payload=form.get("notification_payload", ""),
         notification_trigger_reception=form.get("notification_trigger_reception", "False"),

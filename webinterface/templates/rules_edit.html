@@ -196,8 +196,8 @@
                         <label class="label">Settings</label>
                         <div class="control">
                             <textarea name="processing_settings" id="processing_settings" class="textarea"
-                                autocomplete='off'
-                                placeholder="Rule-specific module settings">{{rules[rule]['processing_settings']}}</textarea>
+                                autocomplete='off' rows="10"
+                                placeholder="Rule-specific module settings">{{processing_settings}}</textarea>
                         </div>
                     </div>
                 </div>
@@ -425,8 +425,7 @@
         var field = "";
         try {
             field = "Processing > Settings";
-            var str = '{' + $('#processing_settings').val() + '}';
-            JSON.parse(str);
+            JSON.parse($('#processing_settings').val());
             field = "Notification > Payload";
             str = '{' + $('#notification_payload').val() + '}';
             JSON.parse(str);
