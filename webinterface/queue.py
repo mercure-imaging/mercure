@@ -92,7 +92,8 @@ async def show_jobs_processing(request):
             try:
                 with open(task_file, "r") as f:
                     task: Task = Task(**json.load(f))
-                    job_module = task.process.module_name
+                    if task.process and task.process.module_name:
+                        job_module = task.process.module_name
                     job_acc = task.info.acc
                     job_mrn = task.info.mrn
                     if task.info.uid_type=="series":
