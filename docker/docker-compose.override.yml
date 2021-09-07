@@ -1,6 +1,7 @@
 version: "3.9"
 x-env: &env
   environment:
+    MERCURE_RUNNER: docker
     MERCURE_ENV: DEV
     MERCURE_CONFIG_FOLDER: /home/mercure/config
 
