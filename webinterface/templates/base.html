@@ -50,20 +50,20 @@
           <a class="navbar-item {% if page != 'modules' %}has-text-grey-light{% endif %}" href="/modules">
             Modules
           </a>
-          <a class="navbar-item {% if page != 'queue' %}has-text-grey-light{% endif %}" href="/queue">
-            Queue
-          </a>
           {% if is_admin %}
-          <a class="navbar-item {% if page != 'logs' %}has-text-grey-light{% endif %}" href="/logs">
-            Logs
-          </a>
           <a class="navbar-item {% if page != 'users' %}has-text-grey-light{% endif %}" href="/users">
             Users
           </a>
+          <a class="navbar-item {% if page != 'logs' %}has-text-grey-light{% endif %}" href="/logs">
+            Logs
+          </a>
+          {% endif %}
           <a class="navbar-item {% if page != 'configuration' %}has-text-grey-light{% endif %}" href="/configuration">
             Configuration
           </a>
-          {% endif %}
+          <a class="navbar-item {% if page != 'queue' %}has-text-grey-light{% endif %}" href="/queue">
+            Queue
+          </a>
           {% endif %}
         </div>
         {% if logged_in %}

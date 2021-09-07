@@ -253,3 +253,7 @@ body {
   border-top-right-radius: 0;
   margin-right: -1px;
 }
+
+.navbar.is-black .navbar-brand>a.navbar-item:hover {
+  background-color: #0a0a0a;
+}

@@ -78,25 +78,31 @@
         <div class="column" style="width: 100% !important;">
             <div class="tabs is-centered is-toggle is-toggle-rounded jobstabs" id="tabs">
                 <ul>
-                    <li data-tab="processing" class="is-active">
+                    <li data-tab="processing" id="tab_processing" class="is-active">
                         <a>
                             <span class="icon"><i class="fa fa-microchip"></i></span>
                             <span>Processing</span>
                         </a>
                     </li>
-                    <li data-tab="routing">
+                    <li data-tab="routing" id="tab_routing">
                         <a>
                             <span class="icon"><i class="fas fa-directions"></i></span>
                             <span>Routing</span>
                         </a>
                     </li>
-                    <li data-tab="fail">
+                    <li data-tab="studies" id="tab_studies">
+                        <a>
+                            <span class="icon"><i class="fas fa-clipboard-check"></i></span>
+                            <span>Studies</span>
+                        </a>
+                    </li>
+                    <li data-tab="fail" id="tab_fail">
                         <a>
                             <span class="icon"><i class="fas fa-bug"></i></span>
                             <span>Failure</span>
                         </a>
                     </li>
-                    <li data-tab="archive">
+                    <li data-tab="archive" id="tab_archive">
                         <a>
                             <span class="icon"><i class="fas fa-archive"></i></span>
                             <span>Archive</span>
@@ -109,11 +115,13 @@
                     <table class="table is-narrow is-hoverable is-fullwidth jobtable" id="jobs_processing">
                         <thead>
                             <tr>
+                                <th width="50px;"><input type="checkbox" name="all" value="checked" /></th>
+                                <th width="150px;">Status</th>
                                 <th>ID</th>
-                                <th>Module</th>
                                 <th>ACC</th>
                                 <th>MRN</th>
-                                <th>Status</th>
+                                <th>Scope</th>
+                                <th>Module</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -137,34 +145,36 @@
     }
 
     function update_jobs() {
-        $.ajax({
-            type: 'GET',
-            url: '/queue/jobs/processing',
-            data: {},
-            dataType: 'json',
-            error: function () {
-                $('#erroralert').show();
-                $("#jobs_processing tbody tr").remove();
-            },
-            success: function (data) {
-                $('#erroralert').hide();
-                $("#jobs_processing tbody tr").remove();
-                if (!Object.keys(data).length) {
-                    $("#jobs_processing").find('tbody').append("<tr><td>No jobs</td><td></td><td></td><td></td><td></td></tr>");
-                }
-                else {
-                    Object.keys(data).forEach(function (key) {
-                        var processingStyle = "";
-                        if (data[key]["Status"] == "Processing") {
-                            processingStyle = " class=\"is-selected\"";
-                        }
-                        addedRow = `<tr${processingStyle}><td>${key}</td><td>${data[key]["Module"]}</td><td>${data[key]["ACC"]}</td><td>${data[key]["MRN"]}</td><td>${data[key]["Status"]}</td></tr>`;
-                        $("#jobs_processing").find('tbody').append(addedRow);
-                    })
-                }
-            },
-            timeout: 3000
-        });
+        if ($("#tab_processing").hasClass("is-active")) {
+            $.ajax({
+                type: 'GET',
+                url: '/queue/jobs/processing',
+                data: {},
+                dataType: 'json',
+                error: function () {
+                    $('#erroralert').show();
+                    $("#jobs_processing tbody tr").remove();
+                },
+                success: function (data) {
+                    $('#erroralert').hide();
+                    $("#jobs_processing tbody tr").remove();
+                    if (!Object.keys(data).length) {
+                        $("#jobs_processing").find('tbody').append("<tr><td>No jobs</td><td></td><td></td><td></td><td></td></tr>");
+                    }
+                    else {
+                        Object.keys(data).forEach(function (key) {
+                            var processingStyle = "";
+                            if (data[key]["Status"] == "Processing") {
+                                processingStyle = " class=\"is-selected\"";
+                            }
+                            addedRow = `<tr${processingStyle}><td><input type="checkbox" name="{key}" value="checked" /></td><td>${data[key]["Status"]}</td><td>${key}</td><td>${data[key]["ACC"]}</td><td>${data[key]["MRN"]}</td><td>${data[key]["Scope"]}</td><td>${data[key]["Module"]}</td></tr>`;
+                            $("#jobs_processing").find('tbody').append(addedRow);
+                        })
+                    }
+                },
+                timeout: 3000
+            });
+        }
     }
 
     function update_status() {
@@ -276,9 +286,11 @@
 
             $('#tab-content div.panel').removeClass('is-active');
             $('div.panel[data-content="' + tab + '"]').addClass('is-active');
+
+            update_jobs();
         });
 
-        var updateTimer = setInterval(update, 60000);
+        /*var updateTimer = setInterval(update, 60000);*/
         update();
     });
 

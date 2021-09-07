@@ -34,7 +34,8 @@ config_partial = {
             "additional_volumes": "",
             "environment": "",
             "docker_arguments": "",
-            "settings": {}
+            "settings": {},
+            "contact": "",
         }
     },
     "rules": {
@@ -64,12 +65,16 @@ config_partial = {
 
 
 def create_and_route(fs, mocker, uid="TESTFAKEUID") -> List[str]:
-    mocker.patch("routing.route_series.push_series_serieslevel", new=mocker.spy(routing.route_series, "push_series_serieslevel"))
+    mocker.patch(
+        "routing.route_series.push_series_serieslevel", new=mocker.spy(routing.route_series, "push_series_serieslevel")
+    )
     mocker.patch(
         "routing.route_series.push_serieslevel_outgoing",
         new=mocker.spy(routing.route_series, "push_serieslevel_outgoing"),
     )
-    mocker.patch("routing.generate_taskfile.create_series_task", new=mocker.spy(routing.generate_taskfile, "create_series_task"))
+    mocker.patch(
+        "routing.generate_taskfile.create_series_task", new=mocker.spy(routing.generate_taskfile, "create_series_task")
+    )
     mocker.patch("router.route_series", new=mocker.spy(router, "route_series"))
     # mocker.patch("routing.route_series.parse_ascconv", new=lambda x: {})
 
@@ -83,7 +88,9 @@ def create_and_route(fs, mocker, uid="TESTFAKEUID") -> List[str]:
     routing.route_series.push_serieslevel_outgoing.assert_called_once_with({"catchall": True}, [f"{uid}#bar"], uid, {}, {})  # type: ignore
 
     processor_path = next(Path("/var/processing").iterdir())
-    assert ["task.json", f"{uid}#bar.dcm", f"{uid}#bar.tags"] == [k.name for k in Path("/var/processing").glob("**/*") if k.is_file()]
+    assert ["task.json", f"{uid}#bar.dcm", f"{uid}#bar.tags"] == [
+        k.name for k in Path("/var/processing").glob("**/*") if k.is_file()
+    ]
 
     mocker.patch("processor.process_series", new=mocker.spy(process.process_series, "process_series"))
     return ["task.json", f"{uid}#bar.dcm", f"{uid}#bar.tags"]
@@ -91,8 +98,7 @@ def create_and_route(fs, mocker, uid="TESTFAKEUID") -> List[str]:
 
 def test_process_series_nomad(fs, mocker: MockerFixture):
     load_config(
-        fs,
-        {"process_runner": "nomad", **config_partial},
+        fs, {"process_runner": "nomad", **config_partial},
     )
 
     files = create_and_route(fs, mocker)
@@ -122,7 +128,9 @@ def test_process_series_nomad(fs, mocker: MockerFixture):
     processor.run_processor()
     process.process_series.process_series.assert_called_once_with(str(processor_path))  # type: ignore
 
-    fake_run.assert_called_once_with("mercure-processor", meta={"IMAGE_ID": "busybox:stable", "PATH": processor_path.name})
+    fake_run.assert_called_once_with(
+        "mercure-processor", meta={"IMAGE_ID": "busybox:stable", "PATH": processor_path.name}
+    )
 
     for k in Path("/var/processing").rglob("*"):
         logger.info(k)
@@ -158,6 +166,7 @@ def test_process_series_nomad(fs, mocker: MockerFixture):
                 "environment": "",
                 "docker_arguments": "",
                 "settings": {},
+                "contact": "",
             },
             "settings": {},
         },
@@ -190,15 +199,18 @@ def test_process_series_nomad(fs, mocker: MockerFixture):
     processor.run_processor()
 
     assert (Path("/var/error") / processor_path.name).exists()
-    assert ["task.json", "FAILEDFAILED#bar.dcm", "FAILEDFAILED#bar.tags"] == [k.name for k in (Path("/var/error") / processor_path.name / "in").rglob("*") if k.is_file()]
-    assert ["task.json"] == [k.name for k in (Path("/var/error") / processor_path.name / "out").rglob("*") if k.is_file()]
+    assert ["task.json", "FAILEDFAILED#bar.dcm", "FAILEDFAILED#bar.tags"] == [
+        k.name for k in (Path("/var/error") / processor_path.name / "in").rglob("*") if k.is_file()
+    ]
+    assert ["task.json"] == [
+        k.name for k in (Path("/var/error") / processor_path.name / "out").rglob("*") if k.is_file()
+    ]
 
 
 def test_process_series(fs, mocker: MockerFixture):
     global processor_path
     load_config(
-        fs,
-        {"process_runner": "docker", **config_partial},
+        fs, {"process_runner": "docker", **config_partial},
     )
 
     files = create_and_route(fs, mocker)

@@ -13,8 +13,6 @@ import uuid
 import json
 import shutil
 import daiquiri
-import traceback
-import mmap, pprint
 
 # App-specific includes
 import common.config as config

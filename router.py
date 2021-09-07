@@ -17,7 +17,7 @@ import hupper
 from typing import Dict, Optional
 
 # App-specific includes
-from common.constants import mercure_config, mercure_defs, mercure_folders, mercure_names
+from common.constants import mercure_defs, mercure_names
 import common.helper as helper
 import common.config as config
 import common.monitor as monitor

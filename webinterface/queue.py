@@ -7,6 +7,7 @@ Queue page for the graphical user interface of mercure.
 # Standard python includes
 import os
 from pathlib import Path
+import json
 
 # Starlette-related includes
 from starlette.applications import Starlette
@@ -18,6 +19,7 @@ import common.config as config
 from common.constants import mercure_defs, mercure_names
 from webinterface.common import get_user_information
 from webinterface.common import templates
+from common.types import Task
 
 
 ###################################################################################
@@ -70,19 +72,45 @@ async def show_jobs_processing(request):
         return PlainTextResponse("Configuration is being updated. Try again in a minute.")
 
     job_list = {}
-    job_list["1234-1234-1234-1234"] = {"Module": "Test", "ACC": "ACC1234", "MRN": "MRN1234", "Status": "Processing"}
-    job_list["1334-1244-2234-1233"] = {
-        "Module": "Anonymizer",
-        "ACC": "ACC1234",
-        "MRN": "MRN1234",
-        "Status": "Scheduled",
-    }
-    job_list["4234-1234-1434-1234"] = {
-        "Module": "Anonymizer",
-        "ACC": "ACC1234",
-        "MRN": "MRN1234",
-        "Status": "Scheduled",
-    }
+
+    for entry in os.scandir(config.mercure.processing_folder):
+        if entry.is_dir():
+            job_module = ""
+            job_acc = ""
+            job_mrn = ""
+            job_scope = "Series"
+            job_status = "Queued"
+
+            processing_file = Path(entry.path) / mercure_names.PROCESSING
+            task_file = Path(entry.path) / mercure_names.TASKFILE
+            if processing_file.exists():
+                job_status = "Processing"
+                task_file = Path(entry.path) / "in" / mercure_names.TASKFILE
+            else:
+                pass
+
+            try:
+                with open(task_file, "r") as f:
+                    task: Task = Task(**json.load(f))
+                    job_module = task.process.module_name
+                    job_acc = task.info.acc
+                    job_mrn = task.info.mrn
+                    if task.info.uid_type=="series":
+                        job_scope = "Series"
+                    else:
+                        job_scope = "Study"
+            except:
+                job_module = "Error"
+                job_acc = "Error"
+                job_mrn = "Error"
+
+            job_list[entry.name] = {
+                "Module": job_module,
+                "ACC": job_acc,
+                "MRN": job_mrn,
+                "Status": job_status,
+                "Scope": job_scope,
+            }
 
     return JSONResponse(job_list)
 

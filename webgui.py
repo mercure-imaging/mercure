@@ -279,15 +279,13 @@ async def show_log(request) -> Response:
     return templates.TemplateResponse(template, context)
 
 
-
-
 ###################################################################################
 ## Configuration endpoints
 ###################################################################################
 
 
 @app.route("/configuration")
-@requires(["authenticated", "admin"], redirect="homepage")
+@requires(["authenticated"], redirect="homepage")
 async def configuration(request) -> Response:
     """Shows the current configuration of the mercure appliance."""
     try:
