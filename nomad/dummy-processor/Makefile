@@ -1,2 +1,2 @@
 build:
-	docker build . -t mercure/dummy-processor:dev
+	docker build . -t yarranyu/mercure-dummy-processor:dev
