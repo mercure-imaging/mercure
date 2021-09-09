@@ -29,13 +29,14 @@ processor_path = Path()
 config_partial = {
     "modules": {
         "test_module": {
-            "url": "",
             "docker_tag": "busybox:stable",
             "additional_volumes": "",
             "environment": "",
             "docker_arguments": "",
+            "server_group": "",
             "settings": {},
             "contact": "",
+            "comment": "",
         }
     },
     "rules": {
@@ -160,13 +161,14 @@ def test_process_series_nomad(fs, mocker: MockerFixture):
         "process": {
             "module_name": "test_module",
             "module_config": {
-                "url": "",
                 "docker_tag": "busybox:stable",
                 "additional_volumes": "",
                 "environment": "",
                 "docker_arguments": "",
+                "server_group": "",
                 "settings": {},
                 "contact": "",
+                "comment": "",
             },
             "settings": {},
         },
@@ -245,5 +247,4 @@ def test_process_series(fs, mocker: MockerFixture):
     )
 
     assert [] == [k.name for k in Path("/var/processing").glob("**/*")]
-
     assert files == [k.name for k in (Path("/var/success") / processor_path.name).glob("*") if k.is_file()]
