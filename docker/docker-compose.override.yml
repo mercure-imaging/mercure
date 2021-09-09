@@ -9,13 +9,13 @@ x-volumes: &volumes
   volumes:
     - code:/home/mercure/mercure
     - config:/home/mercure/config
-    - data:/home/mercure/data
+    - data:/home/mercure/mercure-data
 
 x-volumes-docker: &volumes-docker
   volumes:
     - code:/home/mercure/mercure
     - config:/home/mercure/config
-    - data:/home/mercure/data
+    - data:/home/mercure/mercure-data
     - /var/run/docker.sock:/var/run/docker.sock
 
 services:

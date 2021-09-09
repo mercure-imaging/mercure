@@ -62,10 +62,20 @@ def docker_runtime(task: Task, folder: str) -> bool:
 
         return option_dict
 
+
+    real_folder = Path(folder)
+
+    if config.get_runner() == "docker": 
+        # We want to bind the correct path into the processor, but if we're inside docker we need to use the host path
+        # TODO: don't hardcode this!! can we use the mercure_data volume that docker knows about instead?
+        # we don't want to just mount the whole mercure_data in though.
+        real_folder = Path("/opt/mercure/data/processing") / real_folder.stem
+
     default_volumes = {
-        folder + "/in": {"bind": "/data", "mode": "rw"},
-        folder + "/out": {"bind": "/output", "mode": "rw"},
+        str(real_folder / "in"): {"bind": "/data", "mode": "rw"},
+        str(real_folder / "out"): {"bind": "/output", "mode": "rw"},
     }
+    logger.debug(default_volumes)
 
     if module.docker_tag:
         docker_tag: str = module.docker_tag
@@ -74,6 +84,7 @@ def docker_runtime(task: Task, folder: str) -> bool:
         return False
     additional_volumes: Dict[str, Dict[str, str]] = decode_task("additional_volumes")
     environment = decode_task("environment")
+    environment = {**environment, **dict(MERCURE_IN_DIR="/data",MERCURE_OUT_DIR="/output")}
     arguments = decode_task("arguments")
 
     # Merge the two dictionaries
@@ -96,9 +107,9 @@ def docker_runtime(task: Task, folder: str) -> bool:
         # Returns: logs (stdout), pass stderr=True if you want stderr too.
         logger.info(logs)
         """Raises:	
-            docker.errors.ContainerError � If the container exits with a non-zero exit code
-            docker.errors.ImageNotFound � If the specified image does not exist.
-            docker.errors.APIError � If the server returns an error."""
+            docker.errors.ContainerError - If the container exits with a non-zero exit code
+            docker.errors.ImageNotFound - If the specified image does not exist.
+            docker.errors.APIError - If the server returns an error."""
     except (docker.errors.APIError, docker.errors.ImageNotFound):
         # Something really serious happened
         logger.info("There was a problem running the specified Docker container")
@@ -108,7 +119,7 @@ def docker_runtime(task: Task, folder: str) -> bool:
         )
         processing_success = False
     except docker.errors.ContainerError as err:
-        logger.info("The container returned a non-zero exit code")
+        logger.error(f"The container returned a non-zero exit code {err}")
         monitor.send_event(
             monitor.m_events.PROCESSING,
             monitor.severity.ERROR,
@@ -159,17 +170,20 @@ def process_series(folder) -> None:
                 # logger.info(f"Moving {child}")
                 child.rename(f_path / "in" / child.name)
         (f_path / "out").mkdir()
-
-        if config.mercure.process_runner == "docker":
-            processing_success = docker_runtime(task, folder)
-        if config.mercure.process_runner == "nomad":
+        if config.get_runner() == "nomad" or config.mercure.process_runner == "nomad":
+            # Use nomad if we're being run inside nomad, or we're configured to use nomad regardless
             processing_success = nomad_runtime(task, folder)
-
+        elif config.get_runner() in ("docker","systemd"):
+            # Use docker if we're being run inside docker or just by systemd
+            processing_success = docker_runtime(task, folder)
+        else:
+            processing_success = False
+            raise Exception("Unable to determine a valid runtime for processing.")
     except Exception as e:
         logger.error("Processing error.")
         logger.error(traceback.format_exc())
     finally:
-        if config.mercure.process_runner == "docker":
+        if config.get_runner() == "docker":
             logger.debug("Docker processing: immediately move results")
             move_results(folder, lock, processing_success, needs_dispatching)
             shutil.rmtree(folder, ignore_errors=True)
