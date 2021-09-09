@@ -10,8 +10,9 @@ import os
 import logging
 from pathlib import Path
 import daiquiri
+from common import config
 
-daiquiri.setup(level=logging.INFO)
+daiquiri.setup(config.get_loglevel())
 logger = daiquiri.getLogger("config")
 
 services_filename = (

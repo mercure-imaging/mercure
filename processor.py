@@ -28,7 +28,7 @@ from process.process_series import process_series, move_results
 
 
 daiquiri.setup(
-    level=logging.INFO,
+    config.get_loglevel(),
     outputs=(
         daiquiri.output.Stream(
             formatter=daiquiri.formatter.ColorFormatter(

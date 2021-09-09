@@ -6,6 +6,7 @@ mercure's configuration management, used by various mercure modules
 
 # Standard python includes
 import json
+import logging
 import os
 from pathlib import Path
 from typing_extensions import Literal
@@ -59,6 +60,17 @@ mercure_defaults = {
 }
 
 mercure: Config
+
+
+def get_loglevel() -> int:
+    level = os.getenv("MERCURE_LOG_LEVEL", "info").lower()
+    if level == "error":
+        return logging.ERROR
+    if level == "info":
+        return logging.INFO
+    if level == "debug":
+        return logging.DEBUG
+    return
 
 
 def get_runner() -> str:

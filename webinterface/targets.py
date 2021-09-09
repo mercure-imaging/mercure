@@ -22,7 +22,7 @@ from common.types import Target
 from webinterface.common import *
 
 
-daiquiri.setup(level=logging.INFO)
+daiquiri.setup(config.get_loglevel())
 logger = daiquiri.getLogger("targets")
 
 

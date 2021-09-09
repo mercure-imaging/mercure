@@ -22,7 +22,7 @@ from dispatch.send import execute
 from common.constants import mercure_defs, mercure_folders
 
 daiquiri.setup(
-    level=logging.INFO,
+    config.get_loglevel(),
     outputs=(
         daiquiri.output.Stream(
             formatter=daiquiri.formatter.ColorFormatter(

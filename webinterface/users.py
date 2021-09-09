@@ -42,7 +42,7 @@ class User(TypedDict, total=False):
     permissions: Any
 
 
-daiquiri.setup(level=logging.INFO)
+daiquiri.setup(config.get_loglevel())
 logger = daiquiri.getLogger("users")
 
 users_timestamp: float = 0.0

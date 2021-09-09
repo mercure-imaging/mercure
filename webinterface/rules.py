@@ -25,7 +25,7 @@ from webinterface.common import *
 import webinterface.tagslist as tagslist
 
 
-daiquiri.setup(level=logging.INFO)
+daiquiri.setup(config.get_loglevel())
 logger = daiquiri.getLogger("targets")
 
 

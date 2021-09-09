@@ -102,7 +102,7 @@ class Config(BaseModel, Compat):
     targets: Dict[str, Target]
     rules: Dict[str, Rule]
     modules: Dict[str, Module]
-    process_runner: Literal["docker", "nomad",""] = ""
+    process_runner: Literal["docker", "nomad", ""] = ""
 
 
 class TaskInfo(BaseModel, Compat):

@@ -5,8 +5,9 @@ import logging
 from pathlib import Path
 from typing import Dict
 import daiquiri
+from common import config
 
-daiquiri.setup(level=logging.INFO)
+daiquiri.setup(config.get_loglevel())
 logger = daiquiri.getLogger("process_dcmsend_result")
 
 

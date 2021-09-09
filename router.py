@@ -26,7 +26,7 @@ from routing.route_studies import route_studies
 
 # Setup daiquiri logger
 daiquiri.setup(
-    level=logging.INFO,
+    config.get_loglevel(),
     outputs=(
         daiquiri.output.Stream(
             formatter=daiquiri.formatter.ColorFormatter(

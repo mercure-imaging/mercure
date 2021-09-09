@@ -29,6 +29,7 @@ import hupper
 # App-specific includes
 import common.monitor as monitor
 from common.constants import mercure_defs
+from common import config
 
 
 ###################################################################################
@@ -36,7 +37,7 @@ from common.constants import mercure_defs
 ###################################################################################
 
 daiquiri.setup(
-    level=logging.INFO,
+    config.get_loglevel(),
     outputs=(
         daiquiri.output.Stream(
             formatter=daiquiri.formatter.ColorFormatter(
