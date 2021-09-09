@@ -99,7 +99,8 @@ def create_and_route(fs, mocker, uid="TESTFAKEUID") -> List[str]:
 
 def test_process_series_nomad(fs, mocker: MockerFixture):
     load_config(
-        fs, {"process_runner": "nomad", **config_partial},
+        fs,
+        {"process_runner": "nomad", **config_partial},
     )
 
     files = create_and_route(fs, mocker)
@@ -212,9 +213,9 @@ def test_process_series_nomad(fs, mocker: MockerFixture):
 def test_process_series(fs, mocker: MockerFixture):
     global processor_path
     load_config(
-        fs, {"process_runner": "docker", **config_partial},
+        fs,
+        {"process_runner": "docker", **config_partial},
     )
-
     files = create_and_route(fs, mocker)
     processor_path = Path()
 
@@ -239,7 +240,7 @@ def test_process_series(fs, mocker: MockerFixture):
 
     fake_run.assert_called_once_with(
         "busybox:stable",
-        environment={},
+        environment={"MERCURE_IN_DIR": "/data", "MERCURE_OUT_DIR": "/output"},
         volumes={
             str(processor_path / "in"): {"bind": "/data", "mode": "rw"},
             str(processor_path / "out"): {"bind": "/output", "mode": "rw"},
