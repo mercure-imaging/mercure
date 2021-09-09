@@ -70,7 +70,7 @@ def get_loglevel() -> int:
         return logging.INFO
     if level == "debug":
         return logging.DEBUG
-    return
+    return logging.INFO
 
 
 def get_runner() -> str:
