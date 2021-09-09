@@ -133,6 +133,7 @@ async def targets_edit_post(request) -> Union[RedirectResponse, PlainTextRespons
     config.mercure.targets[edittarget].aet_target = form["aet_target"]
     config.mercure.targets[edittarget].aet_source = form["aet_source"]
     config.mercure.targets[edittarget].contact = form["contact"]
+    config.mercure.targets[edittarget].comment = form["comment"]
 
     try:
         config.save_config()

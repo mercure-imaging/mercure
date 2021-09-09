@@ -29,21 +29,24 @@ class EmptyDict(TypedDict):
 
 
 class Target(BaseModel, Compat):
+    target_type: Literal["dicom"] = "dicom"
     ip: Optional[str] = ""
     port: Optional[str] = ""
     aet_target: Optional[str] = ""
     aet_source: Optional[str] = ""
     contact: Optional[str] = ""
+    comment: str = ""
 
 
 class Module(BaseModel, Compat):
-    url: Optional[str] = ""
     docker_tag: Optional[str] = ""
     additional_volumes: Optional[str] = ""
     environment: Optional[str] = ""
     docker_arguments: Optional[str] = ""
+    server_group: Optional[str] = ""
     settings: Dict[str, Any] = {}
     contact: Optional[str] = ""
+    comment: str = ""
 
 
 class UnsetRule(TypedDict):

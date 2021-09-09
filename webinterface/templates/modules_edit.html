@@ -14,16 +14,9 @@
 
         <form method="post" onsubmit="return validate()">
             <div class="field">
-                <label class="label" for="url">Git URL</label>
-                <p class="control">
-                    <input class="input" id="url" type="url" pattern="https://.*" placeholder="Git URL"
-                        name="url" autofocus value="{{module['url']}}">
-                </p>
-            </div>
-            <div class="field">
                 <label class="label" for="docker_tag">Docker tag</label>
                 <p class="control">
-                    <input class="input" id="docker_tag" type="text" placeholder="Docker tag" name="docker_tag"
+                    <input class="input" id="docker_tag" required type="text" placeholder="Docker tag" name="docker_tag"
                         value="{{module['docker_tag']}}">
                 </p>
             </div>
@@ -39,7 +32,7 @@
                 </p>
             </div>
             <div class="field">
-                <label class="label" for="environment">Environment Variables</label>
+                <label class="label" for="environment">Environment variables</label>
                 <p class="control">
                     <input class="input"
                            id="environment"
@@ -60,12 +53,31 @@
                            value="{{module['docker_arguments']}}">
                 </p>
             </div>
+            <div class="field">
+                <label class="label" for="server_group">Server group</label>
+                <p class="control">
+                    <input class="input"
+                           id="server_group"
+                           type="text"
+                           placeholder="Required server type. Leave empty for any"
+                           name="server_group"
+                           value="{{module['server_group']}}">
+                </p>
+            </div>
             <div class="field" style="margin-top: 40px;">
                 <label class="label" for="settings">Settings</label>
                 <div class="control">
                     <textarea name="settings" id="settings" class="textarea"
-                        autocomplete='off' rows="10"
+                        autocomplete='off' rows="9"
                         placeholder="Global module settings">{{settings}}</textarea>
+                </div>
+            </div>            
+            <div class="field" style="margin-top: 40px;">
+                <label class="label" for="comment">Comment</label>
+                <div class="control">
+                    <textarea name="comment" id="comment" class="textarea"
+                        autocomplete='off' rows="3"
+                        placeholder="Module description">{{module['comment']}}</textarea>
                 </div>
             </div>            
             <div class="field">

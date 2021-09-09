@@ -22,7 +22,7 @@
             <div class="field" style="margin-top: 30px;">
                 <label class="label">IP</label>
                 <div class="control">
-                    <input name="ip" class="input" autofocus required autocomplete='off' type="text"
+                    <input name="ip" class="input" required autocomplete='off' type="text"
                         placeholder="IP address" value="{{targets[edittarget]['ip']}}" minlength="7" maxlength="15"
                         size="15" pattern="^((\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.){3}(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])$">
                 </div>
@@ -51,6 +51,14 @@
                 </div>
             </div>
             <div class="field" style="margin-top: 40px;">
+                <label class="label" for="comment">Comment</label>
+                <div class="control">
+                    <textarea name="comment" id="comment" class="textarea"
+                        autocomplete='off' rows="3"
+                        placeholder="Target description">{{targets[edittarget]['comment']}}</textarea>
+                </div>
+            </div>            
+            <div class="field" >
                 <label class="label">Contact</label>
                 <div class="control">
                     <input name="contact" class="input" autocomplete='off' type="email" placeholder="Email address"

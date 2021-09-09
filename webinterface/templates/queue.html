@@ -115,13 +115,13 @@
                     <table class="table is-narrow is-hoverable is-fullwidth jobtable" id="jobs_processing">
                         <thead>
                             <tr>
-                                <th width="50px;"><input type="checkbox" name="all" value="checked" /></th>
-                                <th width="150px;">Status</th>
+                                <th width="50px;"><input type="checkbox" name="all_processing" value="checked" /></th>
                                 <th>ID</th>
                                 <th>ACC</th>
                                 <th>MRN</th>
                                 <th>Scope</th>
                                 <th>Module</th>
+                                <th width="150px;">Status</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -129,6 +129,38 @@
                     </table>
                 </div>
                 <div class="panel" data-content="routing">
+                    <table class="table is-narrow is-hoverable is-fullwidth jobtable" id="jobs_processing">
+                        <thead>
+                            <tr>
+                                <th width="50px;"><input type="checkbox" name="all_routing" value="checked" /></th>
+                                <th>ID</th>
+                                <th>ACC</th>
+                                <th>MRN</th>
+                                <th>Scope</th>
+                                <th>Target</th>
+                                <th width="150px;">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="panel" data-content="studies">
+                    <table class="table is-narrow is-hoverable is-fullwidth jobtable" id="jobs_processing">
+                        <thead>
+                            <tr>
+                                <th width="50px;"><input type="checkbox" name="all_studies" value="checked" /></th>
+                                <th>Study UID</th>
+                                <th>ACC</th>
+                                <th>MRN</th>
+                                <th>Completion</th>
+                                <th>Created</th>
+                                <th># Series</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -159,7 +191,6 @@
                     $('#erroralert').hide();
                     $("#jobs_processing tbody tr").remove();
                     if (!Object.keys(data).length) {
-                        $("#jobs_processing").find('tbody').append("<tr><td>No jobs</td><td></td><td></td><td></td><td></td></tr>");
                     }
                     else {
                         Object.keys(data).forEach(function (key) {
@@ -167,7 +198,7 @@
                             if (data[key]["Status"] == "Processing") {
                                 processingStyle = " class=\"is-selected\"";
                             }
-                            addedRow = `<tr${processingStyle}><td><input type="checkbox" name="{key}" value="checked" /></td><td>${data[key]["Status"]}</td><td>${key}</td><td>${data[key]["ACC"]}</td><td>${data[key]["MRN"]}</td><td>${data[key]["Scope"]}</td><td>${data[key]["Module"]}</td></tr>`;
+                            addedRow = `<tr${processingStyle}><td><input type="checkbox" name="{key}" value="checked" /></td><td>${key}</td><td>${data[key]["ACC"]}</td><td>${data[key]["MRN"]}</td><td>${data[key]["Scope"]}</td><td>${data[key]["Module"]}</td><td>${data[key]["Status"]}</td></tr>`;
                             $("#jobs_processing").find('tbody').append(addedRow);
                         })
                     }

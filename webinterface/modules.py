@@ -37,12 +37,14 @@ async def save_module(form, name) -> Response:
         new_settings = {}
 
     config.mercure.modules[name] = Module(
-        url=form.get("url", ""),
         docker_tag=form.get("docker_tag", None),
         additional_volumes=form.get("additional_volumes", None),
         environment=form.get("environment", None),
         docker_arguments=form.get("docker_arguments", None),
+        server_group=form.get("server_group", None),
         settings=new_settings,
+        comment=form.get("comment", None),
+        contact=form.get("contact", None),
     )
     try:
         config.save_config()
@@ -129,7 +131,7 @@ async def edit_module(request):
         "page": "modules",
         "module": config.mercure.modules[module],
         "module_name": module,
-        "settings": settings_string
+        "settings": settings_string,
     }
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)

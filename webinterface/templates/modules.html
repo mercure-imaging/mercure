@@ -21,10 +21,6 @@
                             <table class="table is-narrow" style="margin-bottom: 8px;">
                                 <col width="150">
                                 <tr>
-                                    <td>Git URL:</td>
-                                    <td>{{ modules[x]['url'] }}</td>
-                                </tr>
-                                <tr>
                                     <td>Docker tag:</td>
                                     <td>{{ modules[x]['docker_tag'] }}</td>
                                 </tr>
@@ -68,18 +64,12 @@
                         <div class="field">
                             <p class="control">
                                 <input class="input" id="addnewname" type="text" required pattern="[-_A-Za-z0-9]+"
-                                       placeholder="Name of target" name="name" autofocus>
+                                       placeholder="Name of module" name="name" autofocus>
                             </p>
                         </div>
                         <div class="field">
                             <p class="control">
-                                <input class="input" id="url" type="url" pattern="https://.*" placeholder="Git URL"
-                                       name="url" autofocus>
-                            </p>
-                        </div>
-                        <div class="field">
-                            <p class="control">
-                                <input class="input" id="docker_tag" type="text" placeholder="Docker tag" name="docker_tag">
+                                <input class="input" id="docker_tag" type="text" required placeholder="Docker tag" name="docker_tag">
                             </p>
                         </div>
                         <div class="field">
@@ -107,6 +97,15 @@
                                        type="text"
                                        placeholder="Additional arguments (https://docker-py.readthedocs.io/en/stable/containers.html)"
                                        name="docker_arguments">
+                            </p>
+                        </div>
+                        <div class="field">
+                            <p class="control">
+                                <input class="input"
+                                       id="server_group"
+                                       type="text"
+                                       placeholder="Required server type. Leave empty for any"
+                                       name="server_group">
                             </p>
                         </div>
                         <div class="field">
