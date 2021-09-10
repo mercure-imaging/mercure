@@ -17,6 +17,7 @@ from common.types import EmptyDict, Task, Module
 import traceback
 
 import nomad
+from jinja2 import Template
 
 logger = daiquiri.getLogger("process_series")
 
@@ -34,9 +35,28 @@ def nomad_runtime(task: Task, folder: str) -> bool:
         logger.error("No docker tag supplied")
         return False
 
-    meta = {"IMAGE_ID": module.docker_tag, "PATH": f_path.name}
+    with open("nomad/mercure-processor-template.nomad", "r") as f:
+        rendered = Template(f.read()).render(
+            image=module.docker_tag, constraint=module.constraint, resources=module.resources
+        )
+
+    logger.info(rendered)
+    try:
+        job_definition = nomad_connection.jobs.parse(rendered)
+    except nomad.api.exceptions.BadRequestNomadException as err:
+        logger.error(err)
+        print(err.nomad_resp.reason)
+        print(err.nomad_resp.text)
+        return False
+    logger.info(job_definition)
+
+    job_definition["ID"] = f"processor-{task.process.module_name}"
+    job_definition["Name"] = f"processor-{task.process.module_name}"
+    nomad_connection.job.register_job(job_definition["ID"], dict(Job=job_definition))
+
+    meta = {"PATH": f_path.name}
     logger.debug(meta)
-    job_info = nomad_connection.job.dispatch_job("mercure-processor", meta=meta)
+    job_info = nomad_connection.job.dispatch_job(f"processor-{task.process.module_name}", meta=meta)
     with open(f_path / "nomad_job.json", "w") as json_file:
         json.dump(job_info, json_file, indent=4)
 
@@ -182,12 +202,14 @@ def process_series(folder) -> None:
         logger.error("Processing error.")
         logger.error(traceback.format_exc())
     finally:
+        # TODO: simplify this logic
         if config.get_runner() in ("docker", "systemd") and config.mercure.process_runner != "nomad":
-            logger.debug("Docker processing: immediately move results")
+            logger.debug("Docker processing complete.")
             move_results(folder, lock, processing_success, needs_dispatching)
             shutil.rmtree(folder, ignore_errors=True)
+        else:
+            logger.info(f"Done submitting for processing.")
 
-    logger.info(f"Done processing case")
     return
 
 

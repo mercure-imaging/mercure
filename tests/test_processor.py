@@ -21,6 +21,7 @@ from testing_common import load_config
 from docker.models.containers import ContainerCollection
 
 from nomad.api.job import Job
+from nomad.api.jobs import Jobs
 import socket
 
 logger = daiquiri.getLogger("test_processor")
@@ -102,6 +103,8 @@ def test_process_series_nomad(fs, mocker: MockerFixture):
         fs,
         {"process_runner": "nomad", **config_partial},
     )
+    fs.create_file(f"nomad/mercure-processor-template.nomad", contents="foo")
+    mocker.patch.object(Jobs, "parse", new=lambda x, y: {})
 
     files = create_and_route(fs, mocker)
 
@@ -123,6 +126,7 @@ def test_process_series_nomad(fs, mocker: MockerFixture):
         }
 
     fake_run = mocker.Mock(return_value=b"", side_effect=fake_processor)
+    mocker.patch.object(Job, "register_job", new=lambda *args: None)
     mocker.patch.object(Job, "dispatch_job", new=fake_run)
     mocker.patch.object(Job, "get_job", new=lambda x, y: dict(Status="dead"))
 
@@ -130,9 +134,7 @@ def test_process_series_nomad(fs, mocker: MockerFixture):
     processor.run_processor()
     process.process_series.process_series.assert_called_once_with(str(processor_path))  # type: ignore
 
-    fake_run.assert_called_once_with(
-        "mercure-processor", meta={"IMAGE_ID": "busybox:stable", "PATH": processor_path.name}
-    )
+    fake_run.assert_called_once_with("processor-test_module", meta={"PATH": processor_path.name})
 
     for k in Path("/var/processing").rglob("*"):
         logger.info(k)
@@ -165,6 +167,8 @@ def test_process_series_nomad(fs, mocker: MockerFixture):
                 "docker_tag": "busybox:stable",
                 "additional_volumes": "",
                 "environment": "",
+                "constraint": "",
+                "resources": "",
                 "docker_arguments": "",
                 "server_group": "",
                 "settings": {},

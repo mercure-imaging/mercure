@@ -44,7 +44,8 @@ async def save_module(form, name) -> Response:
         server_group=form.get("server_group", None),
         settings=new_settings,
         comment=form.get("comment", None),
-        contact=form.get("contact", None),
+        constraint=form.get("constraint", None),
+        resources=form.get("resources", None),
     )
     try:
         config.save_config()

@@ -46,7 +46,9 @@ class Module(BaseModel, Compat):
     server_group: Optional[str] = ""
     settings: Dict[str, Any] = {}
     contact: Optional[str] = ""
-    comment: str = ""
+    comment: Optional[str] = ""
+    constraint: Optional[str] = ""
+    resources: Optional[str] = ""
 
 
 class UnsetRule(TypedDict):

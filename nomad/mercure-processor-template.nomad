@@ -4,9 +4,13 @@ job "mercure-processor" {
   type        = "batch"
 
   parameterized  {
-    meta_required = ["IMAGE_ID", "PATH"]
+    meta_required = ["PATH"]
   }
-
+  {% if constraint %}
+  constraint { 
+    {{ constraint }}
+  }
+  {% endif %}
   group "core" {
     service {
       name = "processor"
@@ -31,7 +35,7 @@ job "mercure-processor" {
     task "setup" {
       driver = "docker"
       config {
-        image = "mercure/processor:dev"
+        image = "yarranyu/processing-step:dev"
         command = "./docker-entrypoint.sh"
         args = ["-m", "in"]
       }
@@ -53,38 +57,23 @@ job "mercure-processor" {
     task "process" {
       driver = "docker"
       config {
-        image = "${NOMAD_META_IMAGE_ID}"
+        image = "{{ image }}"
       }
       env {
         MERCURE_IN_DIR = "${ NOMAD_ALLOC_DIR }/data/in"
         MERCURE_OUT_DIR = "${ NOMAD_ALLOC_DIR }/data/out"
       }
+        {% if resources %}
+          resources {
+            {{ resources }}
+          }
+        {% endif %}
     }
-
-    // task "mock-service" {
-    //   driver = "docker"
-
-    //   config {
-    //     image   = "mercure/processor:dev"
-    //     command = "bash"
-    //     args    = ["-c", "echo The service is running! && while true; do sleep 2; done"]
-    //     network_mode = "host"
-    //   }
-    //   volume_mount {
-    //     volume      = "keys"
-    //     destination = "${ NOMAD_SECRETS_DIR }/keys"
-    //   }
-    //   env {
-    //     STORAGE_IP = "${NOMAD_UPSTREAM_IP_storage}"
-    //     STORAGE_PORT = "${NOMAD_UPSTREAM_PORT_storage}"
-    //   }
-
-    // }
 
     task "takedown" {
       driver = "docker"
       config {
-        image = "mercure/processor:dev"
+        image = "yarranyu/processing-step:dev"
         command = "./docker-entrypoint.sh"
         args = ["-m", "out"]
       }

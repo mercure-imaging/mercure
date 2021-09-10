@@ -71,7 +71,24 @@
                         autocomplete='off' rows="9"
                         placeholder="Global module settings">{{settings}}</textarea>
                 </div>
-            </div>            
+            </div>
+            
+            <div class="field" style="margin-top: 40px;">
+                <label class="label" for="constraint">Constraints</label>
+                <div class="control">
+                    <textarea name="constraint" id="constraint" class="textarea"
+                        autocomplete='off' rows="9"
+                        placeholder="Module constraints">{{module.constraint}}</textarea>
+                </div>
+            </div>   
+            <div class="field" style="margin-top: 40px;">
+                <label class="label" for="resources">Resource requirements</label>
+                <div class="control">
+                    <textarea name="resources" id="resources" class="textarea"
+                        autocomplete='off' rows="9"
+                        placeholder="Module resource requirements">{{module.resources}}</textarea>
+                </div>
+            </div>   
             <div class="field" style="margin-top: 40px;">
                 <label class="label" for="comment">Comment</label>
                 <div class="control">
