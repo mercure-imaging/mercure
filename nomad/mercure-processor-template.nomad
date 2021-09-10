@@ -7,7 +7,6 @@ job "mercure-processor" {
     meta_required = ["PATH"]
   }
   {{ constraints }}
-  {% endif %}
   group "core" {
     service {
       name = "processor"
