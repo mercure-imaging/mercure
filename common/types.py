@@ -47,7 +47,7 @@ class Module(BaseModel, Compat):
     settings: Dict[str, Any] = {}
     contact: Optional[str] = ""
     comment: Optional[str] = ""
-    constraint: Optional[str] = ""
+    constraints: Optional[str] = ""
     resources: Optional[str] = ""
 
 

@@ -167,7 +167,7 @@ def test_process_series_nomad(fs, mocker: MockerFixture):
                 "docker_tag": "busybox:stable",
                 "additional_volumes": "",
                 "environment": "",
-                "constraint": "",
+                "constraints": "",
                 "resources": "",
                 "docker_arguments": "",
                 "server_group": "",

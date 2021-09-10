@@ -37,7 +37,7 @@ def nomad_runtime(task: Task, folder: str) -> bool:
 
     with open("nomad/mercure-processor-template.nomad", "r") as f:
         rendered = Template(f.read()).render(
-            image=module.docker_tag, constraint=module.constraint, resources=module.resources
+            image=module.docker_tag, constraints=module.constraints, resources=module.resources
         )
 
     logger.info(rendered)
