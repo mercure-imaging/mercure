@@ -257,3 +257,7 @@ body {
 .navbar.is-black .navbar-brand>a.navbar-item:hover {
   background-color: #0a0a0a;
 }
+
+.greenlink {
+  color: hsl(141, 71%, 48%);
+}

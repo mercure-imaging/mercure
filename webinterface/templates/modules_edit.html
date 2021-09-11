@@ -12,96 +12,123 @@
             syntax.
         </div>
 
+        <div class="tabs is-centered is-toggle is-toggle-rounded" style="margin-top: 30px;" id="tabs">
+            <ul>
+                <li data-tab="docker" class="is-active">
+                    <a>
+                        <span class="icon"><i class="fab fa-docker"></i></span>
+                        <span>Docker</span>
+                    </a>
+                </li>
+                <li data-tab="settings">
+                    <a>
+                        <span class="icon"><i class="fas fa-sliders-h"></i></span>
+                        <span>Settings</span>
+                    </a>
+                </li>
+                <li data-tab="nomad">
+                    <a>
+                        <span class="icon"><i class="fas fa-dolly-flatbed"></i></span>
+                        <span>Orchestration</span>
+                    </a>
+                </li>
+                <li data-tab="information">
+                    <a>
+                        <span class="icon"><i class="fa fa-info-circle"></i></span>
+                        <span>Information</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+
         <form method="post" onsubmit="return validate()">
-            <div class="field">
-                <label class="label" for="docker_tag">Docker tag</label>
-                <p class="control">
-                    <input class="input" id="docker_tag" required type="text" placeholder="Docker tag" name="docker_tag"
-                        value="{{module['docker_tag']}}">
-                </p>
-            </div>
-            <div class="field">
-                <label class="label" for="additional_volumes">Additional volumes</label>
-                <p class="control">
-                    <input class="input"
-                           id="additional_volumes"
-                           type="text"
-                           placeholder="{&quot;/host&quot;: {&quot;bind&quot;: &quot;/config&quot;, &quot;mode&quot;: &quot;r&quot;}}"
-                           name="additional_volumes"
-                           value="{{module['additional_volumes']}}">
-                </p>
-            </div>
-            <div class="field">
-                <label class="label" for="environment">Environment variables</label>
-                <p class="control">
-                    <input class="input"
-                           id="environment"
-                           type="text"
-                           placeholder="{foo=&quot;bar&quot;}"
-                           name="environment"
-                           value="{{module['environment']}}">
-                </p>
-            </div>
-            <div class="field">
-                <label class="label" for="docker_arguments">Other Docker arguments</label>
-                <p class="control">
-                    <input class="input"
-                           id="docker_arguments"
-                           type="text"
-                           placeholder="See https://docker-py.readthedocs.io/en/stable/containers.html for parameters"
-                           name="docker_arguments"
-                           value="{{module['docker_arguments']}}">
-                </p>
-            </div>
-            <div class="field">
-                <label class="label" for="server_group">Server group</label>
-                <p class="control">
-                    <input class="input"
-                           id="server_group"
-                           type="text"
-                           placeholder="Required server type. Leave empty for any"
-                           name="server_group"
-                           value="{{module['server_group']}}">
-                </p>
-            </div>
-            <div class="field" style="margin-top: 40px;">
-                <label class="label" for="settings">Settings</label>
-                <div class="control">
-                    <textarea name="settings" id="settings" class="textarea"
-                        autocomplete='off' rows="9"
-                        placeholder="Global module settings">{{settings}}</textarea>
+            <div id="tab-content">
+                <div class="panel is-active" data-content="docker">
+                    <div class="field">
+                        <label class="label" for="docker_tag">Docker tag</label>
+                        <p class="control">
+                            <input class="input" id="docker_tag" required type="text" placeholder="Docker tag" name="docker_tag"
+                                value="{{module['docker_tag']}}">
+                        </p>
+                    </div>
+                    <div class="field">
+                        <label class="label" for="additional_volumes">Additional volumes</label>
+                        <p class="control">
+                            <input class="input"
+                                id="additional_volumes"
+                                type="text"
+                                placeholder="{&quot;/host&quot;: {&quot;bind&quot;: &quot;/config&quot;, &quot;mode&quot;: &quot;r&quot;}}"
+                                name="additional_volumes"
+                                value="{{module['additional_volumes']}}">
+                        </p>
+                    </div>
+                    <div class="field">
+                        <label class="label" for="environment">Environment variables</label>
+                        <p class="control">
+                            <input class="input"
+                                id="environment"
+                                type="text"
+                                placeholder="{foo=&quot;bar&quot;}"
+                                name="environment"
+                                value="{{module['environment']}}">
+                        </p>
+                    </div>
+                    <div class="field">
+                        <label class="label" for="docker_arguments">Other Docker arguments <sup><a class="greenlink" href="https://docker-py.readthedocs.io/en/stable/containers.html" target="_blank"><i class="fas fa-question-circle"></i></a></sup></label>
+                        <p class="control">
+                            <input class="input"
+                                id="docker_arguments"
+                                type="text"
+                                placeholder="See https://docker-py.readthedocs.io/en/stable/containers.html for parameters"
+                                name="docker_arguments"
+                                value="{{module['docker_arguments']}}">
+                        </p>
+                    </div>
                 </div>
-            </div>
-            
-            <div class="field" style="margin-top: 40px;">
-                <label class="label" for="constraints">Constraints</label>
-                <div class="control">
-                    <textarea name="constraints" id="constraints" class="textarea"
-                        autocomplete='off' rows="9"
-                        placeholder="Module constraints">{{module.constraints}}</textarea>
+                <div class="panel" data-content="settings">
+                    <div class="field">
+                        <label class="label" for="settings">Settings</label>
+                        <div class="control">
+                            <textarea name="settings" id="settings" class="textarea"
+                                autocomplete='off' rows="9"
+                                placeholder="Global module settings">{{settings}}</textarea>
+                        </div>
+                    </div>                   
                 </div>
-            </div>   
-            <div class="field" style="margin-top: 40px;">
-                <label class="label" for="resources">Resource requirements</label>
-                <div class="control">
-                    <textarea name="resources" id="resources" class="textarea"
-                        autocomplete='off' rows="9"
-                        placeholder="Module resource requirements">{{module.resources}}</textarea>
+                <div class="panel" data-content="nomad">
+                    <div class="field">
+                        <label class="label" for="constraints">Execution constraints (HCL) <sup><a class="greenlink" href="https://www.nomadproject.io/docs/job-specification/constraint" target="_blank"><i class="fas fa-question-circle"></i></a></sup></label>
+                        <div class="control">
+                            <textarea name="constraints" id="constraints" class="textarea"
+                                autocomplete='off' rows="5"
+                                placeholder='constraint {  attribute = "${attr.os.name}" value = "ubuntu" }&#10;&#10;See https://www.nomadproject.io/docs/job-specification/constraint for examples'>{{module.constraints}}</textarea>
+                        </div>
+                    </div>   
+                    <div class="field">
+                        <label class="label" for="resources">Resource requirements (HCL) <sup><a class="greenlink" href="https://www.nomadproject.io/docs/job-specification/resources" target="_blank"><i class="fas fa-question-circle"></i></a></sup></label>
+                        <div class="control">
+                            <textarea name="resources" id="resources" class="textarea"
+                                autocomplete='off' rows="5"
+                                placeholder='resources { cpu = 100 memory = 256 }&#10;&#10;See https://www.nomadproject.io/docs/job-specification/resources for examples'>{{module.resources}}</textarea>
+                        </div>
+                    </div>   
                 </div>
-            </div>   
-            <div class="field" style="margin-top: 40px;">
-                <label class="label" for="comment">Comment</label>
-                <div class="control">
-                    <textarea name="comment" id="comment" class="textarea"
-                        autocomplete='off' rows="3"
-                        placeholder="Module description">{{module['comment']}}</textarea>
-                </div>
-            </div>            
-            <div class="field">
-                <label class="label">Contact</label>
-                <div class="control">
-                    <input name="contact" class="input" autocomplete='off' type="email" placeholder="Email address"
-                        value="{{module['contact']}}">
+                <div class="panel" data-content="information">
+                    <div class="field"">
+                        <label class="label" for="comment">Comment</label>
+                        <div class="control">
+                            <textarea name="comment" id="comment" class="textarea"
+                                autocomplete='off' rows="5"
+                                placeholder="Module description">{{module['comment']}}</textarea>
+                        </div>
+                    </div>            
+                    <div class="field">
+                        <label class="label">Contact</label>
+                        <div class="control">
+                            <input name="contact" class="input" autocomplete='off' type="email" placeholder="Email address"
+                                value="{{module['contact']}}">
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="field">
@@ -139,6 +166,20 @@
         console.log("PASSED");
         return true;
     }
+
+    $(document).ready(function () {
+
+        $('#tabs li').on('click', function () {
+            var tab = $(this).data('tab');
+
+            $('#tabs li').removeClass('is-active');
+            $(this).addClass('is-active');
+
+            $('#tab-content div.panel').removeClass('is-active');
+            $('div.panel[data-content="' + tab + '"]').addClass('is-active');
+        });
+    });
+
 </script>
 
 

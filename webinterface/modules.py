@@ -41,7 +41,6 @@ async def save_module(form, name) -> Response:
         additional_volumes=form.get("additional_volumes", ""),
         environment=form.get("environment", ""),
         docker_arguments=form.get("docker_arguments", ""),
-        server_group=form.get("server_group", ""),
         settings=new_settings,
         comment=form.get("comment", ""),
         constraints=form.get("constraints", ""),

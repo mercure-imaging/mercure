@@ -7,64 +7,88 @@
     <div class="container">
         <h1 class="title">Edit Target - {{edittarget}}</h1>
 
+        <div class="tabs is-centered is-toggle is-toggle-rounded" style="margin-top: 30px;" id="tabs">
+            <ul>
+                <li data-tab="configuration" class="is-active">
+                    <a>
+                        <span class="icon"><i class="fas fa-network-wired"></i></span>
+                        <span>Configuration</span>
+                    </a>
+                </li>
+                <li data-tab="information">
+                    <a>
+                        <span class="icon"><i class="fa fa-info-circle"></i></span>
+                        <span>Information</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+
         <form method="post">
-            <div class="field">
-                <label class="label">Type</label>
-                <div class="select">
-                    <div class="control">
-                        <select name="target_type" id="target_type">
-                            <option value="dicom" selected>DICOM Node</option>
-                        </select>
+            <div id="tab-content">
+                <div class="panel is-active" data-content="configuration">
+
+                    <div class="field">
+                        <label class="label">Type</label>
+                        <div class="select">
+                            <div class="control">
+                                <select name="target_type" id="target_type">
+                                    <option value="dicom" selected>DICOM Node</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="field" style="margin-top: 30px;">
+                        <label class="label">IP</label>
+                        <div class="control">
+                            <input name="ip" class="input" required autocomplete='off' type="text"
+                                placeholder="IP address" value="{{targets[edittarget]['ip']}}" minlength="7" maxlength="15"
+                                size="15" pattern="^((\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.){3}(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])$">
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label class="label">Port</label>
+                        <div class="control">
+                            <input name="port" class="input" required autocomplete='off' type="number" placeholder="104"
+                                minlength="2" maxlength="5" value="{{targets[edittarget]['port']}}">
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label class="label">AET Target</label>
+                        <div class="control">
+                            <input name="aet_target" class="input" required autocomplete='off' type="text"
+                                placeholder="Calling AET" value="{{targets[edittarget]['aet_target']}}"
+                                pattern="[A-Za-z0-9_-]+">
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label class="label">AET Source</label>
+                        <div class="control">
+                            <input name="aet_source" class="input" required autocomplete='off' type="text"
+                                placeholder="Outgoing AET" value="{{targets[edittarget]['aet_source']}}"
+                                pattern="[A-Za-z0-9_-]+">
+                        </div>
                     </div>
                 </div>
-            </div>
-
-            <div class="field" style="margin-top: 30px;">
-                <label class="label">IP</label>
-                <div class="control">
-                    <input name="ip" class="input" required autocomplete='off' type="text"
-                        placeholder="IP address" value="{{targets[edittarget]['ip']}}" minlength="7" maxlength="15"
-                        size="15" pattern="^((\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.){3}(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])$">
-                </div>
-            </div>
-            <div class="field">
-                <label class="label">Port</label>
-                <div class="control">
-                    <input name="port" class="input" required autocomplete='off' type="number" placeholder="104"
-                        minlength="2" maxlength="5" value="{{targets[edittarget]['port']}}">
-                </div>
-            </div>
-            <div class="field">
-                <label class="label">AET Target</label>
-                <div class="control">
-                    <input name="aet_target" class="input" required autocomplete='off' type="text"
-                        placeholder="Calling AET" value="{{targets[edittarget]['aet_target']}}"
-                        pattern="[A-Za-z0-9_-]+">
-                </div>
-            </div>
-            <div class="field">
-                <label class="label">AET Source</label>
-                <div class="control">
-                    <input name="aet_source" class="input" required autocomplete='off' type="text"
-                        placeholder="Outgoing AET" value="{{targets[edittarget]['aet_source']}}"
-                        pattern="[A-Za-z0-9_-]+">
-                </div>
-            </div>
-            <div class="field" style="margin-top: 40px;">
-                <label class="label" for="comment">Comment</label>
-                <div class="control">
-                    <textarea name="comment" id="comment" class="textarea"
-                        autocomplete='off' rows="3"
-                        placeholder="Target description">{{targets[edittarget]['comment']}}</textarea>
-                </div>
-            </div>            
-            <div class="field" >
-                <label class="label">Contact</label>
-                <div class="control">
-                    <input name="contact" class="input" autocomplete='off' type="email" placeholder="Email address"
-                        value="{{targets[edittarget]['contact']}}">
-                </div>
-            </div>
+                <div class="panel" data-content="information">
+                    <div class="field">
+                        <label class="label" for="comment">Comment</label>
+                        <div class="control">
+                            <textarea name="comment" id="comment" class="textarea"
+                                autocomplete='off' rows="3"
+                                placeholder="Target description">{{targets[edittarget]['comment']}}</textarea>
+                        </div>
+                    </div>            
+                    <div class="field" >
+                        <label class="label">Contact</label>
+                        <div class="control">
+                            <input name="contact" class="input" autocomplete='off' type="email" placeholder="Email address"
+                                value="{{targets[edittarget]['contact']}}">
+                        </div>
+                    </div>
+                </div>                                
+            </div>                    
             <div class="field">
                 <p class="control buttons" style="margin-top: 50px;">
                     <button type="submit" class="button is-success" value="default action">
@@ -76,5 +100,19 @@
         </form>
     </div>
 </main>
+
+<script>
+    $(document).ready(function () {
+        $('#tabs li').on('click', function () {
+            var tab = $(this).data('tab');
+
+            $('#tabs li').removeClass('is-active');
+            $(this).addClass('is-active');
+
+            $('#tab-content div.panel').removeClass('is-active');
+            $('div.panel[data-content="' + tab + '"]').addClass('is-active');
+        });
+    });
+</script>
 
 {% endblock %}

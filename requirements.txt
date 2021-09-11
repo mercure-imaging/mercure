@@ -22,6 +22,7 @@ pytest-mock
 # user interface
 aiofiles
 jinja2
+types-Jinja2
 starlette
 uvicorn
 itsdangerous

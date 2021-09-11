@@ -43,7 +43,6 @@ class Module(BaseModel, Compat):
     additional_volumes: Optional[str] = ""
     environment: Optional[str] = ""
     docker_arguments: Optional[str] = ""
-    server_group: Optional[str] = ""
     settings: Dict[str, Any] = {}
     contact: Optional[str] = ""
     comment: Optional[str] = ""
