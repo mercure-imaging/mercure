@@ -37,10 +37,6 @@ job "mercure" {
         static  = 8080
         to = 8080
       }
-      port "http" {
-        static  = 8000
-        to = 8000
-      }
       port "postgres" {
         static  = 5432
         to = 5432
@@ -55,36 +51,6 @@ job "mercure" {
       }
     }
 
-    task "ui" {
-      driver = "docker"
-      env {
-        MERCURE_ENV = "${NOMAD_META_environment}"
-        MERCURE_RUNNER = "${NOMAD_META_runner}"
-      }
-      volume_mount {
-        volume      = "code"
-        destination = "/home/mercure/mercure"
-      }
-
-      volume_mount {
-        volume      = "code"
-        destination = "/home/mercure/mercure"
-      }
-
-      volume_mount {
-        volume      = "config"
-        destination = "/home/mercure/mercure-config"
-      }
-
-      config {
-        image = "yarranyu/mercure-ui:dev"
-        ports = ["http"]
-      }
-
-      resources {
-        memory=128
-      }
-    }
     task "receiver" {
       driver = "docker"
 
