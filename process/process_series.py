@@ -86,9 +86,14 @@ def docker_runtime(task: Task, folder: str) -> bool:
 
     if config.get_runner() == "docker":
         # We want to bind the correct path into the processor, but if we're inside docker we need to use the host path
-        # TODO: don't hardcode this!! can we use the mercure_data volume that docker knows about instead?
-        # we don't want to just mount the whole mercure_data in though.
-        real_folder = Path("/opt/mercure/data/processing") / real_folder.stem
+        try:
+            base_path = Path(docker_client.api.inspect_volume("mercure_data")['Options']['device'])
+        except Exception as e:
+            base_path = Path("/opt/mercure/data")
+            logger.error(f"Unable to find volume 'mercure_data'; assuming data directory is {base_path}")
+        
+        logger.info(f"Base path: {base_path}")
+        real_folder = base_path / "processing" / real_folder.stem
 
     default_volumes = {
         str(real_folder / "in"): {"bind": "/data", "mode": "rw"},
