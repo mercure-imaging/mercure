@@ -76,7 +76,10 @@ def add_processing(uid: str, applied_rule: str, tags_list: Dict[str, str]) -> Op
     applied_rule_info: Rule = config.mercure.rules[applied_rule]
     logger.info(applied_rule_info)
 
-    if applied_rule_info.action in (mercure_actions.PROCESS, mercure_actions.BOTH,):
+    if applied_rule_info.action in (
+        mercure_actions.PROCESS,
+        mercure_actions.BOTH,
+    ):
         # TODO: Revise this part. Needs to be prepared for sequential execution of modules
 
         # Get the name of the module that should be triggered
@@ -167,19 +170,12 @@ def add_dispatching(uid: str, applied_rule: str, tags_list: Dict[str, str], targ
         return None
 
     # All looks good, fill the dispatching section and return it
-    target_info: Target = config.mercure.targets[target_used]
-    assert target_info.ip is not None  # TODO: make sure ip/port is really required
-    assert target_info.port is not None
+    target_info = config.mercure.targets[target_used]
     return TaskDispatch(
-        **{
-            "target_name": target_used,
-            "target_ip": target_info.ip,
-            "target_port": target_info.port,
-            "target_aet_target": target_info.get("aet_target", "ANY-SCP"),
-            "target_aet_source": target_info.get("aet_source", "mercure"),
-            "retries": None,
-            "next_retry_at": None,
-        }
+        target_name=target_used,
+        target=target_info,
+        retries=None,
+        next_retry_at=None,
     )
 
 

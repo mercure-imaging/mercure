@@ -18,7 +18,7 @@ from starlette.authentication import requires
 import common.config as config
 import common.monitor as monitor
 from common.constants import mercure_defs
-from common.types import Target
+from common.types import DicomTarget, Target
 from webinterface.common import *
 
 
@@ -75,7 +75,7 @@ async def add_target(request) -> Response:
     if newtarget in config.mercure.targets:
         return PlainTextResponse("Target already exists.")
 
-    config.mercure.targets[newtarget] = Target(ip="", port="")
+    config.mercure.targets[newtarget] = DicomTarget(ip="", port="", aet_target="")
 
     try:
         config.save_config()
@@ -122,18 +122,20 @@ async def targets_edit_post(request) -> Union[RedirectResponse, PlainTextRespons
     except:
         return PlainTextResponse("Configuration is being updated. Try again in a minute.")
 
-    edittarget = request.path_params["target"]
+    edittarget: str = request.path_params["target"]
     form = dict(await request.form())
 
     if not edittarget in config.mercure.targets:
         return PlainTextResponse("Target does not exist anymore.")
 
-    config.mercure.targets[edittarget].ip = form["ip"]
-    config.mercure.targets[edittarget].port = form["port"]
-    config.mercure.targets[edittarget].aet_target = form["aet_target"]
-    config.mercure.targets[edittarget].aet_source = form["aet_source"]
-    config.mercure.targets[edittarget].contact = form["contact"]
-    config.mercure.targets[edittarget].comment = form["comment"]
+    target = config.mercure.targets[edittarget]
+    if isinstance(target, DicomTarget):
+        target.ip = form["ip"]
+        target.port = form["port"]
+        target.aet_target = form["aet_target"]
+        target.aet_source = form["aet_source"]
+    target.contact = form["contact"]
+    target.comment = form["comment"]
 
     try:
         config.save_config()
@@ -187,10 +189,14 @@ async def targets_test_post(request) -> Response:
     # target_aec = "ANY-SCP"
     # target_aet = "ECHOSCU"
 
-    target_ip = config.mercure.targets[testtarget].ip or ""
-    target_port = config.mercure.targets[testtarget].port or ""
-    target_aec = config.mercure.targets[testtarget].aet_target or "ANY-SCP"
-    target_aet = config.mercure.targets[testtarget].aet_source or "ECHOSCU"
+    target = config.mercure.targets[testtarget]
+    if not isinstance(target, DicomTarget):
+        return PlainTextResponse("Not a dicom target.")
+
+    target_ip = target.ip or ""
+    target_port = target.port or ""
+    target_aec = target.aet_target or "ANY-SCP"
+    target_aet = target.aet_source or "ECHOSCU"
 
     logger.info(f"Testing target {testtarget}")
 

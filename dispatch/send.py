@@ -17,7 +17,7 @@ from common.monitor import s_events, send_series_event, send_event, m_events, se
 from dispatch.retry import increase_retry
 from dispatch.status import is_ready_for_sending
 from common.constants import mercure_names
-from common.types import TaskDispatch
+from common.types import DicomTarget, TaskDispatch
 
 logger = daiquiri.getLogger("send")
 
@@ -34,13 +34,15 @@ DCMSEND_ERROR_CODES = {
 }
 
 
-def _create_command(target_info: TaskDispatch, folder) -> str:
+def _create_command(dispatch_info: TaskDispatch, folder) -> str:
     """Composes the command for calling the dcmsend tool from DCMTK, which is used for sending out the DICOMS."""
-
-    target_ip = target_info.get("target_ip", "")
-    target_port = target_info.get("target_port", "")
-    target_aet_target = target_info.get("target_aet_target", "")
-    target_aet_source = target_info.get("target_aet_source", "")
+    logger.debug(dispatch_info.target)
+    dicom_target = dispatch_info.target
+    assert isinstance(dicom_target, DicomTarget)
+    target_ip = dicom_target.ip
+    target_port = dicom_target.port or 104
+    target_aet_target = dicom_target.aet_target or ""
+    target_aet_source = dicom_target.aet_source or ""
 
     dcmsend_status_file = Path(folder) / mercure_names.SENDLOG
 
@@ -48,6 +50,7 @@ def _create_command(target_info: TaskDispatch, folder) -> str:
             -aet {target_aet_source} -aec {target_aet_target} -nuc
             +sp '*.dcm' -to 60 +crf {dcmsend_status_file}"""
 
+    logger.debug(command)
     return command
 
 

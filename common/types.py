@@ -29,13 +29,21 @@ class EmptyDict(TypedDict):
 
 
 class Target(BaseModel, Compat):
-    target_type: Literal["dicom"] = "dicom"
-    ip: Optional[str] = ""
-    port: Optional[str] = ""
-    aet_target: Optional[str] = ""
-    aet_source: Optional[str] = ""
     contact: Optional[str] = ""
     comment: str = ""
+
+
+class DicomTarget(Target):
+    target_type: Literal["dicom"] = "dicom"
+    ip: str
+    port: str
+    aet_target: str
+    aet_source: Optional[str] = ""
+
+
+class SftpTarget(Target):
+    target_type: Literal["sftp"] = "sftp"
+    pass
 
 
 class Module(BaseModel, Compat):
@@ -100,7 +108,7 @@ class Config(BaseModel, Compat):
     bookkeeper: str
     offpeak_start: str
     offpeak_end: str
-    targets: Dict[str, Target]
+    targets: Dict[str, Union[DicomTarget, SftpTarget]]
     rules: Dict[str, Rule]
     modules: Dict[str, Module]
     process_runner: Literal["docker", "nomad", ""] = ""
@@ -121,10 +129,7 @@ class TaskInfo(BaseModel, Compat):
 
 class TaskDispatch(BaseModel, Compat):
     target_name: Optional[str]
-    target_ip: str
-    target_port: str
-    target_aet_target: str
-    target_aet_source: Optional[str]
+    target: Union[DicomTarget, SftpTarget]
     retries: Optional[int]
     next_retry_at: Optional[float]
     series_uid: Optional[str]
@@ -151,6 +156,7 @@ class Task(BaseModel, Compat):
     dispatch: Union[TaskDispatch, EmptyDict] = cast(EmptyDict, {})
     process: Union[TaskProcessing, EmptyDict] = cast(EmptyDict, {})
     study: Union[TaskStudy, EmptyDict] = cast(EmptyDict, {})
+    nomad_info: Optional[Any]
 
     class Config:
         extra = "forbid"

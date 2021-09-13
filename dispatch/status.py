@@ -61,14 +61,15 @@ def is_target_json_valid(folder) -> Optional[TaskDispatch]:
             f"task.json has invalid format",
         )
         return None
-    dispatch = target.dispatch.dict() if target.dispatch else {}
-    if not all([key in dispatch for key in ["target_ip", "target_port", "target_aet_target"]]):
-        send_series_event(
-            s_events.ERROR,
-            dispatch.get("series_uid", "None"),  # type: ignore
-            0,
-            dispatch.get("target_name", "None"),  # type: ignore
-            f"task.json is missing a mandatory key {target}",
-        )
-        return None
     return target.dispatch or None
+    # dispatch = target.dispatch.dict() if target.dispatch else {}
+    # if not all([key in dispatch for key in ["target_ip", "target_port", "target_aet_target"]]):
+    #     send_series_event(
+    #         s_events.ERROR,
+    #         dispatch.get("series_uid", "None"),  # type: ignore
+    #         0,
+    #         dispatch.get("target_name", "None"),  # type: ignore
+    #         f"task.json is missing a mandatory key {target}",
+    #     )
+    #     return None
+    # return target.dispatch or None

@@ -32,7 +32,7 @@ def test_execute_successful_case(fs, mocker):
     fs.create_file("/var/data/source/a/one.dcm")
     target = {
         "info": dummy_info,
-        "dispatch": {"target_ip": "0.0.0.0", "target_aet_target": "a", "target_port": 90},
+        "dispatch": {"target": {"ip": "0.0.0.0", "aet_target": "a", "port": 90}},
     }
     fs.create_file("/var/data/source/a/" + mercure_names.TASKFILE, contents=json.dumps(target))
 
@@ -58,7 +58,7 @@ def test_execute_error_case(fs, mocker):
     fs.create_file("/var/data/source/a/one.dcm")
     target = {
         "info": dummy_info,
-        "dispatch": {"target_ip": "0.0.0.0", "target_aet_target": "a", "target_port": 90},
+        "dispatch": {"target": {"ip": "0.0.0.0", "aet_target": "a", "port": 90}},
     }
     fs.create_file("/var/data/source/a/" + mercure_names.TASKFILE, contents=json.dumps(target))
 
@@ -89,7 +89,10 @@ def test_execute_error_case_max_retries_reached(fs, mocker):
     fs.create_file("/var/data/source/a/one.dcm")
     target = {
         "info": dummy_info,
-        "dispatch": {"target_ip": "0.0.0.0", "target_aet_target": "a", "target_port": 90, "retries": 5},
+        "dispatch": {
+            "target": {"ip": "0.0.0.0", "aet_target": "a", "port": 90},
+            "retries": 5,
+        },
     }
     fs.create_file("/var/data/source/a/" + mercure_names.TASKFILE, contents=json.dumps(target))
 
@@ -119,9 +122,11 @@ def test_execute_error_case_delay_is_not_over(fs, mocker):
     target = {
         "info": dummy_info,
         "dispatch": {
-            "target_ip": "0.0.0.0",
-            "target_aet_target": "a",
-            "target_port": 90,
+            "target": {
+                "ip": "0.0.0.0",
+                "aet_target": "a",
+                "port": 90,
+            },
             "retries": 5,
             "next_retry_at": time.time() + 500,
         },
