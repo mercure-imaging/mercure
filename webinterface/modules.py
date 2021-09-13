@@ -124,6 +124,8 @@ async def edit_module(request):
     if config.mercure.modules[module].settings:
         settings_string = json.dumps(config.mercure.modules[module].settings, indent=4, sort_keys=False)
 
+    runtime = config.get_runner()
+
     template = "modules_edit.html"
     context = {
         "request": request,
@@ -132,6 +134,7 @@ async def edit_module(request):
         "module": config.mercure.modules[module],
         "module_name": module,
         "settings": settings_string,
+        "runtime": runtime,
     }
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
