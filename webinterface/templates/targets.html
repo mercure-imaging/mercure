@@ -20,25 +20,40 @@
                 <div class="content">
                     <table class="table is-narrow" style="margin-bottom: 8px;">
                         <col width="150">
+                        {% if targets[x].target_type == "dicom" %}
                         <tr>
                             <td>IP:</td>
-                            <td>{{ targets[x]['ip'] }}</td>
+                            <td>{{ targets[x].ip }}</td>
                         </tr>
                         <tr>
                             <td>Port:</td>
-                            <td>{{ targets[x]['port'] }}</td>
+                            <td>{{ targets[x].port }}</td>
                         </tr>
                         <tr>
                             <td>AET Target:</td>
-                            <td>{{ targets[x]['aet_target'] }}</td>
+                            <td>{{ targets[x].aet_target }}</td>
                         </tr>
                         <tr>
                             <td>AET Source:</td>
-                            <td>{{ targets[x]['aet_source'] }}</td>
+                            <td>{{ targets[x].aet_source }}</td>
+                        </tr>
+                        {% elif targets[x].target_type == "sftp" %}
+                        <tr>
+                            <td>Host:</td>
+                            <td>{{ targets[x].host }}</td>
                         </tr>
                         <tr>
+                            <td>User:</td>
+                            <td>{{ targets[x].user }}</td>
+                        </tr>
+                        <tr>
+                            <td>Folder:</td>
+                            <td>{{ targets[x].folder }}</td>
+                        </tr>
+                        {% endif %}
+                        <tr>
                             <td>Contact:</td>
-                            <td>{{ targets[x]['contact'] }}</td>
+                            <td>{{ targets[x].contact }}</td>
                         </tr>
                     </table>
                     <div class="buttons is-right">

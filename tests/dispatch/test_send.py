@@ -36,7 +36,7 @@ def test_execute_successful_case(fs, mocker):
     }
     fs.create_file("/var/data/source/a/" + mercure_names.TASKFILE, contents=json.dumps(target))
 
-    mocker.patch("dispatch.send.run", return_value=0)
+    mocker.patch("dispatch.send.check_output", return_value=b"Success")
     execute(Path(source), Path(success), Path(error), 1, 1)
 
     assert not Path(source).exists()
@@ -62,7 +62,7 @@ def test_execute_error_case(fs, mocker):
     }
     fs.create_file("/var/data/source/a/" + mercure_names.TASKFILE, contents=json.dumps(target))
 
-    mocker.patch("dispatch.send.run", side_effect=CalledProcessError(1, cmd="None"))
+    mocker.patch("dispatch.send.check_output", side_effect=CalledProcessError(1, cmd="None"))
     execute(Path(source), Path(success), Path(error), 10, 1)
 
     with open("/var/data/source/a/" + mercure_names.TASKFILE, "r") as f:
@@ -96,7 +96,7 @@ def test_execute_error_case_max_retries_reached(fs, mocker):
     }
     fs.create_file("/var/data/source/a/" + mercure_names.TASKFILE, contents=json.dumps(target))
 
-    mocker.patch("dispatch.send.run", side_effect=CalledProcessError(1, cmd="None"))
+    mocker.patch("dispatch.send.check_output", side_effect=CalledProcessError(1, cmd="None"))
     execute(Path(source), Path(success), Path(error), 5, 1)
 
     with open("/var/data/error/a/" + mercure_names.TASKFILE, "r") as f:
@@ -133,7 +133,7 @@ def test_execute_error_case_delay_is_not_over(fs, mocker):
     }
     fs.create_file("/var/data/source/a/" + mercure_names.TASKFILE, contents=json.dumps(target))
 
-    mock = mocker.patch("dispatch.send.run", side_effect=CalledProcessError(1, cmd="None"))
+    mock = mocker.patch("dispatch.send.check_output", side_effect=CalledProcessError(1, cmd="None"))
 
     execute(Path(source), Path(success), Path(error), 5, 1)
     assert not mock.called

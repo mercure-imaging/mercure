@@ -43,7 +43,10 @@ class DicomTarget(Target):
 
 class SftpTarget(Target):
     target_type: Literal["sftp"] = "sftp"
-    pass
+    folder: str
+    user: str
+    host: str
+    password: Optional[str]
 
 
 class Module(BaseModel, Compat):

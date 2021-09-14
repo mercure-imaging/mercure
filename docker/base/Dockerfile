@@ -1,5 +1,5 @@
 FROM ubuntu:18.04
-RUN apt update && apt -y upgrade && apt install -y build-essential wget git dcmtk jq inetutils-ping entr
+RUN apt-get update && apt-get -y upgrade && apt-get install -y build-essential wget git dcmtk jq inetutils-ping entr sshpass
 RUN useradd -ms /bin/bash mercure
 RUN mkdir -p /home/mercure/mercure/installation /home/mercure/mercure/configuration
 # Note: you must run this Dockerfile from the root directory of the project

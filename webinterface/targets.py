@@ -18,7 +18,7 @@ from starlette.authentication import requires
 import common.config as config
 import common.monitor as monitor
 from common.constants import mercure_defs
-from common.types import DicomTarget, Target
+from common.types import DicomTarget, SftpTarget, Target
 from webinterface.common import *
 
 
@@ -128,14 +128,17 @@ async def targets_edit_post(request) -> Union[RedirectResponse, PlainTextRespons
     if not edittarget in config.mercure.targets:
         return PlainTextResponse("Target does not exist anymore.")
 
-    target = config.mercure.targets[edittarget]
-    if isinstance(target, DicomTarget):
-        target.ip = form["ip"]
-        target.port = form["port"]
-        target.aet_target = form["aet_target"]
-        target.aet_source = form["aet_source"]
-    target.contact = form["contact"]
-    target.comment = form["comment"]
+    if form["target_type"] == "dicom":
+        config.mercure.targets[edittarget] = DicomTarget(
+            ip=form["ip"], port=form["port"], aet_target=form["aet_target"], aet_source=form["aet_source"]
+        )
+    elif form["target_type"] == "sftp":
+        config.mercure.targets[edittarget] = SftpTarget(
+            host=form["host"], user=form["user"], folder=form["folder"], password=form["password"]
+        )
+
+    config.mercure.targets[edittarget].contact = form["contact"]
+    config.mercure.targets[edittarget].comment = form["comment"]
 
     try:
         config.save_config()

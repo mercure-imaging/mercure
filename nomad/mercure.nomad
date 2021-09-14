@@ -57,6 +57,7 @@ job "mercure" {
       env {
         MERCURE_ENV = "${NOMAD_META_environment}"
         MERCURE_RUNNER = "${NOMAD_META_runner}"
+        MERCURE_LOG_LEVEL = "${NOMAD_META_log_level}"
       }
 
       volume_mount {
@@ -82,6 +83,7 @@ job "mercure" {
       env {
         MERCURE_ENV = "${NOMAD_META_environment}"
         MERCURE_RUNNER = "${NOMAD_META_runner}"
+        MERCURE_LOG_LEVEL = "${NOMAD_META_log_level}"
       }
       volume_mount {
         volume      = "code"
@@ -109,6 +111,7 @@ job "mercure" {
       env {
         MERCURE_ENV = "${NOMAD_META_environment}"
         MERCURE_RUNNER = "${NOMAD_META_runner}"
+        MERCURE_LOG_LEVEL = "${NOMAD_META_log_level}"
       }
       volume_mount {
         volume      = "code"
@@ -137,6 +140,7 @@ job "mercure" {
       env {
         MERCURE_ENV = "${NOMAD_META_environment}"
         MERCURE_RUNNER = "${NOMAD_META_runner}"
+        MERCURE_LOG_LEVEL = "${NOMAD_META_log_level}"
       }
       volume_mount {
         volume      = "code"
@@ -230,6 +234,7 @@ job "mercure" {
         DATABASE_URL = "postgresql://mercure@localhost"
         MERCURE_ENV = "${NOMAD_META_environment}"
         MERCURE_RUNNER = "${NOMAD_META_runner}"
+        MERCURE_LOG_LEVEL = "${NOMAD_META_log_level}"
       }
       resources {
         memory=128

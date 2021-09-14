@@ -5,11 +5,13 @@ The functions for sending DICOM series
 to target destinations.
 """
 import shutil
+import subprocess
 import time
 from datetime import datetime
 from pathlib import Path
 from shlex import split
-from subprocess import CalledProcessError, run
+from subprocess import PIPE, CalledProcessError, check_output
+from typing import Tuple
 
 import daiquiri
 
@@ -17,7 +19,7 @@ from common.monitor import s_events, send_series_event, send_event, m_events, se
 from dispatch.retry import increase_retry
 from dispatch.status import is_ready_for_sending
 from common.constants import mercure_names
-from common.types import DicomTarget, TaskDispatch
+from common.types import DicomTarget, SftpTarget, TaskDispatch
 
 logger = daiquiri.getLogger("send")
 
@@ -34,24 +36,30 @@ DCMSEND_ERROR_CODES = {
 }
 
 
-def _create_command(dispatch_info: TaskDispatch, folder) -> str:
+def _create_command(dispatch_info: TaskDispatch, folder: Path) -> Tuple[str, dict]:
     """Composes the command for calling the dcmsend tool from DCMTK, which is used for sending out the DICOMS."""
     logger.debug(dispatch_info.target)
-    dicom_target = dispatch_info.target
-    assert isinstance(dicom_target, DicomTarget)
-    target_ip = dicom_target.ip
-    target_port = dicom_target.port or 104
-    target_aet_target = dicom_target.aet_target or ""
-    target_aet_source = dicom_target.aet_source or ""
+    target = dispatch_info.target
+    if isinstance(target, DicomTarget):
+        target_ip = target.ip
+        target_port = target.port or 104
+        target_aet_target = target.aet_target or ""
+        target_aet_source = target.aet_source or ""
 
-    dcmsend_status_file = Path(folder) / mercure_names.SENDLOG
+        dcmsend_status_file = Path(folder) / mercure_names.SENDLOG
 
-    command = f"""dcmsend {target_ip} {target_port} +sd {folder}
-            -aet {target_aet_source} -aec {target_aet_target} -nuc
-            +sp '*.dcm' -to 60 +crf {dcmsend_status_file}"""
+        command = f"""dcmsend {target_ip} {target_port} +sd {folder}
+                -aet {target_aet_source} -aec {target_aet_target} -nuc
+                +sp '*.dcm' -to 60 +crf {dcmsend_status_file}"""
 
-    logger.debug(command)
-    return command
+        return command, {}
+    elif isinstance(target, SftpTarget):
+        # TODO: is this entirely safe?
+        command = f"""sftp -o StrictHostKeyChecking=no {target.user}@{target.host}:{target.folder} <<< $'mkdir {target.folder}/{folder.stem} \n put -r {folder}'"""
+
+        if target.password:
+            command = f"sshpass -p {target.password} " + command
+        return command, dict(shell=True, executable="/bin/bash")
 
 
 def execute(
@@ -93,11 +101,12 @@ def execute(
             logger.exception(f"Unable to create lock file {lock_file.name}")
             return
 
-        command = _create_command(target_info, source_folder)
+        command, opts = _create_command(target_info, source_folder)
         logger.debug(f"Running command {command}")
         try:
-            run(split(command), check=True)
+            result = check_output(command, stderr=subprocess.STDOUT, **opts)
             logger.info(f"Folder {source_folder} successfully sent, moving to {success_folder}")
+            logger.debug(result.decode("utf-8"))
             # Send bookkeeper notification
             file_count = len(list(Path(source_folder).glob(mercure_names.DCMFILTER)))
             send_series_event(
@@ -110,10 +119,15 @@ def execute(
             _move_sent_directory(source_folder, success_folder)
             send_series_event(s_events.MOVE, series_uid, 0, success_folder, "")
         except CalledProcessError as e:
-            dcmsend_error_message = DCMSEND_ERROR_CODES.get(e.returncode, None)
-            logger.exception(f"Failed command:\n {command} \nbecause of {dcmsend_error_message}")
+            dcmsend_error_message = None
+            if isinstance(target_info, DicomTarget):
+                dcmsend_error_message = DCMSEND_ERROR_CODES.get(e.returncode, None)
+                logger.exception(f"Failed command:\n {command} \nbecause of {dcmsend_error_message}")
+            else:
+                logger.error(f"Failed. Command exited with value {e.returncode}: \n {command}")
+            logger.debug(e.output)
             send_event(m_events.PROCESSING, severity.ERROR, f"Error sending {series_uid} to {target_name}")
-            send_series_event(s_events.ERROR, series_uid, 0, target_name, dcmsend_error_message)
+            send_series_event(s_events.ERROR, series_uid, 0, target_name, dcmsend_error_message or e.output)
             retry_increased = increase_retry(source_folder, retry_max, retry_delay)
             if retry_increased:
                 lock_file.unlink()
