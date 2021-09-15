@@ -215,7 +215,6 @@ async def targets_test_post(request) -> Response:
                     cecho_response = True
         return JSONResponse(json.dumps({"ping": ping_response, "c-echo": cecho_response}))
 
-        return JSONResponse('{"ping": "' + ping_response + '", "c-echo": "' + cecho_response + '" }')
     elif isinstance(target, SftpTarget):
         ping_result, *_ = await async_run(f"ping -w 1 -c 1 {target.host}")
         ping_response = True if ping_result == 0 else False

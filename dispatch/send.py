@@ -54,6 +54,9 @@ def _create_command(dispatch_info: TaskDispatch, folder: Path) -> Tuple[str, dic
 
         return command, {}
     elif isinstance(target, SftpTarget):
+        # TODO: Secure target folder with lock file and remove lock file after successful transfer
+        # TODO: Use newly created UUID instead of folder.stem? Would avoid collission during repeated transfer
+
         # TODO: is this entirely safe?
         command = (
             "sftp -o StrictHostKeyChecking=no "
@@ -72,11 +75,7 @@ EOF"""
 
 
 def execute(
-    source_folder: Path,
-    success_folder: Path,
-    error_folder: Path,
-    retry_max,
-    retry_delay,
+    source_folder: Path, success_folder: Path, error_folder: Path, retry_max, retry_delay,
 ):
     """
     Execute the dcmsend command. It will create a .sending file to indicate that

@@ -10,7 +10,7 @@
         <div class="card rulecard">
             <header class="card-header has-background-light">
                 <p class="card-header-title card-toggle">
-                    <span class="icon"><i class="fas fa-hdd fa-lg"></i></span>&nbsp;&nbsp;{{ x }}
+                    <span class="icon"><i class="fas {% if targets[x].target_type == "dicom" %}fa-hdd{% elif targets[x].target_type == "sftp" %}fa-download{% endif %} fa-lg"></i></span>&nbsp;&nbsp;{{ x }}
                 </p>
                 <a class="card-header-icon card-toggle">
                     <i class="fa fa-angle-down"></i>
@@ -21,6 +21,10 @@
                     <table class="table is-narrow" style="margin-bottom: 8px;">
                         <col width="150">
                         {% if targets[x].target_type == "dicom" %}
+                        <tr>
+                            <td>Type:</td>
+                            <td>DICOM Node</td>
+                        </tr>
                         <tr>
                             <td>IP:</td>
                             <td>{{ targets[x].ip }}</td>
@@ -39,6 +43,10 @@
                         </tr>
                         {% elif targets[x].target_type == "sftp" %}
                         <tr>
+                            <td>Type:</td>
+                            <td>SFTP Server</td>
+                        </tr>
+                        <tr>
                             <td>Host:</td>
                             <td>{{ targets[x].host }}</td>
                         </tr>
@@ -55,6 +63,10 @@
                             <td>Contact:</td>
                             <td>{{ targets[x].contact }}</td>
                         </tr>
+                        <tr>
+                            <td>Comment:</td>
+                            <td>{{ targets[x].comment }}</td>
+                        </tr>                                
                     </table>
                     <div class="buttons is-right">
                         <button type="button" class="button is-dark" value="{{x}}" onclick="testTarget(this.value,'{{targets[x].target_type}}')"><i class="fas fa-satellite-dish"></i>&nbsp;Test</button>

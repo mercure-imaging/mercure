@@ -34,13 +34,16 @@
                             <div class="control">
                                 <select name="target_type" id="target_type" value="{{targets[edittarget].target_type}}">
                                     <option value="dicom" {% if targets[edittarget].target_type=="dicom" %}selected=true {%endif%}>DICOM Node</option>
-                                    <option value="sftp" {% if targets[edittarget].target_type=="sftp" %}selected=true {%endif%}>SFTP</option>
+                                    <option value="sftp" {% if targets[edittarget].target_type=="sftp" %}selected=true {%endif%}>SFTP Server</option>
                                 </select>
                             </div>
                         </div>
                     </div>
 
                     <div id="form-sftp" class="is-hidden">
+                        <div class="notification is-info" style="margin-top: 30px;">
+                            <i class="fas fa-snowplow"></i>&nbsp;&nbsp;Support for SFTP servers is experimental at this time.
+                        </div>                        
                         <div class="field" style="margin-top: 30px;">
                             <label class="label">Host</label>
                             <div class="control">
@@ -48,21 +51,21 @@
                                     placeholder="Host" value="{{targets[edittarget].host}}" />
                             </div>
                         </div>
-                        <div class="field" style="margin-top: 30px;">
+                        <div class="field">
                             <label class="label">Folder</label>
                             <div class="control">
                                 <input name="folder" class="input" required='true' autocomplete='off' type="text"
                                     placeholder="Folder" value="{{targets[edittarget].folder}}" />
                             </div>
                         </div>
-                        <div class="field" style="margin-top: 30px;">
+                        <div class="field">
                             <label class="label">User</label>
                             <div class="control">
                                 <input name="user" class="input" required='true' autocomplete='off' type="text"
                                     placeholder="User" value="{{targets[edittarget].user}}" />
                             </div>
                         </div>
-                        <div class="field" style="margin-top: 30px;">
+                        <div class="field">
                             <label class="label">Password</label>
                             <div class="control">
                                 <input name="password" class="input" autocomplete='off' type="text"
@@ -111,7 +114,7 @@
                         <label class="label" for="comment">Comment</label>
                         <div class="control">
                             <textarea name="comment" id="comment" class="textarea"
-                                autocomplete='off' rows="3"
+                                autocomplete='off' rows="5"
                                 placeholder="Target description">{{targets[edittarget]['comment']}}</textarea>
                         </div>
                     </div>            
