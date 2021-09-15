@@ -55,7 +55,16 @@ def _create_command(dispatch_info: TaskDispatch, folder: Path) -> Tuple[str, dic
         return command, {}
     elif isinstance(target, SftpTarget):
         # TODO: is this entirely safe?
-        command = f"""sftp -o StrictHostKeyChecking=no {target.user}@{target.host}:{target.folder} <<< $'mkdir {target.folder}/{folder.stem} \n put -r {folder}'"""
+        command = (
+            "sftp -o StrictHostKeyChecking=no "
+            + f""" "{target.user}@{target.host}:{target.folder}" """
+            + f""" <<- EOF
+                    mkdir "{target.folder}/{folder.stem}"
+                    put -f -r "{folder}"
+                    !touch "/tmp/.complete"
+                    put -f "/tmp/.complete" "{target.folder}/{folder.stem}/.complete"
+EOF"""
+        )
 
         if target.password:
             command = f"sshpass -p {target.password} " + command

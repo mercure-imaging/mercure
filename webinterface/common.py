@@ -24,9 +24,11 @@ def get_user_information(request) -> dict:
     }
 
 
-async def async_run(cmd) -> Tuple[Optional[int], bytes, bytes]:
+async def async_run(cmd, **params) -> Tuple[Optional[int], bytes, bytes]:
     """Executes the given command in a way compatible with ayncio."""
-    proc = await asyncio.create_subprocess_shell(cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+    proc = await asyncio.create_subprocess_shell(
+        cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, **params
+    )
 
     stdout, stderr = await proc.communicate()
     return proc.returncode, stdout, stderr

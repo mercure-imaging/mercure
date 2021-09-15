@@ -5,6 +5,7 @@ Targets page for the graphical user interface of mercure.
 """
 
 # Standard python includes
+import json
 import logging
 import daiquiri
 from typing import Union
@@ -185,33 +186,49 @@ async def targets_test_post(request) -> Response:
 
     testtarget = request.path_params["target"]
 
-    ping_response = "False"
-    cecho_response = "False"
+    ping_response = False
+    cecho_response = False
     # target_ip = ""
     # target_port = ""
     # target_aec = "ANY-SCP"
     # target_aet = "ECHOSCU"
 
     target = config.mercure.targets[testtarget]
-    if not isinstance(target, DicomTarget):
-        return PlainTextResponse("Not a dicom target.")
 
-    target_ip = target.ip or ""
-    target_port = target.port or ""
-    target_aec = target.aet_target or "ANY-SCP"
-    target_aet = target.aet_source or "ECHOSCU"
+    if isinstance(target, DicomTarget):
+        target_ip = target.ip or ""
+        target_port = target.port or ""
+        target_aec = target.aet_target or "ANY-SCP"
+        target_aet = target.aet_source or "ECHOSCU"
 
-    logger.info(f"Testing target {testtarget}")
+        logger.info(f"Testing target {testtarget}")
 
-    if target_ip and target_port:
-        if (await async_run("ping -w 1 -c 1 " + target_ip))[0] == 0:
-            ping_response = "True"
-            # Only test for c-echo if the ping was successful
-            if (
-                await async_run(
-                    "echoscu -to 10 -aec " + target_aec + " -aet " + target_aet + " " + target_ip + " " + target_port
+        if target_ip and target_port:
+            ping_result, *_ = await async_run(f"ping -w 1 -c 1 {target_ip}")
+            if ping_result == 0:
+                ping_response = True
+                # Only test for c-echo if the ping was successful
+                cecho_result, *_ = await async_run(
+                    f"echoscu -to 10 -aec {target_aec} -aet {target_aet} {target_ip} {target_port}"
                 )
-            )[0] == 0:
-                cecho_response = "True"
+                if cecho_result == 0:
+                    cecho_response = True
+        return JSONResponse(json.dumps({"ping": ping_response, "c-echo": cecho_response}))
 
-    return JSONResponse('{"ping": "' + ping_response + '", "c-echo": "' + cecho_response + '" }')
+        return JSONResponse('{"ping": "' + ping_response + '", "c-echo": "' + cecho_response + '" }')
+    elif isinstance(target, SftpTarget):
+        ping_result, *_ = await async_run(f"ping -w 1 -c 1 {target.host}")
+        ping_response = True if ping_result == 0 else False
+        response = False
+        stderr = b""
+        if ping_response:
+            command = (
+                "sftp -o StrictHostKeyChecking=no " + f""" "{target.user}@{target.host}:{target.folder}" <<< "" """
+            )
+            if target.password:
+                command = f"sshpass -p {target.password} " + command
+            logger.debug(command)
+            result, stdout, stderr = await async_run(command, shell=True, executable="/bin/bash")
+            response = True if result == 0 else False
+        return JSONResponse(json.dumps(dict(ping=ping_response, loggedin=response, err=stderr.decode("utf-8"))))
+    return JSONResponse("")

@@ -57,8 +57,7 @@
                         </tr>
                     </table>
                     <div class="buttons is-right">
-                        <button type="button" class="button is-dark" value="{{x}}" onclick="testTarget(this.value)"><i
-                                class="fas fa-satellite-dish"></i>&nbsp;Test</button>
+                        <button type="button" class="button is-dark" value="{{x}}" onclick="testTarget(this.value,'{{targets[x].target_type}}')"><i class="fas fa-satellite-dish"></i>&nbsp;Test</button>
                         {% if is_admin %}
                         <a class="button is-success" href="/targets/edit/{{x}}"><i class="fas fa-pen"></i>&nbsp;Edit</a>
                         <button class="button is-danger" id="confirm-me" value="{{x}}"
@@ -146,7 +145,12 @@
                             class="fas fa-check-circle fa-lg has-text-success"></i>&nbsp;&nbsp;Responded to C-Echo</div>
                     <div id="testmode-cechofalse"><i
                             class="fas fa-times-circle fa-lg has-text-danger"></i>&nbsp;&nbsp;No C-Echo Response</div>
-                </div>
+                    <div id="testmode-login-true"><i
+                        class="fas fa-check-circle fa-lg has-text-success"></i>&nbsp;&nbsp;Logged in</div>
+                    <div id="testmode-login-false"><i
+                        class="fas fa-times-circle fa-lg has-text-danger"></i>&nbsp;&nbsp;Connection failed</div>
+                    <div id="testmode-errtext"><pre>Output</pre></div>
+                 </div>
                 <div class="field" style="margin-top: 20px;">
                     <p class="control buttons is-centered">
                         <button id="closetestmodal" class="button">Close</button>
@@ -182,7 +186,7 @@
         $("#deletemodal").addClass("is-active");
     }
 
-    function testTarget(val) {
+    function testTarget(val, target_type) {
         $.ajax({
             type: 'POST',
             url: '/targets/test/' + val,
@@ -191,20 +195,35 @@
             success: function (data) {
                 var jsondata = JSON.parse(data);
 
-                if (jsondata["ping"] == "True") {
+                if (jsondata["ping"] == true) {
                     $("#testmode-pingtrue").show();
                     $("#testmode-pingfalse").hide();
                 } else {
                     $("#testmode-pingtrue").hide();
                     $("#testmode-pingfalse").show();
                 }
-
-                if (jsondata["c-echo"] == "True") {
-                    $("#testmode-cechotrue").show();
-                    $("#testmode-cechofalse").hide();
-                } else {
+                if (target_type == "dicom") {
+                    $("#testmode-errtext").hide();
+                    if (jsondata["c-echo"] == true) {
+                        $("#testmode-cechotrue").show();
+                        $("#testmode-cechofalse").hide();
+                    } else {
+                        $("#testmode-cechotrue").hide();
+                        $("#testmode-cechofalse").show();
+                    }
+                } else if (target_type == "sftp") {
                     $("#testmode-cechotrue").hide();
-                    $("#testmode-cechofalse").show();
+                    $("#testmode-cechofalse").hide();
+                    if (jsondata["loggedin"] == true) {
+                        $("#testmode-login-true").show();
+                        $("#testmode-login-false").hide();
+                        $("#testmode-errtext").hide();
+                    } else {
+                        $("#testmode-login-true").hide();
+                        $("#testmode-login-false").show();
+                        $("#testmode-errtext").show();
+                        $("#testmode-errtext pre").text(jsondata["err"])
+                    }
                 }
 
                 $("#testmodal").addClass("is-active");
