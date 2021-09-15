@@ -184,13 +184,8 @@ async def targets_test_post(request) -> Response:
         return PlainTextResponse("Configuration is being updated. Try again in a minute.")
 
     testtarget = request.path_params["target"]
-
     ping_response = "False"
     cecho_response = "False"
-    # target_ip = ""
-    # target_port = ""
-    # target_aec = "ANY-SCP"
-    # target_aet = "ECHOSCU"
 
     target = config.mercure.targets[testtarget]
     if not isinstance(target, DicomTarget):
