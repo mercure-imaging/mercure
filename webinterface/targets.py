@@ -229,5 +229,7 @@ async def targets_test_post(request) -> Response:
             logger.debug(command)
             result, stdout, stderr = await async_run(command, shell=True, executable="/bin/bash")
             response = True if result == 0 else False
-        return JSONResponse(json.dumps(dict(ping=ping_response, loggedin=response, err=stderr.decode("utf-8"))))
+        return JSONResponse(
+            json.dumps(dict(ping=ping_response, loggedin=response, err=stderr.decode("utf-8") if not response else ""))
+        )
     return JSONResponse("")
