@@ -96,9 +96,11 @@
                     </div>                   
                 </div>
                 <div class="panel" data-content="nomad">
+                    {% if runtime != "nomad" %}
                     <div class="notification is-info" id="warningnomad">
                         <i class="fas fa-info-circle"></i>&nbsp;&nbsp;Settings are only relevant when using Nomad as process runner. This mercure installation is not using Nomad.
                     </div>                    
+                    {% endif %}
                     <div class="field">
                         <label class="label" for="constraints">Execution constraints (HCL) <sup><a class="greenlink" href="https://www.nomadproject.io/docs/job-specification/constraint" target="_blank"><i class="fas fa-question-circle"></i></a></sup></label>
                         <div class="control">
