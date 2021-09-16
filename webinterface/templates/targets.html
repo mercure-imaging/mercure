@@ -69,7 +69,7 @@
                         </tr>                                
                     </table>
                     <div class="buttons is-right">
-                        <button type="button" class="button is-dark" value="{{x}}" onclick="testTarget(this.value,'{{targets[x].target_type}}')"><i class="fas fa-satellite-dish"></i>&nbsp;Test</button>
+                        <button type="button" class="button is-dark" value="{{x}}" id="testbtn_{{x}}" onclick="testTarget(this.value,'{{targets[x].target_type}}', '#testbtn_{{x}}')"><i class="fas fa-satellite-dish"></i>&nbsp;Test</button>
                         {% if is_admin %}
                         <a class="button is-success" href="/targets/edit/{{x}}"><i class="fas fa-pen"></i>&nbsp;Edit</a>
                         <button class="button is-danger" id="confirm-me" value="{{x}}"
@@ -151,18 +151,25 @@
                                 class="fas fa-check-circle fa-lg has-text-success"></i>&nbsp;&nbsp;Responded to Ping
                         </div>
                         <div id="testmode-pingfalse"><i
-                                class="fas fa-times-circle fa-lg has-text-danger"></i>&nbsp;&nbsp;No Ping Response</div>
+                                class="fas fa-times-circle fa-lg has-text-danger"></i>&nbsp;&nbsp;No Ping Response
+                        </div>
                     </div>
-                    <div id="testmode-cechotrue"><i
-                            class="fas fa-check-circle fa-lg has-text-success"></i>&nbsp;&nbsp;Responded to C-Echo</div>
-                    <div id="testmode-cechofalse"><i
-                            class="fas fa-times-circle fa-lg has-text-danger"></i>&nbsp;&nbsp;No C-Echo Response</div>
-                    <div id="testmode-login-true"><i
+                    <div style="margin-bottom: 8px;">
+                        <div id="testmode-cechotrue"><i
+                            class="fas fa-check-circle fa-lg has-text-success"></i>&nbsp;&nbsp;Responded to C-Echo
+                        </div>
+                        <div id="testmode-cechofalse"><i
+                            class="fas fa-times-circle fa-lg has-text-danger"></i>&nbsp;&nbsp;No C-Echo Response
+                        </div>
+                    </div>
+                    <div style="margin-bottom: 8px;">
+                        <div id="testmode-login-true"><i
                         class="fas fa-check-circle fa-lg has-text-success"></i>&nbsp;&nbsp;Logged in</div>
-                    <div id="testmode-login-false"><i
+                        <div id="testmode-login-false"><i
                         class="fas fa-times-circle fa-lg has-text-danger"></i>&nbsp;&nbsp;Connection failed</div>
-                    <div id="testmode-errtext"><pre>Output</pre></div>
-                 </div>
+                        <div id="testmode-errtext" style="margin-top: 10px;"><pre>Output</pre></div>
+                    </div>
+                </div>
                 <div class="field" style="margin-top: 20px;">
                     <p class="control buttons is-centered">
                         <button id="closetestmodal" class="button">Close</button>
@@ -171,8 +178,6 @@
             </section>
         </div>
     </div>
-
-
 </main>
 
 <script>
@@ -198,7 +203,8 @@
         $("#deletemodal").addClass("is-active");
     }
 
-    function testTarget(val, target_type) {
+    function testTarget(val, target_type, btn_name) {
+        $(btn_name).addClass("is-loading");
         $.ajax({
             type: 'POST',
             url: '/targets/test/' + val,
@@ -215,6 +221,8 @@
                     $("#testmode-pingfalse").show();
                 }
                 if (target_type == "dicom") {
+                    $("#testmode-login-true").hide();
+                    $("#testmode-login-false").hide();
                     $("#testmode-errtext").hide();
                     if (jsondata["c-echo"] == true) {
                         $("#testmode-cechotrue").show();
@@ -237,7 +245,7 @@
                         $("#testmode-errtext pre").text(jsondata["err"])
                     }
                 }
-
+                $(btn_name).removeClass("is-loading");
                 $("#testmodal").addClass("is-active");
             }
         });

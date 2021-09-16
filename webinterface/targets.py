@@ -185,15 +185,9 @@ async def targets_test_post(request) -> Response:
         return PlainTextResponse("Configuration is being updated. Try again in a minute.")
 
     testtarget = request.path_params["target"]
-
+    target = config.mercure.targets[testtarget]
     ping_response = False
     cecho_response = False
-    # target_ip = ""
-    # target_port = ""
-    # target_aec = "ANY-SCP"
-    # target_aet = "ECHOSCU"
-
-    target = config.mercure.targets[testtarget]
 
     if isinstance(target, DicomTarget):
         target_ip = target.ip or ""
@@ -207,12 +201,13 @@ async def targets_test_post(request) -> Response:
             ping_result, *_ = await async_run(f"ping -w 1 -c 1 {target_ip}")
             if ping_result == 0:
                 ping_response = True
-                # Only test for c-echo if the ping was successful
-                cecho_result, *_ = await async_run(
-                    f"echoscu -to 10 -aec {target_aec} -aet {target_aet} {target_ip} {target_port}"
-                )
-                if cecho_result == 0:
-                    cecho_response = True
+
+            cecho_result, *_ = await async_run(
+                f"echoscu -to 2 -aec {target_aec} -aet {target_aet} {target_ip} {target_port}"
+            )
+            if cecho_result == 0:
+                cecho_response = True
+
         return JSONResponse(json.dumps({"ping": ping_response, "c-echo": cecho_response}))
 
     elif isinstance(target, SftpTarget):
@@ -220,16 +215,17 @@ async def targets_test_post(request) -> Response:
         ping_response = True if ping_result == 0 else False
         response = False
         stderr = b""
-        if ping_response:
-            command = (
-                "sftp -o StrictHostKeyChecking=no " + f""" "{target.user}@{target.host}:{target.folder}" <<< "" """
-            )
-            if target.password:
-                command = f"sshpass -p {target.password} " + command
-            logger.debug(command)
-            result, stdout, stderr = await async_run(command, shell=True, executable="/bin/bash")
-            response = True if result == 0 else False
+
+        command = (
+            "sftp -o StrictHostKeyChecking=no " + f""" "{target.user}@{target.host}:{target.folder}" <<< "" """
+        )
+        if target.password:
+            command = f"sshpass -p {target.password} " + command
+        logger.debug(command)
+        result, stdout, stderr = await async_run(command, shell=True, executable="/bin/bash")
+        response = True if result == 0 else False
         return JSONResponse(
             json.dumps(dict(ping=ping_response, loggedin=response, err=stderr.decode("utf-8") if not response else ""))
         )
+
     return JSONResponse("")
