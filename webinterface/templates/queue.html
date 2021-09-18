@@ -14,7 +14,7 @@
                     <div class="field is-grouped is-pulled-right">
                         <button class="button is-dark is-small has-tooltip-left has-tooltip-success" onclick="update()"
                             data-tooltip="Refresh Now" id="refreshbtn">
-                            <i class="fas fa-sync"></i></button>
+                            <i id="activitybtn" class="fas fa-sync"></i></button>
                     </div>
                 </div>
             </div>
@@ -129,7 +129,7 @@
                     </table>
                 </div>
                 <div class="panel" data-content="routing">
-                    <table class="table is-narrow is-hoverable is-fullwidth jobtable" id="jobs_processing">
+                    <table class="table is-narrow is-hoverable is-fullwidth jobtable" id="jobs_routing">
                         <thead>
                             <tr>
                                 <th width="50px;"><input type="checkbox" name="all_routing" value="checked" /></th>
@@ -146,11 +146,12 @@
                     </table>
                 </div>
                 <div class="panel" data-content="studies">
-                    <table class="table is-narrow is-hoverable is-fullwidth jobtable" id="jobs_processing">
+                    <table class="table is-narrow is-hoverable is-fullwidth jobtable" id="jobs_studies">
                         <thead>
                             <tr>
                                 <th width="50px;"><input type="checkbox" name="all_studies" value="checked" /></th>
                                 <th>Study UID</th>
+                                <th>Rule</th>
                                 <th>ACC</th>
                                 <th>MRN</th>
                                 <th>Completion</th>
@@ -171,23 +172,57 @@
 <script>
 
     function update() {
-        update_jobs();
         update_status();
+        update_jobs();
         $("#refreshbtn").blur();
     }
 
     function update_jobs() {
-        if ($("#tab_processing").hasClass("is-active")) {
+        $('#activitybtn').addClass("fa-spin");
+
+        if ($("#tab_routing").hasClass("is-active")) {
+            $.ajax({
+                type: 'GET',
+                url: '/queue/jobs/routing',
+                data: {},
+                dataType: 'json',
+                error: function () {
+                    $('#erroralert').show();
+                    $("#jobs_routing tbody tr").remove();
+                },
+                success: function (data) {                    
+                    $('#erroralert').hide();
+                    $("#jobs_routing tbody tr").remove();
+                    if (!Object.keys(data).length) {
+                    }
+                    else {
+                        Object.keys(data).forEach(function (key) {
+                            addedRow = `<tr><td><input type="checkbox" name="{key}" value="checked" /></td><td>${key}</td><td>${data[key]["ACC"]}</td><td>${data[key]["MRN"]}</td><td>${data[key]["Scope"]}</td><td>${data[key]["Target"]}</td><td>${data[key]["Status"]}</td></tr>`;
+                            $("#jobs_routing").find('tbody').append(addedRow);
+                        })
+                    }
+                },
+                complete: function (data) {
+                    $('#activitybtn').removeClass("fa-spin");
+                },
+                timeout: 3000
+            });
+            return;
+        }
+
+        if ($("#tab_processing").hasClass("is-active")) {            
             $.ajax({
                 type: 'GET',
                 url: '/queue/jobs/processing',
                 data: {},
                 dataType: 'json',
                 error: function () {
+                    $('#activitybtn').removeClass("fa-spin");
                     $('#erroralert').show();
                     $("#jobs_processing tbody tr").remove();
                 },
                 success: function (data) {
+                    $('#activitybtn').removeClass("fa-spin");
                     $('#erroralert').hide();
                     $("#jobs_processing tbody tr").remove();
                     if (!Object.keys(data).length) {
@@ -205,7 +240,35 @@
                 },
                 timeout: 3000
             });
+            return;
         }
+
+        if ($("#tab_studies").hasClass("is-active")) {            
+            $.ajax({
+                type: 'GET',
+                url: '/queue/jobs/studies',
+                data: {},
+                dataType: 'json',
+                error: function () {
+                    $('#activitybtn').removeClass("fa-spin");
+                    $('#erroralert').show();
+                    $("#jobs_studies tbody tr").remove();
+                },
+                success: function (data) {
+                    $('#activitybtn').removeClass("fa-spin");
+                    $('#erroralert').hide();
+                    $("#jobs_studies tbody tr").remove();
+                    Object.keys(data).forEach(function (key) {                                                       
+                        addedRow = `<tr><td><input type="checkbox" name="{key}" value="checked" /></td><td>${data[key]["UID"]}</td><td>${data[key]["Rule"]}</td><td>${data[key]["ACC"]}</td><td>${data[key]["MRN"]}</td><td>${data[key]["Completion"]}</td><td>${data[key]["Created"]}</td><td>${data[key]["Series"]}</td></tr>`;
+                        $("#jobs_studies").find('tbody').append(addedRow);
+                    });
+                },
+                timeout: 3000
+            });
+            return;
+        }
+
+        $('#activitybtn').removeClass("fa-spin");
     }
 
     function update_status() {
@@ -216,11 +279,12 @@
             dataType: 'json',
             error: function () {
                 $('#erroralert').show();
+                $("#jobs_routing tbody tr").remove();
                 $("#jobs_processing tbody tr").remove();
+                $("#jobs_studies tbody tr").remove();
             },
             success: function (data) {
                 $('#erroralert').hide();
-
                 $('#processing_status').removeClass("is-success is-danger is-warning");
                 $('#routing_status').removeClass("is-success is-danger is-warning");
 

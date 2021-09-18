@@ -1,7 +1,13 @@
-import json
+"""
+status.py
+=========
+Helper functions for mercure's processor module
+"""
+
+# Standard python includes
 from pathlib import Path
 
-from common.monitor import s_events, send_series_event
+# App-specific includes
 from common.constants import mercure_names
 
 

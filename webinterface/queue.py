@@ -8,6 +8,7 @@ Queue page for the graphical user interface of mercure.
 import os
 from pathlib import Path
 import json
+import daiquiri
 
 # Starlette-related includes
 from starlette.applications import Starlette
@@ -20,6 +21,9 @@ from common.constants import mercure_defs, mercure_names
 from webinterface.common import get_user_information
 from webinterface.common import templates
 from common.types import Task
+
+
+logger = daiquiri.getLogger("queue")
 
 
 ###################################################################################
@@ -65,14 +69,12 @@ async def show_queues(request):
 @queue_app.route("/jobs/processing", methods=["GET"])
 @requires("authenticated", redirect="login")
 async def show_jobs_processing(request):
-
     try:
         config.read_config()
     except:
         return PlainTextResponse("Configuration is being updated. Try again in a minute.")
 
     job_list = {}
-
     for entry in os.scandir(config.mercure.processing_folder):
         if entry.is_dir():
             job_module = ""
@@ -100,10 +102,13 @@ async def show_jobs_processing(request):
                         job_scope = "Series"
                     else:
                         job_scope = "Study"
-            except:
+            except Exception as e:
+                logger.exception(e)
                 job_module = "Error"
                 job_acc = "Error"
                 job_mrn = "Error"
+                job_scope = "Error"
+                job_status = "Error"
 
             job_list[entry.name] = {
                 "Module": job_module,
@@ -111,6 +116,104 @@ async def show_jobs_processing(request):
                 "MRN": job_mrn,
                 "Status": job_status,
                 "Scope": job_scope,
+            }
+
+    return JSONResponse(job_list)
+
+
+@queue_app.route("/jobs/routing", methods=["GET"])
+@requires("authenticated", redirect="login")
+async def show_jobs_routing(request):
+    try:
+        config.read_config()
+    except:
+        return PlainTextResponse("Configuration is being updated. Try again in a minute.")
+
+    job_list = {}
+    for entry in os.scandir(config.mercure.outgoing_folder):
+        if entry.is_dir():
+            job_target = ""
+            job_acc = ""
+            job_mrn = ""
+            job_scope = "Series"
+            job_status = "Queued"
+
+            task_file = Path(entry.path) / mercure_names.TASKFILE
+
+            try:
+                with open(task_file, "r") as f:
+                    task: Task = Task(**json.load(f))
+                    if task.dispatch and task.dispatch.target_name:
+                        job_target = task.dispatch.target_name
+                    job_acc = task.info.acc
+                    job_mrn = task.info.mrn
+                    if task.info.uid_type=="series":
+                        job_scope = "Series"
+                    else:
+                        job_scope = "Study"
+            except Exception as e:
+                logger.exception(e)
+                job_target = "Error"
+                job_acc = "Error"
+                job_mrn = "Error"
+                job_scope = "Error"
+                job_status = "Error"                
+
+            job_list[entry.name] = {
+                "Target": job_target,
+                "ACC": job_acc,
+                "MRN": job_mrn,
+                "Status": job_status,
+                "Scope": job_scope,
+            }
+
+    return JSONResponse(job_list)
+
+
+@queue_app.route("/jobs/studies", methods=["GET"])
+@requires("authenticated", redirect="login")
+async def show_jobs_studies(request):
+    try:
+        config.read_config()
+    except:
+        return PlainTextResponse("Configuration is being updated. Try again in a minute.")
+
+    job_list = {}
+    for entry in os.scandir(config.mercure.studies_folder):
+        if entry.is_dir():
+            job_uid = ""
+            job_rule = ""
+            job_acc = ""
+            job_mrn = ""
+            job_completion = "Timeout"
+            job_created = ""
+            job_series = 0
+
+            task_file = Path(entry.path) / mercure_names.TASKFILE
+
+            try:
+                with open(task_file, "r") as f:
+                    task: Task = Task(**json.load(f))
+                    job_acc = task.info.acc
+                    job_mrn = task.info.mrn
+                    # TODO: Fetch missing values
+            except Exception as e:
+                logger.exception(e)
+                job_uid = "Error"
+                job_rule = "Error"
+                job_acc = "Error"
+                job_mrn = "Error"
+                job_completion = "Error"
+                job_created = "Error"
+
+            job_list[entry.name] = {
+                "UID": job_uid,
+                "Rule": job_rule,
+                "ACC": job_acc,
+                "MRN": job_mrn,
+                "Completion": job_completion,
+                "Created": job_created,
+                "Series": job_series,
             }
 
     return JSONResponse(job_list)

@@ -1,23 +1,29 @@
+"""
+process_series.py
+=================
+Helper functions for mercure's processor module
+"""
+
+# Standard python includes
 import json
 from pathlib import Path
-import os
 from typing import Any, Dict, cast, Optional
-import uuid
 import json
 import shutil
 import daiquiri
-import time
 from datetime import datetime
 import docker
+import traceback
+import nomad
+from jinja2 import Template
+
+# App-specific includes
 import common.monitor as monitor
 import common.helper as helper
 import common.config as config
 from common.constants import mercure_names
-from common.types import EmptyDict, Task, Module
-import traceback
+from common.types import Task, Module
 
-import nomad
-from jinja2 import Template
 
 logger = daiquiri.getLogger("process_series")
 
