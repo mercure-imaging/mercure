@@ -17,7 +17,7 @@ from starlette.authentication import requires
 
 # App-specific includes
 import common.config as config
-from common.constants import mercure_defs, mercure_names
+from common.constants import mercure_defs, mercure_names, mercure_options
 from webinterface.common import get_user_information
 from webinterface.common import templates
 from common.types import Task
@@ -194,9 +194,17 @@ async def show_jobs_studies(request):
             try:
                 with open(task_file, "r") as f:
                     task: Task = Task(**json.load(f))
+                    job_uid = task.info.uid
+                    job_rule = task.info.applied_rule
                     job_acc = task.info.acc
                     job_mrn = task.info.mrn
-                    # TODO: Fetch missing values
+                    if task.study.complete_force == "True":
+                        job_completion = "Force"
+                    else:
+                        if task.study.complete_trigger == "received_series":
+                            job_completion = "Series"
+                    job_created = task.study.creation_time
+                    job_series = len(task.study.received_series)
             except Exception as e:
                 logger.exception(e)
                 job_uid = "Error"

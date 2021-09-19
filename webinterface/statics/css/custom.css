@@ -261,3 +261,8 @@ body {
 .greenlink {
   color: hsl(141, 71%, 48%);
 }
+
+.loadingspinner {
+  color: hsl(141, 71%, 48%);
+  text-align: center;
+}

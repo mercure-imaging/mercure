@@ -146,7 +146,7 @@
                     </table>
                 </div>
                 <div class="panel" data-content="studies">
-                    <table class="table is-narrow is-hoverable is-fullwidth jobtable" id="jobs_studies">
+                    <table class="table is-narrow is-hoverable is-fullwidth jobtable" style="word-wrap: break-word;" id="jobs_studies">
                         <thead>
                             <tr>
                                 <th width="50px;"><input type="checkbox" name="all_studies" value="checked" /></th>
@@ -164,6 +164,11 @@
                     </table>
                 </div>
             </div>
+            <div style="min-height: 80px; margin-top: 30px;">
+                <div class="fa-3x loadingspinner" id="loadingspinner" style="display: none;">
+                    <i class="fas fa-spinner fa-pulse"></i>
+                </div>            
+            </div>
         </div>
     </div>
     </div>
@@ -178,9 +183,9 @@
     }
 
     function update_jobs() {
-        $('#activitybtn').addClass("fa-spin");
-
         if ($("#tab_routing").hasClass("is-active")) {
+            $("#jobs_routing tbody tr").remove();
+            $('#loadingspinner').show();
             $.ajax({
                 type: 'GET',
                 url: '/queue/jobs/routing',
@@ -188,11 +193,9 @@
                 dataType: 'json',
                 error: function () {
                     $('#erroralert').show();
-                    $("#jobs_routing tbody tr").remove();
                 },
-                success: function (data) {                    
+                success: function (data) {
                     $('#erroralert').hide();
-                    $("#jobs_routing tbody tr").remove();
                     if (!Object.keys(data).length) {
                     }
                     else {
@@ -203,28 +206,26 @@
                     }
                 },
                 complete: function (data) {
-                    $('#activitybtn').removeClass("fa-spin");
+                    $('#loadingspinner').hide();
                 },
                 timeout: 3000
             });
             return;
         }
 
-        if ($("#tab_processing").hasClass("is-active")) {            
+        if ($("#tab_processing").hasClass("is-active")) {    
+            $('#loadingspinner').show();
+            $("#jobs_processing tbody tr").remove();
             $.ajax({
                 type: 'GET',
                 url: '/queue/jobs/processing',
                 data: {},
                 dataType: 'json',
                 error: function () {
-                    $('#activitybtn').removeClass("fa-spin");
                     $('#erroralert').show();
-                    $("#jobs_processing tbody tr").remove();
                 },
                 success: function (data) {
-                    $('#activitybtn').removeClass("fa-spin");
                     $('#erroralert').hide();
-                    $("#jobs_processing tbody tr").remove();
                     if (!Object.keys(data).length) {
                     }
                     else {
@@ -238,37 +239,39 @@
                         })
                     }
                 },
+                complete: function (data) {
+                    $('#loadingspinner').hide();
+                },
                 timeout: 3000
             });
             return;
         }
 
-        if ($("#tab_studies").hasClass("is-active")) {            
+        if ($("#tab_studies").hasClass("is-active")) {       
+            $('#loadingspinner').show();
+            $("#jobs_studies tbody tr").remove();
             $.ajax({
                 type: 'GET',
                 url: '/queue/jobs/studies',
                 data: {},
                 dataType: 'json',
                 error: function () {
-                    $('#activitybtn').removeClass("fa-spin");
                     $('#erroralert').show();
-                    $("#jobs_studies tbody tr").remove();
                 },
                 success: function (data) {
-                    $('#activitybtn').removeClass("fa-spin");
                     $('#erroralert').hide();
-                    $("#jobs_studies tbody tr").remove();
                     Object.keys(data).forEach(function (key) {                                                       
                         addedRow = `<tr><td><input type="checkbox" name="{key}" value="checked" /></td><td>${data[key]["UID"]}</td><td>${data[key]["Rule"]}</td><td>${data[key]["ACC"]}</td><td>${data[key]["MRN"]}</td><td>${data[key]["Completion"]}</td><td>${data[key]["Created"]}</td><td>${data[key]["Series"]}</td></tr>`;
                         $("#jobs_studies").find('tbody').append(addedRow);
                     });
                 },
+                complete: function (data) {
+                    $('#loadingspinner').hide();
+                },
                 timeout: 3000
             });
             return;
         }
-
-        $('#activitybtn').removeClass("fa-spin");
     }
 
     function update_status() {
