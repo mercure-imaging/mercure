@@ -194,8 +194,11 @@ async def show_jobs_studies(request):
             try:
                 with open(task_file, "r") as f:
                     task: Task = Task(**json.load(f))
+                    if (not task.study) or (not task.info):
+                        raise Exception()
                     job_uid = task.info.uid
-                    job_rule = task.info.applied_rule
+                    if task.info.applied_rule:
+                        job_rule = task.info.applied_rule
                     job_acc = task.info.acc
                     job_mrn = task.info.mrn
                     if task.study.complete_force == "True":
@@ -204,7 +207,8 @@ async def show_jobs_studies(request):
                         if task.study.complete_trigger == "received_series":
                             job_completion = "Series"
                     job_created = task.study.creation_time
-                    job_series = len(task.study.received_series)
+                    if task.study.received_series:
+                        job_series = len(task.study.received_series)
             except Exception as e:
                 logger.exception(e)
                 job_uid = "Error"
