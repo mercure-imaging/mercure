@@ -7,12 +7,11 @@
 
 A flexible DICOM routing and processing solution with user-friendly web interface and extensive monitoring functions. Custom processing modules can be implemented as Docker containers. mercure has been written in the Python language and uses the DCMTK toolkit for the underlying DICOM communication. It can be deployed either as containerized single-server installation using Docker Compose, or as scalable cluster installation using Nomad. mercure consists of multiple service modules that handle different steps of the processing pipeline.
 
-**Important:** mercure (formerly called Hermes) is still undergoing significant development work towards a stable release version 0.2. 
-| **Parts of the source code are still incomplete and untested.** Use at your own risk. |
+**Important:** mercure (formerly called Hermes) is still undergoing significant development work towards a stable release version 0.2. Use at your own risk.
+| **Warning: Parts of the source code are still incomplete and untested.**  |
 | --- |
 
-Installation instructions and usage information can be found on the project homepage:
-
+Installation instructions and usage information can be found on the project homepage:  
 https://mercure-imaging.org
 
 
