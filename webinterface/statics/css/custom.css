@@ -266,3 +266,28 @@ body {
   color: hsl(141, 71%, 48%);
   text-align: center;
 }
+
+.gitter-chat-embed {
+  z-index: 99999 !important;
+}
+
+.gitter-open-chat-button, .gitter-open-chat-button:visited, .gitter-open-chat-button:hover {
+  background-color: hsl(141, 71%, 42%);
+}
+
+.gitter_note {
+  box-sizing: border-box;
+  position: absolute;
+  top: 0;
+  left: 0;
+  margin-left: 10px;
+  margin-top: 10px;
+  display: -ms-flexbox;
+  display: flex;
+  -ms-flex-pack: end;
+  justify-content: flex-end;
+  padding-bottom: .7em;
+  background: none;
+  z-index: 10;
+}
+

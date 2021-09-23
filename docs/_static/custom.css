@@ -178,7 +178,14 @@ img.border {
     margin-bottom: 30px !important;
 }
 
-img.logo 
-{
+img.logo {
     padding: 0px;
+}
+
+.gitter-chat-embed {
+    z-index: 99999 !important;
+}
+
+.gitter-open-chat-button, .gitter-open-chat-button:visited, .gitter-open-chat-button:hover {
+    background-color: hsl(141, 71%, 42%);
 }
