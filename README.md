@@ -3,31 +3,31 @@
 
 ![mercure](mercure.png)
 
-# mercure Orchestrator
+# mercure DICOM Orchestrator
 
-A flexible DICOM routing and processing solution using a Python application layer on top of the DCMTK toolkit. It consists of multiple separated modules that handle different steps of the processing chain.
+A flexible DICOM routing and processing solution with user-friendly web interface and extensive monitoring functions. Custom processing modules can be implemented as Docker containers. mercure has been written in the Python language and uses the DCMTK toolkit for the underlying DICOM communication. It can be deployed either as containerized single-server installation using Docker Compose, or as scalable cluster installation using Nomad. mercure consists of multiple service modules that handle different steps of the processing pipeline.
 
-**Important:** mercure (formerly called Hermes) is currently undergoing significant development work towards version 0.2. Make sure to checkout the branch *stable-v0.1* for a stable version.
+**Important:** mercure (formerly called Hermes) is still undergoing significant development work towards a stable release version 0.2. *Parts of the source code are still incomplete and untested.* Use at your own risk.
 
-Installation instructions and usage information (for the stable 0.1 version) can be found on the project homepage:
-https://hermes-router.github.io
+Installation instructions and usage information can be found on the project homepage:
+https://mercure-imaging.org
 
 
 ## Receiver
 The receiver listens on a tcp port for incoming DICOM files. Received files are run through
-a preprocessing procedure during which DICOM tag information is extracted and stored in a json
-file.
+a preprocessing procedure, which extracts DICOM tag information and stores it in a json file.
 
 ## Router
 The router module runs periodically and checks 
 * if the transfer of a DICOM series has finished (based on timeouts)
-* if a routing rule is triggered for the received series
+* if a routing rule triggers for the received series (or study)
 
-If both conditions are true, the DICOM series is copied into separate outgoing folders
-for each target. If no rule applies, the DICOM series is placed in the `discard` folder.
+If both conditions are met, the DICOM series (or study) is moved into a subdirectory of the outgoing folder or 
+processing folder (depending on the triggered rule), together with task file that describes the action to be performed. 
+If no rule applies, the DICOM series is placed in the `discard` folder.
 
 ## Processor
-The processor module runs periodically and checks for tasks submitted in the processing folder. It then locks the task and executes processing modules, as defined in the task.json file.
+The processor module runs periodically and checks for tasks submitted to the processing folder. It then locks the task and executes processing modules as defined in the task.json file. The requested processing module is started as Docker container, either on the same server or on a separate processing node (for Nomad installations). If results should be dispatched, the processed files are moved into a subfolder of the outgoing folder.
 
 ## Dispatcher
 The dispatcher module runs periodically and checks
@@ -48,9 +48,8 @@ The cleaner module runs periodically and checks
 If these conditions are true, series in the `success` and `discard` folders are deleted.
 
 ## Webgui
-The mercure webgui module provides a user-friendly web interface for configuring, controlling, and 
+The webgui module provides a user-friendly web interface for configuring, controlling, and 
 monitoring the server.
 
 ## Bookkeeper
 The bookkeeper module acts as central monitoring instance for all mercure services. The individual modules communicate with the bookkeeper via a TCP/IP connection. The submitted information is stored in a Postgres database.
-

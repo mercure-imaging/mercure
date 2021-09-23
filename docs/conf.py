@@ -8,8 +8,8 @@ sys.path.insert(0, os.path.abspath('..'))
 # -- Project information -----------------------------------------------------
 
 project = 'mercure'
-copyright = '2019-2021, Kai Tobias Block, Joshy Cyriac, Roy Wiggins'
-author = 'Kai Tobias Block, Joshy Cyriac, Roy Wiggins'
+copyright = '2019-2021, Kai Tobias Block, Roy Wiggins, Joshy Cyriac'
+author = 'Kai Tobias Block, Roy Wiggins, Joshy Cyriac'
 
 # The short X.Y version
 version = 'Version 0.2a'
@@ -75,7 +75,7 @@ html_theme_options = {
     'logo_only': True,
     'style_external_links': True,
     'display_version': False,
-    'analytics_id': 'UA-63470225-6'
+    'analytics_id': 'G-EHLH5W4KQW'
 }
 
 # Add any paths that contain custom static files (such as style sheets) here,
