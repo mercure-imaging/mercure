@@ -1,6 +1,8 @@
 Installation
 ============
 
+.. important:: This documentation needs to be updated for the new version 0.2. The installation instructions may not work for version 0.2.
+
 It is recommended to install mercure on a Linux machine running Ubuntu Server 18.04 LTS 64bit (or newer). The installer for the Ubuntu operating system can be downloaded at https://ubuntu.com/download/server
 
 .. note:: mercure might run on other Linux flavors as well, but the installation instructions listed on this page will likely not be applicable without modification.
