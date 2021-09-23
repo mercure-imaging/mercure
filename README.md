@@ -1,5 +1,6 @@
 
-![Python application](https://github.com/mercure-imaging/mercure/workflows/Python%20application/badge.svg)
+![Python application](https://github.com/mercure-imaging/mercure/workflows/Python%20application/badge.svg) [![Join the chat at https://gitter.im/mercure-imaging/Support](https://badges.gitter.im/mercure-imaging/Support.svg)](https://gitter.im/mercure-imaging/Support?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 
 ![mercure](mercure.png)
 
@@ -7,8 +8,6 @@
 | :--- |
 
 # mercure DICOM Orchestrator
-
-[![Join the chat at https://gitter.im/mercure-imaging/Support](https://badges.gitter.im/mercure-imaging/Support.svg)](https://gitter.im/mercure-imaging/Support?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 A flexible DICOM routing and processing solution with user-friendly web interface and extensive monitoring functions. Custom processing modules can be implemented as Docker containers. mercure has been written in the Python language and uses the DCMTK toolkit for the underlying DICOM communication. It can be deployed either as containerized single-server installation using Docker Compose, or as scalable cluster installation using Nomad. mercure consists of multiple service modules that handle different steps of the processing pipeline.
 
