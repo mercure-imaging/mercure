@@ -23,12 +23,12 @@ The router module runs periodically and checks
 * if the transfer of a DICOM series has finished (based on timeouts)
 * if a routing rule triggers for the received series (or study)
 
-If both conditions are met, the DICOM series (or study) is moved into a subdirectory of the outgoing folder or 
-processing folder (depending on the triggered rule), together with task file that describes the action to be performed. 
+If both conditions are met, the DICOM series (or study) is moved into a subdirectory of the `outgoing` folder or 
+`processing` folder (depending on the triggered rule), together with task file that describes the action to be performed. 
 If no rule applies, the DICOM series is placed in the `discard` folder.
 
 ## Processor
-The processor module runs periodically and checks for tasks submitted to the processing folder. It then locks the task and executes processing modules as defined in the task.json file. The requested processing module is started as Docker container, either on the same server or on a separate processing node (for Nomad installations). If results should be dispatched, the processed files are moved into a subfolder of the outgoing folder.
+The processor module runs periodically and checks for tasks submitted to the `processing` folder. It then locks the task and executes processing modules as defined in the `task.json` file. The requested processing module is started as Docker container, either on the same server or on a separate processing node (for Nomad installations). If results should be dispatched, the processed files are moved into a subfolder of the `outgoing` folder.
 
 ## Dispatcher
 The dispatcher module runs periodically and checks
