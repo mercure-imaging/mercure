@@ -3,7 +3,7 @@ Discussion Board
 
 If you have questions or feature requests for the mercure DICOM router, you can get in touch with the developers via the Gitter chat below. You need to sign in using a GitHub account.
 
-`Hermes Support Board <https://gitter.im/mercure-imaging/support>`_
+`mercure Support Board <https://gitter.im/mercure-imaging/support>`_
 
 .. raw:: html
 
