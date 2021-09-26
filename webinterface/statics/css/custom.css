@@ -271,10 +271,6 @@ body {
   z-index: 99999 !important;
 }
 
-.gitter-open-chat-button, .gitter-open-chat-button:visited, .gitter-open-chat-button:hover {
-  background-color: hsl(141, 71%, 42%);
-}
-
 .gitter_note {
   box-sizing: border-box;
   position: absolute;
@@ -290,4 +286,36 @@ body {
   background: none;
   z-index: 10;
 }
+
+table.dataTable tbody tr.selected th, table.dataTable tbody tr.selected td {
+  color: white;
+  background-color: #3273dc !important;
+}
+
+.dataTables_scrollBody
+{
+ overflow-x:hidden !important;
+ overflow-y:auto !important;
+}
+
+
+.dataTables_scrollBody::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.dataTables_scrollBody::-webkit-scrollbar-track,
+.dataTables_scrollBody::-webkit-scrollbar-corner {
+  background-color: #FFF;
+}
+
+.dataTables_scrollBody::-webkit-scrollbar-thumb {
+  background: rgb(219,219,219);
+  border-radius: 10px;
+}
+
+.dataTables_scrollBody::-webkit-scrollbar-thumb:hover {
+  background: hsl(141, 71%, 48%);
+}
+
 

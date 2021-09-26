@@ -115,13 +115,12 @@
                     <table class="table is-narrow is-hoverable is-fullwidth jobtable" id="jobs_processing">
                         <thead>
                             <tr>
-                                <th width="50px;"><input type="checkbox" name="all_processing" value="checked" /></th>
                                 <th>ID</th>
                                 <th>ACC</th>
                                 <th>MRN</th>
                                 <th>Scope</th>
                                 <th>Module</th>
-                                <th width="150px;">Status</th>
+                                <th>Status</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -132,13 +131,12 @@
                     <table class="table is-narrow is-hoverable is-fullwidth jobtable" id="jobs_routing">
                         <thead>
                             <tr>
-                                <th width="50px;"><input type="checkbox" name="all_routing" value="checked" /></th>
                                 <th>ID</th>
                                 <th>ACC</th>
                                 <th>MRN</th>
                                 <th>Scope</th>
                                 <th>Target</th>
-                                <th width="150px;">Status</th>
+                                <th>Status</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -149,7 +147,6 @@
                     <table class="table is-narrow is-hoverable is-fullwidth jobtable" style="word-wrap: break-word;" id="jobs_studies">
                         <thead>
                             <tr>
-                                <th width="50px;"><input type="checkbox" name="all_studies" value="checked" /></th>
                                 <th>Study UID</th>
                                 <th>Rule</th>
                                 <th>ACC</th>
@@ -183,39 +180,10 @@
     }
 
     function update_jobs() {
-        if ($("#tab_routing").hasClass("is-active")) {
-            $("#jobs_routing tbody tr").remove();
-            $('#loadingspinner').show();
-            $.ajax({
-                type: 'GET',
-                url: '/queue/jobs/routing',
-                data: {},
-                dataType: 'json',
-                error: function () {
-                    $('#erroralert').show();
-                },
-                success: function (data) {
-                    $('#erroralert').hide();
-                    if (!Object.keys(data).length) {
-                    }
-                    else {
-                        Object.keys(data).forEach(function (key) {
-                            addedRow = `<tr><td><input type="checkbox" name="{key}" value="checked" /></td><td>${key}</td><td>${data[key]["ACC"]}</td><td>${data[key]["MRN"]}</td><td>${data[key]["Scope"]}</td><td>${data[key]["Target"]}</td><td>${data[key]["Status"]}</td></tr>`;
-                            $("#jobs_routing").find('tbody').append(addedRow);
-                        })
-                    }
-                },
-                complete: function (data) {
-                    $('#loadingspinner').hide();
-                },
-                timeout: 3000
-            });
-            return;
-        }
 
         if ($("#tab_processing").hasClass("is-active")) {    
-            $('#loadingspinner').show();
-            $("#jobs_processing tbody tr").remove();
+            $('#jobs_processing').DataTable().clear().draw();
+            $('#loadingspinner').show();          
             $.ajax({
                 type: 'GET',
                 url: '/queue/jobs/processing',
@@ -229,15 +197,42 @@
                     if (!Object.keys(data).length) {
                     }
                     else {
+                        var jobtable = $('#jobs_processing').DataTable();
                         Object.keys(data).forEach(function (key) {
-                            var processingStyle = "";
-                            if (data[key]["Status"] == "Processing") {
-                                processingStyle = " class=\"is-selected\"";
-                            }
-                            addedRow = `<tr${processingStyle}><td><input type="checkbox" name="{key}" value="checked" /></td><td>${key}</td><td>${data[key]["ACC"]}</td><td>${data[key]["MRN"]}</td><td>${data[key]["Scope"]}</td><td>${data[key]["Module"]}</td><td>${data[key]["Status"]}</td></tr>`;
-                            $("#jobs_processing").find('tbody').append(addedRow);
+                                jobtable.row.add( [ key, data[key]["ACC"], data[key]["MRN"], data[key]["Scope"], data[key]["Module"], data[key]["Status"] ] );
+                        })
+                        jobtable.draw();
+                    }
+                },
+                complete: function (data) {
+                    $('#loadingspinner').hide();
+                },
+                timeout: 3000
+            });
+            $('#jobs_processing').DataTable().button( 2 ).enable(false);
+            return;
+        }
+
+        if ($("#tab_routing").hasClass("is-active")) {
+            $('#jobs_routing').DataTable().clear().draw();
+            $('#loadingspinner').show();
+            $.ajax({
+                type: 'GET',
+                url: '/queue/jobs/routing',
+                data: {},
+                dataType: 'json',
+                error: function () {
+                    $('#erroralert').show();
+                },
+                success: function (data) {
+                    $('#erroralert').hide();
+                    var jobtable = $('#jobs_routing').DataTable();
+                    if (Object.keys(data).length) {
+                        Object.keys(data).forEach(function (key) {
+                            jobtable.row.add( [ key, data[key]["ACC"], data[key]["MRN"], data[key]["Scope"], data[key]["Target"], data[key]["Status"] ] );
                         })
                     }
+                    jobtable.draw();
                 },
                 complete: function (data) {
                     $('#loadingspinner').hide();
@@ -248,8 +243,8 @@
         }
 
         if ($("#tab_studies").hasClass("is-active")) {       
+            $('#jobs_studies').DataTable().clear().draw();
             $('#loadingspinner').show();
-            $("#jobs_studies tbody tr").remove();
             $.ajax({
                 type: 'GET',
                 url: '/queue/jobs/studies',
@@ -260,10 +255,11 @@
                 },
                 success: function (data) {
                     $('#erroralert').hide();
-                    Object.keys(data).forEach(function (key) {                                                       
-                        addedRow = `<tr><td><input type="checkbox" name="{key}" value="checked" /></td><td>${data[key]["UID"]}</td><td>${data[key]["Rule"]}</td><td>${data[key]["ACC"]}</td><td>${data[key]["MRN"]}</td><td>${data[key]["Completion"]}</td><td>${data[key]["Created"]}</td><td>${data[key]["Series"]}</td></tr>`;
-                        $("#jobs_studies").find('tbody').append(addedRow);
-                    });
+                    var jobtable = $('#jobs_studies').DataTable();
+                    Object.keys(data).forEach(function (key) {
+                        jobtable.row.add( [ data[key]["UID"], data[key]["Rule"], data[key]["ACC"], data[key]["MRN"], data[key]["Completion"], data[key]["Created"], data[key]["Series"] ] );
+                    })
+                    jobtable.draw();
                 },
                 complete: function (data) {
                     $('#loadingspinner').hide();
@@ -282,9 +278,9 @@
             dataType: 'json',
             error: function () {
                 $('#erroralert').show();
-                $("#jobs_routing tbody tr").remove();
-                $("#jobs_processing tbody tr").remove();
-                $("#jobs_studies tbody tr").remove();
+                $('#jobs_processing').DataTable().clear().draw();
+                $('#jobs_routing').DataTable().clear().draw();
+                $('#jobs_studies').DataTable().clear().draw();
             },
             success: function (data) {
                 $('#erroralert').hide();
@@ -375,7 +371,76 @@
         }
     });
 
-    $(document).ready(function () {
+    $(document).ready(function () {      
+
+        $('#jobs_processing').DataTable( {
+            "paging":   false,
+            "ordering": false,
+            "info": false,
+            "searching": false,
+            "language": {
+                "emptyTable": "No jobs scheduled for processing"
+            },
+            select: true,
+            buttons: [
+                'selectAll',
+                'selectNone',
+                {
+                    text: 'Abort',
+                    action: function ( e, dt, node, config ) {                        
+                    }
+                }            
+            ],
+            dom: 'Bfrtip',
+            "scrollY": "740px",
+            "scrollX": false,
+            "scrollCollapse": true,   
+        } );        
+        $('#jobs_processing').DataTable().on( 'select deselect', function () {
+            var selectedRows = $('#jobs_processing').DataTable().rows( { selected: true } ).count();
+            $('#jobs_processing').DataTable().button( 2 ).enable( selectedRows > 0 );
+        } );
+
+
+        $('#jobs_routing').DataTable( {
+            "paging":   false,
+            "ordering": false,
+            "info": false,
+            "searching": false,
+            "language": {
+                "emptyTable": "No jobs scheduled for routing"
+            },
+            select: true,
+            buttons: [
+                'selectAll',
+                'selectNone'
+            ],
+            dom: 'Bfrtip',
+            "scrollY": "740px",
+            "scrollX": false,
+            "scrollCollapse": true,              
+        } );
+
+        $('#jobs_studies').DataTable( {
+            "paging":   false,
+            "ordering": false,
+            "info": false,
+            "searching": false,
+            "select": true,
+            "language": {
+                "emptyTable": "No studies in reception"
+            },
+            select: true,
+            buttons: [
+                'selectAll',
+                'selectNone'
+            ],
+            dom: 'Bfrtip',
+            "scrollY": "740px",
+            "scrollX": false,
+            "scrollCollapse": true,            
+        } );
+
         $('#tabs li').on('click', function () {
             var tab = $(this).data('tab');
 
