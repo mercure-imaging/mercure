@@ -59,7 +59,7 @@
                                 </button>
                             </div>
                             <div class="control is-expanded">
-                                <textarea rows="1" name="rule" id="rule" class="textarea" autocomplete='off'
+                                <textarea rows="1" name="rule" id="rule" class="textarea testinclude" autocomplete='off'
                                     onkeyup="this.value = this.value.replace(/[{}\x22\n]/g, '')" type="text"
                                     placeholder="Routing rule"
                                     style="border-top-left-radius: 0px; border-bottom-left-radius: 0px; padding-top: 5px; padding-bottom: 5px; min-height: 36px;">{{rules[rule]['rule']}}</textarea>
@@ -342,15 +342,15 @@
                 <div class="field">
                     <label class="label">Test Values:</label>
                     <div class="control">
-                        <textarea class="textarea has-fixed-size" rows="8" placeholder="Testing tags" id="testvalues"
+                        <textarea class="textarea has-fixed-size testinclude" rows="8" placeholder="Testing tags" id="testvalues"
                             name="testvalues">{{alltags|tojson(indent=4)}}</textarea>
                     </div>
                 </div>
             </div>
         </section>
         <footer class="modal-card-foot buttons is-right">
-            <button class="button is-dark" default autofocus id="evaltestrule" ic-post-to="/rules/test"
-                ic-include="#testvalues" ic-global-include="#rule" ic-target="#testresult"><i
+            <button class="button is-dark" default autofocus id="evaltestrule" hx-post="/rules/test"
+                hx-include=".testinclude"  hx-target="#testresult"><i
                     class="fas fa-cogs"></i>&nbsp;Test</button>
             <button class="button" type="button" id="closetestrule" onclick="closeTestRule()">Close</button>
         </footer>
@@ -376,8 +376,8 @@
             </div>
         </section>
         <footer class="modal-card-foot buttons is-centered">
-            <button style="display: none;" class="button" id="evaltestcompletionseries" ic-post-to="/rules/test_completionseries"
-                ic-global-include="#study_trigger_series" ic-target="#testcompletionseriesresult">Test</button>            
+            <button style="display: none;" class="button" id="evaltestcompletionseries" hx-post="/rules/test_completionseries"
+                hx-include="#study_trigger_series" hx-target="#testcompletionseriesresult">Test</button>            
             <button class="button" type="button" id="closetestcompletionseries" onclick="closeTestCompletionSeries()">Close</button>
         </footer>
     </div>
