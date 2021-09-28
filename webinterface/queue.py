@@ -231,6 +231,18 @@ async def show_jobs_studies(request):
     return JSONResponse(job_list)
 
 
+@queue_app.route("/jobs/fail", methods=["GET"])
+@requires("authenticated", redirect="login")
+async def show_jobs_fail(request):
+    try:
+        config.read_config()
+    except:
+        return PlainTextResponse("Configuration is being updated. Try again in a minute.")
+
+    job_list = {}
+    return JSONResponse(job_list)
+
+
 @queue_app.route("/status", methods=["GET"])
 @requires("authenticated", redirect="login")
 async def show_queues_status(request):

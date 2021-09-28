@@ -160,6 +160,34 @@
                         </tbody>
                     </table>
                 </div>
+                <div class="panel" data-content="fail">
+                    <table class="table is-narrow is-hoverable is-fullwidth jobtable" id="jobs_fail">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>ACC</th>
+                                <th>MRN</th>
+                                <th>Scope</th>
+                                <th>Fail Stage</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="panel" data-content="archive">
+                    <div class="field has-addons" style="margin-top: 20px;">
+                        <div class="control is-expanded">
+                            <input name="job_fail_search" id="job_fail_search" pattern="[^{}\x22]+" onkeyup="this.value = this.value.replace(/[{}\x22\n]/g, '')"
+                            class="input series_completion_fix" autocomplete='off' type="text" placeholder="Find job by ACC or MRN">
+                        </div>
+                        <div class="control">
+                            <button class="button">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div style="min-height: 80px; margin-top: 30px;">
                 <div class="fa-3x loadingspinner" id="loadingspinner" style="display: none;">
@@ -268,6 +296,33 @@
             });
             return;
         }
+
+        if ($("#tab_fail").hasClass("is-active")) {       
+            $('#jobs_fail').DataTable().clear().draw();
+            $('#loadingspinner').show();
+            $.ajax({
+                type: 'GET',
+                url: '/queue/jobs/fail',
+                data: {},
+                dataType: 'json',
+                error: function () {
+                    $('#erroralert').show();
+                },
+                success: function (data) {
+                    $('#erroralert').hide();
+                    var jobtable = $('#jobs_fail').DataTable();
+                    Object.keys(data).forEach(function (key) {
+                        //jobtable.row.add( [ data[key]["UID"], data[key]["Rule"], data[key]["ACC"], data[key]["MRN"], data[key]["Completion"], data[key]["Created"], data[key]["Series"] ] );
+                    })
+                    jobtable.draw();
+                },
+                complete: function (data) {
+                    $('#loadingspinner').hide();
+                },
+                timeout: 3000
+            });
+            return;
+        }        
     }
 
     function update_status() {
@@ -281,6 +336,7 @@
                 $('#jobs_processing').DataTable().clear().draw();
                 $('#jobs_routing').DataTable().clear().draw();
                 $('#jobs_studies').DataTable().clear().draw();
+                $('#jobs_fail').DataTable().clear().draw();
             },
             success: function (data) {
                 $('#erroralert').hide();
@@ -441,6 +497,26 @@
             "scrollCollapse": true,            
         } );
 
+        $('#jobs_fail').DataTable( {
+            "paging":   false,
+            "ordering": false,
+            "info": false,
+            "searching": false,
+            "select": true,
+            "language": {
+                "emptyTable": "No failed jobs"
+            },
+            select: true,
+            buttons: [
+                'selectAll',
+                'selectNone'
+            ],
+            dom: 'Bfrtip',
+            "scrollY": "740px",
+            "scrollX": false,
+            "scrollCollapse": true,            
+        } );
+
         $('#tabs li').on('click', function () {
             var tab = $(this).data('tab');
 
@@ -449,6 +525,10 @@
 
             $('#tab-content div.panel').removeClass('is-active');
             $('div.panel[data-content="' + tab + '"]').addClass('is-active');
+
+            if (tab=="archive") {
+                $('#job_fail_search').focus();                
+            }
 
             update_jobs();
         });
