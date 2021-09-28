@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 import json
 import daiquiri
+from typing import Dict
 
 # Starlette-related includes
 from starlette.applications import Starlette
@@ -239,7 +240,8 @@ async def show_jobs_fail(request):
     except:
         return PlainTextResponse("Configuration is being updated. Try again in a minute.")
 
-    job_list = {}
+    job_list: Dict = {}
+    # TODO
     return JSONResponse(job_list)
 
 

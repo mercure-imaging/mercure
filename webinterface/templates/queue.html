@@ -176,17 +176,30 @@
                     </table>
                 </div>
                 <div class="panel" data-content="archive">
-                    <div class="field has-addons" style="margin-top: 20px;">
+                    <div class="field has-addons" style="margin-top: 30px; margin-bottom: 30px;">
                         <div class="control is-expanded">
-                            <input name="job_fail_search" id="job_fail_search" pattern="[^{}\x22]+" onkeyup="this.value = this.value.replace(/[{}\x22\n]/g, '')"
+                            <input name="job_archive_search" id="job_archive_search" pattern="[^{}\x22]+" onkeyup="this.value = this.value.replace(/[{}\x22\n]/g, '')"
                             class="input series_completion_fix" autocomplete='off' type="text" placeholder="Find job by ACC or MRN">
                         </div>
                         <div class="control">
-                            <button class="button">
+                            <button class="button" onclick="archiveSearch()">
                                 <i class="fas fa-search"></i>
                             </button>
                         </div>
                     </div>
+                    <table class="table is-narrow is-hoverable is-fullwidth jobtable" id="jobs_archive">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>ACC</th>
+                                <th>MRN</th>
+                                <th>Scope</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
                 </div>
             </div>
             <div style="min-height: 80px; margin-top: 30px;">
@@ -208,7 +221,6 @@
     }
 
     function update_jobs() {
-
         if ($("#tab_processing").hasClass("is-active")) {    
             $('#jobs_processing').DataTable().clear().draw();
             $('#loadingspinner').show();          
@@ -267,6 +279,7 @@
                 },
                 timeout: 3000
             });
+            $('#jobs_routing').DataTable().button( 2 ).enable(false);
             return;
         }
 
@@ -294,6 +307,8 @@
                 },
                 timeout: 3000
             });
+            $('#jobs_studies').DataTable().button( 2 ).enable(false);
+            $('#jobs_studies').DataTable().button( 3 ).enable(false);
             return;
         }
 
@@ -321,6 +336,15 @@
                 },
                 timeout: 3000
             });
+            $('#jobs_fail').DataTable().button( 2 ).enable(false);
+            return;
+        }        
+
+        if ($("#tab_archive").hasClass("is-active")) {       
+            $('#jobs_archive').DataTable().clear().draw();
+            $('#jobs_archive_wrapper').hide();
+            $('#job_archive_search').val('');
+            $('#job_archive_search').focus();                
             return;
         }        
     }
@@ -337,6 +361,7 @@
                 $('#jobs_routing').DataTable().clear().draw();
                 $('#jobs_studies').DataTable().clear().draw();
                 $('#jobs_fail').DataTable().clear().draw();
+                $('#jobs_archive').DataTable().clear().draw();
             },
             success: function (data) {
                 $('#erroralert').hide();
@@ -443,7 +468,8 @@
                 'selectNone',
                 {
                     text: 'Abort',
-                    action: function ( e, dt, node, config ) {                        
+                    action: function ( e, dt, node, config ) {
+                        alert("Coming soon!");                    
                     }
                 }            
             ],
@@ -469,13 +495,24 @@
             select: true,
             buttons: [
                 'selectAll',
-                'selectNone'
+                'selectNone',
+                {
+                    text: 'Abort',
+                    action: function ( e, dt, node, config ) {
+                        alert("Coming soon!");                    
+                    }
+                }                   
             ],
             dom: 'Bfrtip',
             "scrollY": "740px",
             "scrollX": false,
             "scrollCollapse": true,              
         } );
+        $('#jobs_routing').DataTable().on( 'select deselect', function () {
+            var selectedRows = $('#jobs_routing').DataTable().rows( { selected: true } ).count();
+            $('#jobs_routing').DataTable().button( 2 ).enable( selectedRows > 0 );
+        } );
+
 
         $('#jobs_studies').DataTable( {
             "paging":   false,
@@ -489,13 +526,31 @@
             select: true,
             buttons: [
                 'selectAll',
-                'selectNone'
+                'selectNone',
+                {
+                    text: 'Abort',
+                    action: function ( e, dt, node, config ) {
+                        alert("Coming soon!");                    
+                    }
+                },
+                {
+                    text: 'Complete',
+                    action: function ( e, dt, node, config ) {
+                        alert("Coming soon!");                    
+                    }
+                }                   
             ],
             dom: 'Bfrtip',
             "scrollY": "740px",
             "scrollX": false,
             "scrollCollapse": true,            
         } );
+        $('#jobs_studies').DataTable().on( 'select deselect', function () {
+            var selectedRows = $('#jobs_studies').DataTable().rows( { selected: true } ).count();
+            $('#jobs_studies').DataTable().button( 2 ).enable( selectedRows > 0 );
+            $('#jobs_studies').DataTable().button( 3 ).enable( selectedRows > 0 );
+        } );
+
 
         $('#jobs_fail').DataTable( {
             "paging":   false,
@@ -509,6 +564,37 @@
             select: true,
             buttons: [
                 'selectAll',
+                'selectNone',
+                {
+                    text: 'Restart',
+                    action: function ( e, dt, node, config ) {
+                        alert("Coming soon!");                    
+                    }
+                }                   
+            ],
+            dom: 'Bfrtip',
+            "scrollY": "740px",
+            "scrollX": false,
+            "scrollCollapse": true,            
+        } );
+        $('#jobs_fail').DataTable().on( 'select deselect', function () {
+            var selectedRows = $('#jobs_fail').DataTable().rows( { selected: true } ).count();
+            $('#jobs_fail').DataTable().button( 2 ).enable( selectedRows > 0 );
+        } );
+
+
+        $('#jobs_archive').DataTable( {
+            "paging":   false,
+            "ordering": false,
+            "info": false,
+            "searching": false,
+            "select": true,
+            "language": {
+                "emptyTable": "No matching jobs found"
+            },
+            select: true,
+            buttons: [
+                'selectAll',
                 'selectNone'
             ],
             dom: 'Bfrtip',
@@ -517,6 +603,12 @@
             "scrollCollapse": true,            
         } );
 
+        $("#job_archive_search").on('keyup', function (event) {
+            if (event.keyCode === 13) {
+                archiveSearch();
+            }
+        });
+        
         $('#tabs li').on('click', function () {
             var tab = $(this).data('tab');
 
@@ -526,16 +618,18 @@
             $('#tab-content div.panel').removeClass('is-active');
             $('div.panel[data-content="' + tab + '"]').addClass('is-active');
 
-            if (tab=="archive") {
-                $('#job_fail_search').focus();                
-            }
-
             update_jobs();
         });
-
+       
         /*var updateTimer = setInterval(update, 60000);*/
         update();
     });
+
+    function archiveSearch()
+    {
+        $('#jobs_archive_wrapper').show();
+        $('#jobs_archive').DataTable().clear().draw();
+    }
 
 </script>
 
