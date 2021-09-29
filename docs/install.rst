@@ -23,7 +23,7 @@ You can perform these steps by copying the commands listed below into a bash she
     sudo apt install jq -y
     sudo adduser mercure
     ssh mercure@localhost
-    git clone https://github.com/mercure-router/mercure.git
+    git clone https://github.com/mercure-imaging/mercure.git
     cd mercure
     git checkout stable-v0.1
     cd ~/mercure/installation
