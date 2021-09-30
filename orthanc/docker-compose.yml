@@ -1,0 +1,27 @@
+version: '3.1'  # Secrets are only available since this version of Docker Compose
+services:
+  orthanc:
+    image: jodogne/orthanc-python
+    command: /run/secrets/  # Path to the configuration files (stored as secrets)
+    secrets:
+      - orthanc.json
+    environment:
+      - ORTHANC_NAME=HelloWorld
+    volumes:
+      - db:/var/lib/orthanc/db/
+    restart: always
+    ports:
+      - 8042:8042
+      - 4242:4242
+
+  ohif:
+    image: mercureimaging/ohif
+    ports:
+      - 8080:80
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+secrets:
+  orthanc.json:
+    file: orthanc.json
+volumes:
+  db:
