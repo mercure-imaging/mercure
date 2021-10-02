@@ -1,11 +1,19 @@
+"""
+status.py
+=========
+Helper functions for dispatching processed cases
+"""
+
+# Standard python includes
 import json
 from pathlib import Path
 from typing import Any, Optional
+import daiquiri
 
+# App-specific includes
 from common.monitor import s_events, send_series_event
 from common.constants import mercure_names
 from common.types import Task, TaskDispatch
-import daiquiri
 
 logger = daiquiri.getLogger("status")
 
@@ -43,11 +51,9 @@ def is_target_json_valid(folder) -> Optional[TaskDispatch]:
     subkeys are target_ip, target_port and target_aet_target under the
     dispatch key
     """
-
     path = Path(folder) / mercure_names.TASKFILE
     if not path.exists():
         return None
-
     try:
         with open(path, "r") as f:
             target = Task(**json.load(f))

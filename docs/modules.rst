@@ -17,6 +17,7 @@ The Python part of the mercure code has been divided into separate service modul
    bookkeeper
    cleaner
    dispatcher
+   processor
    router
    webgui
 
@@ -25,5 +26,6 @@ The Python part of the mercure code has been divided into separate service modul
    
    common
    dispatch
+   process
    routing
    webinterface

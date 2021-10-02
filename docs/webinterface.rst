@@ -1,6 +1,38 @@
 Package webinterface 
 ====================
 
+webinterface.common 
+-------------------
+
+.. automodule:: webinterface.common
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+webinterface.modules
+--------------------
+
+.. automodule:: webinterface.modules
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+webinterface.queue
+------------------
+
+.. automodule:: webinterface.queue
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+webinterface.rules
+------------------
+
+.. automodule:: webinterface.rules
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 webinterface.services 
 ---------------------
 
@@ -13,6 +45,14 @@ webinterface.tagslist
 ---------------------
 
 .. automodule:: webinterface.tagslist
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+webinterface.targets 
+--------------------
+
+.. automodule:: webinterface.targets
    :members:
    :undoc-members:
    :show-inheritance:

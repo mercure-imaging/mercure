@@ -4,6 +4,8 @@ send.py
 The functions for sending DICOM series
 to target destinations.
 """
+
+# Standard python includes
 import shutil
 import subprocess
 import time
@@ -12,16 +14,19 @@ from pathlib import Path
 from shlex import split
 from subprocess import PIPE, CalledProcessError, check_output
 from typing import Tuple
-
 import daiquiri
 
+# App-specific includes
 from common.monitor import s_events, send_series_event, send_event, m_events, severity
 from dispatch.retry import increase_retry
 from dispatch.status import is_ready_for_sending
 from common.constants import mercure_names
 from common.types import DicomTarget, SftpTarget, TaskDispatch
 
+
+# Create local logger instance
 logger = daiquiri.getLogger("send")
+
 
 DCMSEND_ERROR_CODES = {
     1: "EXITCODE_COMMANDLINE_SYNTAX_ERROR",
@@ -36,7 +41,7 @@ DCMSEND_ERROR_CODES = {
 }
 
 
-def _create_command(dispatch_info: TaskDispatch, folder: Path) -> Tuple[str, dict]:
+def _create_command(dispatch_info: TaskDispatch, folder: Path) -> Tuple[str, dict, bool]:
     """Composes the command for calling the dcmsend tool from DCMTK, which is used for sending out the DICOMS."""
     logger.debug(dispatch_info.target)
     target = dispatch_info.target
@@ -45,19 +50,14 @@ def _create_command(dispatch_info: TaskDispatch, folder: Path) -> Tuple[str, dic
         target_port = target.port or 104
         target_aet_target = target.aet_target or ""
         target_aet_source = target.aet_source or ""
-
         dcmsend_status_file = Path(folder) / mercure_names.SENDLOG
-
-        command = f"""dcmsend {target_ip} {target_port} +sd {folder}
-                -aet {target_aet_source} -aec {target_aet_target} -nuc
-                +sp '*.dcm' -to 60 +crf {dcmsend_status_file}"""
-
-        return command, {}
+        command = f"""dcmsend {target_ip} {target_port} +sd {folder} -aet {target_aet_source} -aec {target_aet_target} -nuc +sp '*.dcm' -to 60 +crf {dcmsend_status_file}"""
+        return command, {}, True
     elif isinstance(target, SftpTarget):
-        # TODO: Secure target folder with lock file and remove lock file after successful transfer
         # TODO: Use newly created UUID instead of folder.stem? Would avoid collission during repeated transfer
-
         # TODO: is this entirely safe?
+
+        # After the transfer, create file named ".complete" to indicate that the transfer is complete
         command = (
             "sftp -o StrictHostKeyChecking=no "
             + f""" "{target.user}@{target.host}:{target.folder}" """
@@ -71,7 +71,7 @@ EOF"""
 
         if target.password:
             command = f"sshpass -p {target.password} " + command
-        return command, dict(shell=True, executable="/bin/bash")
+        return command, dict(shell=True, executable="/bin/bash"), False
 
 
 def execute(
@@ -109,10 +109,14 @@ def execute(
             logger.exception(f"Unable to create lock file {lock_file.name}")
             return
 
-        command, opts = _create_command(target_info, source_folder)
+        command, opts, needs_splitting = _create_command(target_info, source_folder)
         logger.debug(f"Running command {command}")
+        logger.info(f"Sending {source_folder} to target {target_name}")
         try:
-            result = check_output(command, stderr=subprocess.STDOUT, **opts)
+            if needs_splitting:
+                result = check_output(split(command), stderr=subprocess.STDOUT, **opts)
+            else:
+                result = check_output(command, stderr=subprocess.STDOUT, **opts)            
             logger.info(f"Folder {source_folder} successfully sent, moving to {success_folder}")
             logger.debug(result.decode("utf-8"))
             # Send bookkeeper notification
@@ -126,7 +130,7 @@ def execute(
             )
             _move_sent_directory(source_folder, success_folder)
             send_series_event(s_events.MOVE, series_uid, 0, success_folder, "")
-        except CalledProcessError as e:
+        except CalledProcessError as e:            
             dcmsend_error_message = None
             if isinstance(target_info, DicomTarget):
                 dcmsend_error_message = DCMSEND_ERROR_CODES.get(e.returncode, None)
