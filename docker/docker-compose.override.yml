@@ -20,36 +20,36 @@ x-volumes-docker: &volumes-docker
 
 services:
   receiver:
-    image: yarranyu/mercure-receiver:dev
+    image: mercure-local/mercure-receiver:dev
     <<: *env
     <<: *volumes
   ui:
-    image: yarranyu/mercure-ui:dev
+    image: mercure-local/mercure-ui:dev
     <<: *env
     <<: *volumes-docker
 
   cleaner:
-    image: yarranyu/mercure-cleaner:dev
+    image: mercure-local/mercure-cleaner:dev
     <<: *env
     <<: *volumes
 
   dispatcher:
-    image: yarranyu/mercure-dispatcher:dev
+    image: mercure-local/mercure-dispatcher:dev
     <<: *env
     <<: *volumes
       
   processor:
-    image: yarranyu/mercure-processor:dev
+    image: mercure-local/mercure-processor:dev
     <<: *env  
     <<: *volumes-docker
 
   router:
-    image: yarranyu/mercure-router:dev
+    image: mercure-local/mercure-router:dev
     <<: *env
     <<: *volumes
 
   bookkeeper:
-    image: yarranyu/mercure-bookkeeper:dev
+    image: mercure-local/mercure-bookkeeper:dev
     <<: *env
     <<: *volumes
 

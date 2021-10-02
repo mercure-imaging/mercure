@@ -49,7 +49,7 @@ job "mercure-ui" {
       }
 
       config {
-        image = "yarranyu/mercure-ui:dev"
+        image = "mercure-local/mercure-ui:dev"
         ports = ["http"]
       }
 

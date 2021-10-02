@@ -31,7 +31,7 @@ job "mercure-processor" {
     task "setup" {
       driver = "docker"
       config {
-        image = "yarranyu/processing-step:dev"
+        image = "mercure-local/processing-step:dev"
         command = "./docker-entrypoint.sh"
         args = ["-m", "in"]
       }
@@ -69,7 +69,7 @@ job "mercure-processor" {
     task "takedown" {
       driver = "docker"
       config {
-        image = "yarranyu/processing-step:dev"
+        image = "mercure-local/processing-step:dev"
         command = "./docker-entrypoint.sh"
         args = ["-m", "out"]
       }

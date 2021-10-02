@@ -1,20 +1,22 @@
 #!/bin/bash
 
 #################################################################
-# Create Mercure from scratch in Docker environment
+# Create mercure from scratch in Docker environment
 #################################################################
 #
-# Make sure to change the configuration below as they are most
+# Make sure to change the configuration below, as they are most
 # likely different for your environment
 #
-# Once you are happy, simply run this script to build mercure for you
+# Once you are happy, simply run this script to build mercure
 # See docker/docker-compose.yml for a sample script
 #
+#################################################################
+
 #################################################################
 # CONFIG SECTION
 #################################################################
 # Change prefix to your own Docker prefix so you can make your own build
-PREFIX="yarranyu"
+PREFIX="mercure-local"
 TAG=${MERCURE_TAG:-dev}
 # Where is mercure going to store things
 # You can redefine types of volumes in docker/docker-compose.yml

@@ -6,6 +6,8 @@ retention time has passed and if it is offpeak time. Offpeak is the time
 period when the cleaning has to be done, because cleaning I/O should be kept
 to minimum when receiving and sending exams.
 """
+
+# Standard python includes
 import logging
 import os
 import signal
@@ -19,6 +21,7 @@ import daiquiri
 import graphyte
 import hupper
 
+# App-specific includes
 import common.config as config
 import common.helper as helper
 import common.monitor as monitor
@@ -26,6 +29,7 @@ from common.monitor import send_series_event, s_events
 from common.constants import mercure_defs, mercure_folders
 
 
+# Setup daiquiri logger
 daiquiri.setup(
     config.get_loglevel(),
     outputs=(
@@ -37,6 +41,7 @@ daiquiri.setup(
     ),
 )
 logger = daiquiri.getLogger("cleaner")
+
 main_loop = None  # type: helper.RepeatedTimer # type: ignore
 
 

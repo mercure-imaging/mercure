@@ -1,5 +1,5 @@
 build:
-	docker build . -t yarranyu/processing-step:dev
+	docker build . -t mercure-local/processing-step:dev
 
 update: build
 	nomad job run ../mercure-processor.nomad

@@ -69,7 +69,7 @@ job "mercure" {
         destination = "/home/mercure/mercure-data"
       }
       config {
-        image = "yarranyu/mercure-receiver:dev"
+        image = "mercure-local/mercure-receiver:dev"
         ports = ["dicom"]
       }
 
@@ -98,7 +98,7 @@ job "mercure" {
         destination = "/home/mercure/mercure-data"
       }
       config {
-        image = "yarranyu/mercure-dispatcher:dev"
+        image = "mercure-local/mercure-dispatcher:dev"
         ports = ["dicom"]
       }
 
@@ -127,7 +127,7 @@ job "mercure" {
       }
       
       config {
-        image = "yarranyu/mercure-router:dev"
+        image = "mercure-local/mercure-router:dev"
         ports = ["dicom"]
       }
 
@@ -155,7 +155,7 @@ job "mercure" {
         destination = "/home/mercure/mercure-data"
       }
       config {
-        image = "yarranyu/mercure-processor:dev"
+        image = "mercure-local/mercure-processor:dev"
         ports = ["dicom"]
       }
 
@@ -213,7 +213,7 @@ job "mercure" {
     task "bookkeeper" {
       driver = "docker"
       config {
-        image = "yarranyu/mercure-bookkeeper:dev"
+        image = "mercure-local/mercure-bookkeeper:dev"
         ports = ["bookkeeper"]
       }
 
