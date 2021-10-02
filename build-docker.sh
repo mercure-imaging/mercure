@@ -15,10 +15,11 @@
 #################################################################
 # CONFIG SECTION
 #################################################################
-# Change prefix to your own Docker prefix so you can make your own build
-PREFIX="mercure-local"
+# Change prefix to your own Docker prefix if you want to make 
+# your own custom build
+PREFIX="mercureimaging"
 TAG=${MERCURE_TAG:-dev}
-# Where is mercure going to store things
+# Define where mercure is going to store things
 # You can redefine types of volumes in docker/docker-compose.yml
 MERCUREBASE=$HOME/mercure-docker
 DATADIR=$MERCUREBASE/mercure-data

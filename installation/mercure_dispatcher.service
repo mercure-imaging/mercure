@@ -1,6 +1,6 @@
 [Unit]
-Description=mercure Disatcher
-Documentation=https://mercure-router.github.io/
+Description=mercure Dispatcher
+Documentation=https://mercure-imaging.org/docs
 After=network.target
 Requires=network.target
 

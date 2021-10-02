@@ -69,7 +69,7 @@ job "mercure" {
         destination = "/home/mercure/mercure-data"
       }
       config {
-        image = "mercure-local/mercure-receiver:dev"
+        image = "mercureimaging/mercure-receiver:dev"
         ports = ["dicom"]
       }
 
@@ -98,7 +98,7 @@ job "mercure" {
         destination = "/home/mercure/mercure-data"
       }
       config {
-        image = "mercure-local/mercure-dispatcher:dev"
+        image = "mercureimaging/mercure-dispatcher:dev"
         ports = ["dicom"]
       }
 
@@ -127,7 +127,7 @@ job "mercure" {
       }
       
       config {
-        image = "mercure-local/mercure-router:dev"
+        image = "mercureimaging/mercure-router:dev"
         ports = ["dicom"]
       }
 
@@ -155,7 +155,7 @@ job "mercure" {
         destination = "/home/mercure/mercure-data"
       }
       config {
-        image = "mercure-local/mercure-processor:dev"
+        image = "mercureimaging/mercure-processor:dev"
         ports = ["dicom"]
       }
 
@@ -171,7 +171,7 @@ job "mercure" {
         destination = "local/ssh/authorized_keys"
       }
       config {
-        image = "mercure/alpine-sshd:dev"
+        image = "mercureimaging/alpine-sshd:dev"
         ports = ["sshd"]
         mount {
           type   = "bind"
@@ -213,7 +213,7 @@ job "mercure" {
     task "bookkeeper" {
       driver = "docker"
       config {
-        image = "mercure-local/mercure-bookkeeper:dev"
+        image = "mercureimaging/mercure-bookkeeper:dev"
         ports = ["bookkeeper"]
       }
 

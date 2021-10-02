@@ -31,7 +31,7 @@ job "mercure-processor" {
     task "setup" {
       driver = "docker"
       config {
-        image = "mercure/processor:dev"
+        image = "mercureimaging/processor:dev"
         command = "./docker-entrypoint.sh"
         args = ["-m", "in"]
       }
@@ -65,7 +65,7 @@ job "mercure-processor" {
     //   driver = "docker"
 
     //   config {
-    //     image   = "mercure/processor:dev"
+    //     image   = "mercureimaging/processor:dev"
     //     command = "bash"
     //     args    = ["-c", "echo The service is running! && while true; do sleep 2; done"]
     //     network_mode = "host"
@@ -84,7 +84,7 @@ job "mercure-processor" {
     task "takedown" {
       driver = "docker"
       config {
-        image = "mercure/processor:dev"
+        image = "mercureimaging/processor:dev"
         command = "./docker-entrypoint.sh"
         args = ["-m", "out"]
       }

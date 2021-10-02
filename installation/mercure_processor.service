@@ -1,6 +1,6 @@
 [Unit]
-Description=mercure processor
-Documentation=https://mercure-router.github.io/
+Description=mercure Processor
+Documentation=https://mercure-imaging.org/docs
 After=network.target
 Requires=network.target
 

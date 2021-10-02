@@ -1,6 +1,6 @@
 [Unit]
-Description=mercure Receier
-Documentation=https://mercure-router.github.io/
+Description=mercure Receiver
+Documentation=https://mercure-imaging.org/docs
 After=network.target
 Requires=network.target
 

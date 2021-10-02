@@ -19,7 +19,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    image: mercure-local/mercure-ui
+    image: mercureimaging/mercure-ui
     restart: always
     ports:
       - "8000:8000"
@@ -42,7 +42,7 @@ services:
       test: [ "CMD-SHELL", "pg_isready -U mercure" ]
 
   receiver:
-    image: mercure-local/mercure-receiver
+    image: mercureimaging/mercure-receiver
     restart: always
     depends_on:
       bookkeeper:
@@ -53,7 +53,7 @@ services:
     <<: *env
 
   cleaner:
-    image: mercure-local/mercure-cleaner
+    image: mercureimaging/mercure-cleaner
     restart: always
     depends_on:
       bookkeeper:
@@ -62,7 +62,7 @@ services:
     <<: *env
 
   dispatcher:
-    image: mercure-local/mercure-dispatcher
+    image: mercureimaging/mercure-dispatcher
     restart: always
     depends_on:
       bookkeeper:
@@ -71,7 +71,7 @@ services:
     <<: *env
 
   processor:
-    image: mercure-local/mercure-processor
+    image: mercureimaging/mercure-processor
     restart: always
     depends_on:
       bookkeeper:
@@ -80,7 +80,7 @@ services:
     <<: *env
 
   router:
-    image: mercure-local/mercure-router
+    image: mercureimaging/mercure-router
     restart: always
     depends_on:
       bookkeeper:
@@ -89,7 +89,7 @@ services:
     <<: *env
 
   bookkeeper:
-    image: mercure-local/mercure-bookkeeper
+    image: mercureimaging/mercure-bookkeeper
     restart: always
     depends_on:
       db:

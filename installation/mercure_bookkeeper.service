@@ -1,6 +1,6 @@
 [Unit]
 Description=mercure Bookkeeper
-Documentation=https://mercure-router.github.io/
+Documentation=https://mercure-imaging.org/docs
 After=network.target postgresql.service
 Requires=network.target postgresql.service
 

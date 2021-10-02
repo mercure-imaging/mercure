@@ -1,2 +1,2 @@
 build:
-	docker build . -t mercure/alpine-sshd:dev
+	docker build . -t mercureimaging/alpine-sshd:dev
