@@ -48,9 +48,10 @@ def send_webhook(url, payload, event) -> None:
 
     # TODO: Incomplete implementation
 
-    try:
+    try:         
+        payload_data = json.loads("{" + payload + "}")
         response = requests.post(
-            url, data=json.dumps("{" + payload + "}"), headers={"Content-Type": "application/json"}
+            url, data=json.dumps(payload_data), headers={"Content-type": "application/json"}
         )
         if response.status_code != 200:
             logger.error(f"ERROR: Webhook notification failed (status code {response.status_code})")
