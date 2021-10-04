@@ -13,12 +13,12 @@ import daiquiri
 # App-specific includes
 from common.monitor import s_events, send_series_event
 from common.constants import mercure_names
-from common.types import Task, TaskDispatch
+from common.types import Task
 
 logger = daiquiri.getLogger("status")
 
 
-def is_ready_for_sending(folder) -> Optional[TaskDispatch]:
+def is_ready_for_sending(folder) -> Optional[Task]:
     """Checks if a case in the outgoing folder is ready for sending by the dispatcher.
 
     No lock file (.lock) should be in sending folder and no error file (.error),
@@ -45,11 +45,10 @@ def has_been_send(folder) -> bool:
     return (Path(folder) / mercure_names.SENDLOG).exists()
 
 
-def is_target_json_valid(folder) -> Optional[TaskDispatch]:
+def is_target_json_valid(folder) -> Optional[Task]:
     """
-    Checks if the task.json file exists and is also valid. Mandatory
-    subkeys are target_ip, target_port and target_aet_target under the
-    dispatch key
+    Checks if the task.json file exists and is valid. Returns the content 
+    of the file (or None if the file is invalid)
     """
     path = Path(folder) / mercure_names.TASKFILE
     if not path.exists():
@@ -67,7 +66,7 @@ def is_target_json_valid(folder) -> Optional[TaskDispatch]:
             f"task.json has invalid format",
         )
         return None
-    return target.dispatch or None
+    return target or None
     # dispatch = target.dispatch.dict() if target.dispatch else {}
     # if not all([key in dispatch for key in ["target_ip", "target_port", "target_aet_target"]]):
     #     send_series_event(

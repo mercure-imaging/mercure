@@ -22,8 +22,11 @@ import common.monitor as monitor
 import common.helper as helper
 import common.config as config
 from common.constants import mercure_names
-from common.types import Task, Module
-
+from common.types import Task, TaskInfo, Module, Rule
+import common.notification as notification
+from common.constants import (
+    mercure_events,
+)
 
 logger = daiquiri.getLogger("process_series")
 
@@ -218,6 +221,9 @@ def process_series(folder) -> None:
             logger.debug("Docker processing complete.")
             move_results(folder, lock, processing_success, needs_dispatching)
             shutil.rmtree(folder, ignore_errors=True)
+            # If dispatching not needed, then trigger the completion notification (for docker/systemd)
+            if not needs_dispatching:
+                trigger_notification(task.info, mercure_events.COMPLETION)
         else:
             logger.info(f"Done submitting for processing.")
 
@@ -280,3 +286,44 @@ def move_out_folder(source_folder_str, destination_folder_str, move_all=False) -
         monitor.send_event(
             monitor.m_events.PROCESSING, monitor.severity.ERROR, f"Error moving {source_folder} to {destination_folder}"
         )
+
+
+def trigger_notification(task_info: TaskInfo, event) -> None:
+    current_rule = task_info.applied_rule
+
+    # Check if the rule is available
+    if not current_rule:
+        error_text = f"Missing applied_rule in task file in job {task_info.uid}"
+        logger.exception(error_text)
+        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_text)
+        return
+
+    # Check if the mercure configuration still contains that rule
+    if not isinstance(config.mercure.rules.get(current_rule, ""), Rule):
+        error_text = f"Applied rule not existing anymore in mercure configuration from job {task_info.uid}"
+        logger.exception(error_text)
+        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_text)
+        return
+    
+    # Now fire the webhook if configured
+    if event == mercure_events.RECEPTION:
+        if config.mercure.rules[current_rule].notification_trigger_reception:          
+            notification.send_webhook(
+                config.mercure.rules[current_rule].get("notification_webhook", ""),
+                config.mercure.rules[current_rule].get("notification_payload", ""),
+                mercure_events.RECEPTION,
+            )
+    if event == mercure_events.COMPLETION:
+        if config.mercure.rules[current_rule].notification_trigger_completion:
+            notification.send_webhook(
+                config.mercure.rules[current_rule].get("notification_webhook", ""),
+                config.mercure.rules[current_rule].get("notification_payload", ""),
+                mercure_events.COMPLETION,
+            )
+    if event == mercure_events.ERROR:
+        if config.mercure.rules[current_rule].notification_trigger_error:
+            notification.send_webhook(
+                config.mercure.rules[current_rule].get("notification_webhook", ""),
+                config.mercure.rules[current_rule].get("notification_payload", ""),
+                mercure_events.ERROR,
+            )

@@ -26,9 +26,7 @@ from common.constants import (
     mercure_names,
     mercure_actions,
     mercure_rule,
-    mercure_config,
     mercure_options,
-    mercure_folders,
     mercure_events,
 )
 from routing.generate_taskfile import compose_task, create_series_task, create_study_task, update_study_task
@@ -295,7 +293,7 @@ def push_series_serieslevel(
 def push_serieslevel_routing(
     triggered_rules: Dict[str, Literal[True]], file_list: List[str], series_UID: str, tags_list: Dict[str, str]
 ) -> None:
-    selected_targets = {}
+    selected_targets: Dict[str, List[str]] = {}
     # Collect the dispatch-only targets to avoid that a series is sent twice to the
     # same target due to multiple targets triggered (note: this only makes sense for routing-only
     # series tasks, as study-level rules might have different completion criteria and tasks involving
@@ -305,8 +303,11 @@ def push_serieslevel_routing(
             if config.mercure.rules[current_rule].get("action", "") == mercure_actions.ROUTE:
                 target = config.mercure.rules[current_rule].get("target", "")
                 if target:
-                    selected_targets[target] = current_rule
-                trigger_serieslevel_notification_reception(current_rule, tags_list)
+                    if not selected_targets[target]:
+                        selected_targets[target] = [current_rule]
+                    else:
+                        selected_targets[target].append(current_rule)
+                trigger_serieslevel_notification(current_rule, tags_list, mercure_events.RECEPTION)
 
     push_serieslevel_outgoing(triggered_rules, file_list, series_UID, tags_list, selected_targets)
 
@@ -387,7 +388,7 @@ def push_serieslevel_processing(
                     monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
                     return False
 
-                trigger_serieslevel_notification_reception(current_rule, tags_list)
+                trigger_serieslevel_notification(current_rule, tags_list, mercure_events.RECEPTION)
     return True
 
 
@@ -399,7 +400,8 @@ def push_serieslevel_notification(
     for current_rule in triggered_rules:
         if config.mercure.rules[current_rule].get("action_trigger", mercure_options.SERIES) == mercure_options.SERIES:
             if config.mercure.rules[current_rule].get("action", "") == mercure_actions.NOTIFICATION:
-                trigger_serieslevel_notification_reception(current_rule, tags_list)
+                trigger_serieslevel_notification(current_rule, tags_list, mercure_events.RECEPTION)
+                trigger_serieslevel_notification(current_rule, tags_list, mercure_events.COMPLETION)
                 notification_rules_count += 1
 
     # If the current rule is "notification-only" and this is the only rule that has been
@@ -419,7 +421,7 @@ def push_serieslevel_outgoing(
     file_list: List[str],
     series_UID: str,
     tags_list: Dict[str, str],
-    selected_targets: Dict[str, str],
+    selected_targets: Dict[str, List[str]],
 ) -> None:
     """
     Move the DICOM files of the series to a separate subfolder for each target in the outgoing folder.
@@ -465,11 +467,16 @@ def push_serieslevel_outgoing(
             monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
             return
 
+        # Collect the rules that triggered the dispatching to the current target
+        target_rules: Dict[str, Literal[True]] = {}
+        for rule in selected_targets[target]:
+            target_rules[rule] = True       
+
         # Generate task file with dispatch information
-        if not create_series_task(target_folder, triggered_rules, "", series_UID, tags_list, target):
+        if not create_series_task(target_folder, target_rules, "", series_UID, tags_list, target):
             continue
 
-        monitor.send_series_event(monitor.s_events.ROUTE, series_UID, len(file_list), target, selected_targets[target])
+        monitor.send_series_event(monitor.s_events.ROUTE, series_UID, len(file_list), target, ', '.join(selected_targets[target]))
 
         operation: Callable
         if move_operation:
@@ -594,9 +601,25 @@ def route_error_files() -> None:
     return
 
 
-def trigger_serieslevel_notification_reception(current_rule: str, tags_list: Dict[str, str]) -> None:
-    notification.send_webhook(
-        config.mercure.rules[current_rule].get("notification_webhook", ""),
-        config.mercure.rules[current_rule].get("notification_payload", ""),
-        mercure_events.RECEPTION,
-    )
+def trigger_serieslevel_notification(current_rule: str, tags_list: Dict[str, str], event) -> None:
+    if event == mercure_events.RECEPTION:
+        if config.mercure.rules[current_rule].notification_trigger_reception:          
+            notification.send_webhook(
+                config.mercure.rules[current_rule].get("notification_webhook", ""),
+                config.mercure.rules[current_rule].get("notification_payload", ""),
+                mercure_events.RECEPTION,
+            )
+    if event == mercure_events.COMPLETION:
+        if config.mercure.rules[current_rule].notification_trigger_completion:
+            notification.send_webhook(
+                config.mercure.rules[current_rule].get("notification_webhook", ""),
+                config.mercure.rules[current_rule].get("notification_payload", ""),
+                mercure_events.COMPLETION,
+            )
+    if event == mercure_events.ERROR:
+        if config.mercure.rules[current_rule].notification_trigger_error:
+            notification.send_webhook(
+                config.mercure.rules[current_rule].get("notification_webhook", ""),
+                config.mercure.rules[current_rule].get("notification_payload", ""),
+                mercure_events.ERROR,
+            )

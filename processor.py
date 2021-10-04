@@ -22,9 +22,11 @@ import common.helper as helper
 import common.config as config
 import common.monitor as monitor
 from common.constants import mercure_defs
-
+from common.constants import (
+    mercure_events,
+)
 from process.status import is_ready_for_processing
-from process.process_series import process_series, move_results
+from process.process_series import process_series, move_results, trigger_notification
 
 
 daiquiri.setup(
@@ -120,6 +122,9 @@ def search_folder(counter) -> bool:
         (p_folder / "nomad_job.json").unlink()
         (p_folder / ".processing").unlink()
         p_folder.rmdir()
+        # If dispatching not needed, then trigger the completion notification (for Nomad)
+        if not needs_dispatching:
+            trigger_notification(task.info, mercure_events.COMPLETION)
 
     # Check if processing has been suspended via the UI
     if processor_lockfile and processor_lockfile.exists():

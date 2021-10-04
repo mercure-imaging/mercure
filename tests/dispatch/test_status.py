@@ -57,7 +57,9 @@ def test_has_been_send_not(fs):
 def test_read_target(fs):
     target = {"info": dummy_info, "dispatch": {"target": {"ip": "0.0.0.0", "port": 104, "aet_target": "ANY"}}}
     fs.create_file("/var/data/" + mercure_names.TASKFILE, contents=json.dumps(target))
-    read_dispatch = is_target_json_valid("/var/data/")
+    task_content = is_target_json_valid("/var/data/")
+    assert task_content
+    read_dispatch = task_content.dispatch
     assert read_dispatch
     assert "ip" in read_dispatch.target.dict()
     assert "port" in read_dispatch.target.dict()

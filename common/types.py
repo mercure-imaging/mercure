@@ -133,8 +133,8 @@ class TaskInfo(BaseModel, Compat):
 class TaskDispatch(BaseModel, Compat):
     target_name: Optional[str]
     target: Union[DicomTarget, SftpTarget]
-    retries: Optional[int]
-    next_retry_at: Optional[float]
+    retries: Optional[int] = 0
+    next_retry_at: Optional[float] = 0
     series_uid: Optional[str]
 
 

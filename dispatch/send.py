@@ -13,7 +13,8 @@ from datetime import datetime
 from pathlib import Path
 from shlex import split
 from subprocess import PIPE, CalledProcessError, check_output
-from typing import Tuple
+from typing import Dict, Tuple, Union, cast
+from typing_extensions import Literal
 import daiquiri
 
 # App-specific includes
@@ -21,8 +22,13 @@ from common.monitor import s_events, send_series_event, send_event, m_events, se
 from dispatch.retry import increase_retry
 from dispatch.status import is_ready_for_sending
 from common.constants import mercure_names
-from common.types import DicomTarget, SftpTarget, TaskDispatch
-
+from common.types import DicomTarget, SftpTarget, TaskDispatch, TaskInfo, Rule
+import common.config as config
+import common.monitor as monitor
+import common.notification as notification
+from common.constants import (
+    mercure_events,
+)
 
 # Create local logger instance
 logger = daiquiri.getLogger("send")
@@ -83,10 +89,14 @@ def execute(
     happens any error the .lock file is deleted and an .error file is created.
     Folder with .error files are _not_ ready for sending.
     """
-    target_info = is_ready_for_sending(source_folder)
-    delay: float
-    if target_info is not None:
-        delay = target_info.get("next_retry_at", 0)
+    task_content = is_ready_for_sending(source_folder)
+    if not task_content:
+        return
+    target_info = task_content.dispatch
+
+    delay: float = 0
+    if target_info and target_info.next_retry_at:
+        delay = target_info.next_retry_at        
 
     if target_info and time.time() >= delay:
         logger.info(f"Folder {source_folder} is ready for sending")
@@ -130,6 +140,7 @@ def execute(
             )
             _move_sent_directory(source_folder, success_folder)
             send_series_event(s_events.MOVE, series_uid, 0, success_folder, "")
+            _trigger_notification(task_content.info, mercure_events.COMPLETION)
         except CalledProcessError as e:            
             dcmsend_error_message = None
             if isinstance(target_info, DicomTarget):
@@ -173,3 +184,53 @@ def _move_sent_directory(source_folder, destination_folder) -> None:
     except:
         logger.info(f"Error moving folder {source_folder} to {destination_folder}")
         send_event(m_events.PROCESSING, severity.ERROR, f"Error moving {source_folder} to {destination_folder}")
+
+
+def _trigger_notification(task_info: TaskInfo, event) -> None:
+    # Select which notifications need to be sent. If applied_rule is not empty, check only this rule. Otherwise,
+    # check all rules that are contained in triggered_rules (applied only to series-level dispatching)
+    selected_rules: Dict[str, Literal[True]] = {}
+    if task_info.applied_rule:
+        selected_rules[task_info.applied_rule]=True
+    else:
+        if not isinstance(task_info.triggered_rules, str):
+            selected_rules=task_info.triggered_rules
+
+    for current_rule in selected_rules:
+        # Check if the rule is available
+        if not current_rule:
+            error_text = f"Missing applied_rule in task file in job {task_info.uid}"
+            logger.exception(error_text)
+            monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_text)
+            continue
+
+        # Check if the mercure configuration still contains that rule
+        if not isinstance(config.mercure.rules.get(current_rule, ""), Rule):
+            error_text = f"Applied rule not existing anymore in mercure configuration from job {task_info.uid}"
+            logger.exception(error_text)
+            monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_text)
+            continue
+        
+        # Now fire the webhook if configured
+        if event == mercure_events.RECEPTION:
+            if config.mercure.rules[current_rule].notification_trigger_reception:          
+                notification.send_webhook(
+                    config.mercure.rules[current_rule].get("notification_webhook", ""),
+                    config.mercure.rules[current_rule].get("notification_payload", ""),
+                    mercure_events.RECEPTION,
+                )
+        if event == mercure_events.COMPLETION:
+            if config.mercure.rules[current_rule].notification_trigger_completion:
+                notification.send_webhook(
+                    config.mercure.rules[current_rule].get("notification_webhook", ""),
+                    config.mercure.rules[current_rule].get("notification_payload", ""),
+                    mercure_events.COMPLETION,
+                )
+        if event == mercure_events.ERROR:
+            if config.mercure.rules[current_rule].notification_trigger_error:
+                notification.send_webhook(
+                    config.mercure.rules[current_rule].get("notification_webhook", ""),
+                    config.mercure.rules[current_rule].get("notification_payload", ""),
+                    mercure_events.ERROR,
+                )
+

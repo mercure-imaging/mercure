@@ -10,11 +10,10 @@ import signal
 import os
 import sys
 import graphyte
-import logging
 import daiquiri
 import hupper
 
-from typing import Dict, Optional
+from typing import Dict
 
 # App-specific includes
 from common.constants import mercure_defs, mercure_names

@@ -19,7 +19,7 @@ import common.rule_evaluation as rule_evaluation
 import common.monitor as monitor
 import common.notification as notification
 import common.helper as helper
-from common.types import EmptyDict, Task, TaskHasStudy, TaskInfo
+from common.types import Rule, Task, TaskHasStudy, TaskInfo
 from common.constants import (
     mercure_defs,
     mercure_names,
@@ -245,6 +245,7 @@ def push_studylevel_dispatch(study: str, task: Task) -> bool:
     """
     Pushes the study folder to the dispatchter, including the generated task file containing the destination information
     """
+    trigger_studylevel_notification(study, task, mercure_events.RECEPTION)  
     return move_study_folder(study, "OUTGOING")
 
 
@@ -252,6 +253,7 @@ def push_studylevel_processing(study: str, task: Task) -> bool:
     """
     Pushes the study folder to the processor, including the generated task file containing the processing instructions
     """
+    trigger_studylevel_notification(study, task, mercure_events.RECEPTION)  
     return move_study_folder(study, "PROCESSING")
 
 
@@ -259,28 +261,8 @@ def push_studylevel_notification(study: str, task: Task) -> bool:
     """
     Executes the study-level reception notification
     """
-    # Check if the applied_rule is available
-    current_rule = task.info.applied_rule
-    if not current_rule:
-        error_text = f"Missing applied_rule in task file in study {study}"
-        logger.exception(error_text)
-        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_text)
-        return False
-
-    # Check if the mercure configuration still contains that rule
-    if not isinstance(config.mercure.rules.get(current_rule, ""), dict):
-        error_text = f"Applied rule not existing anymore in mercure configuration {study}"
-        logger.exception(error_text)
-        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_text)
-        return False
-
-    # OK, now fire out the webhook
-    notification.send_webhook(
-        config.mercure.rules[current_rule].get("notification_webhook", ""),
-        config.mercure.rules[current_rule].get("notification_payload", ""),
-        mercure_events.RECEPTION,
-    )
-
+    trigger_studylevel_notification(study, task, mercure_events.RECEPTION)  
+    trigger_studylevel_notification(study, task, mercure_events.COMPLETION)  
     move_study_folder(study, "SUCCESS")
     return True
 
@@ -420,4 +402,46 @@ def remove_study_folder(study: str, lock: helper.FileLock) -> bool:
         monitor.send_event(
             monitor.m_events.PROCESSING, monitor.severity.ERROR, f"Unable to delete study folder {study_folder}",
         )
+    return True
+
+
+def trigger_studylevel_notification(study: str, task: Task, event) -> bool:
+    # Check if the applied_rule is available
+    current_rule = task.info.applied_rule
+    if not current_rule:
+        error_text = f"Missing applied_rule in task file in study {study}"
+        logger.exception(error_text)
+        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_text)
+        return False
+
+    # Check if the mercure configuration still contains that rule
+    if not isinstance(config.mercure.rules.get(current_rule, ""), Rule):
+        error_text = f"Applied rule not existing anymore in mercure configuration {study}"
+        logger.exception(error_text)
+        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_text)
+        return False
+    
+    # OK, now fire out the webhook if configured
+    if event == mercure_events.RECEPTION:
+        if config.mercure.rules[current_rule].notification_trigger_reception:          
+            notification.send_webhook(
+                config.mercure.rules[current_rule].get("notification_webhook", ""),
+                config.mercure.rules[current_rule].get("notification_payload", ""),
+                mercure_events.RECEPTION,
+            )
+    if event == mercure_events.COMPLETION:
+        if config.mercure.rules[current_rule].notification_trigger_completion:
+            notification.send_webhook(
+                config.mercure.rules[current_rule].get("notification_webhook", ""),
+                config.mercure.rules[current_rule].get("notification_payload", ""),
+                mercure_events.COMPLETION,
+            )
+    if event == mercure_events.ERROR:
+        if config.mercure.rules[current_rule].notification_trigger_error:
+            notification.send_webhook(
+                config.mercure.rules[current_rule].get("notification_webhook", ""),
+                config.mercure.rules[current_rule].get("notification_payload", ""),
+                mercure_events.ERROR,
+            )
+
     return True
