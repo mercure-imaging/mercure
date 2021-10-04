@@ -216,17 +216,24 @@ def process_series(folder) -> None:
         logger.error("Processing error.")
         logger.error(traceback.format_exc())
     finally:
-        # TODO: simplify this logic
         if config.get_runner() in ("docker", "systemd") and config.mercure.process_runner != "nomad":
             logger.debug("Docker processing complete.")
             move_results(folder, lock, processing_success, needs_dispatching)
             shutil.rmtree(folder, ignore_errors=True)
-            # If dispatching not needed, then trigger the completion notification (for docker/systemd)
-            if not needs_dispatching:
-                trigger_notification(task.info, mercure_events.COMPLETION)
-        else:
-            logger.info(f"Done submitting for processing.")
 
+            if processing_success:
+                # If dispatching not needed, then trigger the completion notification (for docker/systemd)
+                if not needs_dispatching:
+                    trigger_notification(task.info, mercure_events.COMPLETION)
+            else:
+                trigger_notification(task.info, mercure_events.ERROR)
+        else:
+            if processing_success:
+                logger.info(f"Done submitting for processing.")
+            else:
+                logger.info(f"Unable to process task.")
+                move_results(folder, lock, False, False)
+                trigger_notification(task.info, mercure_events.ERROR)
     return
 
 

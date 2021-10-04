@@ -3,6 +3,8 @@ dispatcher.py
 =============
 The dispatcher service of mercure that executes the DICOM transfer to the different targets.
 """
+
+# Standard python includes
 import logging
 import os
 import signal
@@ -13,14 +15,15 @@ import daiquiri
 import graphyte
 import hupper
 
+# App-specific includes
 import common.config as config
 import common.helper as helper
 import common.monitor as monitor
 from dispatch.status import has_been_send, is_ready_for_sending
 from dispatch.send import execute
-
 from common.constants import mercure_defs, mercure_folders
 
+# Setup daiquiri logger
 daiquiri.setup(
     config.get_loglevel(),
     outputs=(
@@ -31,6 +34,7 @@ daiquiri.setup(
         ),
     ),
 )
+# Create local logger instance
 logger = daiquiri.getLogger("dispatcher")
 main_loop = None  # type: helper.RepeatedTimer # type: ignore
 

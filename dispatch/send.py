@@ -114,6 +114,7 @@ def execute(
         try:
             lock_file.touch()
         except:
+            # TODO: Put a limit on these error messages -- log will run full at some point
             send_event(m_events.PROCESSING, severity.ERROR, f"Error sending {series_uid} to {target_name}")
             send_series_event(s_events.ERROR, series_uid, 0, target_name, "Unable to create lock file")
             logger.exception(f"Unable to create lock file {lock_file.name}")
@@ -160,6 +161,7 @@ def execute(
                 _move_sent_directory(source_folder, error_folder)
                 send_series_event(s_events.MOVE, series_uid, 0, error_folder, "")
                 send_event(m_events.PROCESSING, severity.ERROR, f"Series suspended after reaching max retries")
+                _trigger_notification(task_content.info, mercure_events.ERROR)
     else:
         pass
         # logger.warning(f"Folder {source_folder} is *not* ready for sending")
@@ -233,4 +235,3 @@ def _trigger_notification(task_info: TaskInfo, event) -> None:
                     config.mercure.rules[current_rule].get("notification_payload", ""),
                     mercure_events.ERROR,
                 )
-

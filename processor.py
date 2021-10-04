@@ -3,20 +3,18 @@ processor.py
 ============
 mercure' processor that executes processing modules on DICOM series filtered for processing. 
 """
+
 # Standard python includes
 import shutil
-import time
 import signal
 import os
 import sys
 import json
 import graphyte
-import logging
 import daiquiri
 import nomad
 from pathlib import Path
 import hupper
-from typing import cast
 
 # App-specific includes
 from common.types import TaskInfo
@@ -31,6 +29,7 @@ from process.status import is_ready_for_processing
 from process.process_series import process_series, move_results, trigger_notification
 
 
+# Setup daiquiri logger
 daiquiri.setup(
     config.get_loglevel(),
     outputs=(
@@ -41,6 +40,7 @@ daiquiri.setup(
         ),
     ),
 )
+# Create local logger instance
 logger = daiquiri.getLogger("processor")
 main_loop = None  # type: helper.RepeatedTimer # type: ignore
 
@@ -116,6 +116,7 @@ def search_folder(counter) -> bool:
         if [p.name for p in out_folder.rglob("*")] == ["task.json"]:
             logger.error("Processing failed.")
             move_results(str(p_folder), None, False, False)
+            trigger_notification(task.get("info"), mercure_events.ERROR)
             continue
 
         needs_dispatching = True if task.get("dispatch") else False
@@ -126,8 +127,7 @@ def search_folder(counter) -> bool:
         p_folder.rmdir()
         # If dispatching not needed, then trigger the completion notification (for Nomad)
         if not needs_dispatching:
-            task_info: TaskInfo = task.get("info")
-            trigger_notification(task_info, mercure_events.COMPLETION)
+            trigger_notification(task.get("info"), mercure_events.COMPLETION)
 
     # Check if processing has been suspended via the UI
     if processor_lockfile and processor_lockfile.exists():
