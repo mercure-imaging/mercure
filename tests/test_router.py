@@ -66,7 +66,7 @@ def test_route_series(fs, mocker):
 
     router.route_series.assert_called_once_with(uid)  # type: ignore
     routing.route_series.push_series_serieslevel.assert_called_once_with({"catchall": True}, [f"{uid}#bar"], uid, {})  # type: ignore
-    routing.route_series.push_serieslevel_outgoing.assert_called_once_with({"catchall": True}, [f"{uid}#bar"], uid, {}, {"test_target": "catchall"})  # type: ignore
+    routing.route_series.push_serieslevel_outgoing.assert_called_once_with({"catchall": True}, [f"{uid}#bar"], uid, {}, {"test_target": ["catchall"]})  # type: ignore
 
     out_path = next(Path("/var/outgoing").iterdir())
     try:

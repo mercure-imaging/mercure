@@ -16,8 +16,10 @@ import daiquiri
 import nomad
 from pathlib import Path
 import hupper
+from typing import cast
 
 # App-specific includes
+from common.types import TaskInfo
 import common.helper as helper
 import common.config as config
 import common.monitor as monitor
@@ -124,7 +126,8 @@ def search_folder(counter) -> bool:
         p_folder.rmdir()
         # If dispatching not needed, then trigger the completion notification (for Nomad)
         if not needs_dispatching:
-            trigger_notification(task.info, mercure_events.COMPLETION)
+            task_info: TaskInfo = task.get("info")
+            trigger_notification(task_info, mercure_events.COMPLETION)
 
     # Check if processing has been suspended via the UI
     if processor_lockfile and processor_lockfile.exists():

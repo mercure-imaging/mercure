@@ -303,12 +303,13 @@ def push_serieslevel_routing(
             if config.mercure.rules[current_rule].get("action", "") == mercure_actions.ROUTE:
                 target = config.mercure.rules[current_rule].get("target", "")
                 if target:
-                    if not selected_targets[target]:
+                    if not selected_targets.get(target,""):
                         selected_targets[target] = [current_rule]
                     else:
                         selected_targets[target].append(current_rule)
                 trigger_serieslevel_notification(current_rule, tags_list, mercure_events.RECEPTION)
 
+    print(selected_targets)
     push_serieslevel_outgoing(triggered_rules, file_list, series_UID, tags_list, selected_targets)
 
 

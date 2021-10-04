@@ -289,7 +289,7 @@ def move_out_folder(source_folder_str, destination_folder_str, move_all=False) -
 
 
 def trigger_notification(task_info: TaskInfo, event) -> None:
-    current_rule = task_info.applied_rule
+    current_rule = task_info.get("applied_rule")
 
     # Check if the rule is available
     if not current_rule:
