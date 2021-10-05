@@ -13,7 +13,7 @@ from datetime import datetime
 from pathlib import Path
 from shlex import split
 from subprocess import PIPE, CalledProcessError, check_output
-from typing import Dict, Tuple, Union, cast
+from typing import Dict, Tuple, cast
 from typing_extensions import Literal
 import daiquiri
 
@@ -49,35 +49,46 @@ DCMSEND_ERROR_CODES = {
 
 def _create_command(dispatch_info: TaskDispatch, folder: Path) -> Tuple[str, dict, bool]:
     """Composes the command for calling the dcmsend tool from DCMTK, which is used for sending out the DICOMS."""
-    logger.debug(dispatch_info.target)
-    target = dispatch_info.target
-    if isinstance(target, DicomTarget):
-        target_ip = target.ip
-        target_port = target.port or 104
-        target_aet_target = target.aet_target or ""
-        target_aet_source = target.aet_source or ""
+    target_name: str = dispatch_info.get("target_name","")
+
+    if isinstance(config.mercure.targets.get(target_name, ""), DicomTarget):
+        # Read the connection information from the configuration
+        target_dicom = cast(DicomTarget, config.mercure.targets.get(target_name))
+        target_ip = target_dicom.ip
+        target_port = target_dicom.port or 104
+        target_aet_target = target_dicom.aet_target or ""
+        target_aet_source = target_dicom.aet_source or ""
         dcmsend_status_file = Path(folder) / mercure_names.SENDLOG
         command = f"""dcmsend {target_ip} {target_port} +sd {folder} -aet {target_aet_source} -aec {target_aet_target} -nuc +sp '*.dcm' -to 60 +crf {dcmsend_status_file}"""
         return command, {}, True
-    elif isinstance(target, SftpTarget):
+
+    elif isinstance(config.mercure.targets.get(target_name, ""), SftpTarget):
+        # Read the connection information from the configuration
+        target_sftp: SftpTarget = cast(SftpTarget, config.mercure.targets.get(target_name))
+
         # TODO: Use newly created UUID instead of folder.stem? Would avoid collission during repeated transfer
         # TODO: is this entirely safe?
 
         # After the transfer, create file named ".complete" to indicate that the transfer is complete
         command = (
             "sftp -o StrictHostKeyChecking=no "
-            + f""" "{target.user}@{target.host}:{target.folder}" """
+            + f""" "{target_sftp.user}@{target_sftp.host}:{target_sftp.folder}" """
             + f""" <<- EOF
-                    mkdir "{target.folder}/{folder.stem}"
+                    mkdir "{target_sftp.folder}/{folder.stem}"
                     put -f -r "{folder}"
                     !touch "/tmp/.complete"
-                    put -f "/tmp/.complete" "{target.folder}/{folder.stem}/.complete"
+                    put -f "/tmp/.complete" "{target_sftp.folder}/{folder.stem}/.complete"
 EOF"""
         )
-
-        if target.password:
-            command = f"sshpass -p {target.password} " + command
+        if target_sftp.password:
+            command = f"sshpass -p {target_sftp.password} " + command
         return command, dict(shell=True, executable="/bin/bash"), False
+
+    else:
+        error_message = f"Target in task file does not exist {target_name}"
+        send_event(m_events.PROCESSING, severity.ERROR, error_message)
+        logger.exception(error_message)        
+        return "", {}, False
 
 
 def execute(
@@ -102,7 +113,7 @@ def execute(
         logger.info(f"Folder {source_folder} is ready for sending")
 
         series_uid = target_info.get("series_uid", "series_uid-missing")
-        target_name = target_info.get("target_name", "target_name-missing")
+        target_name: str = target_info.get("target_name", "target_name-missing")
 
         if (series_uid == "series_uid-missing") or (target_name == "target_name-missing"):
             send_event(m_events.PROCESSING, severity.WARNING, f"Missing information for folder {source_folder}")
@@ -120,10 +131,20 @@ def execute(
             logger.exception(f"Unable to create lock file {lock_file.name}")
             return
 
+        # Compose the command for dispatching the results
         command, opts, needs_splitting = _create_command(target_info, source_folder)
+
+        # If no command is returned, then the selected target does not exist anymore
+        if not command:
+            error_message = f"Settings for target {target_name} incorrect. Unable to dispatch job {series_uid}"
+            logger.error(error_message)
+            send_series_event(s_events.ERROR, series_uid, 0, target_name, error_message)
+            _move_sent_directory(source_folder, error_folder)
+            _trigger_notification(task_content.info, mercure_events.ERROR)
+
         logger.debug(f"Running command {command}")
         logger.info(f"Sending {source_folder} to target {target_name}")
-        try:
+        try:               
             if needs_splitting:
                 result = check_output(split(command), stderr=subprocess.STDOUT, **opts)
             else:
@@ -144,7 +165,7 @@ def execute(
             _trigger_notification(task_content.info, mercure_events.COMPLETION)
         except CalledProcessError as e:            
             dcmsend_error_message = None
-            if isinstance(target_info, DicomTarget):
+            if isinstance(config.mercure.targets.get(target_name, ""), DicomTarget):
                 dcmsend_error_message = DCMSEND_ERROR_CODES.get(e.returncode, None)
                 logger.exception(f"Failed command:\n {command} \nbecause of {dcmsend_error_message}")
             else:
@@ -215,7 +236,7 @@ def _trigger_notification(task_info: TaskInfo, event) -> None:
         
         # Now fire the webhook if configured
         if event == mercure_events.RECEPTION:
-            if config.mercure.rules[current_rule].notification_trigger_reception:          
+            if config.mercure.rules[current_rule].notification_trigger_reception == 'True':          
                 notification.send_webhook(
                     config.mercure.rules[current_rule].get("notification_webhook", ""),
                     config.mercure.rules[current_rule].get("notification_payload", ""),
@@ -223,7 +244,7 @@ def _trigger_notification(task_info: TaskInfo, event) -> None:
                     current_rule
                 )
         if event == mercure_events.COMPLETION:
-            if config.mercure.rules[current_rule].notification_trigger_completion:
+            if config.mercure.rules[current_rule].notification_trigger_completion == 'True':
                 notification.send_webhook(
                     config.mercure.rules[current_rule].get("notification_webhook", ""),
                     config.mercure.rules[current_rule].get("notification_payload", ""),
@@ -231,7 +252,7 @@ def _trigger_notification(task_info: TaskInfo, event) -> None:
                     current_rule
                 )
         if event == mercure_events.ERROR:
-            if config.mercure.rules[current_rule].notification_trigger_error:
+            if config.mercure.rules[current_rule].notification_trigger_error == 'True':
                 notification.send_webhook(
                     config.mercure.rules[current_rule].get("notification_webhook", ""),
                     config.mercure.rules[current_rule].get("notification_payload", ""),

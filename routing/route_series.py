@@ -595,7 +595,7 @@ def route_error_files() -> None:
 
 def trigger_serieslevel_notification(current_rule: str, tags_list: Dict[str, str], event) -> None:
     if event == mercure_events.RECEPTION:
-        if config.mercure.rules[current_rule].notification_trigger_reception:
+        if config.mercure.rules[current_rule].notification_trigger_reception == 'True':
             notification.send_webhook(
                 config.mercure.rules[current_rule].get("notification_webhook", ""),
                 config.mercure.rules[current_rule].get("notification_payload", ""),
@@ -603,7 +603,7 @@ def trigger_serieslevel_notification(current_rule: str, tags_list: Dict[str, str
                 current_rule,
             )
     if event == mercure_events.COMPLETION:
-        if config.mercure.rules[current_rule].notification_trigger_completion:
+        if config.mercure.rules[current_rule].notification_trigger_completion == 'True':
             notification.send_webhook(
                 config.mercure.rules[current_rule].get("notification_webhook", ""),
                 config.mercure.rules[current_rule].get("notification_payload", ""),
@@ -611,7 +611,7 @@ def trigger_serieslevel_notification(current_rule: str, tags_list: Dict[str, str
                 current_rule,
             )
     if event == mercure_events.ERROR:
-        if config.mercure.rules[current_rule].notification_trigger_error:
+        if config.mercure.rules[current_rule].notification_trigger_error == 'True':
             notification.send_webhook(
                 config.mercure.rules[current_rule].get("notification_webhook", ""),
                 config.mercure.rules[current_rule].get("notification_payload", ""),

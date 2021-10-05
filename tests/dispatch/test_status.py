@@ -38,7 +38,7 @@ def test_is_not_read_for_sending_while_sending(fs):
 def test_is_read_for_sending(fs):
     fs.create_dir("/var/data/")
     fs.create_file("/var/data/a.dcm")
-    target = {"info": dummy_info, "dispatch": {"target": {"ip": "0.0.0.0", "port": 104, "aet_target": "ANY"}}}
+    target = {"info": dummy_info, "dispatch": {"target_name": "test_target"}}
     fs.create_file("/var/data/task.json", contents=json.dumps(target))
     assert is_ready_for_sending("/var/data")
 
@@ -55,20 +55,10 @@ def test_has_been_send_not(fs):
 
 
 def test_read_target(fs):
-    target = {"info": dummy_info, "dispatch": {"target": {"ip": "0.0.0.0", "port": 104, "aet_target": "ANY"}}}
+    target = {"info": dummy_info, "dispatch": {"target_name": "test_target"}}
     fs.create_file("/var/data/" + mercure_names.TASKFILE, contents=json.dumps(target))
     task_content = is_target_json_valid("/var/data/")
     assert task_content
     read_dispatch = task_content.dispatch
     assert read_dispatch
-    assert "ip" in read_dispatch.target.dict()
-    assert "port" in read_dispatch.target.dict()
-    assert "aet_target" in read_dispatch.target.dict()
-
-
-# def test_read_target_with_missing_key(fs):
-#     target = {"info": dummy_info, "dispatch": {"target": {"ip": "0.0.0.0", "port": None, "aet_target": "ANY"}}}
-
-#     fs.create_file("/var/data/" + mercure_names.TASKFILE, contents=json.dumps(target))
-#     read_target = is_target_json_valid("/var/data/")
-#     assert not read_target
+    assert "target_name" in read_dispatch.dict()

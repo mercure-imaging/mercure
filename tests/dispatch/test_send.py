@@ -32,7 +32,7 @@ def test_execute_successful_case(fs, mocker):
     fs.create_file("/var/data/source/a/one.dcm")
     target = {
         "info": dummy_info,
-        "dispatch": {"target": {"ip": "0.0.0.0", "aet_target": "a", "port": 90}},
+        "dispatch": {"target_name": "test_target"},
     }
     fs.create_file("/var/data/source/a/" + mercure_names.TASKFILE, contents=json.dumps(target))
 
@@ -58,7 +58,7 @@ def test_execute_error_case(fs, mocker):
     fs.create_file("/var/data/source/a/one.dcm")
     target = {
         "info": dummy_info,
-        "dispatch": {"target": {"ip": "0.0.0.0", "aet_target": "a", "port": 90}},
+        "dispatch": {"target_name": "test_target"},
     }
     fs.create_file("/var/data/source/a/" + mercure_names.TASKFILE, contents=json.dumps(target))
 
@@ -90,7 +90,7 @@ def test_execute_error_case_max_retries_reached(fs, mocker):
     target = {
         "info": dummy_info,
         "dispatch": {
-            "target": {"ip": "0.0.0.0", "aet_target": "a", "port": 90},
+            "target_name": "test_target",
             "retries": 5,
         },
     }
@@ -122,18 +122,12 @@ def test_execute_error_case_delay_is_not_over(fs, mocker):
     target = {
         "info": dummy_info,
         "dispatch": {
-            "target": {
-                "ip": "0.0.0.0",
-                "aet_target": "a",
-                "port": 90,
-            },
+            "target_name": "test_target",
             "retries": 5,
             "next_retry_at": time.time() + 500,
         },
     }
     fs.create_file("/var/data/source/a/" + mercure_names.TASKFILE, contents=json.dumps(target))
-
     mock = mocker.patch("dispatch.send.check_output", side_effect=CalledProcessError(1, cmd="None"))
-
     execute(Path(source), Path(success), Path(error), 5, 1)
     assert not mock.called

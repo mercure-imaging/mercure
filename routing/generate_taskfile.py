@@ -173,7 +173,6 @@ def add_dispatching(uid: str, applied_rule: str, tags_list: Dict[str, str], targ
     target_info = config.mercure.targets[target_used]
     return TaskDispatch(
         target_name=target_used,
-        target=target_info,
         retries=None,
         next_retry_at=None,
     )

@@ -82,9 +82,9 @@ class Rule(BaseModel, Compat):
     processing_settings: Dict[str, Any] = {}
     notification_webhook: str = ""
     notification_payload: str = ""
-    notification_trigger_reception: Literal["True", "False"] = "False"
-    notification_trigger_completion: Literal["True", "False"] = "False"
-    notification_trigger_error: Literal["True", "False"] = "False"
+    notification_trigger_reception: Literal["True", "False"] = "True"
+    notification_trigger_completion: Literal["True", "False"] = "True"
+    notification_trigger_error: Literal["True", "False"] = "True"
 
 
 class Config(BaseModel, Compat):
@@ -132,7 +132,6 @@ class TaskInfo(BaseModel, Compat):
 
 class TaskDispatch(BaseModel, Compat):
     target_name: Optional[str]
-    target: Union[DicomTarget, SftpTarget]
     retries: Optional[int] = 0
     next_retry_at: Optional[float] = 0
     series_uid: Optional[str]
