@@ -14,6 +14,7 @@ import shutil
 import daiquiri
 import socket
 from datetime import datetime
+import pprint
 
 # from mypy_extensions import TypedDict
 from typing_extensions import Literal
@@ -53,7 +54,9 @@ def compose_task(
     """
     Composes the JSON content that is written into a task file when submitting a job (for processing, dispatching, or both)
     """
-    return Task(
+    logger.debug("Composing task.")
+
+    task = Task(
         # Add general information about the job
         info=add_info(uid, uid_type, triggered_rules, applied_rule, tags_list),
         # Add dispatch information -- completed only if the job includes a dispatching step
@@ -63,6 +66,10 @@ def compose_task(
         # Add information about the study, included all collected series
         study=add_study(uid, uid_type, applied_rule, tags_list) or cast(EmptyDict, {}),
     )
+    # task.dispatch = "foo"
+    logger.debug("Generated task:")
+    logger.debug(pprint.pformat(task.dict()))
+    return task
 
 
 def add_processing(uid: str, applied_rule: str, tags_list: Dict[str, str]) -> Optional[TaskProcessing]:
@@ -74,7 +81,7 @@ def add_processing(uid: str, applied_rule: str, tags_list: Dict[str, str]) -> Op
         return None
 
     applied_rule_info: Rule = config.mercure.rules[applied_rule]
-    logger.info(applied_rule_info)
+    logger.debug(f"Applied rule info: {applied_rule_info}")
 
     if applied_rule_info.action in (
         mercure_actions.PROCESS,
@@ -136,6 +143,7 @@ def add_dispatching(uid: str, applied_rule: str, tags_list: Dict[str, str], targ
     the target information is provided in string "target", as dispatch operations from multiple rules to the same target are combined (to avoid
     double sending). In all other cases, the applied_rule is provided and the target information is taken from the rule definition.
     """
+    logger.debug("Maybe adding dispatching...")
     perform_dispatch = False
 
     if not applied_rule and not target:
@@ -147,6 +155,7 @@ def add_dispatching(uid: str, applied_rule: str, tags_list: Dict[str, str], targ
 
     # Check if a target string is provided (i.e., job is from series-level dispatching). If so, the images should be dispatched in any case
     if target_used:
+        logger.debug(f"Adding dispatching info because series-level target {target} specified")
         perform_dispatch = True
     else:
         # If no target string is provided, read the target defined in the provided applied rule
@@ -156,10 +165,12 @@ def add_dispatching(uid: str, applied_rule: str, tags_list: Dict[str, str], targ
             config.mercure.rules[applied_rule].get(mercure_rule.ACTION, mercure_actions.PROCESS)
             in (mercure_actions.ROUTE, mercure_actions.BOTH)
         ) and target_used:
+            logger.debug(f"Adding dispatching info because rule target {target} specified")
             perform_dispatch = True
 
     # If dispatching should not be performed, just return
     if not perform_dispatch:
+        logger.debug("Not adding dispatch information.")
         return None
 
     # Check if the selected target actually exists in the configuration (could have been deleted by now)

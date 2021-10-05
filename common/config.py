@@ -7,11 +7,12 @@ mercure's configuration management, used by various mercure modules
 # Standard python includes
 import json
 import logging
-import os
+import os, sys
 from pathlib import Path
 from typing_extensions import Literal
 import daiquiri
 from typing import Dict, cast
+import re
 
 # App-specific includes
 import common.monitor as monitor
@@ -63,6 +64,9 @@ mercure: Config
 
 
 def get_loglevel() -> int:
+    if any(re.findall(r"pytest|py.test", sys.argv[0])):
+        return logging.DEBUG
+
     level = os.getenv("MERCURE_LOG_LEVEL", "info").lower()
     if level == "error":
         return logging.ERROR

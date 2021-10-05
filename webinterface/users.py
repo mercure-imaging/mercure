@@ -45,6 +45,9 @@ class User(TypedDict, total=False):
 daiquiri.setup(config.get_loglevel())
 logger = daiquiri.getLogger("users")
 
+# passlib is way too chatty in debug mode
+logging.getLogger("passlib").setLevel(logging.INFO)
+
 users_timestamp: float = 0.0
 users_filename = (
     os.getenv("MERCURE_CONFIG_FOLDER")

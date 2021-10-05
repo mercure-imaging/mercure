@@ -42,7 +42,7 @@ config_partial = {
     "rules": {
         "catchall": {
             "rule": "True",
-            "target": "test_target",
+            # "target": "test_target",
             "disabled": "False",
             "fallback": "False",
             "contact": "",
@@ -142,7 +142,7 @@ def test_process_series_nomad(fs, mocker: MockerFixture):
     # (processor_path / ".complete").touch()
     # processor.run_processor()
 
-    assert (Path("/var/success") / processor_path.name).exists()
+    assert (Path("/var/success") / processor_path.name).exists(), f"{processor_path.name} missing from success dir"
     assert files == [k.name for k in (Path("/var/success") / processor_path.name).glob("*") if k.is_file()]
     with open(Path("/var/success") / processor_path.name / "task.json") as t:
         task = json.load(t)

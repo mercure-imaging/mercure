@@ -48,8 +48,8 @@ def nomad_runtime(task: Task, folder: str) -> bool:
         rendered = Template(f.read()).render(
             image=module.docker_tag, constraints=module.constraints, resources=module.resources
         )
-
-    logger.info(rendered)
+    logger.debug("----- job definition -----")
+    logger.debug(rendered)
     try:
         job_definition = nomad_connection.jobs.parse(rendered)
     except nomad.api.exceptions.BadRequestNomadException as err:
@@ -57,7 +57,7 @@ def nomad_runtime(task: Task, folder: str) -> bool:
         print(err.nomad_resp.reason)
         print(err.nomad_resp.text)
         return False
-    logger.info(job_definition)
+    # logger.debug(job_definition)
 
     job_definition["ID"] = f"processor-{task.process.module_name}"
     job_definition["Name"] = f"processor-{task.process.module_name}"
@@ -96,11 +96,11 @@ def docker_runtime(task: Task, folder: str) -> bool:
     if config.get_runner() == "docker":
         # We want to bind the correct path into the processor, but if we're inside docker we need to use the host path
         try:
-            base_path = Path(docker_client.api.inspect_volume("mercure_data")['Options']['device'])
+            base_path = Path(docker_client.api.inspect_volume("mercure_data")["Options"]["device"])
         except Exception as e:
             base_path = Path("/opt/mercure/data")
             logger.error(f"Unable to find volume 'mercure_data'; assuming data directory is {base_path}")
-        
+
         logger.info(f"Base path: {base_path}")
         real_folder = base_path / "processing" / real_folder.stem
 
@@ -204,9 +204,11 @@ def process_series(folder) -> None:
                 child.rename(f_path / "in" / child.name)
         (f_path / "out").mkdir()
         if config.get_runner() == "nomad" or config.mercure.process_runner == "nomad":
+            logger.debug("Processing with Nomad.")
             # Use nomad if we're being run inside nomad, or we're configured to use nomad regardless
             processing_success = nomad_runtime(task, folder)
         elif config.get_runner() in ("docker", "systemd"):
+            logger.debug("Processing with Docker.")
             # Use docker if we're being run inside docker or just by systemd
             processing_success = docker_runtime(task, folder)
         else:
@@ -241,7 +243,7 @@ def move_results(
     folder: str, lock: Optional[helper.FileLock], processing_success: bool, needs_dispatching: bool
 ) -> None:
     # Create a new lock file to ensure that no other process picks up the folder while copying
-    logger.debug(f"Moving results folder {folder}")
+    logger.debug(f"Moving results folder {folder} {'with' if needs_dispatching else 'without'} dispatching")
     lock_file = Path(folder) / mercure_names.LOCK
     if lock_file.exists():
         logger.error(f"Folder already contains lockfile {folder}/" + mercure_names.LOCK)
@@ -258,11 +260,14 @@ def move_results(
         lock.free()
 
     if not processing_success:
+        logger.debug(f"Failing: {folder}")
         move_out_folder(folder, config.mercure.error_folder, move_all=True)
     else:
         if needs_dispatching:
+            logger.debug(f"Dispatching: {folder}")
             move_out_folder(folder, config.mercure.outgoing_folder)
         else:
+            logger.debug(f"Success: {folder}")
             move_out_folder(folder, config.mercure.success_folder)
 
 
@@ -275,10 +280,10 @@ def move_out_folder(source_folder_str, destination_folder_str, move_all=False) -
         target_folder = destination_folder / (source_folder.name + "_" + datetime.now().isoformat())
 
     logger.debug(f"Moving {source_folder} to {target_folder}, move_all: {move_all}")
-
+    logger.debug("--- source contents ---")
     for k in source_folder.glob("**/*"):
-        logger.debug(k.relative_to(source_folder))
-
+        logger.debug("{:>25}".format(str(k.relative_to(source_folder))))
+    logger.debug("--------------")
     try:
         if move_all:
             shutil.move(str(source_folder), target_folder)
@@ -297,7 +302,7 @@ def move_out_folder(source_folder_str, destination_folder_str, move_all=False) -
 
 def trigger_notification(task_info: TaskInfo, event) -> None:
     current_rule = task_info.get("applied_rule")
-
+    logger.debug(f"Notification {event}")
     # Check if the rule is available
     if not current_rule:
         error_text = f"Missing applied_rule in task file in job {task_info.uid}"
@@ -311,29 +316,29 @@ def trigger_notification(task_info: TaskInfo, event) -> None:
         logger.exception(error_text)
         monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_text)
         return
-    
+
     # Now fire the webhook if configured
     if event == mercure_events.RECEPTION:
-        if config.mercure.rules[current_rule].notification_trigger_reception == 'True':          
+        if config.mercure.rules[current_rule].notification_trigger_reception == "True":
             notification.send_webhook(
                 config.mercure.rules[current_rule].get("notification_webhook", ""),
                 config.mercure.rules[current_rule].get("notification_payload", ""),
                 mercure_events.RECEPTION,
-                current_rule
+                current_rule,
             )
     if event == mercure_events.COMPLETION:
-        if config.mercure.rules[current_rule].notification_trigger_completion == 'True':
+        if config.mercure.rules[current_rule].notification_trigger_completion == "True":
             notification.send_webhook(
                 config.mercure.rules[current_rule].get("notification_webhook", ""),
                 config.mercure.rules[current_rule].get("notification_payload", ""),
                 mercure_events.COMPLETION,
-                current_rule
+                current_rule,
             )
     if event == mercure_events.ERROR:
-        if config.mercure.rules[current_rule].notification_trigger_error == 'True':
+        if config.mercure.rules[current_rule].notification_trigger_error == "True":
             notification.send_webhook(
                 config.mercure.rules[current_rule].get("notification_webhook", ""),
                 config.mercure.rules[current_rule].get("notification_payload", ""),
                 mercure_events.ERROR,
-                current_rule
+                current_rule,
             )
