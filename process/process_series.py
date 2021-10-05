@@ -319,6 +319,7 @@ def trigger_notification(task_info: TaskInfo, event) -> None:
                 config.mercure.rules[current_rule].get("notification_webhook", ""),
                 config.mercure.rules[current_rule].get("notification_payload", ""),
                 mercure_events.RECEPTION,
+                current_rule
             )
     if event == mercure_events.COMPLETION:
         if config.mercure.rules[current_rule].notification_trigger_completion:
@@ -326,6 +327,7 @@ def trigger_notification(task_info: TaskInfo, event) -> None:
                 config.mercure.rules[current_rule].get("notification_webhook", ""),
                 config.mercure.rules[current_rule].get("notification_payload", ""),
                 mercure_events.COMPLETION,
+                current_rule
             )
     if event == mercure_events.ERROR:
         if config.mercure.rules[current_rule].notification_trigger_error:
@@ -333,4 +335,5 @@ def trigger_notification(task_info: TaskInfo, event) -> None:
                 config.mercure.rules[current_rule].get("notification_webhook", ""),
                 config.mercure.rules[current_rule].get("notification_payload", ""),
                 mercure_events.ERROR,
+                current_rule
             )

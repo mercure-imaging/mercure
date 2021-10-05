@@ -553,11 +553,11 @@
         });
 
         $('#template_slack').click(function () {
-            $('#notification_payload').val('"text": "Rule triggered @event@",\n"channel": "YOUR_CHANNEL_ID"');
+            $('#notification_payload').val('"text": "Rule @rule@ triggered @event@",\n"channel": "YOUR_CHANNEL_ID"');
         });
 
         $('#template_webex').click(function () {
-            $('#notification_payload').val('"text": "Rule triggered @event@"');
+            $('#notification_payload').val('"text": "Rule @rule@ triggered @event@"');
         });
     });
 </script>

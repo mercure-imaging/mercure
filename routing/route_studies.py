@@ -245,7 +245,7 @@ def push_studylevel_dispatch(study: str, task: Task) -> bool:
     """
     Pushes the study folder to the dispatchter, including the generated task file containing the destination information
     """
-    trigger_studylevel_notification(study, task, mercure_events.RECEPTION)  
+    trigger_studylevel_notification(study, task, mercure_events.RECEPTION)
     return move_study_folder(study, "OUTGOING")
 
 
@@ -253,7 +253,7 @@ def push_studylevel_processing(study: str, task: Task) -> bool:
     """
     Pushes the study folder to the processor, including the generated task file containing the processing instructions
     """
-    trigger_studylevel_notification(study, task, mercure_events.RECEPTION)  
+    trigger_studylevel_notification(study, task, mercure_events.RECEPTION)
     return move_study_folder(study, "PROCESSING")
 
 
@@ -261,8 +261,8 @@ def push_studylevel_notification(study: str, task: Task) -> bool:
     """
     Executes the study-level reception notification
     """
-    trigger_studylevel_notification(study, task, mercure_events.RECEPTION)  
-    trigger_studylevel_notification(study, task, mercure_events.COMPLETION)  
+    trigger_studylevel_notification(study, task, mercure_events.RECEPTION)
+    trigger_studylevel_notification(study, task, mercure_events.COMPLETION)
     move_study_folder(study, "SUCCESS")
     return True
 
@@ -420,14 +420,15 @@ def trigger_studylevel_notification(study: str, task: Task, event) -> bool:
         logger.exception(error_text)
         monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_text)
         return False
-    
+
     # OK, now fire out the webhook if configured
     if event == mercure_events.RECEPTION:
-        if config.mercure.rules[current_rule].notification_trigger_reception:          
+        if config.mercure.rules[current_rule].notification_trigger_reception:
             notification.send_webhook(
                 config.mercure.rules[current_rule].get("notification_webhook", ""),
                 config.mercure.rules[current_rule].get("notification_payload", ""),
                 mercure_events.RECEPTION,
+                current_rule,
             )
     if event == mercure_events.COMPLETION:
         if config.mercure.rules[current_rule].notification_trigger_completion:
@@ -435,6 +436,7 @@ def trigger_studylevel_notification(study: str, task: Task, event) -> bool:
                 config.mercure.rules[current_rule].get("notification_webhook", ""),
                 config.mercure.rules[current_rule].get("notification_payload", ""),
                 mercure_events.COMPLETION,
+                current_rule,
             )
     if event == mercure_events.ERROR:
         if config.mercure.rules[current_rule].notification_trigger_error:
@@ -442,6 +444,7 @@ def trigger_studylevel_notification(study: str, task: Task, event) -> bool:
                 config.mercure.rules[current_rule].get("notification_webhook", ""),
                 config.mercure.rules[current_rule].get("notification_payload", ""),
                 mercure_events.ERROR,
+                current_rule,
             )
 
     return True

@@ -22,19 +22,20 @@ from common.constants import (
 logger = daiquiri.getLogger("notification")
 
 
-def send_webhook(url, payload, event) -> None:
+def send_webhook(url, payload, event, rule_name) -> None:
     if (not url) or (not payload):
         return
 
     # Replace macros in payload
     payload_parsed = payload
 
+    payload_parsed=payload_parsed.replace("@rule@",rule_name)
     if event == mercure_events.RECEPTION:
         payload_parsed=payload_parsed.replace("@event@","RECEIVED")
     if event == mercure_events.COMPLETION:
         payload_parsed=payload_parsed.replace("@event@","COMPLETED")
     if event == mercure_events.ERROR:
-        payload_parsed=payload_parsed.replace("@event@","ERROR")
+        payload_parsed=payload_parsed.replace("@event@","ERROR")    
 
     try:         
         payload_data = json.loads("{" + payload_parsed + "}")
