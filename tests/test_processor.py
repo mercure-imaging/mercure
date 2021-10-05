@@ -2,6 +2,7 @@
 test_processor.py
 ==============
 """
+import os
 import shutil
 from pytest_mock import MockerFixture
 
@@ -109,7 +110,7 @@ def test_process_series_nomad(fs, mocker: MockerFixture):
 
     processor_path = next(Path("/var/processing").iterdir())
 
-    def fake_processor(tag=None, meta=None):
+    def fake_processor(tag=None, meta=None, **kwargs):
         in_ = processor_path / "in"
         out_ = processor_path / "out"
         # print(f"Processing {processor_path}")
@@ -221,7 +222,7 @@ def test_process_series(fs, mocker: MockerFixture):
     files = create_and_route(fs, mocker)
     processor_path = Path()
 
-    def fake_processor(tag, environment, volumes: Dict):
+    def fake_processor(tag, environment, volumes: Dict, **kwargs):
         global processor_path
         in_ = Path(next((k for k in volumes.keys() if volumes[k]["bind"] == "/data")))
         out_ = Path(next((k for k in volumes.keys() if volumes[k]["bind"] == "/output")))
@@ -243,6 +244,7 @@ def test_process_series(fs, mocker: MockerFixture):
     fake_run.assert_called_once_with(
         "busybox:stable",
         environment={"MERCURE_IN_DIR": "/data", "MERCURE_OUT_DIR": "/output"},
+        user=os.getuid(),
         volumes={
             str(processor_path / "in"): {"bind": "/data", "mode": "rw"},
             str(processor_path / "out"): {"bind": "/output", "mode": "rw"},

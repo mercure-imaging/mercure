@@ -6,6 +6,7 @@ Helper functions for mercure's processor module
 
 # Standard python includes
 import json
+import os
 from pathlib import Path
 from typing import Any, Dict, cast, Optional
 import json
@@ -135,7 +136,7 @@ def docker_runtime(task: Task, folder: str) -> bool:
         # nomad_connection.job.dispatch_job('mercure-processor', meta={"IMAGE_ID":"alpine:3.11", "PATH": "test"})
 
         logs: bytes = docker_client.containers.run(
-            docker_tag, volumes=merged_volumes, environment=environment, **arguments
+            docker_tag, volumes=merged_volumes, environment=environment, **arguments, user=os.getuid()
         )
         # Returns: logs (stdout), pass stderr=True if you want stderr too.
         logger.info(logs)
