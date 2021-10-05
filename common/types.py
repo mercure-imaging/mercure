@@ -131,7 +131,7 @@ class TaskInfo(BaseModel, Compat):
 
 
 class TaskDispatch(BaseModel, Compat):
-    target_name: Optional[str]
+    target_name: str
     retries: Optional[int] = 0
     next_retry_at: Optional[float] = 0
     series_uid: Optional[str]
@@ -148,7 +148,7 @@ class TaskStudy(BaseModel, Compat):
 
 
 class TaskProcessing(BaseModel, Compat):
-    module_name: Optional[str]
+    module_name: str
     module_config: Optional[Module]
     settings: Dict[str, Any] = {}
 
