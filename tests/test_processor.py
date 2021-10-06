@@ -241,10 +241,12 @@ def test_process_series(fs, mocker: MockerFixture):
     # processor_path = next(Path("/var/processing").iterdir())
     process.process_series.process_series.assert_called_once_with(str(processor_path))  # type: ignore
 
+    uid_string = f"{os.getuid()}:{os.getegid()}"
     fake_run.assert_called_once_with(
         "busybox:stable",
         environment={"MERCURE_IN_DIR": "/data", "MERCURE_OUT_DIR": "/output"},
-        user=os.getuid(),
+        user=uid_string,
+        group_add=[os.getegid()],
         volumes={
             str(processor_path / "in"): {"bind": "/data", "mode": "rw"},
             str(processor_path / "out"): {"bind": "/output", "mode": "rw"},
