@@ -41,7 +41,7 @@ job "mercure-processor" {
       }
       volume_mount {
         volume      = "keys"
-        destination = "${ NOMAD_SECRETS_DIR }/keys"
+        destination = "${NOMAD_SECRETS_DIR}/keys"
       }
       env {
         // STORAGE_IP = "10.0.2.15"
@@ -56,8 +56,8 @@ job "mercure-processor" {
         image = "{{ image }}"
       }
       env {
-        MERCURE_IN_DIR = "${ NOMAD_ALLOC_DIR }/data/in"
-        MERCURE_OUT_DIR = "${ NOMAD_ALLOC_DIR }/data/out"
+        MERCURE_IN_DIR = "${NOMAD_ALLOC_DIR}/data/in"
+        MERCURE_OUT_DIR = "${NOMAD_ALLOC_DIR}/data/out"
       }
         {% if resources %}
           resources {
@@ -75,7 +75,7 @@ job "mercure-processor" {
       }
       volume_mount {
         volume      = "keys"
-        destination = "${ NOMAD_SECRETS_DIR }/keys"
+        destination = "${NOMAD_SECRETS_DIR}/keys"
       }
       env {
         // STORAGE_IP = "10.0.2.15"
