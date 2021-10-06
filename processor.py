@@ -21,10 +21,7 @@ from common.types import TaskInfo
 import common.helper as helper
 import common.config as config
 import common.monitor as monitor
-from common.constants import mercure_defs
-from common.constants import (
-    mercure_events,
-)
+from common.constants import mercure_defs, mercure_names, mercure_events
 from process.status import is_ready_for_processing
 from process.process_series import process_series, move_results, trigger_notification
 
@@ -203,6 +200,8 @@ def terminate_process(signalNumber, frame) -> None:
 
 
 def main(args=sys.argv[1:]) -> None:
+    global processor_lockfile
+
     if "--reload" in args or os.getenv("MERCURE_ENV", "PROD").lower() == "dev":
         # start_reloader will only return in a monitored subprocess
         reloader = hupper.start_reloader("processor.main")
@@ -244,7 +243,7 @@ def main(args=sys.argv[1:]) -> None:
         graphyte.init(config.mercure.graphite_ip, config.mercure.graphite_port, prefix=graphite_prefix)
 
     logger.info(f"Processing folder: {config.mercure.processing_folder}")
-    processor_lockfile = Path(config.mercure.processing_folder + "/HALT")
+    processor_lockfile = Path(config.mercure.processing_folder + "/" + mercure_names.HALT)
 
     # Start the timer that will periodically trigger the scan of the incoming folder
     global main_loop
