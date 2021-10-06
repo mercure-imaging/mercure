@@ -135,8 +135,9 @@ def docker_runtime(task: Task, folder: str) -> bool:
         # nomad job dispatch -meta IMAGE_ID=alpine:3.11 -meta PATH=test  mercure-processor
         # nomad_connection.job.dispatch_job('mercure-processor', meta={"IMAGE_ID":"alpine:3.11", "PATH": "test"})
 
+        uid_string = f"{os.getuid()}:{os.getegid()}"
         logs: bytes = docker_client.containers.run(
-            docker_tag, volumes=merged_volumes, environment=environment, **arguments, user=os.getuid()
+            docker_tag, volumes=merged_volumes, environment=environment, **arguments, user=uid_string, group_add=[os.getegid()]
         )
         # Returns: logs (stdout), pass stderr=True if you want stderr too.
         logger.info(logs)
