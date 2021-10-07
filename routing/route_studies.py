@@ -34,6 +34,7 @@ from common.constants import (
     mercure_events,
 )
 
+
 # Create local logger instance
 logger = daiquiri.getLogger("route_studies")
 

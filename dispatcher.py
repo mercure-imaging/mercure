@@ -10,7 +10,6 @@ import os
 import signal
 import sys
 from pathlib import Path
-from typing import Optional
 import daiquiri
 import graphyte
 import hupper
@@ -19,9 +18,11 @@ import hupper
 import common.config as config
 import common.helper as helper
 import common.monitor as monitor
+from common.constants import mercure_names
 from dispatch.status import has_been_send, is_ready_for_sending
 from dispatch.send import execute
-from common.constants import mercure_defs, mercure_folders
+from common.constants import mercure_defs
+
 
 # Setup daiquiri logger
 daiquiri.setup(
@@ -39,6 +40,10 @@ logger = daiquiri.getLogger("dispatcher")
 main_loop = None  # type: helper.RepeatedTimer # type: ignore
 
 
+dispatcher_lockfile = None
+dispatcher_is_locked = False
+
+
 def terminate_process(signalNumber, frame) -> None:
     """Triggers the shutdown of the service."""
     helper.g_log("events.shutdown", 1)
@@ -51,6 +56,9 @@ def terminate_process(signalNumber, frame) -> None:
 
 
 def dispatch(args) -> None:
+    global dispatcher_lockfile
+    global dispatcher_is_locked
+
     """Main entry function."""
     if helper.is_terminated():
         return
@@ -76,6 +84,17 @@ def dispatch(args) -> None:
     # TODO: Sort list so that the oldest DICOMs get dispatched first
     with os.scandir(config.mercure.outgoing_folder) as it:
         for entry in it:
+            # Check if dispatching has been suspended via the UI
+            if dispatcher_lockfile and dispatcher_lockfile.exists():
+                if not dispatcher_is_locked:
+                    dispatcher_is_locked = True
+                    logger.info(f"Dispatching halted")
+                break
+            else:
+                if dispatcher_is_locked:
+                    dispatcher_is_locked = False
+                    logger.info("Dispatching resumed")
+
             if entry.is_dir() and not has_been_send(entry.path) and is_ready_for_sending(entry.path):
                 logger.info(f"Sending folder {entry.path}")
                 execute(Path(entry.path), success_folder, error_folder, retry_max, retry_delay)
@@ -92,6 +111,8 @@ def exit_dispatcher(args) -> None:
 
 
 def main(args=sys.argv[1:]) -> None:
+    global dispatcher_lockfile
+
     if "--reload" in args or os.getenv("MERCURE_ENV", "PROD").lower() == "dev":
         # start_reloader will only return in a monitored subprocess
         reloader = hupper.start_reloader("dispatcher.main")
@@ -134,6 +155,7 @@ def main(args=sys.argv[1:]) -> None:
         )
 
     logger.info(f"Dispatching folder: {config.mercure.outgoing_folder}")
+    dispatcher_lockfile = Path(config.mercure.outgoing_folder + "/" + mercure_names.HALT)
 
     global main_loop
     main_loop = helper.RepeatedTimer(config.mercure.dispatcher_scan_interval, dispatch, exit_dispatcher, {})

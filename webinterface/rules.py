@@ -5,7 +5,6 @@ Rules page for the graphical user interface of mercure.
 """
 
 # Standard python includes
-import logging
 import daiquiri
 from typing import Dict
 import json

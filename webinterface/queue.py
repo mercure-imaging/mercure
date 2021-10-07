@@ -10,6 +10,7 @@ from pathlib import Path
 import json
 import daiquiri
 from typing import Dict
+import collections
 
 # Starlette-related includes
 from starlette.applications import Starlette
@@ -18,7 +19,7 @@ from starlette.authentication import requires
 
 # App-specific includes
 import common.config as config
-from common.constants import mercure_defs, mercure_names, mercure_options
+from common.constants import mercure_defs, mercure_names
 from webinterface.common import get_user_information
 from webinterface.common import templates
 from common.types import Task
@@ -75,6 +76,8 @@ async def show_jobs_processing(request):
     except:
         return PlainTextResponse("Configuration is being updated. Try again in a minute.")
 
+    # TODO: Order by time
+
     job_list = {}
     for entry in os.scandir(config.mercure.processing_folder):
         if entry.is_dir():
@@ -111,15 +114,20 @@ async def show_jobs_processing(request):
                 job_scope = "Error"
                 job_status = "Error"
 
-            job_list[entry.name] = {
-                "Module": job_module,
-                "ACC": job_acc,
-                "MRN": job_mrn,
-                "Status": job_status,
-                "Scope": job_scope,
+            timestamp: float = entry.stat().st_mtime           
+            job_name: str = entry.name
+
+            job_list[job_name] = {
+                'Creation_Time': timestamp,
+                'Module': job_module,
+                'ACC': job_acc,
+                'MRN': job_mrn,
+                'Status': job_status,
+                'Scope': job_scope,
             }
 
-    return JSONResponse(job_list)
+    sorted_jobs = collections.OrderedDict(sorted(job_list.items(), key=lambda x: x[1]['Creation_Time'], reverse=False)) # type: ignore
+    return JSONResponse(sorted_jobs)
 
 
 @queue_app.route("/jobs/routing", methods=["GET"])
@@ -133,14 +141,17 @@ async def show_jobs_routing(request):
     job_list = {}
     for entry in os.scandir(config.mercure.outgoing_folder):
         if entry.is_dir():
-            job_target = ""
-            job_acc = ""
-            job_mrn = ""
-            job_scope = "Series"
-            job_status = "Queued"
+            job_target: str = ''
+            job_acc: str = ''
+            job_mrn: str = ''
+            job_scope: str = 'Series'
+            job_status: str = 'Queued'                     
+
+            processing_file = Path(entry.path) / mercure_names.PROCESSING
+            if processing_file.exists():
+                job_status = 'Processing'
 
             task_file = Path(entry.path) / mercure_names.TASKFILE
-
             try:
                 with open(task_file, "r") as f:
                     task: Task = Task(**json.load(f))
@@ -149,26 +160,31 @@ async def show_jobs_routing(request):
                     job_acc = task.info.acc
                     job_mrn = task.info.mrn
                     if task.info.uid_type=="series":
-                        job_scope = "Series"
+                        job_scope = 'Series'
                     else:
-                        job_scope = "Study"
+                        job_scope = 'Study'
             except Exception as e:
                 logger.exception(e)
-                job_target = "Error"
-                job_acc = "Error"
-                job_mrn = "Error"
-                job_scope = "Error"
-                job_status = "Error"                
+                job_target = 'Error'
+                job_acc = 'Error'
+                job_mrn = 'Error'
+                job_scope = 'Error'
+                job_status = 'Error'                
 
-            job_list[entry.name] = {
-                "Target": job_target,
-                "ACC": job_acc,
-                "MRN": job_mrn,
-                "Status": job_status,
-                "Scope": job_scope,
+            timestamp: float = entry.stat().st_mtime           
+            job_name: str = entry.name
+
+            job_list[job_name] = {
+                'Creation_Time': timestamp,
+                'Target': job_target,
+                'ACC': job_acc,
+                'MRN': job_mrn,
+                'Status': job_status,
+                'Scope': job_scope
             }
 
-    return JSONResponse(job_list)
+    sorted_jobs = collections.OrderedDict(sorted(job_list.items(), key=lambda x: x[1]['Creation_Time'], reverse=False)) # type: ignore
+    return JSONResponse(sorted_jobs)
 
 
 @queue_app.route("/jobs/studies", methods=["GET"])
@@ -264,14 +280,41 @@ async def show_queues_status(request):
     if routing_halt_file.exists():
         routing_suspended = True
 
+    processing_active = False
+    for entry in os.scandir(config.mercure.processing_folder):
+        if entry.is_dir():
+            processing_file = Path(entry.path) / mercure_names.PROCESSING
+            if processing_file.exists():
+                processing_active = True
+                break
+
+    routing_actvie = False
+    for entry in os.scandir(config.mercure.outgoing_folder):
+        if entry.is_dir():
+            processing_file = Path(entry.path) / mercure_names.PROCESSING
+            if processing_file.exists():
+                routing_actvie = True
+                break
+
     processing_status = "Idle"
-    routing_status = "Idle"
-
     if processing_suspended:
-        processing_status = "Halted"
+        if processing_active:
+            processing_status = "Suspending"
+        else:
+            processing_status = "Halted"
+    else:
+        if processing_active:
+            processing_status = "Processing"
 
+    routing_status = "Idle"
     if routing_suspended:
-        routing_status = "Halted"
+        if routing_actvie:
+            routing_status = "Suspending"
+        else:
+            routing_status = "Halted"
+    else:
+        if routing_actvie:
+            routing_status = "Processing"
 
     queue_status = {
         "processing_status": processing_status,
@@ -315,3 +358,38 @@ async def set_queues_status(request):
         pass
 
     return JSONResponse({"result": "OK"})
+
+
+@queue_app.route("/jobinfo/{category}/{id}", methods=["GET"])
+@requires("authenticated", redirect="login")
+async def get_jobinfo(request):
+    try:
+        config.read_config()
+    except:
+        return PlainTextResponse("Configuration is being updated. Try again in a minute.")
+
+    job_category = request.path_params["category"]
+    job_id = request.path_params["id"]
+    job_pathstr: str = ""
+
+    if job_category == 'processing':
+        job_pathstr = config.mercure.processing_folder + "/" + job_id
+    elif job_category == 'routing':
+        job_pathstr = config.mercure.outgoing_folder + "/" + job_id
+    elif job_category == 'studies':
+        job_pathstr = config.mercure.studies_folder + "/" + job_id
+    elif job_category == 'failure':
+        job_pathstr = config.mercure.studies_folder + "/" + job_id
+    else:
+        return PlainTextResponse("Invalid request")
+
+    job_pathstr += "/task.json"
+    job_path = Path(job_pathstr)
+
+    if job_path.exists():
+        with open(job_path, "r") as json_file:
+            loaded_task = json.load(json_file)
+        loaded_task = json.dumps(loaded_task, indent=4, sort_keys=False)
+        return JSONResponse(loaded_task)
+    else:
+        return PlainTextResponse("Task not found. Refresh view!")

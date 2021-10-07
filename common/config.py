@@ -17,8 +17,7 @@ import re
 # App-specific includes
 import common.monitor as monitor
 import common.helper as helper
-from common.constants import mercure_names, mercure_folders
-from mypy_extensions import TypedDict
+from common.constants import mercure_names
 from common.types import Config
 
 # Create local logger instance

@@ -7,7 +7,7 @@ Helper functions for dispatching processed cases
 # Standard python includes
 import json
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional
 import daiquiri
 
 # App-specific includes

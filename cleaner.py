@@ -8,7 +8,6 @@ to minimum when receiving and sending exams.
 """
 
 # Standard python includes
-import logging
 import os
 import signal
 import sys
@@ -26,7 +25,7 @@ import common.config as config
 import common.helper as helper
 import common.monitor as monitor
 from common.monitor import send_series_event, s_events
-from common.constants import mercure_defs, mercure_folders
+from common.constants import mercure_defs
 
 
 # Setup daiquiri logger

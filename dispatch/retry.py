@@ -1,4 +1,4 @@
-from typing import Dict, cast
+from typing import cast
 from common.types import Task, TaskDispatch
 import json
 import time

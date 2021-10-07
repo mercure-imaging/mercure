@@ -5,7 +5,7 @@ Helper functions for the graphical user interface of mercure.
 """
 
 # Standard python includes
-from typing import Any, Dict, Optional, Tuple, Union, List
+from typing import Optional, Tuple
 import asyncio
 
 # Starlette-related includes

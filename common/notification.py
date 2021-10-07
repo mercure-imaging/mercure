@@ -5,7 +5,6 @@ Helper functions for triggering webhook calls.
 """
 
 # Standard python includes
-from pathlib import Path
 import json
 import daiquiri
 import json

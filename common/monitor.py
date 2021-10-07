@@ -8,7 +8,6 @@ Helper functions and definitions for monitoring mercure's operations via the boo
 from typing import Dict
 import requests
 import daiquiri
-import logging
 
 # Create local logger instance
 logger = daiquiri.getLogger("config")
