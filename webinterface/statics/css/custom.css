@@ -319,3 +319,22 @@ table.dataTable tbody tr.selected th, table.dataTable tbody tr.selected td {
 }
 
 
+.taskinfotextarea::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.taskinfotextarea::-webkit-scrollbar-track,
+.taskinfotextarea::-webkit-scrollbar-corner {
+  background-color: #FFF;
+}
+
+.taskinfotextarea::-webkit-scrollbar-thumb {
+  background: rgb(219,219,219);
+  border-radius: 10px;
+}
+
+.taskinfotextarea::-webkit-scrollbar-thumb:hover {
+  background: hsl(141, 71%, 48%);
+}
+

@@ -210,6 +210,27 @@
         </div>
     </div>
     </div>
+
+    <div class="modal" id="jobinformation">
+        <div class="modal-background"></div>
+        <div class="modal-card" style="width: 960px;">
+            <header class="modal-card-head">
+                <p class="modal-card-title">Job Information</p>
+            </header>
+            <section class="modal-card-body">
+                <div class="container">
+                    <div class="field">
+                        <div class="control" id="jobinfocontrol" >
+                            <textarea class="textarea has-fixed-size taskinfotextarea" rows="15" id="jobinformationcontent" name="jobinformationcontent" readonly></textarea>
+                        </div>
+                    </div>                    
+                </div>
+            </section>
+            <footer class="modal-card-foot buttons is-centered">
+                <button class="button" type="button" id="closejobinformation" onclick="closeJobInformation()">Close</button>
+            </footer>
+        </div>
+    </div>    
 </main>
 
 <script>
@@ -250,6 +271,7 @@
                 timeout: 3000
             });
             $('#jobs_processing').DataTable().button( 2 ).enable(false);
+            $('#jobs_processing').DataTable().button( 3 ).enable(false);            
             return;
         }
 
@@ -280,6 +302,7 @@
                 timeout: 3000
             });
             $('#jobs_routing').DataTable().button( 2 ).enable(false);
+            $('#jobs_routing').DataTable().button( 3 ).enable(false);
             return;
         }
 
@@ -309,6 +332,7 @@
             });
             $('#jobs_studies').DataTable().button( 2 ).enable(false);
             $('#jobs_studies').DataTable().button( 3 ).enable(false);
+            $('#jobs_studies').DataTable().button( 4 ).enable(false);
             return;
         }
 
@@ -337,6 +361,7 @@
                 timeout: 3000
             });
             $('#jobs_fail').DataTable().button( 2 ).enable(false);
+            $('#jobs_fail').DataTable().button( 3 ).enable(false);
             return;
         }        
 
@@ -464,14 +489,31 @@
             },
             select: true,
             buttons: [
-                'selectAll',
-                'selectNone',
+                {   
+                    extend: 'selectAll', 
+                    text: '<i class="far fa-check-square"></i>',
+                    titleAttr: 'Select all',
+                },
+                {   
+                    extend: 'selectNone', 
+                    text: '<i class="far fa-square"></i>',
+                    titleAttr: 'Deselect all',
+                },
                 {
-                    text: 'Abort',
+                    text: '<i class="far fa-question-circle"></i>',
+                    titleAttr: 'Job information',
+                    action: function ( e, dt, node, config ) {
+                        var jid = $('#jobs_processing').DataTable().rows( { selected: true } ).data()[0][0];
+                        showJobInformation(jid,"processing");
+                    }
+                },
+                {
+                    text: '<i class="far fa-trash-alt"></i>',
+                    titleAttr: 'Cancel job',
                     action: function ( e, dt, node, config ) {
                         alert("Coming soon!");                    
                     }
-                }            
+                }
             ],
             dom: 'Bfrtip',
             "scrollY": "740px",
@@ -481,6 +523,7 @@
         $('#jobs_processing').DataTable().on( 'select deselect', function () {
             var selectedRows = $('#jobs_processing').DataTable().rows( { selected: true } ).count();
             $('#jobs_processing').DataTable().button( 2 ).enable( selectedRows > 0 );
+            $('#jobs_processing').DataTable().button( 3 ).enable( selectedRows > 0 );
         } );
 
 
@@ -494,14 +537,31 @@
             },
             select: true,
             buttons: [
-                'selectAll',
-                'selectNone',
+                {   
+                    extend: 'selectAll', 
+                    text: '<i class="far fa-check-square"></i>',
+                    titleAttr: 'Select all',
+                },
+                {   
+                    extend: 'selectNone', 
+                    text: '<i class="far fa-square"></i>',
+                    titleAttr: 'Deselect all',
+                },
                 {
-                    text: 'Abort',
+                    text: '<i class="far fa-question-circle"></i>',
+                    titleAttr: 'Job information',
+                    action: function ( e, dt, node, config ) {
+                        var jid = $('#jobs_routing').DataTable().rows( { selected: true } ).data()[0][0];
+                        showJobInformation(jid,"routing");
+                    }
+                },
+                {
+                    text: '<i class="far fa-trash-alt"></i>',
+                    titleAttr: 'Cancel job',
                     action: function ( e, dt, node, config ) {
                         alert("Coming soon!");                    
                     }
-                }                   
+                },
             ],
             dom: 'Bfrtip',
             "scrollY": "740px",
@@ -511,6 +571,7 @@
         $('#jobs_routing').DataTable().on( 'select deselect', function () {
             var selectedRows = $('#jobs_routing').DataTable().rows( { selected: true } ).count();
             $('#jobs_routing').DataTable().button( 2 ).enable( selectedRows > 0 );
+            $('#jobs_routing').DataTable().button( 3 ).enable( selectedRows > 0 );
         } );
 
 
@@ -525,20 +586,37 @@
             },
             select: true,
             buttons: [
-                'selectAll',
-                'selectNone',
+                {   
+                    extend: 'selectAll', 
+                    text: '<i class="far fa-check-square"></i>',
+                    titleAttr: 'Select all',
+                },
+                {   
+                    extend: 'selectNone', 
+                    text: '<i class="far fa-square"></i>',
+                    titleAttr: 'Deselect all',
+                },
                 {
-                    text: 'Abort',
+                    text: '<i class="far fa-question-circle"></i>',
+                    titleAttr: 'Job information',
+                    action: function ( e, dt, node, config ) {
+                        showJobInformation("","studies");
+                    }
+                },
+                {
+                    text: '<i class="far fa-trash-alt"></i>',
+                    titleAttr: 'Cancel study',
                     action: function ( e, dt, node, config ) {
                         alert("Coming soon!");                    
                     }
                 },
                 {
-                    text: 'Complete',
+                    text: '<i class="far fa-share-square"></i>',
+                    titleAttr: 'Force study completion',
                     action: function ( e, dt, node, config ) {
-                        alert("Coming soon!");                    
+                        alert("Coming soon!");
                     }
-                }                   
+                }
             ],
             dom: 'Bfrtip',
             "scrollY": "740px",
@@ -549,6 +627,7 @@
             var selectedRows = $('#jobs_studies').DataTable().rows( { selected: true } ).count();
             $('#jobs_studies').DataTable().button( 2 ).enable( selectedRows > 0 );
             $('#jobs_studies').DataTable().button( 3 ).enable( selectedRows > 0 );
+            $('#jobs_studies').DataTable().button( 4 ).enable( selectedRows > 0 );            
         } );
 
 
@@ -563,14 +642,30 @@
             },
             select: true,
             buttons: [
-                'selectAll',
-                'selectNone',
+                {   
+                    extend: 'selectAll', 
+                    text: '<i class="far fa-check-square"></i>',
+                    titleAttr: 'Select all',
+                },
+                {   
+                    extend: 'selectNone', 
+                    text: '<i class="far fa-square"></i>',
+                    titleAttr: 'Deselect all',
+                },
                 {
-                    text: 'Restart',
+                    text: '<i class="far fa-question-circle"></i>',
+                    titleAttr: 'Job information',
                     action: function ( e, dt, node, config ) {
-                        alert("Coming soon!");                    
+                        showJobInformation("","failure");
                     }
-                }                   
+                },
+                {
+                    text: '<i class="fas fa-redo"></i>',
+                    titleAttr: 'Restart job',
+                    action: function ( e, dt, node, config ) {
+                        alert("Coming soon!");
+                    }
+                }
             ],
             dom: 'Bfrtip',
             "scrollY": "740px",
@@ -580,6 +675,7 @@
         $('#jobs_fail').DataTable().on( 'select deselect', function () {
             var selectedRows = $('#jobs_fail').DataTable().rows( { selected: true } ).count();
             $('#jobs_fail').DataTable().button( 2 ).enable( selectedRows > 0 );
+            $('#jobs_fail').DataTable().button( 3 ).enable( selectedRows > 0 );
         } );
 
 
@@ -594,8 +690,16 @@
             },
             select: true,
             buttons: [
-                'selectAll',
-                'selectNone'
+                {   
+                    extend: 'selectAll', 
+                    text: '<i class="far fa-check-square"></i>',
+                    titleAttr: 'Select all',
+                },
+                {   
+                    extend: 'selectNone', 
+                    text: '<i class="far fa-square"></i>',
+                    titleAttr: 'Deselect all',
+                }
             ],
             dom: 'Bfrtip',
             "scrollY": "740px",
@@ -629,6 +733,49 @@
     {
         $('#jobs_archive_wrapper').show();
         $('#jobs_archive').DataTable().clear().draw();
+    }
+
+    function showJobInformation(jobId,category)
+    {
+        if ((jobId === "") || (category === "")) {
+            return;
+        }
+
+        $("#jobinformationcontent").val("");
+        $("#jobinformation").addClass("is-active");
+        $("#jobinfocontrol").addClass("is-loading");        
+
+        $.ajax({
+            type: 'GET',
+            url: '/queue/jobinfo/' + category + '/' + jobId,
+            data: {},
+            dataType: 'json',
+            success: function (data) {
+                textContent = ""
+                try {
+                    var jsondata = JSON.parse(data);
+                    textContent = JSON.stringify(jsondata, null, 4);
+                } catch(e) {
+                    textContent = data;
+                }                
+                $("#jobinformationcontent").val(textContent);
+            },
+            error: function (data, status) {
+                if (status === "parsererror") {                    
+                    $("#jobinformationcontent").val(data.responseText);
+                } else {
+                    $("#jobinformationcontent").val("ERROR: Unable to retrieve job information");
+                }
+            },
+            complete: function (data) {
+                $("#jobinfocontrol").removeClass("is-loading");  
+            }
+        });
+    }
+
+    function closeJobInformation()
+    {
+        $("#jobinformation").removeClass("is-active");
     }
 
 </script>

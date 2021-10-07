@@ -7,10 +7,12 @@ Helper functions for controlling the services from the graphical user interface 
 # Standard python includes
 import json
 import os
-import logging
 from pathlib import Path
 import daiquiri
+
+# App-specific includes
 from common import config
+
 
 daiquiri.setup(config.get_loglevel())
 logger = daiquiri.getLogger("config")

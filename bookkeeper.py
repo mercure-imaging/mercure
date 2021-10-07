@@ -10,21 +10,18 @@ import sys
 from sqlalchemy.engine.base import Connection
 import uvicorn
 import datetime
-import logging
-
-# 3rd party
 import daiquiri
-from starlette.applications import Starlette
-from starlette.responses import JSONResponse, Response
-from starlette.responses import PlainTextResponse
-from starlette.responses import JSONResponse
-from starlette.responses import RedirectResponse
-from starlette.background import BackgroundTasks
-from starlette.config import Config
-from starlette.datastructures import URL, Secret
 import databases
 import sqlalchemy
 import hupper
+
+# Starlette-related includes
+from starlette.applications import Starlette
+from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse
+from starlette.background import BackgroundTasks
+from starlette.config import Config
+from starlette.datastructures import URL
 
 # App-specific includes
 import common.monitor as monitor
@@ -170,6 +167,7 @@ series_sequence_data = sqlalchemy.Table(
     sqlalchemy.Column("uid", sqlalchemy.String, primary_key=True),
     sqlalchemy.Column("data", sqlalchemy.JSON),
 )
+
 
 ###################################################################################
 ## Event handlers

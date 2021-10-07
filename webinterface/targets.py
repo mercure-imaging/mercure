@@ -6,7 +6,6 @@ Targets page for the graphical user interface of mercure.
 
 # Standard python includes
 import json
-import logging
 import daiquiri
 from typing import Union
 
@@ -19,7 +18,7 @@ from starlette.authentication import requires
 import common.config as config
 import common.monitor as monitor
 from common.constants import mercure_defs
-from common.types import DicomTarget, SftpTarget, Target
+from common.types import DicomTarget, SftpTarget
 from webinterface.common import *
 
 

@@ -5,12 +5,7 @@ Helper functions for generating task files in json format, which describe the jo
 """
 
 # Standard python includes
-import os
-from pathlib import Path
-import traceback
-import uuid
 import json
-import shutil
 import daiquiri
 import socket
 from datetime import datetime
@@ -18,26 +13,21 @@ import pprint
 
 # from mypy_extensions import TypedDict
 from typing_extensions import Literal
-from typing import Dict, Optional, Union, List, cast
+from typing import Dict, Optional, cast
 from common.types import *
 
 # App-specific includes
 import common.config as config
-import common.rule_evaluation as rule_evaluation
 import common.monitor as monitor
-import common.helper as helper
 from common.types import *
 from common.constants import (
     mercure_defs,
     mercure_names,
-    mercure_sections,
     mercure_rule,
-    mercure_config,
     mercure_options,
     mercure_actions,
-    mercure_study,
-    mercure_info,
 )
+
 
 # Create local logger instance
 logger = daiquiri.getLogger("generate_taskfile")

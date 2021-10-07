@@ -29,6 +29,7 @@ from common.constants import (
     mercure_events,
 )
 
+
 logger = daiquiri.getLogger("process_series")
 
 

@@ -17,7 +17,6 @@ from pathlib import Path
 import hupper
 
 # App-specific includes
-from common.types import TaskInfo
 import common.helper as helper
 import common.config as config
 import common.monitor as monitor

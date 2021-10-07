@@ -10,7 +10,6 @@ from typing_extensions import Literal, TypedDict
 from pydantic import BaseModel, create_model_from_typeddict
 import daiquiri
 
-# import traceback
 
 logger = daiquiri.getLogger("test")
 

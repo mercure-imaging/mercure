@@ -21,7 +21,8 @@ import common.monitor as monitor
 from common.constants import mercure_names
 from dispatch.status import has_been_send, is_ready_for_sending
 from dispatch.send import execute
-from common.constants import mercure_defs, mercure_folders
+from common.constants import mercure_defs
+
 
 # Setup daiquiri logger
 daiquiri.setup(
@@ -83,7 +84,6 @@ def dispatch(args) -> None:
     # TODO: Sort list so that the oldest DICOMs get dispatched first
     with os.scandir(config.mercure.outgoing_folder) as it:
         for entry in it:
-
             # Check if dispatching has been suspended via the UI
             if dispatcher_lockfile and dispatcher_lockfile.exists():
                 if not dispatcher_is_locked:

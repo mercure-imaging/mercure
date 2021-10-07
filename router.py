@@ -12,7 +12,6 @@ import sys
 import graphyte
 import daiquiri
 import hupper
-
 from typing import Dict
 
 # App-specific includes
@@ -22,6 +21,7 @@ import common.config as config
 import common.monitor as monitor
 from routing.route_series import route_series, route_error_files
 from routing.route_studies import route_studies
+
 
 # Setup daiquiri logger
 daiquiri.setup(

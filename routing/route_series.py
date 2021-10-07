@@ -29,7 +29,8 @@ from common.constants import (
     mercure_options,
     mercure_events,
 )
-from routing.generate_taskfile import compose_task, create_series_task, create_study_task, update_study_task
+from routing.generate_taskfile import create_series_task, create_study_task, update_study_task
+
 
 # Create local logger instance
 logger = daiquiri.getLogger("route_series")
