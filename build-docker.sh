@@ -18,7 +18,7 @@
 # Change prefix to your own Docker prefix if you want to make 
 # your own custom build
 PREFIX="mercureimaging"
-TAG=${MERCURE_TAG:-dev}
+TAG=${MERCURE_TAG:-latest}
 # Define where mercure is going to store things
 # You can redefine types of volumes in docker/docker-compose.yml
 MERCUREBASE=$HOME/mercure-docker

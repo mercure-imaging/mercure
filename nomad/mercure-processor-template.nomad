@@ -31,7 +31,7 @@ job "mercure-processor" {
     task "setup" {
       driver = "docker"
       config {
-        image = "mercureimaging/processing-step:dev"
+        image = "mercureimaging/processing-step:latest"
         command = "./docker-entrypoint.sh"
         args = ["-m", "in"]
       }
@@ -70,7 +70,7 @@ job "mercure-processor" {
     task "takedown" {
       driver = "docker"
       config {
-        image = "mercureimaging/processing-step:dev"
+        image = "mercureimaging/processing-step:latest"
         command = "./docker-entrypoint.sh"
         args = ["-m", "out"]
       }
