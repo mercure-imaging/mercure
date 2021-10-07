@@ -6,11 +6,15 @@ echo "----------------------"
 echo ""
 
 binary=bin/getdcmtags
-config=./configuration/mercure.json
+
+config_folder="${MERCURE_CONFIG_FOLDER:-./configuration}"
+config="${config_folder}/mercure.json"
+echo "Configuration folder: ${config_folder}"
+echo "Configuration file: ${config}"
 
 # Check if the configuration is accessible
 if [ ! -f $config ]; then
-    echo "ERROR: Unable to find configuration file"
+    echo "ERROR: Unable to find configuration file ${config}"
     echo "ERROR: Terminating"
     exit 1    
 fi
@@ -22,7 +26,7 @@ bookkeeper=$(cat $config | jq -r '.bookkeeper')
 
 # Check if incoming folder exists
 if [ ! -d "$incoming" ]; then
-    echo "ERROR: Cannot access incoming folder"
+    echo "ERROR: Cannot access incoming folder ${incoming}"
     echo "ERROR: Terminating"
     exit 1
 fi
@@ -57,5 +61,5 @@ else
 fi
 
 echo ""
-echo "Starting receiver process..."
-storescp --fork --promiscuous -od "$incoming" +uf -xcr "$binary $incoming/#f$bookkeeper" $port
+echo "Starting receiver process on port $port, folder $incoming, bookeeper $bookkeeper"
+storescp -v --fork --promiscuous -od "$incoming" +uf -xcr "$binary $incoming/#f$bookkeeper" $port

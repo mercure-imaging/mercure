@@ -32,5 +32,6 @@ RUN chown -R mercure /home/mercure/mercure-data
 # Export the configuration and data folder as a volume, as multiple scripts will have to read/write there
 VOLUME /home/mercure/mercure/configuration
 VOLUME /home/mercure/mercure-data
+USER mercure
 ENV DEBUG=False
 ENV MERCURE_CONFIG_FOLDER=/home/mercure/mercure-config

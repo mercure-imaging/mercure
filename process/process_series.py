@@ -47,7 +47,7 @@ def nomad_runtime(task: Task, folder: str) -> bool:
 
     with open("nomad/mercure-processor-template.nomad", "r") as f:
         rendered = Template(f.read()).render(
-            image=module.docker_tag, constraints=module.constraints, resources=module.resources
+            image=module.docker_tag, constraints=module.constraints, resources=module.resources, uid=os.getuid()
         )
     logger.debug("----- job definition -----")
     logger.debug(rendered)
@@ -137,7 +137,12 @@ def docker_runtime(task: Task, folder: str) -> bool:
 
         uid_string = f"{os.getuid()}:{os.getegid()}"
         logs: bytes = docker_client.containers.run(
-            docker_tag, volumes=merged_volumes, environment=environment, **arguments, user=uid_string, group_add=[os.getegid()]
+            docker_tag,
+            volumes=merged_volumes,
+            environment=environment,
+            **arguments,
+            user=uid_string,
+            group_add=[os.getegid()],
         )
         # Returns: logs (stdout), pass stderr=True if you want stderr too.
         logger.info(logs)

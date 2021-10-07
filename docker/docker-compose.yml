@@ -48,7 +48,7 @@ services:
       bookkeeper:
         condition: service_healthy
     ports:
-      - "104:104"
+      - "104:1040"
     <<: *volumes
     <<: *env
 

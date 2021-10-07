@@ -41,9 +41,9 @@ job "mercure" {
         static  = 5432
         to = 5432
       }
-      port "dicom" {
+      port "dicom-receive" {
         static  = 104
-        to = 104
+        to = 1040
       }
       port "sshd" {
         static  = 3000
@@ -58,6 +58,7 @@ job "mercure" {
         MERCURE_ENV = "${NOMAD_META_environment}"
         MERCURE_RUNNER = "${NOMAD_META_runner}"
         MERCURE_LOG_LEVEL = "${NOMAD_META_log_level}"
+        MERCURE_CONFIG_FOLDER = "/home/mercure/mercure-config"
       }
 
       volume_mount {
@@ -77,6 +78,31 @@ job "mercure" {
         memory=128
       }
     }
+    task "cleaner" {
+      driver = "docker"
+      env {
+        MERCURE_ENV = "${NOMAD_META_environment}"
+        MERCURE_RUNNER = "${NOMAD_META_runner}"
+        MERCURE_LOG_LEVEL = "${NOMAD_META_log_level}"
+        MERCURE_CONFIG_FOLDER = "/home/mercure/mercure-config"
+      }
+      volume_mount {
+        volume      = "code"
+        destination = "/home/mercure/mercure"
+      }
+      volume_mount {
+        volume      = "config"
+        destination = "/home/mercure/mercure-config"
+      }
+      volume_mount {
+        volume      = "data"
+        destination = "/home/mercure/mercure-data"
+      }
+      config {
+        image = "mercureimaging/mercure-cleaner:dev"
+        // ports = ["dicom"]
+      }
+    }
 
     task "dispatcher" {
       driver = "docker"
@@ -84,6 +110,7 @@ job "mercure" {
         MERCURE_ENV = "${NOMAD_META_environment}"
         MERCURE_RUNNER = "${NOMAD_META_runner}"
         MERCURE_LOG_LEVEL = "${NOMAD_META_log_level}"
+        MERCURE_CONFIG_FOLDER = "/home/mercure/mercure-config"
       }
       volume_mount {
         volume      = "code"
@@ -99,7 +126,7 @@ job "mercure" {
       }
       config {
         image = "mercureimaging/mercure-dispatcher:dev"
-        ports = ["dicom"]
+        // ports = ["dicom"]
       }
 
       resources {
@@ -112,6 +139,7 @@ job "mercure" {
         MERCURE_ENV = "${NOMAD_META_environment}"
         MERCURE_RUNNER = "${NOMAD_META_runner}"
         MERCURE_LOG_LEVEL = "${NOMAD_META_log_level}"
+        MERCURE_CONFIG_FOLDER = "/home/mercure/mercure-config"
       }
       volume_mount {
         volume      = "code"
@@ -128,7 +156,7 @@ job "mercure" {
       
       config {
         image = "mercureimaging/mercure-router:dev"
-        ports = ["dicom"]
+        // ports = ["dicom"]
       }
 
       resources {
@@ -141,6 +169,7 @@ job "mercure" {
         MERCURE_ENV = "${NOMAD_META_environment}"
         MERCURE_RUNNER = "${NOMAD_META_runner}"
         MERCURE_LOG_LEVEL = "${NOMAD_META_log_level}"
+        MERCURE_CONFIG_FOLDER = "/home/mercure/mercure-config"
       }
       volume_mount {
         volume      = "code"
@@ -156,7 +185,7 @@ job "mercure" {
       }
       config {
         image = "mercureimaging/mercure-processor:dev"
-        ports = ["dicom"]
+        // ports = ["dicom"]
       }
 
       resources {
@@ -176,7 +205,7 @@ job "mercure" {
         mount {
           type   = "bind"
           source = "local/ssh"
-          target = "/root/.ssh"
+          target = "/home/mercure/.ssh"
         }
       }
       lifecycle {
@@ -235,6 +264,7 @@ job "mercure" {
         MERCURE_ENV = "${NOMAD_META_environment}"
         MERCURE_RUNNER = "${NOMAD_META_runner}"
         MERCURE_LOG_LEVEL = "${NOMAD_META_log_level}"
+        MERCURE_CONFIG_FOLDER = "/home/mercure/mercure-config"
       }
       resources {
         memory=128

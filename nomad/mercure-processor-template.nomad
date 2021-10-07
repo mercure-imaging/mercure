@@ -52,6 +52,7 @@ job "mercure-processor" {
     }
     task "process" {
       driver = "docker"
+      user = "{{uid}}"
       config {
         image = "{{ image }}"
       }
