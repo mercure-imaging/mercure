@@ -292,17 +292,17 @@
                 </div>
                 <div class="panel" data-content="information">
                     <div class="field">
-                        <label class="label">Contact Email</label>
+                        <label class="label">Comment</label>
                         <div class="control">
-                            <input name="contact" class="input" autocomplete='off' type="email"
-                                placeholder="Email address" value="{{rules[rule]['contact']}}">
+                            <textarea name="comment" class="textarea" autocomplete='off' rows="5"
+                                placeholder="Rule description">{{rules[rule]['comment']}}</textarea>
                         </div>
                     </div>
                     <div class="field">
-                        <label class="label">Comment</label>
+                        <label class="label">Contact</label>
                         <div class="control">
-                            <textarea name="comment" class="textarea" autocomplete='off'
-                                placeholder="Rule description">{{rules[rule]['comment']}}</textarea>
+                            <input name="contact" class="input" autocomplete='off' type="email"
+                                placeholder="Email address" value="{{rules[rule]['contact']}}">
                         </div>
                     </div>
                     <div class="field">

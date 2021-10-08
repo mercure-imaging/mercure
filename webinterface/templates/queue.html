@@ -12,9 +12,16 @@
             <div class="column">
                 <div class="container">
                     <div class="field is-grouped is-pulled-right">
-                        <button class="button is-dark is-small has-tooltip-left has-tooltip-success" onclick="update()"
-                            data-tooltip="Refresh Now" id="refreshbtn">
-                            <i id="activitybtn" class="fas fa-sync"></i></button>
+                        <p class="control" style="margin-right: 5px;">
+                            <button class="button is-small has-tooltip-left has-tooltip-success" data-tooltip="Auto Update" onclick="toggleautoupdate()" id="autoupdate">
+                                <i class="far fa-clock"></i></button>                            
+                        </p>
+                        <p class="control">
+                            <button class="button is-dark is-small has-tooltip-right has-tooltip-success" onclick="update()"
+                            data-tooltip="Refresh Now" id="refreshbtn" aria-controls="dropdown-menu">
+                                <i id="activitybtn" class="fas fa-sync"></i>      
+                            </button>
+                        </p>
                     </div>
                 </div>
             </div>
@@ -479,7 +486,7 @@
 
     $(document).ready(function () {      
 
-        $('#jobs_processing').DataTable( {
+         $('#jobs_processing').DataTable( {
             "paging":   false,
             "ordering": false,
             "info": false,
@@ -725,7 +732,6 @@
             update_jobs();
         });
        
-        /*var updateTimer = setInterval(update, 60000);*/
         update();
     });
 
@@ -776,6 +782,21 @@
     function closeJobInformation()
     {
         $("#jobinformation").removeClass("is-active");
+    }
+
+    var updateTimer;
+
+    function toggleautoupdate()
+    {
+        $("#autoupdate").toggleClass("is-dark");
+        $("#autoupdate").blur();
+
+        if ($("#autoupdate").hasClass("is-dark")) {
+            updateTimer = setInterval(update, 10000);
+        } else {
+            clearInterval(updateTimer);
+        }
+
     }
 
 </script>
