@@ -126,7 +126,7 @@ async def show_jobs_processing(request):
                 'Scope': job_scope,
             }
 
-    sorted_jobs = collections.OrderedDict(sorted(job_list.items(), key=lambda x: x[1]['Creation_Time'], reverse=False)) # type: ignore
+    sorted_jobs = collections.OrderedDict(sorted(job_list.items(), key=lambda x: (x[1]['Status'], x[1]['Creation_Time']), reverse=False)) # type: ignore
     return JSONResponse(sorted_jobs)
 
 
@@ -183,7 +183,7 @@ async def show_jobs_routing(request):
                 'Scope': job_scope
             }
 
-    sorted_jobs = collections.OrderedDict(sorted(job_list.items(), key=lambda x: x[1]['Creation_Time'], reverse=False)) # type: ignore
+    sorted_jobs = collections.OrderedDict(sorted(job_list.items(), key=lambda x: (x[1]['Status'], x[1]['Creation_Time']), reverse=False)) # type: ignore
     return JSONResponse(sorted_jobs)
 
 

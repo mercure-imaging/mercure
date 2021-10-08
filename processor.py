@@ -141,7 +141,7 @@ def search_folder(counter) -> bool:
         return False
 
     sorted_tasks = sorted(tasks)
-    # TODO: Add priority sorting. However, do not honor the priority flag for every third run
+    # TODO: Add priority sorting. However, do not honor the priority flag for, e.g., every third run
     #       so that stagnation of cases is avoided
 
     # Only process one case at a time because the processing might take a while and
