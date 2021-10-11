@@ -22,7 +22,7 @@ import common.config as config
 import common.monitor as monitor
 from common.constants import mercure_defs, mercure_names, mercure_events
 from process.status import is_ready_for_processing
-from process.process_series import process_series, move_results, trigger_notification
+from process.process_series import process_series, move_results, trigger_notification, push_input_files
 
 
 # Setup daiquiri logger
@@ -97,11 +97,10 @@ def search_folder(counter) -> bool:
             job_info = json.load(f)
 
         # Move task.json over to the output directory if it wasn't moved by the processing module
-        task_json = out_folder / "task.json"
-        if not task_json.exists():
-            shutil.copyfile(in_folder / "task.json", out_folder / "task.json")
+        push_input_files(in_folder, out_folder, False)
 
         # Patch the nomad info into the task file.
+        task_json = out_folder / "task.json"
         with task_json.open("r") as f:
             task = json.load(f)
         with task_json.open("w") as f:

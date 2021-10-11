@@ -149,7 +149,7 @@ class TaskStudy(BaseModel, Compat):
 class TaskProcessing(BaseModel, Compat):
     module_name: str
     module_config: Optional[Module]
-    settings: Dict[str, Any] = {}
+    settings: Dict[str, Any] = {}    
 
 
 class Task(BaseModel, Compat):

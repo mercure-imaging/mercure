@@ -228,6 +228,7 @@ def process_series(folder) -> None:
     finally:
         if config.get_runner() in ("docker", "systemd") and config.mercure.process_runner != "nomad":
             logger.debug("Docker processing complete.")
+            push_input_files((f_path / "in"), (f_path / "out"), False)
             move_results(folder, lock, processing_success, needs_dispatching)
             shutil.rmtree(folder, ignore_errors=True)
 
@@ -245,6 +246,16 @@ def process_series(folder) -> None:
                 move_results(folder, lock, False, False)
                 trigger_notification(task.info, mercure_events.ERROR)
     return
+
+
+def push_input_files(input_folder: Path, output_folder: Path, relay_input_images: bool):
+    task_json = output_folder / "task.json"
+    if not task_json.exists():
+        shutil.copyfile(input_folder / "task.json", output_folder / "task.json")    
+
+    if relay_input_images:
+        pass
+        # TODO: Copy all input DCMs to output folder
 
 
 def move_results(
