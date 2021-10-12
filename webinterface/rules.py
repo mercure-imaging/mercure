@@ -153,6 +153,7 @@ async def rules_edit_post(request) -> Response:
         priority=form.get("priority", "normal"),
         processing_module=form.get("processing_module", ""),
         processing_settings=new_processing_settings,
+        processing_retain_images=form.get("processing_retain_images", "False"),
         notification_webhook=form.get("notification_webhook", ""),
         notification_payload=form.get("notification_payload", ""),
         notification_trigger_reception=form.get("notification_trigger_reception", "False"),

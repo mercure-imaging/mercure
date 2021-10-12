@@ -79,6 +79,7 @@ class Rule(BaseModel, Compat):
     priority: Literal["normal", "urgent", "offpeak"] = "normal"
     processing_module: str = ""
     processing_settings: Dict[str, Any] = {}
+    processing_retain_images: Literal["True", "False"] = "False"
     notification_webhook: str = ""
     notification_payload: str = ""
     notification_trigger_reception: Literal["True", "False"] = "True"
@@ -150,6 +151,7 @@ class TaskProcessing(BaseModel, Compat):
     module_name: str
     module_config: Optional[Module]
     settings: Dict[str, Any] = {}    
+    retain_input_images: Literal["False", "True"]
 
 
 class Task(BaseModel, Compat):

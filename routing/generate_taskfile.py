@@ -94,11 +94,8 @@ def add_processing(uid: str, applied_rule: str, tags_list: Dict[str, str]) -> Op
 
         # Store in the target structure
         process_info: TaskProcessing = TaskProcessing(
-            module_name=module_name, module_config=module_config, settings=settings
+            module_name=module_name, module_config=module_config, settings=settings, retain_input_images=applied_rule_info.processing_retain_images
         )
-
-        # TODO: Probably Still incomplete, but this seems to make the current processing happy
-
         return process_info
 
     return None

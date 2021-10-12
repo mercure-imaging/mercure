@@ -22,7 +22,8 @@ import common.config as config
 import common.monitor as monitor
 from common.constants import mercure_defs, mercure_names, mercure_events
 from process.status import is_ready_for_processing
-from process.process_series import process_series, move_results, trigger_notification, push_input_files
+from process.process_series import process_series, move_results, trigger_notification, push_input_task, push_input_images
+from common.types import Task
 
 
 # Setup daiquiri logger
@@ -97,15 +98,20 @@ def search_folder(counter) -> bool:
             job_info = json.load(f)
 
         # Move task.json over to the output directory if it wasn't moved by the processing module
-        push_input_files(in_folder, out_folder, False)
+        push_input_task(in_folder, out_folder)
 
         # Patch the nomad info into the task file.
         task_json = out_folder / "task.json"
         with task_json.open("r") as f:
             task = json.load(f)
+            task_typed: Task = Task(**task)
         with task_json.open("w") as f:
             task = {**task, "nomad_info": job_info}
             json.dump(task, f)
+       
+        # Copy input images if configured in rule
+        if task_typed.process and task_typed.process.retain_input_images=="True":
+            push_input_images(in_folder, out_folder)
 
         # If the only file is task.json, the processing failed
         if [p.name for p in out_folder.rglob("*")] == ["task.json"]:

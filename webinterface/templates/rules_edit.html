@@ -200,6 +200,13 @@
                                 placeholder="Rule-specific module settings">{{processing_settings}}</textarea>
                         </div>
                     </div>
+                    <div class="field">
+                        <label class="label">Data Flow</label>
+                        <input id="processing_retain_images" type="checkbox" name="processing_retain_images"
+                            class="switch is-rounded is-dark" value="True" {% if
+                            rules[rule]['processing_retain_images']=='True' %}checked="checked" {% endif%}>
+                        <label for="processing_retain_images">Retain Input Images</label>
+                    </div>                    
                 </div>
                 <div class="panel" data-content="routing">
                     <div class="field">

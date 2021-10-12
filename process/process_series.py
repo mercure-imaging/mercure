@@ -228,7 +228,12 @@ def process_series(folder) -> None:
     finally:
         if config.get_runner() in ("docker", "systemd") and config.mercure.process_runner != "nomad":
             logger.debug("Docker processing complete.")
-            push_input_files((f_path / "in"), (f_path / "out"), False)
+            # Copy the task to the output folder (in case the module didn't move it)
+            push_input_task(f_path / "in", f_path / "out")
+            # If configured in the rule, copy the input images to the output folder
+            if task.process and task.process.retain_input_images=="True":
+                push_input_images(f_path / "in", f_path / "out")
+            # Push the results either to the success or error folder
             move_results(folder, lock, processing_success, needs_dispatching)
             shutil.rmtree(folder, ignore_errors=True)
 
@@ -248,14 +253,32 @@ def process_series(folder) -> None:
     return
 
 
-def push_input_files(input_folder: Path, output_folder: Path, relay_input_images: bool):
+def push_input_task(input_folder: Path, output_folder: Path):
     task_json = output_folder / "task.json"
     if not task_json.exists():
-        shutil.copyfile(input_folder / "task.json", output_folder / "task.json")    
+        try:
+            shutil.copyfile(input_folder / "task.json", output_folder / "task.json")    
+        except:    
+            error_msg = f"Error copying task file to outfolder {output_folder}"
+            logger.info(error_msg)
+            monitor.send_event(
+                monitor.m_events.PROCESSING, monitor.severity.ERROR, error_msg
+            )
 
-    if relay_input_images:
-        pass
-        # TODO: Copy all input DCMs to output folder
+
+def push_input_images(input_folder: Path, output_folder: Path):  
+    error_while_copying = False
+    for entry in os.scandir(input_folder):
+        if entry.name.endswith(mercure_names.DCM):
+            try:
+                shutil.copyfile(input_folder / entry.name, output_folder / entry.name)    
+            except: 
+                logger.info(f"Error copying file to outfolder {entry.name}")
+                error_while_copying = True
+    if error_while_copying:
+        monitor.send_event(
+            monitor.m_events.PROCESSING, monitor.severity.ERROR, f"Error while copying files to output folder {output_folder}"
+        )        
 
 
 def move_results(
