@@ -56,6 +56,7 @@ config_partial = {
             "priority": "normal",
             "processing_module": "test_module",
             "processing_settings": "",
+            "processing_retain_images": "False",
             "notification_webhook": "",
             "notification_payload": "",
             "notification_trigger_reception": "False",
@@ -175,6 +176,7 @@ def test_process_series_nomad(fs, mocker: MockerFixture):
                 "comment": "",
             },
             "settings": {},
+            "retain_input_images": "False"
         },
         "study": {},
         "nomad_info": {
