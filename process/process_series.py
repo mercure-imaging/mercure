@@ -223,6 +223,7 @@ def process_series(folder) -> None:
             processing_success = False
             raise Exception("Unable to determine a valid runtime for processing.")
     except Exception as e:
+        processing_success = False
         logger.error("Processing error.")
         logger.error(traceback.format_exc())
     finally:
