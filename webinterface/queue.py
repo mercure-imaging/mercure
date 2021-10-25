@@ -102,7 +102,7 @@ async def show_jobs_processing(request):
                         job_module = task.process.module_name
                     job_acc = task.info.acc
                     job_mrn = task.info.mrn
-                    if task.info.uid_type=="series":
+                    if task.info.uid_type == "series":
                         job_scope = "Series"
                     else:
                         job_scope = "Study"
@@ -114,19 +114,19 @@ async def show_jobs_processing(request):
                 job_scope = "Error"
                 job_status = "Error"
 
-            timestamp: float = entry.stat().st_mtime           
+            timestamp: float = entry.stat().st_mtime
             job_name: str = entry.name
 
             job_list[job_name] = {
-                'Creation_Time': timestamp,
-                'Module': job_module,
-                'ACC': job_acc,
-                'MRN': job_mrn,
-                'Status': job_status,
-                'Scope': job_scope,
+                "Creation_Time": timestamp,
+                "Module": job_module,
+                "ACC": job_acc,
+                "MRN": job_mrn,
+                "Status": job_status,
+                "Scope": job_scope,
             }
 
-    sorted_jobs = collections.OrderedDict(sorted(job_list.items(), key=lambda x: (x[1]['Status'], x[1]['Creation_Time']), reverse=False)) # type: ignore
+    sorted_jobs = collections.OrderedDict(sorted(job_list.items(), key=lambda x: (x[1]["Status"], x[1]["Creation_Time"]), reverse=False))  # type: ignore
     return JSONResponse(sorted_jobs)
 
 
@@ -141,15 +141,15 @@ async def show_jobs_routing(request):
     job_list = {}
     for entry in os.scandir(config.mercure.outgoing_folder):
         if entry.is_dir():
-            job_target: str = ''
-            job_acc: str = ''
-            job_mrn: str = ''
-            job_scope: str = 'Series'
-            job_status: str = 'Queued'                     
+            job_target: str = ""
+            job_acc: str = ""
+            job_mrn: str = ""
+            job_scope: str = "Series"
+            job_status: str = "Queued"
 
             processing_file = Path(entry.path) / mercure_names.PROCESSING
             if processing_file.exists():
-                job_status = 'Processing'
+                job_status = "Processing"
 
             task_file = Path(entry.path) / mercure_names.TASKFILE
             try:
@@ -159,31 +159,31 @@ async def show_jobs_routing(request):
                         job_target = task.dispatch.target_name
                     job_acc = task.info.acc
                     job_mrn = task.info.mrn
-                    if task.info.uid_type=="series":
-                        job_scope = 'Series'
+                    if task.info.uid_type == "series":
+                        job_scope = "Series"
                     else:
-                        job_scope = 'Study'
+                        job_scope = "Study"
             except Exception as e:
                 logger.exception(e)
-                job_target = 'Error'
-                job_acc = 'Error'
-                job_mrn = 'Error'
-                job_scope = 'Error'
-                job_status = 'Error'                
+                job_target = "Error"
+                job_acc = "Error"
+                job_mrn = "Error"
+                job_scope = "Error"
+                job_status = "Error"
 
-            timestamp: float = entry.stat().st_mtime           
+            timestamp: float = entry.stat().st_mtime
             job_name: str = entry.name
 
             job_list[job_name] = {
-                'Creation_Time': timestamp,
-                'Target': job_target,
-                'ACC': job_acc,
-                'MRN': job_mrn,
-                'Status': job_status,
-                'Scope': job_scope
+                "Creation_Time": timestamp,
+                "Target": job_target,
+                "ACC": job_acc,
+                "MRN": job_mrn,
+                "Status": job_status,
+                "Scope": job_scope,
             }
 
-    sorted_jobs = collections.OrderedDict(sorted(job_list.items(), key=lambda x: (x[1]['Status'], x[1]['Creation_Time']), reverse=False)) # type: ignore
+    sorted_jobs = collections.OrderedDict(sorted(job_list.items(), key=lambda x: (x[1]["Status"], x[1]["Creation_Time"]), reverse=False))  # type: ignore
     return JSONResponse(sorted_jobs)
 
 
@@ -257,7 +257,41 @@ async def show_jobs_fail(request):
         return PlainTextResponse("Configuration is being updated. Try again in a minute.")
 
     job_list: Dict = {}
-    # TODO
+
+    for entry in os.scandir(config.mercure.error_folder):
+        if entry.is_dir():
+            job_name: str = entry.name
+            job_acc: str = ""
+            job_mrn: str = ""
+            job_scope: str = "Series"
+            job_failstage: str = "Unknown"
+
+            task_file = Path(entry.path) / mercure_names.TASKFILE
+            if not task_file.exists():
+                task_file = Path(entry.path) / "in" / mercure_names.TASKFILE
+
+            try:
+                with open(task_file, "r") as f:
+                    task: Task = Task(**json.load(f))
+                    job_acc = task.info.acc
+                    job_mrn = task.info.mrn
+                    if task.info.uid_type == "series":
+                        job_scope = "Series"
+                    else:
+                        job_scope = "Study"
+            except Exception as e:
+                logger.exception(e)
+                job_acc = "Error"
+                job_mrn = "Error"
+                job_scope = "Error"
+
+            job_list[job_name] = {
+                "ACC": job_acc,
+                "MRN": job_mrn,
+                "Scope": job_scope,
+                "FailStage": job_failstage,
+            }
+
     return JSONResponse(job_list)
 
 
@@ -372,19 +406,21 @@ async def get_jobinfo(request):
     job_id = request.path_params["id"]
     job_pathstr: str = ""
 
-    if job_category == 'processing':
+    if job_category == "processing":
         job_pathstr = config.mercure.processing_folder + "/" + job_id
-    elif job_category == 'routing':
+    elif job_category == "routing":
         job_pathstr = config.mercure.outgoing_folder + "/" + job_id
-    elif job_category == 'studies':
+    elif job_category == "studies":
         job_pathstr = config.mercure.studies_folder + "/" + job_id
-    elif job_category == 'failure':
-        job_pathstr = config.mercure.studies_folder + "/" + job_id
+    elif job_category == "failure":
+        job_pathstr = config.mercure.error_folder + "/" + job_id
     else:
         return PlainTextResponse("Invalid request")
 
-    job_pathstr += "/task.json"
-    job_path = Path(job_pathstr)
+    job_path = Path(job_pathstr + "/task.json")
+
+    if (job_category == "failure") and (not job_path.exists()):
+        job_path = Path(job_pathstr + "/in/task.json")
 
     if job_path.exists():
         with open(job_path, "r") as json_file:

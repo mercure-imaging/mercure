@@ -185,7 +185,7 @@
                 <div class="panel" data-content="archive">
                     <div class="field has-addons" style="margin-top: 30px; margin-bottom: 30px;">
                         <div class="control is-expanded">
-                            <input name="job_archive_search" id="job_archive_search" pattern="[^{}\x22]+" onkeyup="this.value = this.value.replace(/[{}\x22\n]/g, '')"
+                            <input name="job_archive_search" id="job_archive_search" pattern="[-_A-Za-z0-9]+" onkeyup="this.value = this.value.replace(/[{}\x22\n]/g, '')"
                             class="input series_completion_fix" autocomplete='off' type="text" placeholder="Find job by ACC or MRN">
                         </div>
                         <div class="control">
@@ -358,7 +358,7 @@
                     $('#erroralert').hide();
                     var jobtable = $('#jobs_fail').DataTable();
                     Object.keys(data).forEach(function (key) {
-                        //jobtable.row.add( [ data[key]["UID"], data[key]["Rule"], data[key]["ACC"], data[key]["MRN"], data[key]["Completion"], data[key]["Created"], data[key]["Series"] ] );
+                        jobtable.row.add( [ key, data[key]["ACC"], data[key]["MRN"], data[key]["Scope"], data[key]["FailStage"] ] );
                     })
                     jobtable.draw();
                 },
@@ -663,7 +663,8 @@
                     text: '<i class="far fa-question-circle"></i>',
                     titleAttr: 'Job information',
                     action: function ( e, dt, node, config ) {
-                        showJobInformation("","failure");
+                        var jid = $('#jobs_fail').DataTable().rows( { selected: true } ).data()[0][0];
+                        showJobInformation(jid,"failure");
                     }
                 },
                 {
