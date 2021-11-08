@@ -6,9 +6,8 @@ Requires=network.target postgresql.service
 
 [Service]
 Type=simple
-WorkingDirectory=/home/mercure/mercure
-ExecStart=/home/mercure/mercure-env/bin/python /home/mercure/mercure/bookkeeper.py
-
+WorkingDirectory=/opt/mercure/app
+ExecStart=/home/mercure/mercure-env/bin/python /opt/mercure/app/bookkeeper.py
 Restart=on-failure
 RestartSec=3
 

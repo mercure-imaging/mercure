@@ -1,8 +1,0 @@
-#!/bin/bash
-incoming=/home/mercure/testing/incoming
-binary=/home/mercure/mercure/bin/getdcmtags
-bookkeeper=0.0.0.0:8080
-testport=4242
-
-echo "Starting test DICOM receiver..."
-storescp --fork --promiscuous -od "$incoming" +uf -xcr "$binary $incoming/#f $bookkeeper" $testport

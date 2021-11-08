@@ -26,7 +26,7 @@ logger = daiquiri.getLogger("config")
 configuration_timestamp: float = 0
 configuration_filename = (
     os.getenv("MERCURE_CONFIG_FOLDER")
-    or os.path.realpath(os.path.dirname(os.path.realpath(__file__)) + "/../configuration")
+    or "/opt/mercure/config"
 ) + "/mercure.json"
 
 mercure_defaults = {

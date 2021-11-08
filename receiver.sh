@@ -7,7 +7,7 @@ echo ""
 
 binary=bin/getdcmtags
 
-config_folder="${MERCURE_CONFIG_FOLDER:-./configuration}"
+config_folder="${MERCURE_CONFIG_FOLDER:-/opt/mercure/config}"
 config="${config_folder}/mercure.json"
 echo "Configuration folder: ${config_folder}"
 echo "Configuration file: ${config}"

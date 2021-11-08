@@ -6,9 +6,8 @@ Requires=network.target
 
 [Service]
 Type=simple
-WorkingDirectory=/home/mercure/mercure
-ExecStart=/home/mercure/mercure-env/bin/python /home/mercure/mercure/processor.py
-
+WorkingDirectory=/opt/mercure/app
+ExecStart=/home/mercure/mercure-env/bin/python /opt/mercure/app/processor.py
 Restart=on-failure
 RestartSec=3
 

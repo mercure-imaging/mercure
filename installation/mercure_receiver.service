@@ -6,9 +6,8 @@ Requires=network.target
 
 [Service]
 Type=simple
-WorkingDirectory=/home/mercure/mercure
-ExecStart=/home/mercure/mercure/receiver.sh
-
+WorkingDirectory=/opt/mercure/app
+ExecStart=/opt/mercure/app/receiver.sh
 Restart=on-failure
 RestartSec=3
 

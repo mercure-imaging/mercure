@@ -75,6 +75,7 @@ logger = daiquiri.getLogger("webgui")
 
 try:
     nomad_connection = nomad.Nomad(host="172.17.0.1", timeout=5)
+    # TODO: Print message only if connection to Nomad successful
     logger.info("Connected to Nomad")
 except:
     nomad_connection = None
@@ -110,7 +111,7 @@ class SessionAuthBackend(AuthenticationBackend):
 webgui_config = Config(
     (
         os.getenv("MERCURE_CONFIG_FOLDER")
-        or os.path.realpath(os.path.dirname(os.path.realpath(__file__)) + "/configuration")
+        or "/opt/mercure/config"
     )
     + "/webgui.env"
 )

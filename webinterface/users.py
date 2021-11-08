@@ -51,7 +51,7 @@ logging.getLogger("passlib").setLevel(logging.INFO)
 users_timestamp: float = 0.0
 users_filename = (
     os.getenv("MERCURE_CONFIG_FOLDER")
-    or os.path.realpath(os.path.dirname(os.path.realpath(__file__)) + "/../configuration")
+    or "/opt/mercure/config"
 ) + "/users.json"
 
 users_list: Dict[str, User] = {}

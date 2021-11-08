@@ -46,7 +46,14 @@ daiquiri.setup(
 logger = daiquiri.getLogger("bookkeeper")
 
 
-bookkeeper_config = Config("configuration/bookkeeper.env")
+bookkeeper_config = Config(
+    (
+        os.getenv("MERCURE_CONFIG_FOLDER")
+        or "/opt/mercure/config"
+    )
+    + "/bookkeeper.env"
+)    
+
 BOOKKEEPER_PORT = bookkeeper_config("PORT", cast=int, default=8080)
 BOOKKEEPER_HOST = bookkeeper_config("HOST", default="0.0.0.0")
 DATABASE_URL = bookkeeper_config("DATABASE_URL", default="postgresql://mercure@localhost")

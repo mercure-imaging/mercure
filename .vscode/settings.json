@@ -2,7 +2,11 @@
     "python.linting.enabled": true,
     "html.format.enable": false,
     "cSpell.words": [
-        "starlette"
+        "mercure",
+        "starlette",
+        "distro",
+        "uvicorn",
+        "dicom"
     ],
     "python.formatting.blackArgs": [
         "--line-length=120  "
