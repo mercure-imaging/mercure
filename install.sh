@@ -134,7 +134,7 @@ install_app_files() {
 }
 
 install_packages() {
-  sudo apt-get install -y build-essential wget git dcmtk jq inetutils-ping sshpass install postgresql postgresql-contrib
+  sudo apt-get install -y build-essential wget git dcmtk jq inetutils-ping sshpass postgresql postgresql-contrib
 }
 
 install_dependencies() {
