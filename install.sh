@@ -159,6 +159,7 @@ install_services() {
   echo "Installing services..."
   sudo cp "$MERCURE_SRC"/installation/*.service /etc/systemd/system
   sudo systemctl enable mercure_bookkeeper.service mercure_cleaner.service mercure_dispatcher.service mercure_receiver.service mercure_router.service mercure_ui.service mercure_processor.service
+  sudo systemctl start mercure_bookkeeper.service mercure_cleaner.service mercure_dispatcher.service mercure_receiver.service mercure_router.service mercure_ui.service mercure_processor.service
 }
 
 systemd_install () {
@@ -180,9 +181,20 @@ docker_install () {
 
 INSTALL_TYPE="${1:-docker}"
 
+read -p "Install with $INSTALL_TYPE (y/n)? " ANS
+if [ "$ANS" = "y" ]; then
+  continue
+else
+  echo "Not installing."
+  exit 0
+fi
+
+
 if [ $INSTALL_TYPE = "systemd" ]; then 
   systemd_install
 elif [ $INSTALL_TYPE = "docker" ]; then
   docker_install
 fi
+
+
 echo "Installation complete"
