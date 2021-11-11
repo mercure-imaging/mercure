@@ -158,7 +158,7 @@ EOM
 install_services() {
   echo "Installing services..."
   sudo cp "$MERCURE_SRC"/installation/*.service /etc/systemd/system
-  sudo systemctl enable mercure_bookkeeper.service mercure_cleaner.service mercure_dispatcher.service mercure_receiver.service mercure_router.service mercure_ui.service
+  sudo systemctl enable mercure_bookkeeper.service mercure_cleaner.service mercure_dispatcher.service mercure_receiver.service mercure_router.service mercure_ui.service mercure_processor.service
 }
 
 systemd_install () {
