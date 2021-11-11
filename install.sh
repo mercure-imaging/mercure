@@ -91,7 +91,7 @@ install_configuration () {
     fi
     sed -i -e "s/PutSomethingRandomHere/$SECRET/" "$CONFIG_PATH"/webgui.env
     sudo chown -R $OWNER:$OWNER "$CONFIG_PATH"
-    # sudo chmod -R a+r "$CONFIG_PATH"
+    sudo chmod -R a-r "$CONFIG_PATH"
   fi
 }
 
@@ -114,12 +114,11 @@ install_docker_dev () {
 
 install_conda() {
   if [ ! -x "$(command -v conda)" ]; then # Can't find conda in PATH
-    if [ -e "/opt/miniconda" ]; then
-      PATH="/opt/miniconda/bin:$PATH"
-    else 
+    if [ ! -e "/opt/miniconda" ]; then
       wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O "/tmp/miniconda.sh"
       sudo bash /tmp/miniconda.sh -b -p /opt/miniconda
-    fi 
+    fi
+    PATH="/opt/miniconda/bin:$PATH"
   fi
 }
 
@@ -134,7 +133,7 @@ install_app_files() {
 }
 
 install_packages() {
-  sudo apt-get install -y build-essential wget git dcmtk jq inetutils-ping sshpass install postgresql postgresql-contrib
+  sudo apt-get install -y build-essential wget git dcmtk jq inetutils-ping sshpass postgresql postgresql-contrib
 }
 
 install_dependencies() {
