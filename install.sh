@@ -183,7 +183,7 @@ INSTALL_TYPE="${1:-docker}"
 
 read -p "Install with $INSTALL_TYPE (y/n)? " ANS
 if [ "$ANS" = "y" ]; then
-  continue
+  echo "Installing."
 else
   echo "Not installing."
   exit 0
