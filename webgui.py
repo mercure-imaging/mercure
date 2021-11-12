@@ -233,7 +233,7 @@ async def show_log(request) -> Response:
             end_date_cmd = f"--until {end_timestamp}"
 
         run_result = await async_run(
-            f"journalctl -n 1000 -u "
+            f"sudo journalctl -n 1000 -u "
             f'{services.services_list[requested_service]["systemd_service"]} '
             f"{start_date_cmd} {end_date_cmd}"
         )
@@ -569,7 +569,7 @@ async def control_services(request) -> Response:
                 continue
 
             if services.services_list[service].get("systemd_service", ""):
-                command = "systemctl " + action + " " + services.services_list[service]["systemd_service"]
+                command = "sudo systemctl " + action + " " + services.services_list[service]["systemd_service"]
                 logger.info(f"Executing: {command}")
                 await async_run(command)
 
