@@ -237,7 +237,7 @@ async def show_log(request) -> Response:
             f'{services.services_list[requested_service]["systemd_service"]} '
             f"{start_date_cmd} {end_date_cmd}"
         )
-        return_code = run_result[0] or -1
+        return_code = run_result[0]
         raw_logs = run_result[1]
     elif runtime == "docker":
         client = docker.from_env()
