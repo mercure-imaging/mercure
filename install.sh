@@ -140,7 +140,7 @@ install_app_files() {
     sudo find "$MERCURE_SRC" -not -path \*/.\* -type f -exec cp -- {} "$MERCURE_BASE"/app/{} \;
  
     if [[ $(lsb_release -rs) == "20.04" ]]; then 
-      sudo cp -R $MERCURE_SRC/bin/ubuntu20.04/ "$MERCURE_BASE"/app/bin
+      sudo cp $MERCURE_SRC/bin/ubuntu20.04/getdcmtags "$MERCURE_BASE"/app/bin/getdcmtags
     fi 
  
     sudo chown -R $OWNER:$OWNER "$MERCURE_BASE/app"
