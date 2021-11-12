@@ -1,6 +1,6 @@
 {
     "appliance_name"          : "master",
-    "port"                    :      104,
+    "port"                    :     4242,
     "incoming_folder"         : "/opt/mercure/data/incoming",
     "studies_folder"          : "/opt/mercure/data/studies",
     "outgoing_folder"         : "/opt/mercure/data/outgoing",
