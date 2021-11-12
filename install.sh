@@ -45,6 +45,11 @@ echo "Config folder: $CONFIG_PATH"
 echo "Database folder: $DB_PATH"
 echo "Mercure source directory: $(readlink -f $MERCURE_SRC)"
 
+create_user () {
+  sudo useradd -ms /bin/bash mercure
+  OWNER=mercure
+}
+
 create_folder () {
   if [[ ! -e $1 ]]; then
     echo "Creating $1"
@@ -163,6 +168,7 @@ install_services() {
 }
 
 systemd_install () {
+  create_user
   create_folders
   install_configuration
   install_packages

@@ -10,6 +10,7 @@ WorkingDirectory=/opt/mercure/app
 ExecStart=/opt/mercure/env/bin/python /opt/mercure/app/bookkeeper.py
 Restart=on-failure
 RestartSec=3
+User=mercure
 
 [Install]
 WantedBy=multi-user.target
