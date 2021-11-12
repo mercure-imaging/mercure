@@ -46,7 +46,7 @@ echo "Database folder: $DB_PATH"
 echo "Mercure source directory: $(readlink -f $MERCURE_SRC)"
 
 create_user () {
-  sudo useradd -ms /bin/bash mercure
+  id -u mercure &>/dev/null || sudo useradd -ms /bin/bash mercure
   OWNER=mercure
 }
 
@@ -81,6 +81,7 @@ create_folders () {
 
 install_configuration () {
   if [ ! -f "$CONFIG_PATH"/mercure.json ]; then
+    sudo chown $USER "$CONFIG_PATH" 
     echo "Copying configuration files..."
     cp "$MERCURE_SRC"/configuration/default_bookkeeper.env "$CONFIG_PATH"/bookkeeper.env
     cp "$MERCURE_SRC"/configuration/default_mercure.json "$CONFIG_PATH"/mercure.json
@@ -96,7 +97,8 @@ install_configuration () {
     fi
     sed -i -e "s/PutSomethingRandomHere/$SECRET/" "$CONFIG_PATH"/webgui.env
     sudo chown -R $OWNER:$OWNER "$CONFIG_PATH"
-    sudo chmod -R a-r "$CONFIG_PATH"
+    sudo chmod -R o-r "$CONFIG_PATH"
+    sudo chmod a+xr "$CONFIG_PATH"
   fi
 }
 
@@ -134,6 +136,7 @@ install_app_files() {
     sudo mkdir "$MERCURE_BASE"/app
     sudo find "$MERCURE_SRC" -not -path \*/.\* -type d -exec mkdir -p -- "$MERCURE_BASE"/app/{} \;
     sudo find "$MERCURE_SRC" -not -path \*/.\* -type f -exec cp -- {} "$MERCURE_BASE"/app/{} \;
+    sudo chown -R $OWNER:$OWNER "$MERCURE_BASE/app"
   fi
 }
 
@@ -145,9 +148,11 @@ install_dependencies() {
   echo "Installing Python runtime environment..."
   install_conda
   if [ ! -e "$MERCURE_BASE/env" ]; then
+    sudo mkdir "$MERCURE_BASE/env" && sudo chown $USER "$MERCURE_BASE/env"
     conda create -y -q --prefix "$MERCURE_BASE/env" python=3.6
     echo "Installing required Python packages..."
-    $MERCURE_BASE/env/bin/pip install --quiet -r "$MERCURE_BASE/app/requirements.txt"
+    sudo $MERCURE_BASE/env/bin/pip install --quiet -r "$MERCURE_BASE/app/requirements.txt"
+    sudo chown -R $OWNER:$OWNER "$MERCURE_BASE/env"
   fi
 }
 
