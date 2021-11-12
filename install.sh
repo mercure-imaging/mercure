@@ -34,7 +34,9 @@ DB_PATH=$MERCURE_BASE/db
 MERCURE_SRC=.
 
 if [ -f "$CONFIG_PATH"/db.env ]; then 
+  sudo chown $USER "$CONFIG_PATH"/db.env 
   source "$CONFIG_PATH"/db.env # Don't accidentally generate a new database password
+  sudo chown $OWNER "$CONFIG_PATH"/db.env 
   DB_PWD=$POSTGRES_PASSWORD
 fi
 
@@ -180,6 +182,7 @@ systemd_install () {
   install_app_files
   install_dependencies
   install_postgres
+  sudo chown -R mercure:mercure "$MERCURE_BASE"
   install_services
 }
 
