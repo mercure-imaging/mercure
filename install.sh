@@ -178,6 +178,7 @@ systemd_install () {
   create_user
   create_folders
   install_configuration
+  sudo cp "$MERCURE_SRC"/installation/mercure-sudoer /etc/sudoers.d/mercure
   install_packages
   install_app_files
   install_dependencies

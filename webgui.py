@@ -228,9 +228,9 @@ async def show_log(request) -> Response:
         start_date_cmd = ""
         end_date_cmd = ""
         if start_timestamp:
-            start_date_cmd = f"--since {start_timestamp}"
+            start_date_cmd = f"--since \"{start_timestamp}\""
         if end_timestamp:
-            end_date_cmd = f"--until {end_timestamp}"
+            end_date_cmd = f"--until \"{end_timestamp}\""
 
         run_result = await async_run(
             f"sudo journalctl -n 1000 -u "
@@ -272,6 +272,7 @@ async def show_log(request) -> Response:
         "start_date": start_date,
         "start_time": start_time,
         "end_date": end_date,
+        "end_time": end_time,
         "end_time_available": runtime == "systemd",
         "start_time_available": runtime in ("docker", "systemd"),
     }
