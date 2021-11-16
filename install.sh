@@ -105,6 +105,32 @@ install_configuration () {
 }
 
 install_docker () {
+  echo "## Installing Docker..."
+  sudo apt-get update
+  sudo apt-get remove docker docker-engine docker.io || true
+  echo '* libraries/restart-without-asking boolean true' | sudo debconf-set-selections
+  sudo apt-get install apt-transport-https ca-certificates curl software-properties-common -y
+  sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg |  sudo apt-key add -
+  sudo apt-key fingerprint 0EBFCD88
+  sudo add-apt-repository \
+      "deb [arch=amd64] https://download.docker.com/linux/ubuntu \
+      $(lsb_release -cs) \
+      stable"
+  sudo apt-get update
+  sudo apt-get install -y docker-ce
+  # Restart docker to make sure we get the latest version of the daemon if there is an upgrade
+  sudo service docker restart
+  # Make sure we can actually use docker as the vagrant user
+  sudo usermod -a -G docker $OWNER
+  sudo docker --version
+
+  echo "## Installing Docker-Compose..."
+  sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+  sudo chmod +x /usr/local/bin/docker-compose
+  sudo docker-compose --version
+}
+
+setup_docker () {
   if [ ! -f "$MERCURE_BASE"/docker-compose.yml ]; then
     echo "## Copying docker-compose.yml..."
     cp $MERCURE_SRC/docker/docker-compose.yml $MERCURE_BASE
@@ -112,7 +138,7 @@ install_docker () {
   fi
 }
 
-install_docker_dev () {
+setup_docker_dev () {
   if [ ! -f "$MERCURE_BASE"/docker-compose.override.yml ]; then
     echo "## Copying docker-compose.override.yml..."
     cp $MERCURE_SRC/docker/docker-compose.override.yml $MERCURE_BASE
@@ -188,6 +214,7 @@ systemd_install () {
   install_configuration
   sudo cp "$MERCURE_SRC"/installation/mercure-sudoer /etc/sudoers.d/mercure
   install_packages
+  install_docker
   install_app_files
   install_dependencies
   install_postgres
@@ -200,7 +227,8 @@ docker_install () {
   create_folders
   install_configuration
   install_docker
-  install_docker_dev
+  setup_docker
+  setup_docker_dev
 }
 
 INSTALL_TYPE="${1:-docker}"
