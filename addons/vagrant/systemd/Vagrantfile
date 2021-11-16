@@ -1,0 +1,34 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+$script = <<-SCRIPT
+echo Cloning mercure and calling install script...
+cd ~
+git clone https://github.com/mercure-imaging/mercure.git
+cd mercure
+./install.sh systemd y
+SCRIPT
+
+Vagrant.configure(2) do |config|
+  config.vm.box = "bento/ubuntu-18.04" # 18.04 LTS
+  config.vm.network "forwarded_port", guest: 8000, host: 8000, auto_correct: true, host_ip: "127.0.0.1"
+  config.vm.network "forwarded_port", guest: 11112, host: 11112, auto_correct: true, host_ip: "127.0.0.1"
+  config.vm.provision "shell", inline: $script
+
+  # Increase memory for Parallels Desktop
+  config.vm.provider "parallels" do |p, o|
+    p.memory = "4096"
+  end
+
+  # Increase memory for Virtualbox
+  config.vm.provider "virtualbox" do |vb|
+        vb.memory = "4096"
+  end
+
+  # Increase memory for VMware
+  ["vmware_fusion", "vmware_workstation"].each do |p|
+    config.vm.provider p do |v|
+      v.vmx["memsize"] = "4096"
+    end
+  end
+end
