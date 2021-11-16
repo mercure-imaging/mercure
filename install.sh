@@ -148,6 +148,7 @@ install_app_files() {
 }
 
 install_packages() {
+  sudo apt-get update
   sudo apt-get install -y build-essential wget git dcmtk jq inetutils-ping sshpass postgresql postgresql-contrib
 }
 
@@ -209,12 +210,13 @@ else
   exit 0
 fi
 
-
 if [ $INSTALL_TYPE = "systemd" ]; then 
   systemd_install
 elif [ $INSTALL_TYPE = "docker" ]; then
   docker_install
+else
+  echo "Error: Invalid option $INSTALL_TYPE"
+  exit 0
 fi
-
 
 echo "Installation complete"
