@@ -158,7 +158,7 @@ install_dependencies() {
   echo "## Installing Python runtime environment..."
   if [ ! -e "$MERCURE_BASE/env" ]; then
     sudo mkdir "$MERCURE_BASE/env" && sudo chown $USER "$MERCURE_BASE/env"
-    conda create -y -q --prefix "$MERCURE_BASE/env" python=3.6
+    sudo /opt/miniconda/bin/conda create -y -q --prefix "$MERCURE_BASE/env" python=3.6
     echo "## Installing required Python packages..."
     sudo $MERCURE_BASE/env/bin/pip install --quiet -r "$MERCURE_BASE/app/requirements.txt"
     sudo chown -R $OWNER:$OWNER "$MERCURE_BASE/env"
