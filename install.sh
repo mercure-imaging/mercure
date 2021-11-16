@@ -204,13 +204,18 @@ docker_install () {
 }
 
 INSTALL_TYPE="${1:-docker}"
+FORCE_INSTALL="${2:-n}"
 
-read -p "Install with $INSTALL_TYPE (y/n)? " ANS
-if [ "$ANS" = "y" ]; then
-  echo "Installing."
+if [ $FORCE_INSTALL = "y" ]; then
+  echo "Forcing installation"
 else
-  echo "Not installing."
-  exit 0
+  read -p "Install with $INSTALL_TYPE (y/n)? " ANS
+  if [ "$ANS" = "y" ]; then
+    echo "Installing"
+  else
+    echo "Not installing"
+    exit 0
+  fi
 fi
 
 if [ $INSTALL_TYPE = "systemd" ]; then 
