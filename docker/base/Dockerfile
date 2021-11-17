@@ -13,13 +13,14 @@ RUN chown -R mercure /opt/mercure/app/configuration
 # Make sure we can definitely read everything
 RUN chmod -R o+rx /opt/mercure
 WORKDIR /opt/mercure/app
+# Install the Python environment and rename the template configuration files
 RUN /opt/mercure/app/installation/install-env.sh
 # This fixes the issue that every code update rebuilds Conda
 COPY ./ /opt/mercure/app/
 RUN chmod -R o+rx /opt/mercure/app
 
 # The configuration and data folders is probably the only thing that mercure ACTUALLY needs to write to
-RUN mkdir /opt/mercure/config && chown -R mercure /opt/mercure/config
+RUN chown -R mercure /opt/mercure/config
 RUN mkdir -p /opt/mercure/data/incoming \
           /opt/mercure/data/studies \
           /opt/mercure/data/outgoing \
