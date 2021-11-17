@@ -16,6 +16,7 @@ x-volumes-docker: &volumes-docker
 
 services:
   ui:
+    user: "mercure:${GID}"
     depends_on:
       db:
         condition: service_healthy

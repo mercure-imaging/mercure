@@ -147,6 +147,15 @@ setup_docker_dev () {
   fi
 }
 
+build_docker () {
+  echo "## Building mercure docker containers..."  
+  sudo $MERCURE_SRC/build-docker.sh
+}
+
+start_docker () {
+  GID=$(getent group docker | cut -d: -f3) docker-compose up -d
+}
+
 install_app_files() {
   if [ ! -e "$MERCURE_BASE"/app ]; then
     echo "## Installing app files..."
@@ -227,8 +236,10 @@ docker_install () {
   create_folders
   install_configuration
   install_docker
+  build_docker
   setup_docker
-  setup_docker_dev
+  #setup_docker_dev
+  start_docker
 }
 
 INSTALL_TYPE="${1:-docker}"
