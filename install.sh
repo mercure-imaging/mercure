@@ -153,6 +153,8 @@ build_docker () {
 }
 
 start_docker () {
+  echo "## Starting docker compose..."  
+  cd /opt/mercure
   GID=$(getent group docker | cut -d: -f3) docker-compose up -d
 }
 
