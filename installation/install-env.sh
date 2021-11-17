@@ -6,12 +6,12 @@ MERCURE_BASE=/opt/mercure
 
 echo "Installing Python runtime environment..."
 wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O "/tmp/miniconda.sh"
-sudo bash /tmp/miniconda.sh -b -p /opt/miniconda
+bash /tmp/miniconda.sh -b -p /opt/miniconda
 PATH="/opt/miniconda/bin:$PATH"
-sudo /opt/miniconda/bin/conda create -y -q --prefix "$MERCURE_BASE/env" python=3.6
+/opt/miniconda/bin/conda create -y -q --prefix "$MERCURE_BASE/env" python=3.6
 
 echo "Installing required Python packages..."
-sudo $MERCURE_BASE/env/bin/pip install --quiet -r "$MERCURE_BASE/app/requirements.txt"
+$MERCURE_BASE/env/bin/pip install --quiet -r "$MERCURE_BASE/app/requirements.txt"
 
 echo "Creating default configuration files..."
 mkdir $MERCURE_BASE/config
