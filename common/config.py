@@ -31,14 +31,14 @@ configuration_filename = (
 
 mercure_defaults = {
     "appliance_name": "master",
-    "port": 104,
-    "incoming_folder": "./incoming",
-    "studies_folder": "./studies",
-    "outgoing_folder": "./outgoing",
-    "success_folder": "./success",
-    "error_folder": "./error",
-    "discard_folder": "./discard",
-    "processing_folder": "./processing",
+    "port": 11112,
+    "incoming_folder": "/opt/mercure/data/incoming",
+    "studies_folder": "/opt/mercure/data/studies",
+    "outgoing_folder": "/opt/mercure/data/outgoing",
+    "success_folder": "/opt/mercure/data/success",
+    "error_folder": "/opt/mercure/data/error",
+    "discard_folder": "/opt/mercure/data/discard",
+    "processing_folder": "/opt/mercure/data/processing",
     "router_scan_interval": 1,  # in seconds
     "dispatcher_scan_interval": 1,  # in seconds
     "cleaner_scan_interval": 60,  # in seconds

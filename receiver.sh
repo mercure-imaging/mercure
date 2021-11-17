@@ -40,7 +40,7 @@ fi
 if [ $port = "null" ]
 then
     echo "Port information is missing. Using default value"
-    port=104
+    port=11112
 fi
 echo "Port: $port"
 
