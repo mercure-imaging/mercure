@@ -3,19 +3,19 @@ x-env: &env
   environment:
     MERCURE_RUNNER: docker
     MERCURE_ENV: DEV
-    MERCURE_CONFIG_FOLDER: /home/mercure/config
+    MERCURE_CONFIG_FOLDER: /opt/mercure/config
 
 x-volumes: &volumes
   volumes:
-    - code:/home/mercure/mercure
-    - config:/home/mercure/config
-    - data:/home/mercure/mercure-data
+    - code:/opt/mercure/app
+    - config:/opt/mercure/config
+    - data:/opt/mercure/data
 
 x-volumes-docker: &volumes-docker
   volumes:
-    - code:/home/mercure/mercure
-    - config:/home/mercure/config
-    - data:/home/mercure/mercure-data
+    - code:/opt/mercure/app
+    - config:/opt/mercure/config
+    - data:/opt/mercure/data
     - /var/run/docker.sock:/var/run/docker.sock
 
 services:
@@ -23,6 +23,7 @@ services:
     image: mercureimaging/mercure-receiver:dev
     <<: *env
     <<: *volumes
+
   ui:
     image: mercureimaging/mercure-ui:dev
     <<: *env
@@ -60,6 +61,7 @@ volumes:
       type: 'none'
       o: 'bind'
       device: '/opt/mercure/db'
+      
   code:
     driver: local
     driver_opts:

@@ -35,24 +35,20 @@ job "mercure-ui" {
       }
       volume_mount {
         volume      = "code"
-        destination = "/home/mercure/mercure"
+        destination = "/opt/mercure/app"
       }
-
       volume_mount {
         volume      = "data"
-        destination = "/home/mercure/mercure-data"
+        destination = "/opt/mercure/data"
       }
-
       volume_mount {
         volume      = "config"
-        destination = "/home/mercure/mercure-config"
+        destination = "/opt/mercure/config"
       }
-
       config {
         image = "mercureimaging/mercure-ui:dev"
         ports = ["http"]
       }
-
       resources {
         memory=128
       }

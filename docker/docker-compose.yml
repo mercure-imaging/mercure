@@ -5,13 +5,13 @@ x-env: &env
 
 x-volumes: &volumes
   volumes:
-    - config:/home/mercure/mercure/configuration
-    - data:/home/mercure/mercure-data
+    - config:/opt/mercure/config
+    - data:/opt/mercure/data
 
 x-volumes-docker: &volumes-docker
   volumes:
-    - config:/home/mercure/mercure/configuration
-    - data:/home/mercure/mercure-data
+    - config:/opt/mercure/config
+    - data:/opt/mercure/data
     - /var/run/docker.sock:/var/run/docker.sock
 
 services:

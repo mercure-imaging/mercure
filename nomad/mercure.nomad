@@ -50,30 +50,26 @@ job "mercure" {
         to = 22
       }
     }
-
     task "receiver" {
       driver = "docker"
-
       env {
         MERCURE_ENV = "${NOMAD_META_environment}"
         MERCURE_RUNNER = "${NOMAD_META_runner}"
         MERCURE_LOG_LEVEL = "${NOMAD_META_log_level}"
-        MERCURE_CONFIG_FOLDER = "/home/mercure/mercure-config"
+        MERCURE_CONFIG_FOLDER = "/opt/mercure/config"
       }
-
       volume_mount {
         volume      = "config"
-        destination = "/home/mercure/mercure-config"
+        destination = "/opt/mercure/config"
       }
       volume_mount {
         volume      = "data"
-        destination = "/home/mercure/mercure-data"
+        destination = "/opt/mercure/data"
       }
       config {
         image = "mercureimaging/mercure-receiver:latest"
         ports = ["dicom"]
       }
-
       resources {
         memory=128
       }
@@ -84,51 +80,47 @@ job "mercure" {
         MERCURE_ENV = "${NOMAD_META_environment}"
         MERCURE_RUNNER = "${NOMAD_META_runner}"
         MERCURE_LOG_LEVEL = "${NOMAD_META_log_level}"
-        MERCURE_CONFIG_FOLDER = "/home/mercure/mercure-config"
+        MERCURE_CONFIG_FOLDER = "/opt/mercure/config"
       }
       volume_mount {
         volume      = "code"
-        destination = "/home/mercure/mercure"
+        destination = "/opt/mercure/app"
       }
       volume_mount {
         volume      = "config"
-        destination = "/home/mercure/mercure-config"
+        destination = "/opt/mercure/config"
       }
       volume_mount {
         volume      = "data"
-        destination = "/home/mercure/mercure-data"
+        destination = "/opt/mercure/data"
       }
       config {
         image = "mercureimaging/mercure-cleaner:latest"
-        // ports = ["dicom"]
       }
     }
-
     task "dispatcher" {
       driver = "docker"
       env {
         MERCURE_ENV = "${NOMAD_META_environment}"
         MERCURE_RUNNER = "${NOMAD_META_runner}"
         MERCURE_LOG_LEVEL = "${NOMAD_META_log_level}"
-        MERCURE_CONFIG_FOLDER = "/home/mercure/mercure-config"
+        MERCURE_CONFIG_FOLDER = "/opt/mercure/config"
       }
       volume_mount {
         volume      = "code"
-        destination = "/home/mercure/mercure"
+        destination = "/opt/mercure/app"
       }
       volume_mount {
         volume      = "config"
-        destination = "/home/mercure/mercure-config"
+        destination = "/opt/mercure/config"
       }
       volume_mount {
         volume      = "data"
-        destination = "/home/mercure/mercure-data"
+        destination = "/opt/mercure/data"
       }
       config {
         image = "mercureimaging/mercure-dispatcher:latest"
-        // ports = ["dicom"]
       }
-
       resources {
         memory=128
       }
@@ -139,26 +131,23 @@ job "mercure" {
         MERCURE_ENV = "${NOMAD_META_environment}"
         MERCURE_RUNNER = "${NOMAD_META_runner}"
         MERCURE_LOG_LEVEL = "${NOMAD_META_log_level}"
-        MERCURE_CONFIG_FOLDER = "/home/mercure/mercure-config"
+        MERCURE_CONFIG_FOLDER = "/opt/mercure/config"
       }
       volume_mount {
         volume      = "code"
-        destination = "/home/mercure/mercure"
+        destination = "/opt/mercure/app"
       }
       volume_mount {
         volume      = "config"
-        destination = "/home/mercure/mercure-config"
+        destination = "/opt/mercure/config"
       }
       volume_mount {
         volume      = "data"
-        destination = "/home/mercure/mercure-data"
-      }
-      
+        destination = "/opt/mercure/data"
+      }      
       config {
         image = "mercureimaging/mercure-router:latest"
-        // ports = ["dicom"]
       }
-
       resources {
         memory=128
       }
@@ -169,30 +158,27 @@ job "mercure" {
         MERCURE_ENV = "${NOMAD_META_environment}"
         MERCURE_RUNNER = "${NOMAD_META_runner}"
         MERCURE_LOG_LEVEL = "${NOMAD_META_log_level}"
-        MERCURE_CONFIG_FOLDER = "/home/mercure/mercure-config"
+        MERCURE_CONFIG_FOLDER = "/opt/mercure/config"
       }
       volume_mount {
         volume      = "code"
-        destination = "/home/mercure/mercure"
+        destination = "/opt/mercure/app"
       }
       volume_mount {
         volume      = "config"
-        destination = "/home/mercure/mercure-config"
+        destination = "/opt/mercure/config"
       }
       volume_mount {
         volume      = "data"
-        destination = "/home/mercure/mercure-data"
+        destination = "/opt/mercure/data"
       }
       config {
         image = "mercureimaging/mercure-processor:latest"
-        // ports = ["dicom"]
       }
-
       resources {
         memory=128
       }
     }
-
     task "sshd" {
       driver = "docker"
       template {
@@ -238,33 +224,30 @@ job "mercure" {
         PGDATA = "/var/lib/postgresql/data/pgdata"
       }
     }
-
     task "bookkeeper" {
       driver = "docker"
       config {
         image = "mercureimaging/mercure-bookkeeper:latest"
         ports = ["bookkeeper"]
-      }
-
-      
+      }     
       lifecycle {
         hook    = "prestart"
         sidecar = true
       }
       volume_mount {
         volume      = "config"
-        destination = "/home/mercure/mercure-config"
+        destination = "/opt/mercure/config"
       }
       volume_mount {
         volume      = "data"
-        destination = "/home/mercure/mercure-data"
+        destination = "/opt/mercure/data"
       }
       env {
         DATABASE_URL = "postgresql://mercure@localhost"
         MERCURE_ENV = "${NOMAD_META_environment}"
         MERCURE_RUNNER = "${NOMAD_META_runner}"
         MERCURE_LOG_LEVEL = "${NOMAD_META_log_level}"
-        MERCURE_CONFIG_FOLDER = "/home/mercure/mercure-config"
+        MERCURE_CONFIG_FOLDER = "/opt/mercure/config"
       }
       resources {
         memory=128

@@ -21,10 +21,10 @@ PREFIX="mercureimaging"
 TAG=${MERCURE_TAG:-latest}
 # Define where mercure is going to store things
 # You can redefine types of volumes in docker/docker-compose.yml
-MERCUREBASE=$HOME/mercure-docker
-DATADIR=$MERCUREBASE/mercure-data
-CONFIGDIR=$MERCUREBASE/mercure-config
-DBDIR=$MERCUREBASE/mercure-db
+MERCUREBASE=/opt/mercure
+DATADIR=$MERCUREBASE/data
+CONFIGDIR=$MERCUREBASE/config
+DBDIR=$MERCUREBASE/db
 MERCURESRC=./
 
 #################################################################

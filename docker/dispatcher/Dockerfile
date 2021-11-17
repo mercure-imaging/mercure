@@ -1,3 +1,2 @@
 FROM mercureimaging/mercure-base:latest
-# ls /home/mercure/mercure/dispatcher.py /home/mercure/mercure/**/*.py | entr -r
-CMD  /home/mercure/mercure-env/bin/python /home/mercure/mercure/dispatcher.py
+CMD /opt/mercure/env/bin/python /opt/mercure/app/dispatcher.py
