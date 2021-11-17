@@ -163,13 +163,9 @@ install_app_files() {
   if [ ! -e "$MERCURE_BASE"/app ]; then
     echo "## Installing app files..."
     sudo mkdir "$MERCURE_BASE"/app
-    sudo find "$MERCURE_SRC" -not -path \*/.\* -type d -exec mkdir -p -- "$MERCURE_BASE"/app/{} \;
-    sudo find "$MERCURE_SRC" -not -path \*/.\* -type f -exec cp -- {} "$MERCURE_BASE"/app/{} \;
- 
-    if [[ $(lsb_release -rs) == "20.04" ]]; then 
-      sudo cp $MERCURE_SRC/bin/ubuntu20.04/getdcmtags "$MERCURE_BASE"/app/bin/getdcmtags
-    fi 
- 
+    sudo cp -R "$MERCURE_SRC"/* "$MERCURE_BASE"/app
+    #sudo find "$MERCURE_SRC" -not -path \*/.\* -type d -exec mkdir -p -- "$MERCURE_BASE"/app/{} \;
+    #sudo find "$MERCURE_SRC" -not -path \*/.\* -type f -exec cp -- {} "$MERCURE_BASE"/app/{} \;  
     sudo chown -R $OWNER:$OWNER "$MERCURE_BASE/app"
   fi
 }
