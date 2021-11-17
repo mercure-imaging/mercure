@@ -134,6 +134,7 @@ setup_docker () {
   if [ ! -f "$MERCURE_BASE"/docker-compose.yml ]; then
     echo "## Copying docker-compose.yml..."
     cp $MERCURE_SRC/docker/docker-compose.yml $MERCURE_BASE
+    sed -i -e "s/\${GID}/$(getent group docker | cut -d: -f3)/" $MERCURE_BASE/docker-compose.yml
     sudo chown $OWNER:$OWNER "$MERCURE_BASE"/docker-compose.yml
   fi
 }
@@ -155,7 +156,7 @@ build_docker () {
 start_docker () {
   echo "## Starting docker compose..."  
   cd /opt/mercure
-  GID=$(getent group docker | cut -d: -f3) docker-compose up -d
+  docker-compose up -d
 }
 
 install_app_files() {
