@@ -197,6 +197,7 @@ setup_nomad() {
     sudo cp $MERCURE_SRC/nomad/mercure-processor.nomad $MERCURE_BASE
     sudo cp $MERCURE_SRC/nomad/mercure-ui.nomad $MERCURE_BASE
     sudo cp $MERCURE_SRC/nomad/server.conf $MERCURE_BASE
+    sudo mkdir $MERCURE_SRC/db
     sudo chown $OWNER:$OWNER "$MERCURE_BASE"/*
   fi
 
