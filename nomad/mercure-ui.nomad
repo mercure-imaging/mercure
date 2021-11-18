@@ -32,6 +32,7 @@ job "mercure-ui" {
       env {
         MERCURE_ENV = "${NOMAD_META_environment}"
         MERCURE_RUNNER = "${NOMAD_META_runner}"
+        MERCURE_CONFIG_FOLDER = "/opt/mercure/config"
       }
       volume_mount {
         volume      = "code"

@@ -193,11 +193,13 @@ setup_nomad() {
   if [ ! -f "$MERCURE_BASE"/mercure.nomad ]; then
     echo "## Copying mercure.nomad..."
     sudo cp $MERCURE_SRC/nomad/mercure.nomad $MERCURE_BASE
+    sudo sed -i "s#SSHPUBKEY#$(cat /opt/mercure/processor-keys/id_rsa.pub)#g"  $MERCURE_BASE/mercure.nomad
     sudo cp $MERCURE_SRC/nomad/mercure-processor.nomad $MERCURE_BASE
     sudo cp $MERCURE_SRC/nomad/mercure-ui.nomad $MERCURE_BASE
     sudo cp $MERCURE_SRC/nomad/server.conf $MERCURE_BASE
     sudo chown $OWNER:$OWNER "$MERCURE_BASE"/*
   fi
+
   sudo systemctl start nomad
   echo "Waiting for Nomad to start..."
   until [[ $(curl -q http://localhost:4646) ]];
@@ -357,6 +359,7 @@ docker_install () {
 
 nomad_install () {
   create_folders
+  install_app_files
   install_configuration
   install_docker
   install_nomad
