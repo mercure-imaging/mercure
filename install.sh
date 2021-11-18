@@ -105,36 +105,40 @@ install_configuration () {
 }
 
 install_docker () {
-  echo "## Installing Docker..."
-  sudo apt-get update
-  sudo apt-get remove docker docker-engine docker.io || true
-  echo '* libraries/restart-without-asking boolean true' | sudo debconf-set-selections
-  sudo apt-get install apt-transport-https ca-certificates curl software-properties-common -y
-  sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg |  sudo apt-key add -
-  sudo apt-key fingerprint 0EBFCD88
-  sudo add-apt-repository \
-      "deb [arch=amd64] https://download.docker.com/linux/ubuntu \
-      $(lsb_release -cs) \
-      stable"
-  sudo apt-get update
-  sudo apt-get install -y docker-ce
-  # Restart docker to make sure we get the latest version of the daemon if there is an upgrade
-  sudo service docker restart
-  # Make sure we can actually use docker as the vagrant user
-  sudo usermod -a -G docker $OWNER
-  sudo docker --version
+  if [ ! -x "$(command -v docker)" ]; then 
+    echo "## Installing Docker..."
+    sudo apt-get update
+    sudo apt-get remove docker docker-engine docker.io || true
+    echo '* libraries/restart-without-asking boolean true' | sudo debconf-set-selections
+    sudo apt-get install apt-transport-https ca-certificates curl software-properties-common -y
+    sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg |  sudo apt-key add -
+    sudo apt-key fingerprint 0EBFCD88
+    sudo add-apt-repository \
+        "deb [arch=amd64] https://download.docker.com/linux/ubuntu \
+        $(lsb_release -cs) \
+        stable"
+    sudo apt-get update
+    sudo apt-get install -y docker-ce
+    # Restart docker to make sure we get the latest version of the daemon if there is an upgrade
+    sudo service docker restart
+    # Make sure we can actually use docker as the vagrant user
+    sudo usermod -a -G docker $OWNER
+    sudo docker --version
+  fi
 
-  echo "## Installing Docker-Compose..."
-  sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-  sudo chmod +x /usr/local/bin/docker-compose
-  sudo docker-compose --version
+  if [ ! -x "$(command -v docker-compose)" ]; then 
+    echo "## Installing Docker-Compose..."
+    sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+    sudo chmod +x /usr/local/bin/docker-compose
+    sudo docker-compose --version
+  fi
 }
 
 setup_docker () {
   if [ ! -f "$MERCURE_BASE"/docker-compose.yml ]; then
     echo "## Copying docker-compose.yml..."
-    cp $MERCURE_SRC/docker/docker-compose.yml $MERCURE_BASE
-    sed -i -e "s/\${GID}/$(getent group docker | cut -d: -f3)/" $MERCURE_BASE/docker-compose.yml
+    sudo cp $MERCURE_SRC/docker/docker-compose.yml $MERCURE_BASE
+    sudo sed -i -e "s/\\\${GID}/$(getent group docker | cut -d: -f3)/" $MERCURE_BASE/docker-compose.yml
     sudo chown $OWNER:$OWNER "$MERCURE_BASE"/docker-compose.yml
   fi
 }
@@ -142,8 +146,8 @@ setup_docker () {
 setup_docker_dev () {
   if [ ! -f "$MERCURE_BASE"/docker-compose.override.yml ]; then
     echo "## Copying docker-compose.override.yml..."
-    cp $MERCURE_SRC/docker/docker-compose.override.yml $MERCURE_BASE
-    sed -i -e "s;MERCURE_SRC;$(readlink -f $MERCURE_SRC);" "$MERCURE_BASE"/docker-compose.override.yml
+    sudo cp $MERCURE_SRC/docker/docker-compose.override.yml $MERCURE_BASE
+    sudo sed -i -e "s;MERCURE_SRC;$(readlink -f $MERCURE_SRC);" "$MERCURE_BASE"/docker-compose.override.yml
     sudo chown $OWNER:$OWNER "$MERCURE_BASE"/docker-compose.override.yml
   fi
 }
@@ -156,7 +160,7 @@ build_docker () {
 start_docker () {
   echo "## Starting docker compose..."  
   cd /opt/mercure
-  docker-compose up -d
+  sudo docker-compose up -d
 }
 
 install_app_files() {
@@ -233,34 +237,94 @@ docker_install () {
   create_folders
   install_configuration
   install_docker
-  build_docker
+  if [ $DOCKER_BUILD = true ]; then
+    build_docker
+  fi
   setup_docker
-  #setup_docker_dev
+  if [ $DOCKER_DEV = true ]; then
+    setup_docker_dev
+  fi
   start_docker
 }
 
+FORCE_INSTALL="n"
+
+while getopts ":hy" opt; do
+  case ${opt} in
+    h )
+      echo "Usage:"
+      echo "    install.sh -h                     Display this help message."
+      echo "    install.sh [-y] docker [OPTIONS]  Install with docker-compose."
+      echo "    install.sh [-y] systemd           Install as systemd service."
+      echo "    install.sh [-y] nomad             Install as nomad job."
+
+      echo "    Options:   "
+      echo "              docker:"
+      echo "                      -d              Development mode "
+      echo "                      -b              Build containers"
+      exit 0
+      ;;
+    y )
+      FORCE_INSTALL="y"
+      ;;
+    \? )
+      echo "Invalid Option: -$OPTARG" 1>&2
+      exit 1
+      ;;
+    : )
+      echo "Invalid Option: -$OPTARG requires an argument" 1>&2
+      exit 1
+      ;;
+  esac
+done
+shift $((OPTIND -1))
+OPTIND=1
 INSTALL_TYPE="${1:-docker}"
-FORCE_INSTALL="${2:-n}"
+if [[ $# > 0 ]];  then shift; fi
+
+if [ $INSTALL_TYPE = "docker" ]; then
+  DOCKER_DEV=false
+  DOCKER_BUILD=false
+  while getopts ":db" opt; do
+    case ${opt} in
+      d )
+        DOCKER_DEV=true
+        ;;
+      b )
+        DOCKER_BUILD=true
+        ;;
+      \? )
+        echo "Invalid Option for \"docker\": -$OPTARG" 1>&2
+        exit 1
+        ;;
+    esac
+  done
+  shift $((OPTIND -1))
+fi
 
 if [ $FORCE_INSTALL = "y" ]; then
   echo "Forcing installation"
 else
   read -p "Install with $INSTALL_TYPE (y/n)? " ANS
   if [ "$ANS" = "y" ]; then
-    echo "Installing"
+    echo "Installing Mercure."
   else
-    echo "Not installing"
+    echo "Installation aborted."
     exit 0
   fi
 fi
 
-if [ $INSTALL_TYPE = "systemd" ]; then 
-  systemd_install
-elif [ $INSTALL_TYPE = "docker" ]; then
-  docker_install
-else
-  echo "Error: Invalid option $INSTALL_TYPE"
-  exit 0
-fi
+case "$INSTALL_TYPE" in 
+  systemd )
+    systemd_install
+    ;;
+  docker )
+    docker_install
+    ;;
+  * )
+    echo "Error: unrecognized option $INSTALL_TYPE"
+    exit 1
+    ;;
+esac
 
 echo "Installation complete"
