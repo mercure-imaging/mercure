@@ -104,6 +104,114 @@ install_configuration () {
   fi
 }
 
+install_nomad () {
+  echo "Installing Nomad..."
+  NOMAD_VERSION=1.0.1
+  if [ ! -x "$(command -v unzip)" ]; then 
+    sudo apt-get install -y unzip
+  fi 
+
+  if [ ! -x "$(command -v nomad)" ]; then 
+    curl -sSL https://releases.hashicorp.com/nomad/${NOMAD_VERSION}/nomad_${NOMAD_VERSION}_linux_amd64.zip -o /tmp/nomad.zip
+    unzip -o /tmp/nomad.zip  -d /tmp 
+    sudo install /tmp/nomad /usr/bin/nomad
+    sudo mkdir -p /etc/nomad.d
+    sudo chmod a+w /etc/nomad.d
+    (
+    cat <<-EOFB
+      [Unit]
+      Description=nomad
+      Requires=network-online.target
+      After=network-online.target
+      [Service]
+      Restart=on-failure
+      ExecStart=/usr/bin/nomad agent -dev-connect -bind 0.0.0.0 -log-level INFO -config /opt/mercure/server.conf
+      ExecReload=/bin/kill -HUP 
+      [Install]
+      WantedBy=multi-user.target
+EOFB
+    ) | sudo tee /etc/systemd/system/nomad.service
+    sudo systemctl enable nomad.service
+    nomad -autocomplete-install
+  fi 
+
+  if [ ! -x "$(command -v consul)" ]; then 
+    echo "Installing Consul..."
+    CONSUL_VERSION=1.9.0
+    curl -sSL https://releases.hashicorp.com/consul/${CONSUL_VERSION}/consul_${CONSUL_VERSION}_linux_amd64.zip -o /tmp/consul.zip
+    unzip -o /tmp/consul.zip -d /tmp
+    sudo install /tmp/consul /usr/bin/consul
+    (
+    cat <<-EOFA
+      [Unit]
+      Description=consul agent
+      Requires=network-online.target
+      After=network-online.target
+
+      [Service]
+      Restart=on-failure
+      ExecStart=/usr/bin/consul agent -dev
+      ExecReload=/bin/kill -HUP \$MAINPID
+
+      [Install]
+      WantedBy=multi-user.target
+EOFA
+    ) | sudo tee /etc/systemd/system/consul.service
+    sudo systemctl enable consul.service
+    sudo systemctl start consul
+  fi
+
+  for bin in cfssl cfssl-certinfo cfssljson
+  do
+    if [ ! -x "$(command -v $bin)" ]; then 
+      echo "Installing $bin..."
+      curl -sSL https://pkg.cfssl.org/R1.2/${bin}_linux-amd64 -o /tmp/${bin}
+      sudo install /tmp/${bin} /usr/local/bin/${bin}
+    fi
+  done
+
+
+  if [ ! -d /opt/cni/bin ]; then 
+    curl -L -o /tmp/cni-plugins.tgz https://github.com/containernetworking/plugins/releases/download/v0.9.1/cni-plugins-linux-amd64-v0.9.1.tgz
+    sudo mkdir -p /opt/cni/bin
+    sudo tar -C /opt/cni/bin -xzf /tmp/cni-plugins.tgz
+  fi
+}
+
+setup_nomad_keys() {
+  if [ ! -f "$MERCURE_BASE"/processor-keys/id_rsa ]; then
+    sudo mkdir /opt/mercure/processor-keys/
+    echo "Generating SSH key..."
+    sudo ssh-keygen -t rsa -N '' -f /opt/mercure/processor-keys/id_rsa
+    sudo chown -R $OWNER:$OWNER "$MERCURE_BASE/processor-keys"
+  fi
+}
+
+setup_nomad() {
+  setup_nomad_keys
+
+  if [ ! -f "$MERCURE_BASE"/mercure.nomad ]; then
+    echo "## Copying mercure.nomad..."
+    sudo cp $MERCURE_SRC/nomad/mercure.nomad $MERCURE_BASE
+    sudo cp $MERCURE_SRC/nomad/mercure-processor.nomad $MERCURE_BASE
+    sudo cp $MERCURE_SRC/nomad/mercure-ui.nomad $MERCURE_BASE
+    sudo cp $MERCURE_SRC/nomad/server.conf $MERCURE_BASE
+    sudo chown $OWNER:$OWNER "$MERCURE_BASE"/*
+  fi
+  sudo systemctl start nomad
+  echo "Waiting for Nomad to start..."
+  until [[ $(curl -q http://localhost:4646) ]];
+  do
+    echo -n "."
+    sleep 1s;
+  done;
+
+  nomad run $MERCURE_BASE/mercure.nomad
+  nomad run $MERCURE_BASE/mercure-ui.nomad
+  nomad run $MERCURE_BASE/mercure-processor.nomad
+}
+
+
 install_docker () {
   if [ ! -x "$(command -v docker)" ]; then 
     echo "## Installing Docker..."
@@ -247,6 +355,14 @@ docker_install () {
   start_docker
 }
 
+nomad_install () {
+  create_folders
+  install_configuration
+  install_docker
+  install_nomad
+  setup_nomad
+}
+
 FORCE_INSTALL="n"
 
 while getopts ":hy" opt; do
@@ -320,6 +436,9 @@ case "$INSTALL_TYPE" in
     ;;
   docker )
     docker_install
+    ;;
+  nomad ) 
+    nomad_install
     ;;
   * )
     echo "Error: unrecognized option $INSTALL_TYPE"
