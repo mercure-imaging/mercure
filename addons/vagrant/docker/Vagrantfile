@@ -14,21 +14,21 @@ opts.each do |opt, arg|
 end
 
 $script = <<-SCRIPT
-echo "#### mercure installation in systemd mode"
+echo "#### mercure installation in docker mode"
 echo Cloning mercure and calling install script...
 cd ~
 git clone https://github.com/mercure-imaging/mercure.git
 cd mercure
-./install.sh systemd y
+./install.sh docker y
 SCRIPT
 
 $script_orthanc = <<-SCRIPT
-echo "#### mercure installation in systemd mode with Orthanc"
+echo "#### mercure installation in docker mode with Orthanc"
 echo Cloning mercure and calling install script...
 cd ~
 git clone https://github.com/mercure-imaging/mercure.git
 cd mercure
-./install.sh systemd y
+./install.sh docker y
 cd addons/orthanc
 docker-compose up -d
 SCRIPT
