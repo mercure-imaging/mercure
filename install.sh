@@ -65,7 +65,7 @@ create_folder () {
 create_folders () {
   create_folder $MERCURE_BASE
   create_folder $CONFIG_PATH
-  if [ $INSTALL_TYPE = "docker" ]; then
+  if [ $INSTALL_TYPE != "systemd" ]; then
     create_folder $DB_PATH
   fi
 
@@ -176,7 +176,6 @@ EOFA
       sudo install /tmp/${bin} /usr/local/bin/${bin}
     fi
   done
-
 
   if [ ! -d /opt/cni/bin ]; then 
     curl -L -o /tmp/cni-plugins.tgz https://github.com/containernetworking/plugins/releases/download/v0.9.1/cni-plugins-linux-amd64-v0.9.1.tgz

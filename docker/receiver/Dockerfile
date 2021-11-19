@@ -1,3 +1,3 @@
 FROM mercureimaging/mercure-base:latest
-EXPOSE 104
+EXPOSE 11112
 CMD /opt/mercure/app/receiver.sh

@@ -1,6 +1,6 @@
 {
     "appliance_name": "master",
-    "port": 104,
+    "port": 11112,
     "incoming_folder": "/var/incoming",
     "studies_folder": "/var/studies",
     "outgoing_folder": "/var/outgoing",
