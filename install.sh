@@ -170,7 +170,6 @@ EOFA
     fi
   done
 
-
   if [ ! -d /opt/cni/bin ]; then 
     curl -L -o /tmp/cni-plugins.tgz https://github.com/containernetworking/plugins/releases/download/v0.9.1/cni-plugins-linux-amd64-v0.9.1.tgz
     sudo mkdir -p /opt/cni/bin
@@ -197,7 +196,6 @@ setup_nomad() {
     sudo cp $MERCURE_SRC/nomad/mercure-processor.nomad $MERCURE_BASE
     sudo cp $MERCURE_SRC/nomad/mercure-ui.nomad $MERCURE_BASE
     sudo cp $MERCURE_SRC/nomad/server.conf $MERCURE_BASE
-    sudo mkdir $MERCURE_SRC/db
     sudo chown $OWNER:$OWNER "$MERCURE_BASE"/*
   fi
 

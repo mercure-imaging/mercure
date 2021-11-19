@@ -1,16 +1,52 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
+require 'getoptlong'
+
+orthanc=''
+opts = GetoptLong.new(
+  [ '--orthanc', GetoptLong::OPTIONAL_ARGUMENT ]
+)
+opts.each do |opt, arg|
+  case opt
+    when '--orthanc'
+      orthanc='yes'
+  end
+end
+
+$script = <<-SCRIPT
+echo "#### mercure installation in Nomad mode"
+echo Cloning mercure and calling install script...
+cd ~
+git clone https://github.com/mercure-imaging/mercure.git
+cd mercure
+./install.sh -y nomad
+SCRIPT
+
+$script_orthanc = <<-SCRIPT
+echo "#### mercure installation in Nomad mode with Orthanc"
+echo Cloning mercure and calling install script...
+cd ~
+git clone https://github.com/mercure-imaging/mercure.git
+cd mercure
+./install.sh -y nomad
+cd addons/orthanc
+docker-compose up -d
+SCRIPT
 
 Vagrant.configure(2) do |config|
   config.vm.box = "bento/ubuntu-20.04" # 20.04 LTS
-  config.vm.hostname = "nomad"
-  config.vm.provision "shell", path: "provision.sh", privileged: false
-
-  # Expose the nomad api and ui to the host
-  config.vm.network "forwarded_port", guest: 4646, host: 4646, auto_correct: true, host_ip: "127.0.0.1"
   config.vm.network "forwarded_port", guest: 8000, host: 8000, auto_correct: true, host_ip: "127.0.0.1"
-  config.vm.network "forwarded_port", guest: 104, host: 104, auto_correct: true, host_ip: "127.0.0.1"
-  config.vm.network "private_network", ip: "192.168.33.21"
+  config.vm.network "forwarded_port", guest: 11112, host: 11112, auto_correct: true, host_ip: "127.0.0.1"
+  config.vm.network "forwarded_port", guest: 4646, host: 4646, auto_correct: true, host_ip: "127.0.0.1"
+
+  if orthanc == "yes" then
+    config.vm.network "forwarded_port", guest: 8008, host: 8008, auto_correct: true, host_ip: "127.0.0.1"
+    config.vm.network "forwarded_port", guest: 8042, host: 8042, auto_correct: true, host_ip: "127.0.0.1"
+    config.vm.network "forwarded_port", guest: 4242, host: 4242, auto_correct: true, host_ip: "127.0.0.1"	
+    config.vm.provision "shell", inline: $script_orthanc
+  else
+    config.vm.provision "shell", inline: $script
+  end
 
   # Increase memory for Parallels Desktop
   config.vm.provider "parallels" do |p, o|
