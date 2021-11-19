@@ -106,7 +106,7 @@ install_configuration () {
 
 install_nomad () {
   echo "Installing Nomad..."
-  NOMAD_VERSION=1.0.1
+  NOMAD_VERSION=1.2.0
   if [ ! -x "$(command -v unzip)" ]; then 
     sudo apt-get install -y unzip
   fi 
@@ -117,23 +117,27 @@ install_nomad () {
     sudo install /tmp/nomad /usr/bin/nomad
     sudo mkdir -p /etc/nomad.d
     sudo chmod a+w /etc/nomad.d
-    (
+    nomad -autocomplete-install
+  fi 
+
+  if [ ! -f "/etc/systemd/system/nomad.service" ]; then 
+      (
     cat <<-EOFB
-      [Unit]
-      Description=nomad
-      Requires=network-online.target
-      After=network-online.target
-      [Service]
-      Restart=on-failure
-      ExecStart=/usr/bin/nomad agent -dev-connect -bind 0.0.0.0 -log-level INFO -config /opt/mercure/server.conf
-      ExecReload=/bin/kill -HUP 
-      [Install]
-      WantedBy=multi-user.target
+    [Unit]
+    Description=nomad
+    Requires=network-online.target
+    After=network-online.target
+    [Service]
+    Restart=on-failure
+    ExecStart=/usr/bin/nomad agent -bind 0.0.0.0 -log-level INFO -config /etc/nomad.d/
+    ExecReload=/bin/kill -HUP \$MAINPID
+    [Install]
+    WantedBy=multi-user.target
 EOFB
     ) | sudo tee /etc/systemd/system/nomad.service
     sudo systemctl enable nomad.service
-    nomad -autocomplete-install
-  fi 
+    sudo systemctl restart nomad.service
+  fi
 
   if [ ! -x "$(command -v consul)" ]; then 
     echo "Installing Consul..."
@@ -141,6 +145,8 @@ EOFB
     curl -sSL https://releases.hashicorp.com/consul/${CONSUL_VERSION}/consul_${CONSUL_VERSION}_linux_amd64.zip -o /tmp/consul.zip
     unzip -o /tmp/consul.zip -d /tmp
     sudo install /tmp/consul /usr/bin/consul
+  fi
+  if [ ! -f "/etc/systemd/system/consul.service" ]; then 
     (
     cat <<-EOFA
       [Unit]
@@ -158,8 +164,9 @@ EOFB
 EOFA
     ) | sudo tee /etc/systemd/system/consul.service
     sudo systemctl enable consul.service
-    sudo systemctl start consul
+    sudo systemctl restart consul
   fi
+  sudo systemctl daemon-reload
 
   for bin in cfssl cfssl-certinfo cfssljson
   do
@@ -196,10 +203,15 @@ setup_nomad() {
     sudo sed -i "s#SSHPUBKEY#$(cat /opt/mercure/processor-keys/id_rsa.pub)#g"  $MERCURE_BASE/mercure.nomad
     sudo cp $MERCURE_SRC/nomad/mercure-processor.nomad $MERCURE_BASE
     sudo cp $MERCURE_SRC/nomad/mercure-ui.nomad $MERCURE_BASE
-    sudo cp $MERCURE_SRC/nomad/server.conf $MERCURE_BASE
-    sudo mkdir $MERCURE_SRC/db
+    sudo cp $MERCURE_SRC/nomad/policies/anonymous-strict.policy.hcl $MERCURE_BASE
+
+    if [ ! -d $MERCURE_BASE/db ]; then
+      sudo mkdir $MERCURE_BASE/db
+    fi
     sudo chown $OWNER:$OWNER "$MERCURE_BASE"/*
   fi
+  sudo cp $MERCURE_SRC/nomad/server.hcl /etc/nomad.d
+  sudo cp $MERCURE_SRC/nomad/client.hcl /etc/nomad.d
 
   sudo systemctl start nomad
   echo "Waiting for Nomad to start..."
@@ -209,11 +221,30 @@ setup_nomad() {
     sleep 1s;
   done;
 
+  if [ -z "${NOMAD_TOKEN:-}" ]; then 
+    if [ ! -x "$(command -v jq)" ]; then 
+      sudo apt-get install -y jq
+    fi
+    echo "NOMAD_TOKEN not set. Attempting to bootstrap Nomad ACL."
+    BOOTSTRAP_RESULT="$(nomad acl bootstrap -json || echo failed )"
+    if [[ "$BOOTSTRAP_RESULT" = "failed" ]]; then 
+      echo "Warning: NOMAD_TOKEN is unset, and bootstrapping the ACL failed. Registering the jobs will likely fail."
+    else
+      new_secret_id="$(echo $BOOTSTRAP_RESULT | jq -r .SecretID)"
+      new_accessor_id="$(echo $BOOTSTRAP_RESULT | jq -r .AccessorID)"
+      export NOMAD_TOKEN=$new_secret_id
+    fi
+  fi
+  nomad acl policy apply -description "Mercure anonymous policy" anonymous $MERCURE_BASE/anonymous-strict.policy.hcl 
   nomad run $MERCURE_BASE/mercure.nomad
   nomad run $MERCURE_BASE/mercure-ui.nomad
   nomad run $MERCURE_BASE/mercure-processor.nomad
-}
 
+  if [ ! -z "${BOOTSTRAP_RESULT:-}" ]; then
+    echo "Nomad ACL has been bootstrapped. Your managment key information follows. Keep this safe!"
+    echo $BOOTSTRAP_RESULT | jq
+  fi
+}
 
 install_docker () {
   if [ ! -x "$(command -v docker)" ]; then 
