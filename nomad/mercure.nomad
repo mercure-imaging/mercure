@@ -42,7 +42,7 @@ job "mercure" {
         to = 5432
       }
       port "dicom-receive" {
-        static  = 104
+        static  = 11112
         to = 11112
       }
       port "sshd" {
