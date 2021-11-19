@@ -65,7 +65,7 @@ create_folder () {
 create_folders () {
   create_folder $MERCURE_BASE
   create_folder $CONFIG_PATH
-  if [ $INSTALL_TYPE = "docker" ]; then
+  if [ $INSTALL_TYPE != "systemd" ]; then
     create_folder $DB_PATH
   fi
 
