@@ -19,7 +19,7 @@ echo Cloning mercure and calling install script...
 cd ~
 git clone https://github.com/mercure-imaging/mercure.git
 cd mercure
-./install.sh systemd y
+./install.sh -y systemd
 SCRIPT
 
 $script_orthanc = <<-SCRIPT
@@ -28,7 +28,7 @@ echo Cloning mercure and calling install script...
 cd ~
 git clone https://github.com/mercure-imaging/mercure.git
 cd mercure
-./install.sh systemd y
+./install.sh -y systemd
 cd addons/orthanc
 docker-compose up -d
 SCRIPT
