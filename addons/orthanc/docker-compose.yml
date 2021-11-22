@@ -25,3 +25,7 @@ secrets:
     file: orthanc.json
 volumes:
   db:
+networks:
+  default:
+    external: true
+    name: mercure_default
