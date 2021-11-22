@@ -55,6 +55,7 @@ job "mercure-processor" {
       user = "{{uid}}"
       config {
         image = "{{ image }}"
+        force_pull = true
       }
       env {
         MERCURE_IN_DIR = "${NOMAD_ALLOC_DIR}/data/in"

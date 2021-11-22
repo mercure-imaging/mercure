@@ -115,10 +115,12 @@ install_nomad () {
     curl -sSL https://releases.hashicorp.com/nomad/${NOMAD_VERSION}/nomad_${NOMAD_VERSION}_linux_amd64.zip -o /tmp/nomad.zip
     unzip -o /tmp/nomad.zip  -d /tmp 
     sudo install /tmp/nomad /usr/bin/nomad
-    sudo mkdir -p /etc/nomad.d
-    sudo chmod a+w /etc/nomad.d
     nomad -autocomplete-install
   fi 
+  if [ ! -d /etc/nomad.d ]; then
+    sudo mkdir -p /etc/nomad.d
+    sudo chmod a+w /etc/nomad.d
+  fi
 
   if [ ! -f "/etc/systemd/system/nomad.service" ]; then 
       (
@@ -231,7 +233,7 @@ setup_nomad() {
     else
       new_secret_id="$(echo $BOOTSTRAP_RESULT | jq -r .SecretID)"
       new_accessor_id="$(echo $BOOTSTRAP_RESULT | jq -r .AccessorID)"
-      export NOMAD_TOKEN=$new_secret_id
+      echo NOMAD_TOKEN=$new_secret_id
     fi
   fi
   nomad acl policy apply -description "Mercure anonymous policy" anonymous $MERCURE_BASE/anonymous-strict.policy.hcl 
