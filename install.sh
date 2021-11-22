@@ -115,10 +115,12 @@ install_nomad () {
     curl -sSL https://releases.hashicorp.com/nomad/${NOMAD_VERSION}/nomad_${NOMAD_VERSION}_linux_amd64.zip -o /tmp/nomad.zip
     unzip -o /tmp/nomad.zip  -d /tmp 
     sudo install /tmp/nomad /usr/bin/nomad
-    sudo mkdir -p /etc/nomad.d
-    sudo chmod a+w /etc/nomad.d
     nomad -autocomplete-install
   fi 
+  if [ ! -d /etc/nomad.d ]; then
+    sudo mkdir -p /etc/nomad.d
+    sudo chmod a+w /etc/nomad.d
+  fi
 
   if [ ! -f "/etc/systemd/system/nomad.service" ]; then 
       (
