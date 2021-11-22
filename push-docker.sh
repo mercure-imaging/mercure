@@ -1,3 +1,4 @@
+docker push mercureimaging/mercure-base:latest
 docker push mercureimaging/mercure-router:latest
 docker push mercureimaging/mercure-processor:latest
 docker push mercureimaging/mercure-receiver:latest
