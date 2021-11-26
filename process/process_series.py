@@ -146,7 +146,8 @@ def docker_runtime(task: Task, folder: str) -> bool:
             group_add=[os.getegid()],
         )
         # Returns: logs (stdout), pass stderr=True if you want stderr too.
-        logger.info(logs)
+        logger.info("==== PROCESSOR LOGS ====\n" + logs.decode('utf-8'))
+        logger.info("========================")
         """Raises:	
             docker.errors.ContainerError - If the container exits with a non-zero exit code
             docker.errors.ImageNotFound - If the specified image does not exist.

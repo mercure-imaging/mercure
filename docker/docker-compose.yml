@@ -14,9 +14,12 @@ x-volumes-docker: &volumes-docker
     - data:/opt/mercure/data
     - /var/run/docker.sock:/var/run/docker.sock
 
+x-docker-user: &docker-user
+  user: "mercure:${GID}"
+  
 services:
   ui:
-    user: "mercure:${GID}"
+    <<: *docker-user
     depends_on:
       db:
         condition: service_healthy
@@ -72,6 +75,7 @@ services:
     <<: *env
 
   processor:
+    <<: *docker-user
     image: mercureimaging/mercure-processor
     restart: always
     depends_on:

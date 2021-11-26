@@ -281,7 +281,7 @@ setup_docker () {
   if [ ! -f "$MERCURE_BASE"/docker-compose.yml ]; then
     echo "## Copying docker-compose.yml..."
     sudo cp $MERCURE_SRC/docker/docker-compose.yml $MERCURE_BASE
-    sudo sed -i -e "s/\\\${GID}/$(getent group docker | cut -d: -f3)/" $MERCURE_BASE/docker-compose.yml
+    sudo sed -i -e "s/\\\${GID}/$(getent group docker | cut -d: -f3)/g" $MERCURE_BASE/docker-compose.yml
     sudo chown $OWNER:$OWNER "$MERCURE_BASE"/docker-compose.yml
   fi
 }
