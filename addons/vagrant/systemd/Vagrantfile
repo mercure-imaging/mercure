@@ -30,6 +30,7 @@ git clone https://github.com/mercure-imaging/mercure.git
 cd mercure
 ./install.sh -y systemd
 cd addons/orthanc
+docker network create mercure_default
 docker-compose up -d
 SCRIPT
 
