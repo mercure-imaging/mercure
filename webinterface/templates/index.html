@@ -37,12 +37,14 @@
           </div>
         </div>
         {% if is_admin %}
+        {% if runtime != "nomad" %}
         <div class="columns" style="margin-top: 20px;">
           <div class="column is-one-third">
             <button class="button" id="servicecontrol" value="" onclick="showControlModal()"><i
                 class="fas fa-wrench"></i>&nbsp;Service Control</button>
           </div>
         </div>
+        {% endif %}
         {% endif %}
       </div>
     </div>

@@ -542,6 +542,7 @@ async def homepage(request) -> Response:
         "free_space": free_space,
         "total_space": total_space,
         "service_status": service_status,
+        "runtime": runtime
     }
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
@@ -552,6 +553,7 @@ async def homepage(request) -> Response:
 async def control_services(request) -> Response:
     form = dict(await request.form())
     action = ""
+    runtime = config.get_runner()
 
     if form.get("action", "") == "start":
         action = "start"
@@ -569,12 +571,12 @@ async def control_services(request) -> Response:
             if not str(service) in services.services_list:
                 continue
 
-            if services.services_list[service].get("systemd_service", ""):
+            if runtime == "systemd":
                 command = "sudo systemctl " + action + " " + services.services_list[service]["systemd_service"]
                 logger.info(f"Executing: {command}")
                 await async_run(command)
 
-            elif services.services_list[service].get("docker_service", ""):
+            elif runtime == "docker":
                 client = docker.from_env()
                 logger.info(f'Executing: {action} on {services.services_list[service]["docker_service"]}')
                 try:
@@ -588,10 +590,13 @@ async def control_services(request) -> Response:
                         container.restart()
                     if action == "kill":
                         container.kill()
-
                 except (docker.errors.NotFound, docker.errors.APIError) as docker_error:
                     logger.error(f"{docker_error}")
                     pass
+
+            else:
+                # The Nomad mode currently does not support shutting down services
+                pass
 
     monitor_string = "action: " + action + "; services: " + form.get("services", "")
     monitor.send_webgui_event(monitor.w_events.SERVICE_CONTROL, request.user.display_name, monitor_string)

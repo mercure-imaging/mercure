@@ -74,6 +74,9 @@ def nomad_runtime(task: Task, folder: str) -> bool:
     return True
 
 
+docker_pull_throttle: Dict[str, datetime] = {}
+
+
 def docker_runtime(task: Task, folder: str) -> bool:
     docker_client = docker.from_env()
 
@@ -124,6 +127,23 @@ def docker_runtime(task: Task, folder: str) -> bool:
 
     # Merge the two dictionaries
     merged_volumes = {**default_volumes, **additional_volumes}
+
+    try: 
+        perform_image_update = True
+        # Check if docker hub should be checked for a new version of the container (only once per hour)
+        if docker_tag in docker_pull_throttle:
+            timediff = datetime.now() - docker_pull_throttle[docker_tag]
+            #logger.info("Time elapsed since update " + str(timediff.total_seconds()))
+            if timediff.total_seconds() < 3600:
+                perform_image_update = False
+
+        if perform_image_update:
+            # Get the latest image from DockerHub       
+            logger.info("Checking for updated version of docker image " + docker_tag)
+            docker_pull_throttle[docker_tag] = datetime.now()
+            docker_client.images.pull(docker_tag)
+    except Exception as e:
+        logger.error(e)
 
     processing_success = True
     # Run the container, handle errors of running the container
