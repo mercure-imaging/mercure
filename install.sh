@@ -234,6 +234,7 @@ setup_nomad() {
       new_secret_id="$(echo $BOOTSTRAP_RESULT | jq -r .SecretID)"
       new_accessor_id="$(echo $BOOTSTRAP_RESULT | jq -r .AccessorID)"
       echo NOMAD_TOKEN=$new_secret_id
+      export NOMAD_TOKEN=$new_secret_id
     fi
   fi
   nomad acl policy apply -description "Mercure anonymous policy" anonymous $MERCURE_BASE/anonymous-strict.policy.hcl 
