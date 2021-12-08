@@ -238,9 +238,9 @@ setup_nomad() {
     fi
   fi
   nomad acl policy apply -description "Mercure anonymous policy" anonymous $MERCURE_BASE/anonymous-strict.policy.hcl 
-  nomad run $MERCURE_BASE/mercure.nomad
-  nomad run $MERCURE_BASE/mercure-ui.nomad
-  nomad run $MERCURE_BASE/mercure-processor.nomad
+  nomad run -detach $MERCURE_BASE/mercure.nomad
+  nomad run -detach $MERCURE_BASE/mercure-ui.nomad
+  nomad run -detach $MERCURE_BASE/mercure-processor.nomad
 
   if [ ! -z "${BOOTSTRAP_RESULT:-}" ]; then
     echo "Nomad ACL has been bootstrapped. Your managment key information follows. Keep this safe!"

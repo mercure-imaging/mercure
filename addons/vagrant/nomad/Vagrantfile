@@ -30,7 +30,8 @@ git clone https://github.com/mercure-imaging/mercure.git
 cd mercure
 ./install.sh -y nomad
 cd addons/orthanc
-docker-compose up -d
+sudo docker network create mercure_default
+sudo docker-compose up -d
 SCRIPT
 
 Vagrant.configure(2) do |config|
@@ -43,10 +44,11 @@ Vagrant.configure(2) do |config|
     config.vm.network "forwarded_port", guest: 8008, host: 8008, auto_correct: true, host_ip: "127.0.0.1"
     config.vm.network "forwarded_port", guest: 8042, host: 8042, auto_correct: true, host_ip: "127.0.0.1"
     config.vm.network "forwarded_port", guest: 4242, host: 4242, auto_correct: true, host_ip: "127.0.0.1"	
-    config.vm.provision "shell", inline: $script_orthanc
+    config.vm.provision "shell", inline: $script_orthanc, privileged: false
   else
-    config.vm.provision "shell", inline: $script
+    config.vm.provision "shell", inline: $script, privileged: false
   end
+  config.vm.boot_timeout = 600
 
   # Increase memory for Parallels Desktop
   config.vm.provider "parallels" do |p, o|
