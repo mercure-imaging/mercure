@@ -1,6 +1,9 @@
 Monitoring
 ==========
 
+.. important:: The information on this page is still being updated for mercure version 0.2.
+
+
 mercure provides three different mechanisms for monitoring the router activity and health.
 
 Log files

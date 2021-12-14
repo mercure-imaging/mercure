@@ -1,6 +1,9 @@
 Dashboard Gallery
 =================
 
+.. important:: The information on this page is still being updated for mercure version 0.2.
+
+
 .. highlight:: SQL
 
 Using Redash and Graphite, various custom dashboards can be created that visualize and analyze the data collected by the mercure router. Below are examples for dashboards that we created for our installation (the corresponding Redash queries are shown in SQL syntax, so that the dashboards can be reproduced).

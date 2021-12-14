@@ -10,7 +10,7 @@ FAQ
 Does mercure require specific hardware?
 ---------------------------------------
 
-mercure should run on a wide range of different hardware configurations. Since the routing process is largely I/O bound, it is recommended to use SSD drives and optical network cards when choosing server specifications. However, this is just a recommendation and not required. mercure also runs on virtual servers with small foot print. However, it is required to provide sufficient disk space (ideally 500+ GB), so that mercure can buffer incoming images and keep discarded images for the desired retention period.
+mercure runs on a wide range of different hardware configurations. Since the routing process is largely I/O bound, it is recommended to use SSD drives for the storage folders and optical network cards when choosing server specifications. However, this is just a recommendation and not required. mercure also runs on virtual servers with small foot print. However, it is required to provide sufficient disk space (ideally 500+ GB), so that mercure can buffer incoming images and keep discarded images for the desired retention period.
 
 --------
 
@@ -32,9 +32,9 @@ mercure dispatches series of a study in the order they were received. If multipl
 What can I do to further improve the performance?
 -------------------------------------------------
 
-If you should run into a situation where the default mercure setup is not able to handle the load of incoming DICOM series, then you can scale up the instances of the router and dispatcher module. By default, only one instance of each module is used (i.e., in the case of the dispatcher, only one series per time is sent outwards). 
+If you should run into a situation where a default mercure setup is not able to handle the load of incoming DICOM series, then you can scale up the instances of the router and dispatcher module. By default, only one instance of each module is used (i.e., in the case of the dispatcher, only one series per time is sent outwards). 
 
-All modules have been designed such that multiple module instance can be used in parallel. To enable this, you need to modify the file "services.json" in the "/configuration" folder and duplicate the entry of the module that you want to scale. You need to give the additional module instance a different name (e.g., "dispatcher2"). Moreover, you need to duplicate the corresponding .service file for systemd and rename it accordingly. Note that it is not necessary to scale the receiver module, as the receiver automatically launches a separate process for every DICOM connection.
+All service modules have been designed such that multiple module instances can be used in parallel. The exact way of scaling up the services depends on the type of mercure installation (systemd/Docker/Nomad). For systemd installations, you need to modify the file "services.json" in the "/configuration" folder and duplicate the entry of the module that you want to scale. You need to give the additional module instance a different name (e.g., "dispatcher2"). Moreover, you need to duplicate the corresponding .service file for systemd and rename it accordingly. Note that it is not necessary to scale the receiver module, as the receiver automatically launches a separate process for every DICOM connection.
 
 --------
 
@@ -55,11 +55,13 @@ No, at this time, mercure is neither FDA-approved nor does it have a CE label. H
 Do you offer professional support for mercure?
 ----------------------------------------------
 
-Not currently. But please reach out to us through the :doc:`Discussion Board <../support>`, and please `submit an issue on Github <https://github.com/mercure-router/mercure/issues>`_ if you encounter any bug.
+Not currently. Please post your questions and support requests to the :doc:`Discussion Board <../support>`, and please `submit an issue on Github <https://github.com/mercure-imaging/mercure/issues>`_ if you encounter any bugs or if you would like to propose an enhancement.
 
 --------
 
 Who is behind the project?
 --------------------------
 
-mercure DICOM Router has been developed by `Kai Tobias Block <http://ktblock.de/>`_  and `Joshy Cyriac <https://twitter.com/irrwitz/>`_ due to the requirement to integrate various prototypic analysis tools into the clinical workflow without creating additional load for the PACS. The name stems from mercure, the messenger of the gods in ancient Greek mythology.
+mercure has been developed by `Kai Tobias Block <http://tobias-block.net/>`_, `Roy Wiggins <http://roy.red/>`_, and `Joshy Cyriac <https://twitter.com/_joshycyriac_>`_. The development has been supported by the `Center for Advanced Imaging Innovation and Research (CAI2R) <https://cai2r.net>`_ at `NYU Langone Health <https://nyulangone.org>`_.
+
+The name stems from the French translation of Mercury or Mercurius, the god of messages and communication in ancient Roman mythology. The project was initially called Hermes, Mercury's counterpart in Greek mythology, but the name was changed to avoid confusion with another existing software in the medical-imaging field.

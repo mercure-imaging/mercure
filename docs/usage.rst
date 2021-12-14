@@ -1,6 +1,9 @@
 Usage
 =====
 
+.. important:: The information on this page is still being updated for mercure version 0.2.
+
+
 Web interface 
 -------------
 

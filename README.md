@@ -4,7 +4,7 @@
 
 ![mercure](mercure.png)
 
-| **Important:** mercure (formerly called Hermes) is still undergoing significant development work towards a stable release (version 0.2). Parts of the source code are still incomplete and untested. Use at your own risk.  |
+| **Important:** mercure (formerly called Hermes) is still undergoing development work. While mercure is now feature-complete for the release of version 0.2, we are still testing and improving the code. Use at your own risk.  |
 | :--- |
 
 # mercure DICOM Orchestrator

@@ -1,220 +1,67 @@
 Installation
 ============
 
-.. important:: This documentation needs to be updated for the new version 0.2. The installation instructions may not work for version 0.2.
+It is recommended to install mercure on a Linux machine running Ubuntu Server 20.04 LTS 64bit (or newer). The installer for the Ubuntu operating system can be downloaded at https://ubuntu.com/download/server
 
-It is recommended to install mercure on a Linux machine running Ubuntu Server 18.04 LTS 64bit (or newer). The installer for the Ubuntu operating system can be downloaded at https://ubuntu.com/download/server
+.. note:: mercure might run on other Linux distributions as well, but the installation script will not work without modification. When trying to install mercure on other Linux distributions, it might be best to focus on a Docker-based installation and derive a custom installation script from the script included in the repository.
 
-.. note:: mercure might run on other Linux flavors as well, but the installation instructions listed on this page will likely not be applicable without modification.
+Installation types
+------------------
+
+mercure can be installed in three different ways: 
+
+* Using systemd as service runner
+* Using Docker as service runner
+* Using Nomad for orchestrating the services
+
+Which installation type should you choose? It depends on the use case. For normal users, either a Docker-based or systemd-based installation is best suited. A systemd-based installation might have a small performance advantage, while a Docker-based installation will be easier to upgrade to newer mercure versions. If you are planning to actively develop and customize mercure, a systemd-based installation should be preferred.
+
+With both systemd- and Docker-based installations, processing modules are executed sequentially, i.e. the requested processing module is launched inside a Docker container and the processor service waits until the processing has finished. With a Nomad-based installation, multiple processing modules can be executed in parallel. In this case, the processor service launches processing modules asynchronously and fetches  results from the processing containers when the processing has finished. Moreover, the processor can distribute the processing jobs across multiple compute nodes, i.e. you can operate a processing cluster. This might be important if you are planning to integrate computationally demanding processing algorithms and if you are expecting a large volume of processing jobs. It is also relevant if you are planning to operate processing modules with different hardware requirements, because the Nomad-based solution allows defining resource requirements for jobs. However, these functions may not be needed in many situations. Nomad-based installations are more complex and intended for advanced users.
+
 
 Installing mercure
 ------------------
 
-After finishing the Ubuntu installation procedure, the Offis DICOM toolkit (DCMTK), gcc compiler, and jq need to be installed. A user called "mercure" should be created (the adduser command will ask for a password), and the mercure installation file should be cloned using the shown Git command. By default, mercure should be installed into the home directory of the user mercure. 
-
-Afterwards, the installation script should be executed. This will install the required Python runtime environment (Python 3.6 or higher) and create configuration files from the templates that are shipped with mercure. Finally, the included ".service" files for running the mercure modules as daemons need to be copied to the systemd folder and enabled via the "systemctl enable" command.
-
-You can perform these steps by copying the commands listed below into a bash shell. It is assumed that you are logged in as user with sudo rights.
+After deciding on the type of mercure installation, open a terminal shell of your Ubuntu installation for a user with sudo rights. Clone the mercure repository into the home folder of the user:
 
 ::
 
-    sudo apt install build-essential -y
-    sudo apt install dcmtk -y
-    sudo apt install jq -y
-    sudo adduser mercure
-    ssh mercure@localhost
+    cd ~
     git clone https://github.com/mercure-imaging/mercure.git
     cd mercure
-    git checkout stable-v0.1
-    cd ~/mercure/installation
-    ./install.sh
-    exit
-    cd /home/mercure/mercure/installation
-    sudo cp *.service /etc/systemd/system
-    sudo systemctl enable mercure_bookkeeper.service
-    sudo systemctl enable mercure_cleaner.service
-    sudo systemctl enable mercure_dispatcher.service
-    sudo systemctl enable mercure_receiver.service
-    sudo systemctl enable mercure_router.service
-    sudo systemctl enable mercure_ui.service
 
-
-Creating data storage
----------------------
-
-By default, the received DICOM files are buffered in subfolders of the directory "/home/mercure/mercure-data". The commands listed below will create the required folders in this location.
+Call the installation script and put the installation type as argument ("systemd" or "docker" or "nomad")
 
 ::
 
-    ssh mercure@localhost
-    mkdir mercure-data; cd mercure-data
-    mkdir incoming; mkdir outgoing; mkdir success; mkdir error; mkdir discard;
+    sudo ./install.sh docker
 
-.. note:: The storage location for buffering the DICOM files can also be changed. This is necessary, e.g., if a dedicated hard-drive should be used for the file buffering. In this case, the storage location needs to be updated in the configuration file mercure.json, as described below.
+The script will now perform all relevant installation steps, including installation of Docker and Python runtime environments. It will also create the user "mercure", which will be used for running the mercure processes. 
 
+.. tip:: When installing mercure in Docker mode, the option "-b" can be used to enforce that the docker containers are rebuilt (instead of downloaded from Docker Hub). This might be helpful if you are interested in new features that have not been published as release yet. Moreover, the option "-d" selects the development version instead of the stable version.
 
-Installing PostgreSQL
----------------------
+Locations
+---------
 
-The bookkeeper service uses a PostgreSQL database to store all recorded data. Several steps are necessary to install and configure PostgreSQL. It is possible to use mercure also without the bookkeeper service. However, it's highly recommended to use bookkeeper, as it makes mercure much more powerful and easy to maintain. 
+By default, mercure is installed in the folder **/opt/mercure**. If necessary, the location can be changed after the installation (see note below), but this is not recommended. The installer will always use the default path.
 
-.. note:: The commands below create a database for the mercure data and already prepare the database for use with the Redash visualization software, as described on the Monitoring page. If Redash should not be used, all commands containing the word "redash" can be omitted. 
+========================================= ==================================
+Folder                                    Content
+========================================= ==================================
+/opt/mercure                              Base installation folder
+/opt/mercure/app                          Application source code
+/opt/mercure/config                       Configuration files
+/opt/mercure/data                         Folders for buffering images
+/opt/mercure/db                           Database of the bookkeeper
+========================================= ==================================
 
-Keep in mind that '[mercure pwd]' in the command below needs to be replaced with the password that was entered when creating user mercure (and redash, respectively).
+.. note:: If you need to change the installation location, set the environment variable MERCURE_CONFIG_FOLDER to the new location where the configuration files can be found. Then, change the paths of the data folders in the configuration file mercure.json. Finally, change the application startup scripts depending on your installation type. In the case of a systemd installation, this means adjusting mercure's .service files found in the folder /etc/systemd/system.
 
-::
-
-    sudo apt install postgresql postgresql-contrib -y
-    sudo -i -u postgres
-    createuser -P mercure
-    createuser -P redash
-    createdb mercure
-    psql
-    ALTER USER mercure WITH PASSWORD '[mercure pwd]';
-    ALTER USER redash WITH PASSWORD '[redash pwd]';
-    GRANT ALL PRIVILEGES ON DATABASE mercure to mercure;
-    \q
-    exit
-    ------
-    sudo nano /etc/postgresql/10/main/pg_hba.conf
-
-    # Add the following line to file:
-        host    all             all             172.16.0.0/12           md5
-    ------
-    sudo nano /etc/postgresql/10/main/postgresql.conf
-
-    # Uncomment and add 172.17.0.1 to the following line to file:
-        listen_addresses = 'localhost, 172.17.0.1' # what IP address(es) to listen on;
-    ------
-    sudo service postgresql restart
-
-
-.. note:: The commands above assign read/write rights to the user "mercure", enabling the bookkeeper service to create the required database tables and store received monitoring information in the database. However, when working with the database for data analysis, an account with read-only rights should be used to prevent accidental data modification during the analysis. This applies in particular to the created user "redash".
-
-Read-only permissions can only be granted if the database tables already exist. The tables are automatically created when the bookkeeper service is started for the first time. Therefore, we first need to complete the mercure configuration before we can grant read-only permissions.
-
-
-Basic mercure configuration
----------------------------
-
-Before mercure can be started for the first time, several basic configuration steps are required.
-
-First, you need to edit "webgui.env" and change the SECRET_KEY for the webgui. 
-
-::
-
-    ssh mercure@localhost
-    cd ~/mercure/configuration
-    nano webgui.env
-
-By default, the SECRET_KEY is set to "PutSomethingRandomHere" and you need to change it to something random (it doesn't matter what exactly, just keep it a secret).
-
-.. important:: The webgui will not start until you change the secret key.
-
-By default, the webgui runs on port 8080. Thus, you need to enter "http://x.x.x.x:8000" into your webbrowser. If you want to run it on a different port, you can change the port in the file "webgui.env" as well.
-
-.. note:: The Redash installation script automatically installs Redash on port :80. If you want to run the mercure webgui on port :80 instead, you first need to change the port of Redash (see instructions in the Redash installation section).
-
-Next, you need to tell the bookkeeper the database password. This needs to be done in the file "bookkeeper.env" by replacing "ChangePasswordHere" with the password that you selected for the database user mercure:
-
-::
-
-    nano bookkeeper.env
-
-.. tip:: In this file, you can also change the port that the bookkeeper listens on (8080 by default), but that is normally not needed. If you need to change it, change it also in the file "mercure.json".
-
-Finally, if you are using a different storage location than "/home/mercure/mercure-data", then you need to update the paths in the following two files:
-
-::
-
-    # Change paths in lines 3-7
-    nano mercure.env
-    ------
-    # Change line incoming=... (also change line binary=... if using other install folder)
-    nano ../receiver.sh
-    ------
-    exit
-
-
-First start of mercure
-----------------------
-
-Now, you can start mercure for the fist time. For now, start only the bookkeeper service, so that the database tables are created, and the webgui, so that the other services can later be started through the webgui.
-
-The following commands need to be entered using a sudo account (i.e., not as user mercure):
-
-::
-
-    systemctl start mercure_bookkeeper.service
-    systemctl start mercure_ui.service
-
-You can validate if the two services started correctly with the following two commands:
-
-::
-
-    journalctl -u mercure_bookkeeper.service
-    journalctl -u mercure_ui.service
-
-In addition, you should open a web browser and test if the login page appears if you enter the server ip (with port :8000 - or the port that you selected).
-
-
-Completing the PostgreSQL configuration
----------------------------------------
-
-Now that the database tables have been created by the bookkeeper, you can grant read-only permissions to the user "redash". This can be achieved by running the following commands. 
-
-::
-
-    sudo -i -u postgres
-    psql
-    \c mercure
-    GRANT CONNECT ON DATABASE mercure TO redash;
-    GRANT USAGE ON SCHEMA public TO redash;
-    GRANT SELECT ON ALL TABLES IN SCHEMA public TO redash;
-    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO redash;
-    \q
-    exit
-
-.. important:: These commands need to be rerun whenever the database tables have been dropped (e.g., when clearing the database).
-
-
-Installing Redash
------------------
-
-Redash is a powerful open-source web application for analyzing and visualizing data stored in SQL databases, like the data collected by the bookkeeper service. Instead of integrating limited analysis functions into mercure' own webgui, we decided to utilize Redash instead, which provides much greater flexibility. You can learn more about Redash at http://redash.io
-
-Redash provides a convenient installation script that uses Docker for the Redash deployment. It is highly recommended to use this script, unless you are very familiar with Redash. 
-
-::
-
-    wget https://raw.githubusercontent.com/getredash/setup/master/setup.sh
-    chmod 700 setup.sh
-    sudo ./setup.sh
-
-Open the Redash configuration page in a web browser
-
-::
-
-    http://[server ip]/setup
-
-After setting up your Redash administrator password, click the top-right configuration icon and select "New Data Source". Select a PostgreSQL database and enter the following connection settings
-
-::
-
-    Type: Postgres
-    Name: mercure
-    Host: 172.17.0.1
-    Port: 5432
-    User: redash
-    Password: [as selected above]
-    Database Name: mercure
-
-Afterwards, click "Save" and validate the database connection by clicking the button "Test Connection". If you see a green "Success" notification on the bottom-right, everything works.
-
-.. tip:: If you want to run Redash on a different port than :80 (e.g., webgui on :80 and redash on :81), then you need to edit the file "/opt/redash/docker-compose.yml" and change the value "80:80" in the nginx section to, e.g., "81:80". Afterwards, you need to restart the  nginx container.
-
+.. tip:: The source code located in the /app folder is directly executed only for systemd-type installations. Docker and Nomad installations execute container images instead. By default, these images are downloaded from Docker Hub. If you want to modify the mercure source code, you need to rebuild the container images for the changes to go into effect. This can be done with the script build-docker.sh.
 
 Congratulations
 ---------------
 
-If you have made it to here, then you have mastered the installation of mercure. Everything that follows from here will be much easier.
+If you have made it to here, then you have mastered the installation of mercure. You should now be able to access mercure's user interface with a web browser by entering your server's IP address and adding :8000 (e.g., 192.168.56.1:8000). 
+
+.. tip:: You can change the port used for the web interface from 8000 to another port by editing the file webgui.env in mercure's configuration folder. Make sure to restart the webgui service afterwards. Also, if running Docker or Nomad (or testing mercure with Vagrant), make sure to modify the port mapping to the host system as well.

@@ -1,7 +1,9 @@
 Discussion Board
 ================
 
-If you have questions or feature requests for the mercure DICOM router, you can get in touch with the developers via the Gitter chat below. You need to sign in using a GitHub account.
+If you have questions or feature requests for mercure, you can get in touch with the development team through the Gitter chat embedded below. You need to sign in using a GitHub account.
+
+Please submit bug reports directly to the `Issues tracker on Github <https://github.com/mercure-imaging/mercure/issues>`_.
 
 `mercure Support Board <https://gitter.im/mercure-imaging/support>`_
 
