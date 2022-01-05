@@ -1,8 +1,44 @@
 Advanced Topics
 ===============
 
-.. important:: The information on this page is still being updated for mercure version 0.2.
+Scaling services
+----------------
 
+By default, mercure uses only a single instance of each service module (i.e., in the case of the dispatcher, only one series per time is sent outwards), which provides sufficient performance for most applications. However, for very demanding applications with high volume of incoming DICOM series, it can be necessary run multiple instances of the modules (router, processor, dispatcher). All mercure modules have been written to allow for parallel execution, so that additional instances can be started. 
+
+The exact way of scaling up services depends on the type of mercure installation (systemd / Docker / Nomad). The instructions below describe how services can be duplicated when using systemd (which is preferred for high-performance installations).
+    
+For systemd installations, the file "services.json" in the folder "/opt/mercure/config" needs to be modified. Here, the section of each module that should be scaled needs to be duplicated. For example, for scaling the dispatcher, the "dispatcher" section needs to be duplicated and a unique name needs to be selected for the copy (for the section name and inner keys "name" and "systemd_service", as shown below):
+::
+
+    {
+        ...
+        "dispatcher": {
+            "name": "Dispatcher",
+            "systemd_service": "mercure_dispatcher.service",
+            "docker_service": "mercure_dispatcher_1"
+        },
+        "dispatcher2": {
+            "name": "Dispatcher2",
+            "systemd_service": "mercure_dispatcher2.service",
+            "docker_service": "mercure_dispatcher_2"
+        },
+        ...
+    }
+
+.. note:: It is not necessary to scale the receiver module, as the receiver automatically launches a separate process for every DICOM connection.
+
+Afterwards, the .service files of the scaled service modules need to be duplicated in the folder /etc/systemd/system. For example, if duplicating the dispatcher module as shown above, copy the existing file mercure_dispatcher.service and name it mercure_dispatcher2.service (or whatever has been listed in the file services.json). Enable and start the duplicated service by calling (from an account with sudo rights):
+::
+
+  sudo systemctl enable mercure_dispatcher2.service
+  sudo systemctl start mercure_dispatcher2.service
+
+As last step, it is necessary to authorize the mercure system user to control the duplicated services. This is done by editing the file /etc/sudoers.d/mercure (using a user account with sudo permission) and adding a line for each duplicated service (according to the name specified above). When copying an existing line from the file, make sure to change every occurrence of the service name in the line.
+
+
+
+.. important:: The following sections are still being updated for mercure version 0.2.
 
 Configuration files
 -------------------
@@ -110,7 +146,3 @@ Now that the database tables have been created by the bookkeeper, you can grant 
 .. important:: These commands need to be rerun whenever the database tables have been dropped (e.g., when clearing the database).
 
 
-Scaling services
-----------------
-
-.. note:: This section is coming soon.

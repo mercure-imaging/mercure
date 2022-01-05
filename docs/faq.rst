@@ -25,16 +25,16 @@ If mercure receives images and no routing rule does apply, the images will not b
 Can the series be dispatched in a certain order?
 ------------------------------------------------
 
-mercure dispatches series of a study in the order they were received. If multiple simultaneous connections are used to transmit a study (this depends on the sender), it could happen that the dispatching order is changed. At the moment, there is no mechanism for sorting the dispatching order again. However, if there is sufficient interest among mercure users, we will implement a feature to enforce sequential dispatching of all series belonging to one study.
+mercure dispatches series of a study in the order they were received. If multiple simultaneous connections are used to transmit a study (this depends on the sender), it could happen that the dispatching order is changed. At the moment, there is no mechanism for sorting the dispatching order again. However, if there is sufficient need among mercure users, we will implement a feature to enforce sequential dispatching of all series belonging to one study.
 
 --------
 
 What can I do to further improve the performance?
 -------------------------------------------------
 
-If you should run into a situation where a default mercure setup is not able to handle the load of incoming DICOM series, then you can scale up the instances of the router and dispatcher module. By default, only one instance of each module is used (i.e., in the case of the dispatcher, only one series per time is sent outwards). 
+If you should run into a situation where a default mercure setup is not able to handle the load of incoming DICOM series, then you can scale up the instances of the router, processing, and dispatcher modules. By default, only one instance of each module is used (i.e., in the case of the dispatcher, only one series per time is sent outwards). 
 
-All service modules have been designed such that multiple module instances can be used in parallel. The exact way of scaling up the services depends on the type of mercure installation (systemd/Docker/Nomad). For systemd installations, you need to modify the file "services.json" in the "/configuration" folder and duplicate the entry of the module that you want to scale. You need to give the additional module instance a different name (e.g., "dispatcher2"). Moreover, you need to duplicate the corresponding .service file for systemd and rename it accordingly. Note that it is not necessary to scale the receiver module, as the receiver automatically launches a separate process for every DICOM connection.
+All service modules have been designed such that multiple module instances can be used in parallel. The exact way of scaling up the services depends on the type of mercure installation (systemd/Docker/Nomad). More information on scaling services can be found in the :doc:`Advanced <../advanced>` section.
 
 --------
 
