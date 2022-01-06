@@ -59,6 +59,14 @@ Not currently. Please post your questions and support requests to the :doc:`Disc
 
 --------
 
+Can mercure be used for commercial purpose?
+-------------------------------------------
+
+Yes, commercial use of mercure is generally possible, but it must adhere to the policies defined by the GNU GPLv3 open-source license. `Click here <https://choosealicense.com/licenses/gpl-3.0/>`_ to learn more about the permissions, conditions, and limitations of the license. 
+
+
+--------
+
 Who is behind the project?
 --------------------------
 

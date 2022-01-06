@@ -4,7 +4,7 @@ Monitoring
 .. important:: The information on this page is still being updated for mercure version 0.2.
 
 
-mercure provides three different mechanisms for monitoring the router activity and health.
+mercure provides three different mechanisms for monitoring the server activity and health.
 
 Log files
 ---------
@@ -130,6 +130,58 @@ Dashboards that we created for our own mercure installation include:
 * A "Series Detail" dashboard that is cross-linked from the other dashboards and shows all collected information for a selected series, including all DICOM tags and processing events
 
 Instructions how to create these dashboards are provided in the :doc:`Dashboard Gallery <../dashboards>`.
+
+
+Installing Redash
+-----------------
+
+Redash is a powerful open-source web application for analyzing and visualizing data stored in SQL databases, like the data collected by the bookkeeper service. Instead of integrating limited analysis functions into mercure' own webgui, we decided to utilize Redash instead, which provides much greater flexibility. You can learn more about Redash at http://redash.io
+
+Redash provides a convenient installation script that uses Docker for the Redash deployment. It is highly recommended to use this script, unless you are very familiar with Redash. 
+
+::
+
+    wget https://raw.githubusercontent.com/getredash/setup/master/setup.sh
+    chmod 700 setup.sh
+    sudo ./setup.sh
+
+Open the Redash configuration page in a web browser
+
+::
+
+    http://[server ip]/setup
+
+After setting up your Redash administrator password, click the top-right configuration icon and select "New Data Source". Select a PostgreSQL database and enter the following connection settings
+
+::
+
+    Type: Postgres
+    Name: mercure
+    Host: 172.17.0.1
+    Port: 5432
+    User: redash
+    Password: [as selected during mercure installation]
+    Database Name: mercure
+
+Afterwards, click "Save" and validate the database connection by clicking the button "Test Connection". If you see a green "Success" notification on the bottom-right, everything works.
+
+.. tip:: If you want to run Redash on a different port than :80, then you need to edit the file "/opt/redash/docker-compose.yml" and change the value "80:80" in the nginx section to, e.g., "8888:80". Afterwards, you need to restart the nginx container.
+
+After the database tables have been created by the mercure bookkeeper services, you can grant read-only permissions to the user "redash". This can be achieved by running the following commands. 
+
+::
+
+    sudo -i -u postgres
+    psql
+    \c mercure
+    GRANT CONNECT ON DATABASE mercure TO redash;
+    GRANT USAGE ON SCHEMA public TO redash;
+    GRANT SELECT ON ALL TABLES IN SCHEMA public TO redash;
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO redash;
+    \q
+    exit
+
+.. note:: These commands need to be rerun whenever the database tables have been dropped (e.g., when clearing the database).
 
 
 Alerts
