@@ -28,9 +28,9 @@ User management
    :align: center
    :class: border
 
-Users can be created, modified, and deleted on the "Users" page. There are two types of users: Normal users, who can view the router configuration and status but not change anything, and administrators, who have full access. Users with administration rights are indicated by an icon with a shield in the user list.
+Users can be created, modified, and deleted on the "Users" page. There are two types of users: Normal users, who can view the configuration and status but not change any settings, and administrators, who have full access. Users with administration rights are indicated by an icon with a shield in the user list. Users can also be added to permission groups. Permission groups are not yet used for anything, but they will be used in future mercure versions to offer granular access control.
 
-.. tip:: You should create separate accounts for every person using the router. This will allow you to review which user made changes to the router configuration, as mercure is keeping track of all configuration changes.
+.. tip:: You should create separate accounts for every person using mercure. This will allow you to review which user made changes to the server configuration, as mercure is keeping track of all configuration changes.
 
 
 System status and control
@@ -41,50 +41,71 @@ System status and control
    :align: center
    :class: border
 
-You can see the status of the different mercure service components on the "Overview" page. If a service is running, it will be shown in green, otherwise in red. In normal operation, everything should be green. 
+The status of the mercure server and its service components can be monitored on the "Overview" page. If a service is running, it will be shown in green color, otherwise it is shown in red. In normal operation, everything should be green. 
 
 .. image:: ui_status_control.png
    :width: 550px
    :align: center
    :class: border
 
-You can start, stop, and restart services by clicking the "Service Control" button. This will show a dialog where you can select which service(s) to control and which operation to execute (e.g., start or stop). If a service does not react at all anymore, it is also possible to kill a service. 
+You can start, stop, and restart services by clicking the "Service Control" button. This will show a dialog where you can select which service(s) to control and which operation to execute (e.g., start or stop). If a service does not react anymore at all, it is also possible to kill a service. 
+
+.. note:: The "Service Control" button is only available for systemd- and Docker-type installations but not for Nomad-type installations. Nomad directly takes care restarting failed services.
 
 .. note:: If you stop a service, it might take a short moment until the service goes down. This is because the services have been designed to finish the active series before terminating. 
 
-If you followed the mercure installation instructions, then only the bookkeeper service has been started so far. All other services should be red when you login for the first time. Therefore, you should now go ahead and start all services.
+.. tip:: If you don't want to use the web interface, you can also manually control the mercure services from the command line. This can be done with the command "systemctl start -u mercure_router.service" (in this example for the routing service). You can find the names of the individual services in the file **/opt/mercure/config/services.json**.
 
-.. tip:: If you don't want to use the web interface, you can also manually control the mercure services from the command line. This can be done with the command "systemctl start -u mercure_router.service" (in this example for the routing service). You can find the names of the individual services in the files "/configuration/services.json".
-
-The Overview page also shows you the disk space available in the folder for buffering the incoming DICOM files. If this bar turns yellow or red, make sure to free up disk space as the router will not be able to receiver images if the disk is completely full.
+The Overview page also shows you the disk space available in the folder for buffering the incoming DICOM files. If this bar turns yellow or red, make sure to free up disk space as the mercure server will not be able to receive images if the disk is completely full.
 
 
-Defining targets
-----------------
+Configuring targets
+-------------------
 
 .. image:: ui_targets.png
    :width: 550px
    :align: center
    :class: border
 
-DICOM nodes that should receive the routed series can be defined and modified on the "Targets" page. Here, you will see a list of the currently configured targets. By clicking on one item, you can see the target details (e.g., the IP address). You can also test if the target can be reached by clicking the "Test" button, which will first try to ping the server and afterwards open a C-Echo association. The target can only receive images if both tests are successful.
+Target nodes that should receive processed and routed series can be defined and configured on the "Targets" page (via DICOM or SFTP connection). The first page shows an overview of the currently configured targets. By clicking on an individual item, you can see the target details (e.g., IP address and port). You can also test if the target can be reached by clicking the "Test" button, which will try to ping the server and open a connections (via C-Echo or SFTP). 
 
-Click the "Add New" button to create a new target. This can be done during normal operation of the router, i.e. it is not necessary to stop any of the router service.
+Click the "Add New" button to create a new target. This can be done during normal operation of the server, i.e. it is not necessary to stop any of the services for adding new targets.
 
 .. image:: ui_target_edit.png
    :width: 550px
    :align: center
    :class: border
 
-After choosing a name for the target, you can enter the settings of the DICOM connection settings. Here, you need to enter the IP address, port, the target AET (application entity title) that should be called on the receiver side, and the source AET with which mercure identifies itself to the target.
+After choosing a unique name for the target, you can edit the target settings. First, you need to select the type of target. Currently, DICOM targets and SFTP targets are supported (other target types, such as DICOMweb will be added at later time).
+
+For DICOM targets, enter the settings of the DICOM node, including the IP address, port, the target AET (application entity title) that should be called on the receiver side, and the source AET with which mercure identifies itself to the target.
 
 .. tip:: Some DICOM nodes require that you set a specific target AET, while other systems ignore this setting. Likewise, some DICOM nodes only accept images from a sender who's source AET is known, while others ignore the value. Please check with the vendor/operator of your DICOM node which values are required.
 
-Finally, you can also enter a contact e-mail address. This should be done for reference purpose, so that it can be looked up at a later time who should be contacted if problems with the target exist.
+For SFTP targets, enter the hostname or IP, target folder on the server, username, and password. 
+
+.. tip:: It is recommended to create a dedicated restricted user account for the SFTP uploads. Never use the credentials of an account with access to sensitive information, as the SFTP credentials are stored in the configuration file.
+
+.. important:: Support for SFTP transfers is still experimental and should be used with care. 
+
+On the "Information" tab, you can add information for documentation purpose, including a contact e-mail address (so that it can be looked up at later time who should be contacted if problems with the target exist) and description of the target.
 
 
-Defining routing rules
-----------------------
+Installing modules
+------------------
+
+An overview of the installed processing modules can be seen by clicking on the "Modules" page. Details are shown by clicking on an item, which also allows editing the module settings.
+
+To setup a new module, click the "Install Module" button. Select a unique name for the module. It is possible to install the same processing module multiple times under different names with different settings. Specify the processing module by entering the Docker Tag.
+
+.. note:: The Docker Tag corresponds to the name of the processing module as stored on Docker Hub. For modules that are not distributed via Docker Hub, the Docker container needs to be built locally on the server before it can be used by mercure. 
+
+Afterwards, you can edit additional Docker-specific settings on the "Docker" tab (additional volumes, environment variables, etc.). In most cases, these settings are not needed. Settings for the processing module can be defined on the "Settings" tab. These settings must be entered in **JSON format**. The settings entered on the module page are global modules settings, i.e. they are applied whenever the module is used. The global module settings can be overwritten (or extended) by defining settings for the individual rule (thus, the settings passed to the module are the global module settings merged with the rule-specific processing settings).
+
+
+
+Defining rules
+--------------
 
 .. highlight:: none
 
@@ -93,7 +114,7 @@ Defining routing rules
    :align: center
    :class: border
 
-When you have configured a target, you can add routing rules that define which DICOM series should be forwarded to that target. This can be done on the "Rules" page. Again, it is not necessary to stop mercure while defining new rules. The different mercure services will automatically load the new configuration once the rule has been saved. Click the "Add New" button to create a new rule, or click on any of the existing rules and select "Edit" to modify it.
+When you have configured a target, you can add rules that define which DICOM series should be forwarded to that target. This can be done on the "Rules" page. Again, it is not necessary to stop mercure while defining new rules. The different mercure services will automatically load the new configuration once the rule has been saved. Click the "Add New" button to create a new rule, or click on any of the existing rules and select "Edit" to modify it.
 
 .. image:: ui_rules_edit.png
    :width: 550px
@@ -142,6 +163,9 @@ If you have validated that your rule triggers as expected, select the desired ta
 
 Routing rules can be temporarily disabled by setting the "Disabled" field to True. In this case, the rule appears in grayed-out color in the rule list and it will be ignored during processing.
 
+
+Queue management
+----------------
 
 
 
