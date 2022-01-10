@@ -8,7 +8,7 @@ sys.path.insert(0, os.path.abspath('..'))
 # -- Project information -----------------------------------------------------
 
 project = 'mercure'
-copyright = '2019-2021, Kai Tobias Block, Roy Wiggins, Joshy Cyriac'
+copyright = '2019-2022, Kai Tobias Block, Roy Wiggins, Joshy Cyriac'
 author = 'Kai Tobias Block, Roy Wiggins, Joshy Cyriac'
 
 # The short X.Y version

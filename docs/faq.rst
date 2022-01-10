@@ -45,6 +45,13 @@ mercure has been written in Python, except for the getdcmtags module that is use
 
 --------
 
+Does mercure use Log4j?
+-----------------------
+
+No, mercure has not been written in Java, and it does not use the Log4j logging software.
+
+--------
+
 Is mercure FDA-approved? Does it have a CE label?
 -------------------------------------------------
 

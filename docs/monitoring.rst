@@ -1,26 +1,24 @@
 Monitoring
 ==========
 
-.. important:: The information on this page is still being updated for mercure version 0.2.
-
-
 mercure provides three different mechanisms for monitoring the server activity and health.
 
 Log files
 ---------
 
-All mercure services write detailed logging information with timestamps into system log files. The most convenient way to review these logs is to use the "Logs" page of the mercure web interface. Here you can see a separate tab for every service. The logs are updated whenever you switch between tabs and when you click the refresh button on the top-right.
+All mercure services write detailed logging information into system log files. The most convenient way to review these logs is to use the "Logs" page of the mercure web interface. It shows a separate tab for every mercure service. The log display is updated whenever you switch between tabs or when you click the refresh button on the top-right.
 
 .. image:: ui_log.png
    :width: 550px
    :align: center
    :class: border
 
-Using the From/To controls, you can limit the time span that is shown in the log viewer.
+Depending on your mercure installation type, you can restrict the time span shown in the log viewer 
+using the From/To controls (systemd-type installations allow providing start & end time, Docker-type installations allow providing a start time, Nomad-type installations don't allow selecting the time span).
 
-.. note:: Only the last 1000 lines of each log are displayed to keep the user interface responsive. If you are looking for an older event, use the From/To fields to narrow down the time span.
+.. note:: In systemd-mode, only the last 1000 lines of each log are displayed to keep the user interface responsive. If you are looking for an older event, use the From/To fields to narrow down the time span.
 
-.. tip:: The log files can also be viewed in the terminal using the journalctl command by providing the service name as argument. For example, "journalctl -u mercure_ui.service" shows the log of the webgui. You can see the names of the different services as tooltip when hovering over the tabs on the "Logs" page.
+.. tip:: In systemd-mode, the log files can also be viewed in a terminal shell using the journalctl command by providing the service name as argument. For example, "journalctl -u mercure_ui.service" shows the log of the webgui. You can see the names of the different services as tooltip when hovering over the tabs on the "Logs" page.
 
 
 Graphite
@@ -28,7 +26,7 @@ Graphite
 
 `Graphite <https://graphiteapp.org/>`_ is a very powerful tool for monitoring the health of a server. It can collect time-series data from various sources and stores the data in a database. Instead of displaying the data directly with Graphite, the collected data is often visualized using `Grafana <https://grafana.com/>`_, which makes it very easy to create dashboards for various data sources and to setup alerts. 
 
-We highly recommend that you monitor your mercure server with Graphite and Grafana. In a typical setup, Graphite and Grafana are running on a separate monitoring server. Basic health parameters like the available disk space, CPU load, and memory usage can be collected by installing the `collectd <https://collectd.org/>`_ service on your server, which will transmit the information to your Graphite instance. 
+We highly recommend that you monitor your mercure server with Graphite and Grafana. In a typical setup, Graphite and Grafana are running on a separate monitoring server. Basic health parameters such as the available disk space, CPU load, and memory usage can be collected by installing the `collectd <https://collectd.org/>`_ service on your server, which will transmit the information to your Graphite instance. 
 
 mercure can transmit additional information about its activities to Graphite. To enable it, shutdown all mercure services and edit the keys graphite_ip and graphite_port in the file mercure.json (here you need to enter the IP and port of your Graphite instance). Afterwards, restart the mercure services.
 
@@ -100,7 +98,7 @@ The most convenient way for installing Graphite and Grafana is using `Docker Com
 Bookkeeper with Redash
 ----------------------
 
-All mercure components transfer real-time information about their activities to mercure' bookkeeper service, which acts as central monitoring hub. The bookkeeper service can be disabled if not needed, but it's highly recommended to use it, as it allows analyzing which series have been processed (or discarded) and what the processing times were. Of course, it also keeps track of all errors and processing abnormalities that might occur. Moreover, because bookkeeper tracks all DICOM files that pass through the router, including series that are discarded, the bookkeeper can be used for data mining that exceeds the capabilities of many PACS systems (e.g., searching for series where a certain contrast agent has been administered).
+All mercure components transfer real-time information about their activities to mercure's bookkeeper service, which acts as central monitoring hub. The bookkeeper service can be disabled if not needed, but it is recommended to use it because it allows answering questions such as which series have been processed (or discarded) or how long average processing times were. It also keeps track of all errors and processing abnormalities that might occur. Moreover, because the bookkeeper tracks all DICOM files that pass through the server, including series that are discarded, it can be used for data mining tasks that exceed the capabilities of many PACS systems (e.g., searching for series where a certain contrast agent has been administered).
 
 Bookkeeper is running as RESTful service on a TCP/IP port (by default 8080) and stores the received information in a PostgreSQL database, which can be queried for analytics purpose.
 
@@ -109,10 +107,10 @@ The following information is stored in the database:
 ====================================== ===========================================================================
 Table                                  Meaning
 ====================================== ===========================================================================
-mercure_events                          General events of mercure modules, e.g. startup or detected errors
-webgui_events                          Activities of webgui, e.g. login attempts or configuration changes
+mercure_events                         General events of mercure modules, e.g. startup or detected errors
+webgui_events                          Activities in the webgui, e.g. login attempts or configuration changes
 dicom_files                            All received DICOM files with file name, file UID, and series UID
-dicom_series                           Information on all received series, incl relevant tag information
+dicom_series                           Information on all received series, including relevant tag information
 series_events                          All processing events related to one series, e.g. dispatch or discard 
 file_events                            Currently unused
 dicom_series_map                       Currently unused
@@ -120,7 +118,7 @@ dicom_series_map                       Currently unused
 
 The tables dicom_series, series_events, and dicom_files can be joined using series_uid as common column, allowing to query the events associated with one series and the names of the individual DICOM files.
 
-A very convenient and powerful tool for working with the collected PostgreSQL data is the `Redash <http://redash.io>`_ web application, which has already been described in the installation section. Redash allows prototyping SQL queries right in the browser and provides a navigator for the database keys. The query results can be displayed as tables or graphically using various visualization options. The visualizations can then be embedded into dashboards, allowing to rapidly create custom dashboards for various applications without need for any programming besides formulating the SQL queries. The dashboards can even be made interactive using a set of available user controls that can be integrated into the SQL queries. Redash is equipped with a multi-user authorization system and can be used simultaneously by different users. 
+A very convenient and powerful tool for working with the collected PostgreSQL data is the `Redash <http://redash.io>`_ web application. Redash allows prototyping SQL queries right in the browser and provides a navigator for the database keys. The query results can be displayed as tables or graphically using various visualization options. The visualizations can then be embedded into dashboards, allowing to rapidly create custom dashboards for various applications without need for any programming besides formulating the SQL queries. The dashboards can even be made interactive using a set of available user controls that can be integrated into the SQL queries. Redash is equipped with a multi-user authorization system and can be used simultaneously by different users. 
 
 Dashboards that we created for our own mercure installation include:
 
@@ -135,7 +133,7 @@ Instructions how to create these dashboards are provided in the :doc:`Dashboard 
 Installing Redash
 -----------------
 
-Redash is a powerful open-source web application for analyzing and visualizing data stored in SQL databases, like the data collected by the bookkeeper service. Instead of integrating limited analysis functions into mercure' own webgui, we decided to utilize Redash instead, which provides much greater flexibility. You can learn more about Redash at http://redash.io
+Redash is a powerful open-source web application for analyzing and visualizing data stored in SQL databases, such as the data collected by the bookkeeper service. Instead of integrating limited analysis functions into mercure's own webgui, we decided to utilize Redash instead, which provides much greater flexibility. You can learn more about Redash at http://redash.io
 
 Redash provides a convenient installation script that uses Docker for the Redash deployment. It is highly recommended to use this script, unless you are very familiar with Redash. 
 
@@ -167,7 +165,7 @@ Afterwards, click "Save" and validate the database connection by clicking the bu
 
 .. tip:: If you want to run Redash on a different port than :80, then you need to edit the file "/opt/redash/docker-compose.yml" and change the value "80:80" in the nginx section to, e.g., "8888:80". Afterwards, you need to restart the nginx container.
 
-After the database tables have been created by the mercure bookkeeper services, you can grant read-only permissions to the user "redash". This can be achieved by running the following commands. 
+Database tables are automatically created by the bookkeeper service during the mercure installation. It is recommended to grant read-only permissions for these tables, e.g. to the user "redash". This can be achieved by running the following commands. 
 
 ::
 
@@ -191,11 +189,11 @@ It is highly recommended to setup alerts for processing errors and server proble
 
 Examples for useful alerts include:
 
-* If the disk space on the server drops below a certain threshold [alert via Grafana]
-* If the server cannot be reached ("pinged") over the network [alert via Grafana]
-* If the mercure services (router, dispatcher, cleaner) have not notified Graphite for a longer period [alert via Grafana]
-* If bookkeeper has received any error notifications [alert via Redash]
-* If the number of series dispatched to a certain target falls below the expected value [alert via Redash]
+* The disk space on the server has dropped below a certain threshold [alert via Grafana]
+* The server cannot be reached ("pinged") over the network [alert via Grafana]
+* The mercure services (router, dispatcher, cleaner) have not notified Graphite for a longer period [alert via Grafana]
+* The bookkeeper has received any error notification [alert via Redash]
+* The number of series dispatched to a certain target fell below the expected value [alert via Redash]
 
 In addition to the alerting options provided by Grafana and Redash, it is also possible setup custom notifications via a small Python script that is periodically executed and that calls the webhooks of your messaging service.
 
