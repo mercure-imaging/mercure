@@ -27,10 +27,9 @@ from webinterface.common import templates
 
 
 async def save_module(form, name) -> Response:
-    """We already read the config by this time"""
+    """Save the settings for the module with the given name."""
 
-    # Ensure that the processing settings are valid. Should happen on the client side too, but can't hurt
-    # to check again
+    # Ensure that the module settings are valid. Should happen on the client side too, but can't hurt to check again.
     try:
         new_settings: Dict = json.loads(form.get("settings", "{}"))
     except:
@@ -42,6 +41,7 @@ async def save_module(form, name) -> Response:
         environment=form.get("environment", ""),
         docker_arguments=form.get("docker_arguments", ""),
         settings=new_settings,
+        contact=form.get("contact", ""),
         comment=form.get("comment", ""),
         constraints=form.get("constraints", ""),
         resources=form.get("resources", ""),
@@ -92,7 +92,7 @@ async def show_modules(request):
 @modules_app.route("/", methods=["POST"])
 @requires(["authenticated", "admin"], redirect="login")
 async def add_module(request):
-    """Creates a new routing rule and forwards the user to the rule edit page."""
+    """Creates a new module and forwards the user to the module edit page."""
     try:
         config.read_config()
     except:
@@ -113,7 +113,7 @@ async def add_module(request):
 @modules_app.route("/edit/{module}", methods=["GET"])
 @requires("authenticated", redirect="login")
 async def edit_module(request):
-    """Shows all installed modules"""
+    """Show the module edit page for the given module name."""
     module = request.path_params["module"]
     try:
         config.read_config()
@@ -143,7 +143,7 @@ async def edit_module(request):
 @modules_app.route("/edit/{module}", methods=["POST"])
 @requires(["authenticated", "admin"], redirect="login")
 async def edit_module_POST(request):
-    """Creates a new routing rule and forwards the user to the rule edit page."""
+    """Save the settings for the given module name."""
     try:
         config.read_config()
     except:
@@ -161,7 +161,7 @@ async def edit_module_POST(request):
 @modules_app.route("/delete/{module}", methods=["POST"])
 @requires(["authenticated", "admin"], redirect="login")
 async def delete_module(request):
-    """Creates a new routing rule and forwards the user to the rule edit page."""
+    """Deletes the module with the given module name."""
     try:
         config.read_config()
     except:
