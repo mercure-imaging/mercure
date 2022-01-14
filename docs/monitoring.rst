@@ -133,7 +133,24 @@ Instructions how to create these dashboards are provided in the :doc:`Dashboard 
 Installing Redash
 -----------------
 
-Redash is a powerful open-source web application for analyzing and visualizing data stored in SQL databases, such as the data collected by the bookkeeper service. Instead of integrating limited analysis functions into mercure's own webgui, we decided to utilize Redash instead, which provides much greater flexibility. You can learn more about Redash at http://redash.io
+Redash is a powerful open-source web application for analyzing and visualizing data stored in SQL databases, such as the data collected by the bookkeeper service. Instead of integrating limited analysis functions into mercure's own web interface, we decided to utilize Redash instead, which provides much greater flexibility. You can learn more about Redash at http://redash.io.
+
+Before proceeding with the installation of Redash, it is recommended to create a dedicated Postgres database user for Redash (named "redash") with read-only permissions for the database tables that the bookkeeper service created during the mercure installation. This can be achieved by running the following commands in a bash shell under a user account with sudo rights (make sure to replace the password in the command shown below): 
+
+::
+
+    sudo -i -u postgres
+    psql
+    \c mercure
+    CREATE USER redash with encrypted password 'put-password-here';
+    GRANT CONNECT ON DATABASE mercure TO redash;
+    GRANT USAGE ON SCHEMA public TO redash;
+    GRANT SELECT ON ALL TABLES IN SCHEMA public TO redash;
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO redash;
+    \q
+    exit
+
+.. note:: These commands need to be rerun whenever the database tables have been dropped (e.g., when clearing the database).
 
 Redash provides a convenient installation script that uses Docker for the Redash deployment. It is highly recommended to use this script, unless you are very familiar with Redash. 
 
@@ -158,28 +175,12 @@ After setting up your Redash administrator password, click the top-right configu
     Host: 172.17.0.1
     Port: 5432
     User: redash
-    Password: [as selected during mercure installation]
+    Password: [as selected above]
     Database Name: mercure
 
 Afterwards, click "Save" and validate the database connection by clicking the button "Test Connection". If you see a green "Success" notification on the bottom-right, everything works.
 
 .. tip:: If you want to run Redash on a different port than :80, then you need to edit the file "/opt/redash/docker-compose.yml" and change the value "80:80" in the nginx section to, e.g., "8888:80". Afterwards, you need to restart the nginx container.
-
-Database tables are automatically created by the bookkeeper service during the mercure installation. It is recommended to grant read-only permissions for these tables, e.g. to the user "redash". This can be achieved by running the following commands. 
-
-::
-
-    sudo -i -u postgres
-    psql
-    \c mercure
-    GRANT CONNECT ON DATABASE mercure TO redash;
-    GRANT USAGE ON SCHEMA public TO redash;
-    GRANT SELECT ON ALL TABLES IN SCHEMA public TO redash;
-    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO redash;
-    \q
-    exit
-
-.. note:: These commands need to be rerun whenever the database tables have been dropped (e.g., when clearing the database).
 
 
 Alerts
