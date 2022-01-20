@@ -97,7 +97,7 @@ passlib==1.7.4
     # via -r requirements.in
 pluggy==1.0.0
     # via pytest
-psycopg2-binary==2.9.3
+psycopg2==2.9.3
     # via -r requirements.in
 py==1.11.0
     # via pytest

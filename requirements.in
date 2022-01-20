@@ -32,7 +32,7 @@ passlib
 sqlalchemy
 databases
 databases[postgresql]
-psycopg2-binary
+psycopg2
 asyncpg
 
 # processing
