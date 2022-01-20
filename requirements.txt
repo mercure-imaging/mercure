@@ -24,7 +24,7 @@ aiofiles
 jinja2
 types-Jinja2
 starlette
-uvicorn
+uvicorn == 0.16.0
 itsdangerous
 python-multipart
 distro
