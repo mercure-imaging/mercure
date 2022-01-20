@@ -1,0 +1,44 @@
+# base
+mypy 
+typing_extensions
+hupper
+watchdog
+
+# logging / monitoring
+graphyte
+daiquiri
+requests
+types-requests
+
+# documentation
+sphinx
+sphinx-rtd-theme
+
+# testing
+pytest
+pyfakefs
+pytest-mock
+
+# user interface
+aiofiles
+jinja2
+types-Jinja2
+starlette
+uvicorn == 0.16.0
+itsdangerous
+python-multipart
+distro
+passlib
+sqlalchemy
+databases
+databases[postgresql]
+psycopg2-binary
+asyncpg
+
+# processing
+docker
+python-nomad
+
+# other
+pydicom
+pydantic
