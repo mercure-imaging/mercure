@@ -1,7 +1,7 @@
 FROM ubuntu:20.04
 RUN apt-get update && apt-get -y upgrade
 RUN DEBIAN_FRONTEND="noninteractive" apt-get -y install tzdata
-RUN apt-get install -y build-essential wget git dcmtk jq inetutils-ping entr sshpass lsb-release
+RUN apt-get install -y build-essential wget git dcmtk jq inetutils-ping entr sshpass lsb-release libpq-dev
 RUN useradd -ms /bin/bash mercure
 RUN mkdir -p /opt/mercure/app/installation /opt/mercure/app/configuration
 # Note: you must run this Dockerfile from the root directory of the project
