@@ -10,7 +10,7 @@
 #include "dcmtk/dcmdata/dcspchrs.h"
 #include "dcmtk/dcmdata/dctypes.h"
 
-#define VERSION "0.3"
+#define VERSION "0.4"
 
 static OFString tagSpecificCharacterSet = "";
 static OFString tagPatientName = "";
@@ -52,6 +52,9 @@ static OFString tagImageComments = "";
 static OFString tagSliceThickness = "";
 static OFString tagInstanceNumber = "";
 static OFString tagAcquisitionNumber = "";
+
+static OFString helperSenderAET = "";
+static OFString helperReceiverAET = "";
 
 static std::string bookkeeperAddress = "";
 
@@ -204,6 +207,8 @@ bool writeTagsFile(OFString dcmFile, OFString originalFile)
     INSERTTAG("SliceThickness", tagSliceThickness, "3");
     INSERTTAG("InstanceNumber", tagInstanceNumber, "12");
     INSERTTAG("AcquisitionNumber", tagAcquisitionNumber, "15");
+    INSERTTAG("SenderAET", helperSenderAET, "STORESCU");
+    INSERTTAG("ReceiverAET", helperReceiverAET, "ANY-SCP");
 
     fprintf(fp, "\"Filename\": \"%s\"\n", originalFile.c_str());
     fprintf(fp, "}\n");
@@ -253,20 +258,23 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    if (argc < 2)
+    if (argc < 4)
     {
         std::cout << std::endl;
         std::cout << "getdcmtags ver " << VERSION << std::endl;
         std::cout << "-------------------" << std::endl
                   << std::endl;
-        std::cout << "Usage: [dcm file to analyze] [ip:port of bookkeeper]" << std::endl
+        std::cout << "Usage: [dcm file to analyze] [sending AET] [receiving AET] [ip:port of bookkeeper]" << std::endl
                   << std::endl;
         return 0;
     }
 
-    if (argc > 2)
+    helperSenderAET = OFString(argv[2]);
+    helperReceiverAET = OFString(argv[3]);
+
+    if (argc > 4)
     {
-        bookkeeperAddress = std::string(argv[2]);
+        bookkeeperAddress = std::string(argv[4]);
     }
 
     OFString origFilename = OFString(argv[1]);

@@ -67,4 +67,4 @@ fi
 
 echo ""
 echo "Starting receiver process on port $port, folder $incoming, bookeeper $bookkeeper"
-storescp --fork --promiscuous -od "$incoming" +uf -xcr "$binary $incoming/#f$bookkeeper" $port
+storescp --fork --promiscuous -od "$incoming" +uf -xcr "$binary $incoming/#f #a #c$bookkeeper" $port
