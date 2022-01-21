@@ -3,6 +3,7 @@ mypy
 typing_extensions
 hupper
 watchdog
+dataclasses; python_version < '3.7'
 
 # logging / monitoring
 graphyte
