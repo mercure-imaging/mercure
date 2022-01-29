@@ -419,6 +419,9 @@ async def get_jobinfo(request):
 
     job_path = Path(job_pathstr + "/task.json")
 
+    if (job_category == "processing") and (not job_path.exists()):
+        job_path = Path(job_pathstr + "/in/task.json")
+
     if (job_category == "failure") and (not job_path.exists()):
         job_path = Path(job_pathstr + "/in/task.json")
 
