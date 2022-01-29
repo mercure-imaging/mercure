@@ -319,7 +319,7 @@ install_app_files() {
 install_packages() {
   echo "## Installing Linux packages..."
   sudo apt-get update
-  sudo apt-get install -y build-essential wget git dcmtk jq inetutils-ping sshpass postgresql postgresql-contrib libpq-dev
+  sudo apt-get install -y build-essential wget git dcmtk jq inetutils-ping sshpass postgresql postgresql-contrib libpq-dev git-lfs
 }
 
 install_conda() {
