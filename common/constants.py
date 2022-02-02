@@ -12,7 +12,7 @@ class mercure_version:
     DEV   = 1
     STATES = ["dev", "alpha", "beta", "rc", "stable"]
 
-    def get_version_string():      
+    def get_version_string() -> str:      
         if (mercure_version.STATE >= len(mercure_version.STATES)):
             state_string="unkown"
         else:
@@ -24,10 +24,10 @@ class mercure_version:
             version_string = version_string + f"-{state_string}.{mercure_version.DEV}"
         return version_string
 
-    def is_dev_version():
+    def is_dev_version() -> bool:
         return (mercure_version.DEV > 0)
 
-    def is_release():
+    def is_release() -> bool:
         return (mercure_version.DEV == 0)
 
 
