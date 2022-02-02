@@ -10,6 +10,7 @@ import process.process_series
 import router
 import daiquiri
 import processor
+from common.constants import mercure_version
 
 import json
 from pprint import pprint
@@ -157,7 +158,7 @@ def test_process_series_nomad(fs, mocker: MockerFixture):
             "triggered_rules": {"catchall": True},
             "mrn": "MISSING",
             "acc": "MISSING",
-            "mercure_version": "0.2a",
+            "mercure_version": mercure_version.get_version_string(),
             "mercure_appliance": "master",
             "mercure_server": socket.gethostname(),
         },
