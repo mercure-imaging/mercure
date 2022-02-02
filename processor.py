@@ -212,7 +212,7 @@ def main(args=sys.argv[1:]) -> None:
 
     logger.info("")
     logger.info(f"mercure DICOM Processor ver {mercure_defs.VERSION}")
-    logger.info("--------------------------------")
+    logger.info("--------------------------------------------")
     logger.info("")
 
     # Register system signals to be caught

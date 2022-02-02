@@ -119,7 +119,7 @@ def main(args=sys.argv[1:]) -> None:
         reloader = hupper.start_reloader("dispatcher.main")
     logger.info("")
     logger.info(f"mercure DICOM Dispatcher ver {mercure_defs.VERSION}")
-    logger.info("-----------------------------")
+    logger.info("--------------------------------------------")
     logger.info("")
 
     # Register system signals to be caught

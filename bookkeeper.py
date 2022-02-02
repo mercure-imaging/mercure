@@ -359,7 +359,7 @@ def main(args=sys.argv[1:]) -> None:
         reloader = hupper.start_reloader("bookkeeper.main")
     logger.info("")
     logger.info(f"mercure Bookkeeper ver {mercure_defs.VERSION}")
-    logger.info("-----------------------------")
+    logger.info("--------------------------------------------")
     logger.info("")
 
     uvicorn.run(app, host=BOOKKEEPER_HOST, port=BOOKKEEPER_PORT)

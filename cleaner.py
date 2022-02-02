@@ -159,7 +159,7 @@ def main(args=sys.argv[1:]) -> None:
         reloader = hupper.start_reloader("cleaner.main")
     logger.info("")
     logger.info(f"mercure DICOM Cleaner ver {mercure_defs.VERSION}")
-    logger.info("-----------------------------")
+    logger.info("--------------------------------------------")
     logger.info("")
 
     # Register system signals to be caught
