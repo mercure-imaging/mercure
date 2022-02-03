@@ -4,34 +4,8 @@ constants.py
 mercure-wide constants, used for standardizing key names and extensions.
 """
 
-class mercure_version:
-    MAJOR = 0
-    MINOR = 2
-    PATCH = 0
-    STATE = 2
-    DEV   = 1
-    STATES = ["dev", "alpha", "beta", "rc", "stable"]
-
-    @staticmethod
-    def get_version_string() -> str:      
-        if (mercure_version.STATE >= len(mercure_version.STATES)):
-            state_string="unkown"
-        else:
-            state_string=mercure_version.STATES[mercure_version.STATE]        
-
-        version_string = f"{mercure_version.MAJOR}.{mercure_version.MINOR}.{mercure_version.PATCH}"
-
-        if (mercure_version.DEV>0):
-            version_string = version_string + f"-{state_string}.{mercure_version.DEV}"
-        return version_string
-
-    @staticmethod
-    def is_dev_version() -> bool:
-        return (mercure_version.DEV > 0)
-
-    @staticmethod
-    def is_release() -> bool:
-        return (mercure_version.DEV == 0)
+# App-specific includes
+from common.version import mercure_version
 
 
 class mercure_defs:
