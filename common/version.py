@@ -118,6 +118,17 @@ class SemanticVersion:
             self.read_version_file()
         return self.version_string
 
+    def get_image_tag(self) -> str:
+        """Returns the image tag that should be used for pulling docker images"""
+        if not self.version_string:
+            self.read_version_file()
+        
+        if (self.version_string == self.INVALID):
+            # Use the latest image as fallback if the version number is invalid
+            return "latest"
+        else:
+            return self.version_string       
+
     def get_version_signature(self) -> list:
         """Returns the parsed version number as list of numerical values that can be compared
            for version consistency check."""

@@ -67,7 +67,7 @@ job "mercure" {
         destination = "/opt/mercure/data"
       }
       config {
-        image = "mercureimaging/mercure-receiver:latest"
+        image = "mercureimaging/mercure-receiver${IMAGE_TAG}"
         ports = ["dicom"]
       }
       resources {
@@ -95,7 +95,7 @@ job "mercure" {
         destination = "/opt/mercure/data"
       }
       config {
-        image = "mercureimaging/mercure-cleaner:latest"
+        image = "mercureimaging/mercure-cleaner${IMAGE_TAG}"
       }
     }
     task "dispatcher" {
@@ -119,7 +119,7 @@ job "mercure" {
         destination = "/opt/mercure/data"
       }
       config {
-        image = "mercureimaging/mercure-dispatcher:latest"
+        image = "mercureimaging/mercure-dispatcher${IMAGE_TAG}"
       }
       resources {
         memory=128
@@ -146,7 +146,7 @@ job "mercure" {
         destination = "/opt/mercure/data"
       }      
       config {
-        image = "mercureimaging/mercure-router:latest"
+        image = "mercureimaging/mercure-router${IMAGE_TAG}"
       }
       resources {
         memory=128
@@ -173,7 +173,7 @@ job "mercure" {
         destination = "/opt/mercure/data"
       }
       config {
-        image = "mercureimaging/mercure-processor:latest"
+        image = "mercureimaging/mercure-processor${IMAGE_TAG}"
       }
       resources {
         memory=128
@@ -227,7 +227,7 @@ job "mercure" {
     task "bookkeeper" {
       driver = "docker"
       config {
-        image = "mercureimaging/mercure-bookkeeper:latest"
+        image = "mercureimaging/mercure-bookkeeper${IMAGE_TAG}"
         ports = ["bookkeeper"]
       }     
       lifecycle {

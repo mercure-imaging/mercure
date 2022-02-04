@@ -25,6 +25,7 @@ import common.config as config
 from common.constants import mercure_names
 from common.types import Task, TaskInfo, Module, Rule
 import common.notification as notification
+from common.version import mercure_version
 from common.constants import (
     mercure_events,
 )
@@ -48,7 +49,7 @@ def nomad_runtime(task: Task, folder: str) -> bool:
 
     with open("nomad/mercure-processor-template.nomad", "r") as f:
         rendered = Template(f.read()).render(
-            image=module.docker_tag, constraints=module.constraints, resources=module.resources, uid=os.getuid()
+            image=module.docker_tag, mercure_tag=mercure_version.get_image_tag(), constraints=module.constraints, resources=module.resources, uid=os.getuid()
         )
     logger.debug("----- job definition -----")
     logger.debug(rendered)

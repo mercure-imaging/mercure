@@ -23,7 +23,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    image: mercureimaging/mercure-ui
+    image: mercureimaging/mercure-ui${IMAGE_TAG}
     restart: always
     ports:
       - "8000:8000"
@@ -46,7 +46,7 @@ services:
       test: [ "CMD-SHELL", "pg_isready -U mercure" ]
 
   receiver:
-    image: mercureimaging/mercure-receiver
+    image: mercureimaging/mercure-receiver${IMAGE_TAG}
     restart: always
     depends_on:
       bookkeeper:
@@ -57,7 +57,7 @@ services:
     <<: *env
 
   cleaner:
-    image: mercureimaging/mercure-cleaner
+    image: mercureimaging/mercure-cleaner${IMAGE_TAG}
     restart: always
     depends_on:
       bookkeeper:
@@ -66,7 +66,7 @@ services:
     <<: *env
 
   dispatcher:
-    image: mercureimaging/mercure-dispatcher
+    image: mercureimaging/mercure-dispatcher${IMAGE_TAG}
     restart: always
     depends_on:
       bookkeeper:
@@ -76,7 +76,7 @@ services:
 
   processor:
     <<: *docker-user
-    image: mercureimaging/mercure-processor
+    image: mercureimaging/mercure-processor${IMAGE_TAG}
     restart: always
     depends_on:
       bookkeeper:
@@ -85,7 +85,7 @@ services:
     <<: *env
 
   router:
-    image: mercureimaging/mercure-router
+    image: mercureimaging/mercure-router${IMAGE_TAG}
     restart: always
     depends_on:
       bookkeeper:
@@ -94,7 +94,7 @@ services:
     <<: *env
 
   bookkeeper:
-    image: mercureimaging/mercure-bookkeeper
+    image: mercureimaging/mercure-bookkeeper${IMAGE_TAG}
     restart: always
     depends_on:
       db:

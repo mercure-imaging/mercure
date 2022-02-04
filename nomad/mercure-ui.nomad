@@ -47,7 +47,7 @@ job "mercure-ui" {
         destination = "/opt/mercure/config"
       }
       config {
-        image = "mercureimaging/mercure-ui:latest"
+        image = "mercureimaging/mercure-ui${IMAGE_TAG}"
         ports = ["http"]
       }
       resources {

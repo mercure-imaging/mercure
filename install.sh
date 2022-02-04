@@ -9,6 +9,15 @@ error() {
 }
 trap 'error ${LINENO}' ERR
 
+if [ ! -f "VERSION" ]; then
+    echo "Error: VERSION file missing. Unable to proceed."
+    exit 1
+fi
+VERSION=`cat VERSION`
+IMAGE_TAG=":$VERSION"
+echo "mercure Installer - Version $VERSION"
+echo ""
+
 OWNER=$USER
 if [ $OWNER = "root" ]
 then
@@ -40,12 +49,12 @@ if [ -f "$CONFIG_PATH"/db.env ]; then
   DB_PWD=$POSTGRES_PASSWORD
 fi
 
-echo "Mercure installation folder: $MERCURE_BASE"
+echo "mercure installation folder: $MERCURE_BASE"
 echo "Data folder: $DATA_PATH"
 echo "Config folder: $CONFIG_PATH"
 echo "Database folder: $DB_PATH"
-echo "Mercure source directory: $(readlink -f $MERCURE_SRC)"
-
+echo "mercure source directory: $(readlink -f $MERCURE_SRC)"
+echo ""
 
 create_user () {
   id -u mercure &>/dev/null || sudo useradd -ms /bin/bash mercure
@@ -201,10 +210,11 @@ setup_nomad() {
   if [ ! -f "$MERCURE_BASE"/mercure.nomad ]; then
     echo "## Copying mercure.nomad..."
     sudo cp $MERCURE_SRC/nomad/mercure.nomad $MERCURE_BASE
-    sudo sed -i "s#SSHPUBKEY#$(cat /opt/mercure/processor-keys/id_rsa.pub)#g"  $MERCURE_BASE/mercure.nomad
-    sudo cp $MERCURE_SRC/nomad/mercure-processor.nomad $MERCURE_BASE
     sudo cp $MERCURE_SRC/nomad/mercure-ui.nomad $MERCURE_BASE
     sudo cp $MERCURE_SRC/nomad/policies/anonymous-strict.policy.hcl $MERCURE_BASE
+    sudo sed -i "s#SSHPUBKEY#$(cat /opt/mercure/processor-keys/id_rsa.pub)#g"  $MERCURE_BASE/mercure.nomad
+    sudo sed -i "s/\\\${IMAGE_TAG}/$IMAGE_TAG/g" $MERCURE_BASE/mercure.nomad
+    sudo sed -i "s/\\\${IMAGE_TAG}/$IMAGE_TAG/g" $MERCURE_BASE/mercure-ui.nomad
 
     if [ ! -d $MERCURE_BASE/db ]; then
       sudo mkdir $MERCURE_BASE/db
@@ -240,7 +250,6 @@ setup_nomad() {
   nomad acl policy apply -description "Mercure anonymous policy" anonymous $MERCURE_BASE/anonymous-strict.policy.hcl 
   nomad run -detach $MERCURE_BASE/mercure.nomad
   nomad run -detach $MERCURE_BASE/mercure-ui.nomad
-  nomad run -detach $MERCURE_BASE/mercure-processor.nomad
 
   if [ ! -z "${BOOTSTRAP_RESULT:-}" ]; then
     echo "Nomad ACL has been bootstrapped. Your managment key information follows. Keep this safe!"
@@ -283,6 +292,7 @@ setup_docker () {
     echo "## Copying docker-compose.yml..."
     sudo cp $MERCURE_SRC/docker/docker-compose.yml $MERCURE_BASE
     sudo sed -i -e "s/\\\${GID}/$(getent group docker | cut -d: -f3)/g" $MERCURE_BASE/docker-compose.yml
+    sudo sed -i "s/\\\${IMAGE_TAG}/$IMAGE_TAG/g" $MERCURE_BASE/docker-compose.yml
     sudo chown $OWNER:$OWNER "$MERCURE_BASE"/docker-compose.yml
   fi
 }
@@ -460,7 +470,7 @@ if [ $FORCE_INSTALL = "y" ]; then
 else
   read -p "Install with $INSTALL_TYPE (y/n)? " ANS
   if [ "$ANS" = "y" ]; then
-    echo "Installing Mercure."
+    echo "Installing mercure..."
   else
     echo "Installation aborted."
     exit 0
