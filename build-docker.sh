@@ -73,7 +73,7 @@ else
   fi
 fi
 
-docker build -t $PREFIX/mercure-base:$TAG -f docker/base/Dockerfile .
+docker build --no-cache -t $PREFIX/mercure-base:$TAG -f docker/base/Dockerfile .
 docker build docker/ui -t $PREFIX/mercure-ui:$TAG
 docker build docker/bookkeeper -t $PREFIX/mercure-bookkeeper:$TAG
 docker build docker/cleaner -t $PREFIX/mercure-cleaner:$TAG
