@@ -43,12 +43,34 @@ MERCURESRC=./
 echo "Building Docker containers for mercure $VERSION"
 echo "Using image tag $TAG"
 echo ""
-read -p "Proceed (y/n)? " ANS
-if [ "$ANS" = "y" ]; then
-echo ""
+
+FORCE_BUILD="n"
+while getopts ":y" opt; do
+  case ${opt} in
+    y )
+      FORCE_BUILD="y"
+      ;;
+    \? )
+      echo "Invalid Option: -$OPTARG" 1>&2
+      exit 1
+      ;;
+    : )
+      echo "Invalid Option: -$OPTARG requires an argument" 1>&2
+      exit 1
+      ;;
+  esac
+done
+
+if [ $FORCE_BUILD = "y" ]; then
+  echo "Forcing building"
 else
-echo "Aborted."
-exit 0
+  read -p "Proceed (y/n)? " ANS
+  if [ "$ANS" = "y" ]; then
+  echo ""
+  else
+  echo "Aborted."
+  exit 0
+  fi
 fi
 
 docker build -t $PREFIX/mercure-base:$TAG -f docker/base/Dockerfile .
