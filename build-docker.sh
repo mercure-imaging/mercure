@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo
 
 #################################################################
 # Create mercure from scratch in Docker environment
