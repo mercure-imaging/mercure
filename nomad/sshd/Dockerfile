@@ -1,5 +1,4 @@
 FROM alpine:edge
-MAINTAINER Daniel Guerra <daniel.guerra69@gmail.com>
 
 # add openssh and clean
 RUN apk add --update openssh openssl \

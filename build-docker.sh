@@ -74,13 +74,13 @@ else
 fi
 
 docker build --no-cache -t $PREFIX/mercure-base:$TAG -f docker/base/Dockerfile .
-docker build docker/ui -t $PREFIX/mercure-ui:$TAG
-docker build docker/bookkeeper -t $PREFIX/mercure-bookkeeper:$TAG
-docker build docker/cleaner -t $PREFIX/mercure-cleaner:$TAG
-docker build docker/dispatcher -t $PREFIX/mercure-dispatcher:$TAG
-docker build docker/processor -t $PREFIX/mercure-processor:$TAG
-docker build docker/receiver -t $PREFIX/mercure-receiver:$TAG
-docker build docker/router -t $PREFIX/mercure-router:$TAG
+docker build docker/ui -t $PREFIX/mercure-ui:$TAG --build-arg VERSION_TAG=$TAG
+docker build docker/bookkeeper -t $PREFIX/mercure-bookkeeper:$TAG --build-arg VERSION_TAG=$TAG
+docker build docker/cleaner -t $PREFIX/mercure-cleaner:$TAG --build-arg VERSION_TAG=$TAG
+docker build docker/dispatcher -t $PREFIX/mercure-dispatcher:$TAG --build-arg VERSION_TAG=$TAG
+docker build docker/processor -t $PREFIX/mercure-processor:$TAG --build-arg VERSION_TAG=$TAG
+docker build docker/receiver -t $PREFIX/mercure-receiver:$TAG --build-arg VERSION_TAG=$TAG
+docker build docker/router -t $PREFIX/mercure-router:$TAG --build-arg VERSION_TAG=$TAG
 docker build nomad/sshd -t $PREFIX/alpine-sshd:latest
 docker build nomad/processing -t $PREFIX/processing-step:$TAG
 docker build nomad/dummy-processor -t $PREFIX/mercure-dummy-processor:$TAG

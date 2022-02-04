@@ -1,4 +1,5 @@
-FROM mercureimaging/mercure-base:latest
+ARG VERSION_TAG=latest
+FROM mercureimaging/mercure-base:$VERSION_TAG
 USER root
 RUN apt-get update && apt-get install -y lsb-core
 USER mercure
