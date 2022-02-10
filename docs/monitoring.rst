@@ -152,7 +152,7 @@ For **systemd-type** installations (make sure to use a user account with sudo ri
     \q
     exit
 
-For **Docker-type** installations, it is necessary to open a shall in the Docker container running the postgres database. You can find the contained ID by entering "docker ps" and looking for the container running the image "postgres:alpine". Then, type the following commands:
+For **Docker-type** installations, it is necessary to open a shell in the Docker container running the postgres database. You can find the contained ID by entering "docker ps" and looking for the container running the image "postgres:alpine". Then, type the following commands:
 
 ::
 
