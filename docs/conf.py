@@ -12,7 +12,7 @@ project = 'mercure'
 copyright = '2019-2022, Kai Tobias Block, Roy Wiggins, Joshy Cyriac'
 author = 'Kai Tobias Block, Roy Wiggins, Joshy Cyriac'
 
-def read_version():
+def read_version() -> str:
     current_version = "0.0.0"
     version_filepath = os.path.dirname(os.path.realpath(__file__)) + '/../VERSION'
     version_file = Path(version_filepath)
