@@ -2,6 +2,7 @@
 #
 import os
 import sys
+from pathlib import Path
 sys.path.insert(0, os.path.abspath('..'))
 
 
@@ -11,10 +12,20 @@ project = 'mercure'
 copyright = '2019-2022, Kai Tobias Block, Roy Wiggins, Joshy Cyriac'
 author = 'Kai Tobias Block, Roy Wiggins, Joshy Cyriac'
 
+def read_version():
+    current_version = "0.0.0"
+    version_filepath = os.path.dirname(os.path.realpath(__file__)) + '/../VERSION'
+    version_file = Path(version_filepath)
+    with open(version_file, "r") as version_filecontent:
+        current_version = version_filecontent.readline().strip()
+    return "Version " + current_version
+
 # The short X.Y version
-version = 'Version 0.2'
+#version = 'Version 0.2'
+version = read_version()
+
 # The full version, including alpha/beta/rc tags
-release = '0.2.0'
+release = version
 
 
 # -- General configuration ---------------------------------------------------
@@ -74,7 +85,7 @@ pygments_style = 'sphinx'
 html_theme_options = {
     'logo_only': True,
     'style_external_links': True,
-    'display_version': False,
+    'display_version': True,
     'analytics_id': 'G-EHLH5W4KQW'
 }
 
