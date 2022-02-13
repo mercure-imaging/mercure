@@ -1,7 +1,7 @@
 FROM ubuntu:20.04
-RUN apt-get update && apt-get -y upgrade && \
+RUN apt-get update && \
     DEBIAN_FRONTEND="noninteractive" apt-get -y install \
-        tzdata build-essential wget git dcmtk jq inetutils-ping entr sshpass lsb-release lsb-core libpq-dev && \
+    tzdata build-essential wget git dcmtk jq inetutils-ping entr sshpass lsb-release lsb-core libpq-dev --no-install-recommends && \
     rm -rf /var/lib/apt/lists/* && \
     useradd -ms /bin/bash mercure && \
     mkdir -p /opt/mercure/app/installation /opt/mercure/app/configuration

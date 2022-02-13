@@ -20,5 +20,8 @@ cp $MERCURE_BASE/app/configuration/default_mercure.json $MERCURE_BASE/config/mer
 cp $MERCURE_BASE/app/configuration/default_services.json $MERCURE_BASE/config/services.json
 cp $MERCURE_BASE/app/configuration/default_webgui.env $MERCURE_BASE/config/webgui.env
 
+echo "Removing temporary files..."
+rm /tmp/miniconda.sh
+
 echo "Done."
 echo ""

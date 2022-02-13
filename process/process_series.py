@@ -129,27 +129,37 @@ def docker_runtime(task: Task, folder: str) -> bool:
     # Merge the two dictionaries
     merged_volumes = {**default_volumes, **additional_volumes}
 
-    try: 
-        perform_image_update = True
-        # Check if docker hub should be checked for a new version of the container (only once per hour)
-        if docker_tag in docker_pull_throttle:
-            timediff = datetime.now() - docker_pull_throttle[docker_tag]
-            #logger.info("Time elapsed since update " + str(timediff.total_seconds()))
-            if timediff.total_seconds() < 3600:
-                perform_image_update = False
+    # Determine if Docker Hub should be checked for new module version (only once per hour)
+    perform_image_update = True
+    if docker_tag in docker_pull_throttle:
+        timediff = datetime.now() - docker_pull_throttle[docker_tag]
+        #logger.info("Time elapsed since update " + str(timediff.total_seconds()))
+        if timediff.total_seconds() < 3600:
+            perform_image_update = False
 
-        if perform_image_update:
-            # Get the latest image from DockerHub       
-            logger.info("Checking for updated version of docker image " + docker_tag)
+    # Get the latest image from Docker Hub
+    if perform_image_update:
+        try: 
             docker_pull_throttle[docker_tag] = datetime.now()
-            docker_client.images.pull(docker_tag)
-    except Exception as e:
-        logger.error(e)
+            logger.info("Checking for update of docker image " + docker_tag + " ...")
+            pulled_image = docker_client.images.pull(docker_tag)
+            if pulled_image is not None:
+                digest_string = pulled_image.attrs.get("RepoDigests")[0] if pulled_image.attrs.get("RepoDigests") else "None"
+                logger.info("Using DIGEST " + digest_string)
+            # Clean dangling container images, which occur when the :latest image has been replaced
+            prune_result = docker_client.images.prune(filters={'dangling': True})
+            logger.info(prune_result)
+            logger.info("Update done")
+        except Exception as e:
+            # Don't use ERROR here because the exception will be raised for all Docker images that
+            # have been built locally and are not present in the Docker Registry. 
+            logger.info("Couldn't check for module update (this is normal for unpublished modules)")
+            logger.info(e)
 
+    # Run the container and handle errors of running the container
     processing_success = True
-    # Run the container, handle errors of running the container
     try:
-        logger.info("Will run:")
+        logger.info("Now running container:")
         logger.info(
             {"docker_tag": docker_tag, "volumes": merged_volumes, "environment": environment, "arguments": arguments}
         )
@@ -157,45 +167,67 @@ def docker_runtime(task: Task, folder: str) -> bool:
         # nomad job dispatch -meta IMAGE_ID=alpine:3.11 -meta PATH=test  mercure-processor
         # nomad_connection.job.dispatch_job('mercure-processor', meta={"IMAGE_ID":"alpine:3.11", "PATH": "test"})
 
+        # Run the container -- need to do in detached mode to be able to print the log output if container exits
+        # with non-zero code while allowing the container to be removed after execution (with autoremoval and
+        # non-detached mode, the log output is gone before it can be printed from the exception)
         uid_string = f"{os.getuid()}:{os.getegid()}"
-        logs: bytes = docker_client.containers.run(
+        container = docker_client.containers.run(
             docker_tag,
             volumes=merged_volumes,
             environment=environment,
             **arguments,
             user=uid_string,
             group_add=[os.getegid()],
+            detach=True
         )
-        # Returns: logs (stdout), pass stderr=True if you want stderr too.
-        logger.info("==== PROCESSOR LOGS ====") 
-        if logs is not None:
-            logger.info(logs.decode('utf-8'))
-        logger.info("========================")
-        """Raises:	
-            docker.errors.ContainerError - If the container exits with a non-zero exit code
-            docker.errors.ImageNotFound - If the specified image does not exist.
-            docker.errors.APIError - If the server returns an error."""
-    except (docker.errors.APIError, docker.errors.ImageNotFound):
+
+        # Wait for end of container execution
+        docker_result = container.wait()
+        logger.info(docker_result)
+
+        # Print the log out of the module
+        logger.info("=== MODULE OUTPUT - BEGIN ========================================") 
+        if container.logs() is not None:
+            logger.info(container.logs().decode('utf-8'))
+        logger.info("=== MODULE OUTPUT - END ==========================================") 
+
+        # Check if the processing was successful (i.e., container returned exit code 0)
+        exit_code = docker_result.get("StatusCode")
+        if exit_code != 0:
+            logger.error(f"The container returned non-zero exit code {exit_code}")
+            monitor.send_event(
+                monitor.m_events.PROCESSING,
+                monitor.severity.ERROR,
+                f"Error while running container {docker_tag} - {exit_code}",
+            )
+            processing_success = False
+
+        # Remove the container now to avoid that the drive gets full
+        container.remove()
+
+    except docker.errors.APIError:
         # Something really serious happened
-        logger.info("There was a problem running the specified Docker container")
+        logger.info("API error while trying to run Docker container")
         logger.error(traceback.format_exc())
         monitor.send_event(
-            monitor.m_events.PROCESSING, monitor.severity.ERROR, f"Error starting Docker container {docker_tag}"
+            monitor.m_events.PROCESSING, monitor.severity.ERROR, f"Docker API error while trying to run {docker_tag}"
         )
         processing_success = False
-    except docker.errors.ContainerError as err:
-        logger.error(f"The container returned a non-zero exit code {err}")
+
+    except docker.errors.ImageNotFound:
+        logger.info("Error running the specified Docker container")
+        logger.info(f"Container image not found {docker_tag}")
         monitor.send_event(
-            monitor.m_events.PROCESSING,
-            monitor.severity.ERROR,
-            f"Error while running Docker container {docker_tag} - {err.exit_status}",
+            monitor.m_events.PROCESSING, monitor.severity.ERROR, f"Error: Image for container {docker_tag} not found"
         )
         processing_success = False
+
     return processing_success
 
 
 def process_series(folder) -> None:
-    logger.info(f"Now processing = {folder}")
+    logger.info("----------------------------------------------------------------------------------")
+    logger.info(f"Now processing {folder}")
     processing_success = False
     needs_dispatching = False
 
@@ -240,19 +272,19 @@ def process_series(folder) -> None:
             # Use nomad if we're being run inside nomad, or we're configured to use nomad regardless
             processing_success = nomad_runtime(task, folder)
         elif config.get_runner() in ("docker", "systemd"):
-            logger.debug("Processing with Docker.")
+            logger.debug("Processing with Docker")
             # Use docker if we're being run inside docker or just by systemd
             processing_success = docker_runtime(task, folder)
         else:
             processing_success = False
-            raise Exception("Unable to determine a valid runtime for processing.")
+            raise Exception("Unable to determine valid runtime for processing")
     except Exception as e:
         processing_success = False
         logger.error("Processing error.")
         logger.error(traceback.format_exc())
     finally:
         if config.get_runner() in ("docker", "systemd") and config.mercure.process_runner != "nomad":
-            logger.debug("Docker processing complete.")
+            logger.info("Docker processing complete")
             # Copy the task to the output folder (in case the module didn't move it)
             push_input_task(f_path / "in", f_path / "out")
             # If configured in the rule, copy the input images to the output folder
@@ -270,9 +302,9 @@ def process_series(folder) -> None:
                 trigger_notification(task.info, mercure_events.ERROR)
         else:
             if processing_success:
-                logger.info(f"Done submitting for processing.")
+                logger.info(f"Done submitting for processing")
             else:
-                logger.info(f"Unable to process task.")
+                logger.info(f"Unable to process task")
                 move_results(folder, lock, False, False)
                 trigger_notification(task.info, mercure_events.ERROR)
     return

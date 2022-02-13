@@ -172,7 +172,7 @@ def run_processor(args=None) -> None:
     try:
         config.read_config()
     except Exception:
-        logger.exception("Unable to update configuration. Skipping processing.")
+        logger.exception("Unable to update configuration. Skipping processing")
         monitor.send_event(
             monitor.m_events.CONFIG_UPDATE, monitor.severity.WARNING, "Unable to update configuration (possibly locked)"
         )
