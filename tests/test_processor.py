@@ -216,6 +216,18 @@ def test_process_series_nomad(fs, mocker: MockerFixture):
     ]
 
 
+class my_fake_container:
+    def __init__(self):
+        pass
+    def wait(self):
+        return { "StatusCode": 0 }
+    def logs(self):
+        test_string = "Log output"         
+        return test_string.encode(encoding='utf8') 
+    def remove(self):
+        pass
+
+
 def test_process_series(fs, mocker: MockerFixture):
     global processor_path
     load_config(
@@ -235,10 +247,10 @@ def test_process_series(fs, mocker: MockerFixture):
             print(f"Moving {child} to {out_ / child.name})")
             shutil.copy(child, out_ / child.name)
 
-    fake_run = mocker.Mock(return_value=b"", side_effect=fake_processor)
+        return mocker.DEFAULT
 
+    fake_run = mocker.Mock(return_value=my_fake_container(), side_effect=fake_processor) # type: ignore
     mocker.patch.object(ContainerCollection, "run", new=fake_run)
-
     processor.run_processor()
 
     # processor_path = next(Path("/var/processing").iterdir())
