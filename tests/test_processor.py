@@ -254,6 +254,7 @@ def test_process_series(fs, mocker: MockerFixture):
             str(processor_path / "in"): {"bind": "/data", "mode": "rw"},
             str(processor_path / "out"): {"bind": "/output", "mode": "rw"},
         },
+        detach=True
     )
 
     assert [] == [k.name for k in Path("/var/processing").glob("**/*")]
