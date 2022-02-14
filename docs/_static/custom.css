@@ -189,3 +189,7 @@ img.logo {
 .gitter-open-chat-button, .gitter-open-chat-button:visited, .gitter-open-chat-button:hover {
     background-color: hsl(141, 71%, 42%);
 }
+
+html.writer-html5 .rst-content table.docutils td>p {
+    line-height: unset;
+}

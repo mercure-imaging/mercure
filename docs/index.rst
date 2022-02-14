@@ -41,6 +41,7 @@ mercure is a flexible open-source DICOM orchestration platform. It offers an int
 
    modules
    module_list
+   anonymizer
    dcmannotate
 
 .. toctree::
