@@ -5,7 +5,8 @@ set -euo pipefail
 MERCURE_BASE=/opt/mercure
 
 echo "Installing Python runtime environment..."
-wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O "/tmp/miniconda.sh"
+wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O "/tmp/miniconda.sh"
+
 bash /tmp/miniconda.sh -b -p /opt/miniconda
 PATH="/opt/miniconda/bin:$PATH"
 /opt/miniconda/bin/conda create -y -q --prefix "$MERCURE_BASE/env" python=3.6

@@ -336,7 +336,7 @@ install_conda() {
   if [ ! -x "$(command -v conda)" ]; then # Can't find conda in PATH
     echo "## Installing Miniconda..."
     if [ ! -e "/opt/miniconda" ]; then
-      wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O "/tmp/miniconda.sh"
+      wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O "/tmp/miniconda.sh"
       sudo bash /tmp/miniconda.sh -b -p /opt/miniconda
     fi
     PATH="/opt/miniconda/bin:$PATH"
