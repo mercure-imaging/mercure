@@ -1,5 +1,5 @@
 FROM ubuntu:20.04
-RUN apt-get update && \
+RUN apt-get update && apt-get -y upgrade && \
     DEBIAN_FRONTEND="noninteractive" apt-get -y install \
     tzdata build-essential wget git dcmtk jq inetutils-ping entr sshpass lsb-release lsb-core libpq-dev --no-install-recommends && \
     rm -rf /var/lib/apt/lists/* && \
