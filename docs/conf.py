@@ -86,7 +86,8 @@ html_theme_options = {
     'logo_only': True,
     'style_external_links': True,
     'display_version': True,
-    'analytics_id': 'G-EHLH5W4KQW'
+    'analytics_id': 'G-EHLH5W4KQW',
+    'sticky_navigation': False
 }
 
 # Add any paths that contain custom static files (such as style sheets) here,
