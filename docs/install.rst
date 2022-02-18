@@ -22,19 +22,19 @@ With both systemd- and Docker-based installations, processing modules are execut
 Installing mercure
 ------------------
 
-After deciding on the type of mercure installation, open a terminal shell of your Ubuntu installation for a user with sudo rights. Clone the mercure repository into the home folder of the user:
+After deciding on the type of mercure installation, open a terminal shell of your Ubuntu installation for a user with sudo rights. Clone the mercure repository into the home folder of the user by typing the commands below. This will install the latest stable version, which is recommended. If you would like to install a specific version instead, replace "latest-stable" with the desired version tag. A list of all released versions can be `found here <https://github.com/mercure-imaging/mercure/releases>`_.
 
 ::
 
     cd ~
-    git clone https://github.com/mercure-imaging/mercure.git
+    git clone --branch latest-stable https://github.com/mercure-imaging/mercure.git
     cd mercure
 
-Call the installation script and put the installation type as argument ("systemd" or "docker" or "nomad")
+Call the installation script and put the installation type as argument ("systemd" or "docker" or "nomad"):
 
 ::
 
-    sudo ./install.sh docker
+    sudo ./install.sh systemd
 
 The script will now perform all relevant installation steps, including installation of Docker and Python runtime environments. It will also create the user "mercure", which will be used for running the mercure processes. 
 
