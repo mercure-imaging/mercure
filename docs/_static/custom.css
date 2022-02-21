@@ -193,3 +193,31 @@ img.logo {
 html.writer-html5 .rst-content table.docutils td>p {
     line-height: unset;
 }
+
+.videobox {
+    border: solid 2px hsl(141, 71%, 48%);
+    background-color: hsl(141, 71%, 48%);
+}
+.videocontainer_mobile {
+    display: none;
+	position: relative;
+	padding-bottom: 56.25%;
+	height: 0;
+    margin-top: 30px;
+    margin-bottom: 30px;
+}
+.videocontainer_desktop {
+    display: inherit;
+    margin-top: 40px;
+    margin-bottom: 40px;
+}
+
+@media (max-width: 992px) {
+    .videocontainer_mobile {
+        display: inherit;
+    }
+    .videocontainer_desktop {
+        display: none;
+    }
+}
+
