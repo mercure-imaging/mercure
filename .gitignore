@@ -133,3 +133,6 @@ build-getdcmtags-Desktop_Qt_5_13_0_GCC_64bit-Release/Makefile
 build-getdcmtags-Desktop_Qt_5_13_0_GCC_64bit-Debug/Makefile
 index.html
 index.html.*
+
+# ignoring subfolders with vagrant VM information
+.vagrant

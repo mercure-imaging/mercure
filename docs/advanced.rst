@@ -34,7 +34,7 @@ The following settings can be customized (default values can be found in default
 Key                         Meaning
 =========================== ===========================================================================
 appliance_name              Optional name of the mercure server (useful for multiple servers)
-port                        Port for receiving DICOMs (default: 111112). Must be >1024 for non-root service user.
+port                        Port for receiving DICOMs (default: 11112). Must be >1024 for non-root service user.
 incoming_folder             Buffer location for received DICOM files
 studies_folder              Buffer location for collecting series belonging to one study
 outgoing_folder             Buffer location for series to be dispatched
