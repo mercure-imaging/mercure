@@ -9,6 +9,7 @@ import time
 import signal
 import os
 import sys
+import uuid
 import graphyte
 import daiquiri
 import hupper
@@ -108,13 +109,14 @@ def run_router(args=None) -> None:
     helper.g_log("incoming.series", len(series))
 
     # Process all complete series
-    for complete_entry in sorted(complete_series):
+    for series_uid in sorted(complete_series):
+        task_id = str(uuid.uuid1())
         try:
-            route_series(complete_entry)
+            route_series(task_id, series_uid)
         except Exception:
-            error_message = f"Problems while processing series {complete_entry}"
+            error_message = f"Problems while processing series {series_uid}"
             logger.exception(error_message)
-            monitor.send_series_event(monitor.s_events.ERROR, complete_entry, 0, "", error_message)
+            monitor.send_series_event(monitor.s_events.ERROR, task_id, series_uid, 0, "", error_message)
             monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
         # If termination is requested, stop processing series after the active one has been completed
         if helper.is_terminated():

@@ -8,6 +8,7 @@ and stores the information in a Postgres database.
 import os
 import sys
 from sqlalchemy.engine.base import Connection
+from sqlalchemy.dialects.postgresql import JSONB
 import uvicorn
 import datetime
 import daiquiri
@@ -109,6 +110,7 @@ dicom_series = sqlalchemy.Table(
     sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
     sqlalchemy.Column("time", sqlalchemy.DateTime),
     sqlalchemy.Column("series_uid", sqlalchemy.String, unique=True),
+    sqlalchemy.Column("study_uid", sqlalchemy.String),
     sqlalchemy.Column("tag_patientname", sqlalchemy.String),
     sqlalchemy.Column("tag_patientid", sqlalchemy.String),
     sqlalchemy.Column("tag_accessionnumber", sqlalchemy.String),
@@ -143,6 +145,7 @@ series_events = sqlalchemy.Table(
     "series_events",
     metadata,
     sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("task_id", sqlalchemy.String, sqlalchemy.ForeignKey("tasks.id"), nullable=True),
     sqlalchemy.Column("time", sqlalchemy.DateTime),
     sqlalchemy.Column("sender", sqlalchemy.String, default="Unknown"),
     sqlalchemy.Column("event", sqlalchemy.String),
@@ -175,6 +178,15 @@ series_sequence_data = sqlalchemy.Table(
     sqlalchemy.Column("data", sqlalchemy.JSON),
 )
 
+tasks = sqlalchemy.Table(
+    "tasks",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.String, primary_key=True),
+    sqlalchemy.Column("time", sqlalchemy.DateTime),
+    sqlalchemy.Column("series_uid", sqlalchemy.String),
+    sqlalchemy.Column("study_uid", sqlalchemy.String),
+    sqlalchemy.Column("data", JSONB),
+)
 
 ###################################################################################
 ## Event handlers
@@ -198,7 +210,7 @@ async def startup() -> None:
 @app.on_event("shutdown")
 async def shutdown() -> None:
     """Disconnect from database on shutdown."""
-    engine.disconnect()
+    engine.dispose()
 
 
 ###################################################################################
@@ -278,6 +290,7 @@ async def parse_and_submit_tags(payload) -> None:
         query = dicom_series.insert().values(
             time=datetime.datetime.now(),
             series_uid=payload.get("SeriesInstanceUID", ""),
+            study_uid=payload.get("StudyInstanceUID", ""),
             tag_patientname=payload.get("PatientName", ""),
             tag_patientid=payload.get("PatientID", ""),
             tag_accessionnumber=payload.get("AccessionNumber", ""),
@@ -323,6 +336,28 @@ async def register_series(request) -> JSONResponse:
     return JSONResponse({"ok": ""}, background=tasks)
 
 
+@app.route("/register-task", methods=["POST"])
+async def register_task(request) -> JSONResponse:
+    """Endpoint that is called by the router whenever a new series arrives."""
+    payload = dict(await request.json())
+    series_uid = None
+    study_uid = None
+    logger.debug(payload)
+    id = payload["id"]
+    if payload["info"]["uid_type"] == "series":
+        series_uid = payload["info"]["uid"]
+    if payload["info"]["uid_type"] == "study":
+        study_uid = payload["info"]["uid"]
+    data = await request.json()
+
+    query = tasks.insert().values(
+        id=id, series_uid=series_uid, study_uid=study_uid, time=datetime.datetime.now(), data=data
+    )
+    tasks = BackgroundTasks()
+    tasks.add_task(execute_db_operation, operation=query)
+    return JSONResponse({"ok": ""}, background=tasks)
+
+
 @app.route("/series-event", methods=["POST"])
 async def post_series_event(request) -> JSONResponse:
     """Endpoint for logging all events related to one series."""
@@ -333,10 +368,12 @@ async def post_series_event(request) -> JSONResponse:
     file_count = payload.get("file_count", 0)
     target = payload.get("target", "")
     info = payload.get("info", "")
+    task_id = payload.get("task_id")
 
     query = series_events.insert().values(
         sender=sender,
         event=event,
+        task_id=task_id,
         series_uid=series_uid,
         file_count=file_count,
         target=target,

@@ -60,6 +60,7 @@ def is_target_json_valid(folder) -> Optional[Task]:
         logger.exception("task.json has invalid format")
         send_series_event(
             s_events.ERROR,
+            "TODO",
             "None",
             0,
             "None",

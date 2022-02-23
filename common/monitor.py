@@ -5,8 +5,11 @@ Helper functions and definitions for monitoring mercure's operations via the boo
 """
 
 # Standard python includes
-from typing import Dict
+import json
+from typing import Any, Dict, Optional
 import requests
+import logging
+from common.types import Task
 import daiquiri
 
 # Create local logger instance
@@ -59,6 +62,7 @@ class s_events:
     ERROR = "ERROR"
     MOVE = "MOVE"
     SUSPEND = "SUSPEND"
+    COMPLETE = "COMPLETE"
 
 
 class severity:
@@ -122,11 +126,24 @@ def send_register_series(tags: Dict[str, str]) -> None:
         logger.error("Failed request to bookkeeper")
 
 
-def send_series_event(event, series_uid, file_count, target, info) -> None:
+def send_register_task(task: Task) -> None:
+    """Registers a received series on the bookkeeper. This should be called when a series has been
+    fully received and the DICOM tags have been parsed."""
+    if not bookkeeper_address:
+        return
+    try:
+        logger.debug(f"Monitor (register-task): task.id={task.id} ")
+        requests.post(bookkeeper_address + "/register-task", data=json.dumps(task.dict()), timeout=1)
+    except requests.exceptions.RequestException:
+        logger.error("Failed request to bookkeeper")
+
+
+def send_series_event(event, task_id, series_uid, file_count, target, info) -> None:
     """Send an event related to a specific series to the bookkeeper."""
     if not bookkeeper_address:
         return
     try:
+        logger.debug(f"Monitor (series-event): event={event} task_id={task_id} series_uid={series_uid} info={info}")
         payload = {
             "sender": sender_name,
             "event": event,
@@ -134,6 +151,7 @@ def send_series_event(event, series_uid, file_count, target, info) -> None:
             "file_count": file_count,
             "target": target,
             "info": info,
+            "task_id": task_id,
         }
         requests.post(bookkeeper_address + "/series-event", data=payload, timeout=1)
     except requests.exceptions.RequestException:

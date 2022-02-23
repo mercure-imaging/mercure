@@ -72,6 +72,7 @@ def nomad_runtime(task: Task, folder: str) -> bool:
     with open(f_path / "nomad_job.json", "w") as json_file:
         json.dump(job_info, json_file, indent=4)
 
+    monitor.send_series_event(monitor.s_events.UNKNOWN, task.id, "TODO", 0, "", "Processing job dispatched.")
     return True
 
 
@@ -180,7 +181,9 @@ def docker_runtime(task: Task, folder: str) -> bool:
             group_add=[os.getegid()],
             detach=True
         )
-
+        monitor.send_series_event(
+            monitor.s_events.UNKNOWN, task.id, "TODO", 0, task.process.module_name, f"Processing job running."
+        )
         # Wait for end of container execution
         docker_result = container.wait()
         logger.info(docker_result)
@@ -233,6 +236,7 @@ def process_series(folder) -> None:
 
     lock_file = Path(folder) / mercure_names.PROCESSING
     lock = None
+    task: Optional[Task] = None
     try:
         try:
             lock_file.touch()
@@ -255,7 +259,7 @@ def process_series(folder) -> None:
             raise Exception(f"Task file does not exist")
 
         with open(taskfile_path, "r") as f:
-            task: Task = Task(**json.load(f))
+            task = Task(**json.load(f))
 
         if task.dispatch:
             needs_dispatching = True
@@ -283,30 +287,42 @@ def process_series(folder) -> None:
         logger.error("Processing error.")
         logger.error(traceback.format_exc())
     finally:
+        if task is not None:
+            task_id = task.id
+        else:
+            task_id = "Unknown"
         if config.get_runner() in ("docker", "systemd") and config.mercure.process_runner != "nomad":
             logger.info("Docker processing complete")
             # Copy the task to the output folder (in case the module didn't move it)
             push_input_task(f_path / "in", f_path / "out")
             # If configured in the rule, copy the input images to the output folder
-            if task.process and task.process.retain_input_images=="True":
+            if task is not None and task.process and task.process.retain_input_images == "True":
                 push_input_images(f_path / "in", f_path / "out")
             # Push the results either to the success or error folder
             move_results(folder, lock, processing_success, needs_dispatching)
             shutil.rmtree(folder, ignore_errors=True)
 
             if processing_success:
+                monitor.send_series_event(monitor.s_events.UNKNOWN, task_id, "TODO", 0, "", "Processing job complete")
                 # If dispatching not needed, then trigger the completion notification (for docker/systemd)
                 if not needs_dispatching:
-                    trigger_notification(task.info, mercure_events.COMPLETION)
+                    monitor.send_series_event(monitor.s_events.COMPLETE, task_id, "TODO", 0, "", "Task complete")
+                    # TODO: task really is never none if processing_success is true
+                    trigger_notification(task.info, mercure_events.COMPLETION)  # type: ignore
+
             else:
-                trigger_notification(task.info, mercure_events.ERROR)
+                monitor.send_series_event(monitor.s_events.ERROR, task_id, "TODO", 0, "", "Processing failed")
+                if task is not None:  # TODO: handle if task is none?
+                    trigger_notification(task.info, mercure_events.ERROR)
         else:
             if processing_success:
                 logger.info(f"Done submitting for processing")
             else:
                 logger.info(f"Unable to process task")
                 move_results(folder, lock, False, False)
-                trigger_notification(task.info, mercure_events.ERROR)
+                monitor.send_series_event(monitor.s_events.ERROR, task_id, "TODO", 0, "", "Unable to process task")
+                if task is not None:
+                    trigger_notification(task.info, mercure_events.ERROR)
     return
 
 
