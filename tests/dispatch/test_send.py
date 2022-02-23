@@ -31,6 +31,7 @@ def test_execute_successful_case(fs, mocker):
     fs.create_dir(success)
     fs.create_file("/var/data/source/a/one.dcm")
     target = {
+        "id": "task_id",
         "info": dummy_info,
         "dispatch": {"target_name": "test_target"},
     }
@@ -57,6 +58,7 @@ def test_execute_error_case(fs, mocker):
     fs.create_dir(error)
     fs.create_file("/var/data/source/a/one.dcm")
     target = {
+        "id": "task_id",
         "info": dummy_info,
         "dispatch": {"target_name": "test_target"},
     }
@@ -88,6 +90,7 @@ def test_execute_error_case_max_retries_reached(fs, mocker):
     fs.create_dir(error)
     fs.create_file("/var/data/source/a/one.dcm")
     target = {
+        "id": "task_id",
         "info": dummy_info,
         "dispatch": {
             "target_name": "test_target",

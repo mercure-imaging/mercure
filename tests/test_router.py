@@ -57,6 +57,8 @@ def test_route_series(fs, mocker):
 
     mocker.patch("router.route_series", new=mocker.spy(router, "route_series"))
     # mocker.patch("routing.route_series.parse_ascconv", new=lambda x: {})
+    task_id = "task_id"
+    mocker.patch("uuid.uuid1", new=lambda: task_id)
 
     uid = "UIDUIDUID"
     fs.create_file(f"/var/incoming/{uid}#bar.dcm", contents="asdfasdfafd")
@@ -64,9 +66,9 @@ def test_route_series(fs, mocker):
 
     router.run_router()
 
-    router.route_series.assert_called_once_with(uid)  # type: ignore
-    routing.route_series.push_series_serieslevel.assert_called_once_with({"catchall": True}, [f"{uid}#bar"], uid, {})  # type: ignore
-    routing.route_series.push_serieslevel_outgoing.assert_called_once_with({"catchall": True}, [f"{uid}#bar"], uid, {}, {"test_target": ["catchall"]})  # type: ignore
+    router.route_series.assert_called_once_with(task_id, uid)  # type: ignore
+    routing.route_series.push_series_serieslevel.assert_called_once_with(task_id, {"catchall": True}, [f"{uid}#bar"], uid, {})  # type: ignore
+    routing.route_series.push_serieslevel_outgoing.assert_called_once_with(task_id, {"catchall": True}, [f"{uid}#bar"], uid, {}, {"test_target": ["catchall"]})  # type: ignore
 
     out_path = next(Path("/var/outgoing").iterdir())
     try:
@@ -80,6 +82,7 @@ def test_route_series(fs, mocker):
 
     with open(out_path / "task.json") as e:
         task: Task = Task(**json.load(e))
+        assert task.id == task_id
         assert task.dispatch.target_name == "test_target"  # type: ignore
         assert task.info.uid == uid
         assert task.info.uid_type == "series"
