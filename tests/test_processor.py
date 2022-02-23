@@ -4,6 +4,7 @@ test_processor.py
 """
 import os
 import shutil
+import uuid
 from pytest_mock import MockerFixture
 
 import process.process_series
@@ -68,7 +69,8 @@ config_partial = {
 }
 
 
-def create_and_route(fs, mocker, uid="TESTFAKEUID") -> List[str]:
+def create_and_route(fs, mocker, task_id, uid="TESTFAKEUID") -> List[str]:
+    mocker.patch("uuid.uuid1", new=lambda: task_id)
     mocker.patch(
         "routing.route_series.push_series_serieslevel", new=mocker.spy(routing.route_series, "push_series_serieslevel")
     )
@@ -87,9 +89,9 @@ def create_and_route(fs, mocker, uid="TESTFAKEUID") -> List[str]:
 
     router.run_router()
 
-    router.route_series.assert_called_once_with(uid)  # type: ignore
-    routing.route_series.push_series_serieslevel.assert_called_once_with({"catchall": True}, [f"{uid}#bar"], uid, {})  # type: ignore
-    routing.route_series.push_serieslevel_outgoing.assert_called_once_with({"catchall": True}, [f"{uid}#bar"], uid, {}, {})  # type: ignore
+    router.route_series.assert_called_once_with(task_id, uid)  # type: ignore
+    routing.route_series.push_series_serieslevel.assert_called_once_with(task_id, {"catchall": True}, [f"{uid}#bar"], uid, {})  # type: ignore
+    routing.route_series.push_serieslevel_outgoing.assert_called_once_with(task_id, {"catchall": True}, [f"{uid}#bar"], uid, {}, {})  # type: ignore
 
     processor_path = next(Path("/var/processing").iterdir())
     assert ["task.json", f"{uid}#bar.dcm", f"{uid}#bar.tags"] == [
@@ -108,7 +110,8 @@ def test_process_series_nomad(fs, mocker: MockerFixture):
     fs.create_file(f"nomad/mercure-processor-template.nomad", contents="foo")
     mocker.patch.object(Jobs, "parse", new=lambda x, y: {})
 
-    files = create_and_route(fs, mocker)
+    task_id = str(uuid.uuid1())
+    files = create_and_route(fs, mocker, task_id)
 
     processor_path = next(Path("/var/processing").iterdir())
 
@@ -150,6 +153,7 @@ def test_process_series_nomad(fs, mocker: MockerFixture):
     with open(Path("/var/success") / processor_path.name / "task.json") as t:
         task = json.load(t)
     assert task == {
+        "id": task_id,
         "info": {
             "uid": "TESTFAKEUID",
             "action": "process",
@@ -177,7 +181,7 @@ def test_process_series_nomad(fs, mocker: MockerFixture):
                 "comment": "",
             },
             "settings": {},
-            "retain_input_images": "False"
+            "retain_input_images": "False",
         },
         "study": {},
         "nomad_info": {
@@ -219,11 +223,14 @@ def test_process_series_nomad(fs, mocker: MockerFixture):
 class my_fake_container:
     def __init__(self):
         pass
+
     def wait(self):
-        return { "StatusCode": 0 }
+        return {"StatusCode": 0}
+
     def logs(self):
-        test_string = "Log output"         
-        return test_string.encode(encoding='utf8') 
+        test_string = "Log output"
+        return test_string.encode(encoding="utf8")
+
     def remove(self):
         pass
 
@@ -234,7 +241,8 @@ def test_process_series(fs, mocker: MockerFixture):
         fs,
         {"process_runner": "docker", **config_partial},
     )
-    files = create_and_route(fs, mocker)
+    task_id = str(uuid.uuid1())
+    files = create_and_route(fs, mocker, task_id)
     processor_path = Path()
 
     def fake_processor(tag, environment, volumes: Dict, **kwargs):
@@ -249,7 +257,7 @@ def test_process_series(fs, mocker: MockerFixture):
 
         return mocker.DEFAULT
 
-    fake_run = mocker.Mock(return_value=my_fake_container(), side_effect=fake_processor) # type: ignore
+    fake_run = mocker.Mock(return_value=my_fake_container(), side_effect=fake_processor)  # type: ignore
     mocker.patch.object(ContainerCollection, "run", new=fake_run)
     processor.run_processor()
 
@@ -266,7 +274,7 @@ def test_process_series(fs, mocker: MockerFixture):
             str(processor_path / "in"): {"bind": "/data", "mode": "rw"},
             str(processor_path / "out"): {"bind": "/output", "mode": "rw"},
         },
-        detach=True
+        detach=True,
     )
 
     assert [] == [k.name for k in Path("/var/processing").glob("**/*")]
