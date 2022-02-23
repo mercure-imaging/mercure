@@ -127,7 +127,14 @@ def execute(
         except:
             # TODO: Put a limit on these error messages -- log will run full at some point
             send_event(m_events.PROCESSING, severity.ERROR, f"Error sending {series_uid} to {target_name}")
-            send_series_event(s_events.ERROR, series_uid, 0, target_name, "Unable to create lock file")
+            send_series_event(
+                s_events.ERROR,
+                task_content.id,
+                series_uid,
+                0,
+                target_name,
+                "Unable to create lock file",
+            )
             logger.exception(f"Unable to create lock file {lock_file.name}")
             return
 
@@ -138,7 +145,14 @@ def execute(
         if not command:
             error_message = f"Settings for target {target_name} incorrect. Unable to dispatch job {series_uid}"
             logger.error(error_message)
-            send_series_event(s_events.ERROR, series_uid, 0, target_name, error_message)
+            send_series_event(
+                s_events.ERROR,
+                task_content.id,
+                series_uid,
+                0,
+                target_name,
+                error_message,
+            )
             _move_sent_directory(source_folder, error_folder)
             _trigger_notification(task_content.info, mercure_events.ERROR)
 
@@ -155,13 +169,14 @@ def execute(
             file_count = len(list(Path(source_folder).glob(mercure_names.DCMFILTER)))
             send_series_event(
                 s_events.DISPATCH,
+                task_content.id,
                 target_info.get("series_uid", "series_uid-missing"),
                 file_count,
                 target_info.get("target_name", "target_name-missing"),
                 "",
             )
             _move_sent_directory(source_folder, success_folder)
-            send_series_event(s_events.MOVE, series_uid, 0, success_folder, "")
+            send_series_event(s_events.MOVE, task_content.id, series_uid, 0, success_folder, "")
             _trigger_notification(task_content.info, mercure_events.COMPLETION)
         except CalledProcessError as e:            
             dcmsend_error_message = None
@@ -172,15 +187,22 @@ def execute(
                 logger.error(f"Failed. Command exited with value {e.returncode}: \n {command}")
             logger.debug(e.output)
             send_event(m_events.PROCESSING, severity.ERROR, f"Error sending {series_uid} to {target_name}")
-            send_series_event(s_events.ERROR, series_uid, 0, target_name, dcmsend_error_message or e.output)
+            send_series_event(
+                s_events.ERROR,
+                task_content.id,
+                series_uid,
+                0,
+                target_name,
+                dcmsend_error_message or e.output,
+            )
             retry_increased = increase_retry(source_folder, retry_max, retry_delay)
             if retry_increased:
                 lock_file.unlink()
             else:
                 logger.info(f"Max retries reached, moving to {error_folder}")
-                send_series_event(s_events.SUSPEND, series_uid, 0, target_name, "Max retries reached")
+                send_series_event(s_events.SUSPEND, task_content.id, series_uid, 0, target_name, "Max retries reached")
                 _move_sent_directory(source_folder, error_folder)
-                send_series_event(s_events.MOVE, series_uid, 0, error_folder, "")
+                send_series_event(s_events.MOVE, task_content.id, series_uid, 0, error_folder, "")
                 send_event(m_events.PROCESSING, severity.ERROR, f"Series suspended after reaching max retries")
                 _trigger_notification(task_content.info, mercure_events.ERROR)
     else:

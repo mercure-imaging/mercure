@@ -156,6 +156,7 @@ class TaskProcessing(BaseModel, Compat):
 
 class Task(BaseModel, Compat):
     info: TaskInfo
+    id: str
     dispatch: Union[TaskDispatch, EmptyDict] = cast(EmptyDict, {})
     process: Union[TaskProcessing, EmptyDict] = cast(EmptyDict, {})
     study: Union[TaskStudy, EmptyDict] = cast(EmptyDict, {})

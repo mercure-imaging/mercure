@@ -124,11 +124,11 @@ def delete_folder(entry) -> None:
     try:
         rmtree(delete_path)
         logger.info(f"Deleted folder {delete_path} from {series_uid}")
-        send_series_event(s_events.CLEAN, series_uid, 0, delete_path, "Deleted folder")
+        send_series_event(s_events.CLEAN, Path(delete_path).stem, series_uid, 0, delete_path, "Deleted folder")
     except Exception as e:
         logger.info(f"Unable to delete folder {delete_path}")
         logger.exception(e)
-        send_series_event(s_events.ERROR, series_uid, 0, delete_path, "Unable to delete folder")
+        send_series_event(s_events.ERROR, Path(delete_path).stem, series_uid, 0, delete_path, "Unable to delete folder")
         monitor.send_event(
             monitor.m_events.PROCESSING,
             monitor.severity.ERROR,
