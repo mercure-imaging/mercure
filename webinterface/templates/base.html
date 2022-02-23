@@ -23,6 +23,7 @@
   <link rel="stylesheet" type="text/css" href="{{ url_for('static', path='DataTables/datatables.min.css') }}"/>  
   {% endif %}
   <link href="{{ url_for('static', path='/css/custom.css') }}" rel="stylesheet">
+  {% block extra_head %} {% endblock %}
 </head>
 
 <body>

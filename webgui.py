@@ -53,6 +53,7 @@ import webinterface.rules as rules
 import webinterface.targets as targets
 import webinterface.modules as modules
 import webinterface.queue as queue
+import webinterface.test as test
 from webinterface.common import *
 
 
@@ -601,6 +602,28 @@ async def control_services(request) -> Response:
     monitor_string = "action: " + action + "; services: " + form.get("services", "")
     monitor.send_webgui_event(monitor.w_events.SERVICE_CONTROL, request.user.display_name, monitor_string)
     return JSONResponse("{ }")
+
+
+@app.route("/api/get-series-events", methods=["GET"])
+@requires(["authenticated"])
+async def get_series_events(request):
+    logger.debug(request.query_params)
+    task_id = request.query_params.get("task_id", "")
+    return JSONResponse(monitor.get_series_events(task_id))
+
+
+@app.route("/api/get-series", methods=["GET"])
+@requires(["authenticated"])
+async def get_series(request):
+    series_uid = request.query_params.get("series_uid", "")
+    return JSONResponse(monitor.get_series(series_uid))
+
+
+@app.route("/api/get-tasks", methods=["GET"])
+@requires(["authenticated"])
+async def get_tasks(request):
+    series_uid = request.query_params.get("series_uid", "")
+    return JSONResponse(monitor.get_tasks(series_uid))
 
 
 ###################################################################################

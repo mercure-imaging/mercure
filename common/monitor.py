@@ -156,3 +156,36 @@ def send_series_event(event, task_id, series_uid, file_count, target, info) -> N
         requests.post(bookkeeper_address + "/series-event", data=payload, timeout=1)
     except requests.exceptions.RequestException:
         logger.error("Failed request to bookkeeper")
+
+
+def get_series_events(task_id="") -> Any:
+    """Send an event related to a specific series to the bookkeeper."""
+    try:
+        payload = {
+            "task_id": task_id,
+        }
+        return requests.get(bookkeeper_address + "/series-events", params=payload, timeout=1).json()
+    except requests.exceptions.RequestException:
+        logger.error("Failed request to bookkeeper")
+
+
+def get_series(series_uid="") -> Any:
+    """Send an event related to a specific series to the bookkeeper."""
+    try:
+        payload = {
+            "series_uid": series_uid,
+        }
+        return requests.get(bookkeeper_address + "/series", params=payload, timeout=1).json()
+    except requests.exceptions.RequestException:
+        logger.error("Failed request to bookkeeper")
+
+
+def get_tasks(series_uid="") -> Any:
+    """Send an event related to a specific series to the bookkeeper."""
+    try:
+        payload = {
+            "series_uid": series_uid,
+        }
+        return requests.get(bookkeeper_address + "/tasks", params=payload, timeout=1).json()
+    except requests.exceptions.RequestException:
+        logger.error("Failed request to bookkeeper")
