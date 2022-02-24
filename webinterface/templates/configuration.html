@@ -16,7 +16,7 @@
                 <h5 class="title is-5 configtitle"><i class="fas fa-server has-text-success"></i>&nbsp;&nbsp;General
                 </h5>
                 <table class="table is-narrow is-hoverable is-fullwidth configtable">
-                    <col width="200px">
+                    <col width="230px">
                     <tr>
                         <td>Operating System:</td>
                         <td>{{os_string}}</td>
@@ -37,6 +37,14 @@
                         <td>DICOM Port:</td>
                         <td>{{config['port']}}</td>
                     </tr>
+                    <tr>
+                        <td>Accept Compressed Images:</td>
+                        <td>{{config['accept_compressed_images']}}
+                            {% if config['accept_compressed_images']=='True' %}
+                            <a href="https://mercure-imaging.org/docs/advanced.html" target="_blank" title="This setting can be problematic. Carefully read the documentation"><i class="fas fa-exclamation-circle has-text-warning" style="margin-left: 1px;"></i></a>
+                            {% endif %}
+                        </td>
+                    </tr>
                 </table>
             </div>
         </div>
@@ -45,7 +53,7 @@
                 <h5 class="title is-5 configtitle"><i
                         class="fas fa-exclamation-triangle has-text-success"></i>&nbsp;&nbsp;Error Handling</h5>
                 <table class="table is-narrow is-hoverable is-fullwidth configtable">
-                    <col width="200px">
+                    <col width="230px">
                     <tr>
                         <td>Retry Delay:</td>
                         <td>{{config['retry_delay']}} sec</td>
@@ -62,7 +70,7 @@
                 <h5 class="title is-5 configtitle"><i
                         class="fas fa-bullhorn has-text-success"></i>&nbsp;&nbsp;Monitoring</h5>
                 <table class="table is-narrow is-hoverable is-fullwidth configtable">
-                    <col width="200px">
+                    <col width="230px">
                     <tr>
                         <td>Bookkeeper:</td>
                         <td>{{config['bookkeeper']}}</td>
@@ -83,7 +91,7 @@
                 <h5 class="title is-5 configtitle"><i class="fas fa-bed has-text-success"></i>&nbsp;&nbsp;Off-Peak Hours
                 </h5>
                 <table class="table is-narrow is-hoverable is-fullwidth configtable">
-                    <col width="200px">
+                    <col width="230px">
                     <tr>
                         <td>From:</td>
                         <td>{{config['offpeak_start']}}</td>
@@ -100,7 +108,7 @@
                 <h5 class="title is-5 configtitle"><i
                         class="fas fa-hourglass-end has-text-success"></i>&nbsp;&nbsp;Thresholds</h5>
                 <table class="table is-narrow is-hoverable is-fullwidth configtable">
-                    <col width="200px">
+                    <col width="230px">
                     <tr>
                         <td>Series Completion:</td>
                         <td>{{config['series_complete_trigger']}} sec</td>
@@ -137,7 +145,7 @@
                 <h5 class="title is-5 configtitle"><i
                         class="fas fa-folder-open has-text-success"></i>&nbsp;&nbsp;Folders</h5>
                 <table class="table is-narrow is-hoverable is-fullwidth configtable">
-                    <col width="200px">
+                    <col width="230px">
                     <tr>
                         <td>Incoming:</td>
                         <td>{{config['incoming_folder']}}</td>

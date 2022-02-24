@@ -28,6 +28,7 @@ fi
 incoming=$(cat $config | jq -r '.incoming_folder')
 port=$(cat $config | jq '.port')
 bookkeeper=$(cat $config | jq -r '.bookkeeper')
+accept_compressed=$(cat $config | jq -r '.accept_compressed_images')
 
 # Check if incoming folder exists
 if [ ! -d "$incoming" ]; then
@@ -65,6 +66,13 @@ else
     bookkeeper=" $bookkeeper"
 fi
 
+transfer_syntax_option=""
+if [ $accept_compressed = "True" ]
+then
+    echo "NOTE: Accepting all supported transfer syntaxes"
+    transfer_syntax_option="+xa"
+fi
+
 echo ""
 echo "Starting receiver process on port $port, folder $incoming, bookeeper $bookkeeper"
-storescp --fork --promiscuous -od "$incoming" +uf -xcr "$binary $incoming/#f #a #c$bookkeeper" $port
+storescp --fork --promiscuous $transfer_syntax_option -od "$incoming" +uf -xcr "$binary $incoming/#f #a #c$bookkeeper" $port

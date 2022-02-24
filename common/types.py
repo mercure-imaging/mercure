@@ -90,6 +90,7 @@ class Rule(BaseModel, Compat):
 class Config(BaseModel, Compat):
     appliance_name: str
     port: int
+    accept_compressed_images: str
     incoming_folder: str
     studies_folder: str
     outgoing_folder: str

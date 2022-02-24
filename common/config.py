@@ -32,6 +32,7 @@ configuration_filename = (
 mercure_defaults = {
     "appliance_name": "master",
     "port": 11112,
+    "accept_compressed_images": "False",
     "incoming_folder": "/opt/mercure/data/incoming",
     "studies_folder": "/opt/mercure/data/studies",
     "outgoing_folder": "/opt/mercure/data/outgoing",
