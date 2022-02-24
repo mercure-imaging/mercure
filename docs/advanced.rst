@@ -35,6 +35,7 @@ Key                         Meaning
 =========================== ===========================================================================
 appliance_name              Optional name of the mercure server (useful for multiple servers)
 port                        Port for receiving DICOMs (default: 11112). Must be >1024 for non-root service user.
+accept_compressed_images    Enable reception of compressed DICOMs. Use with care. Requires that all processing modules can handle compressed images.
 incoming_folder             Buffer location for received DICOM files
 studies_folder              Buffer location for collecting series belonging to one study
 outgoing_folder             Buffer location for series to be dispatched
