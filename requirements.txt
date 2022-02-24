@@ -10,6 +10,8 @@ aiofiles==0.8.0
     # via -r requirements.in
 alabaster==0.7.12
     # via sphinx
+alembic==1.7.6
+    # via -r requirements.in
 anyio==3.5.0
     # via starlette
 asgiref==3.4.1
@@ -76,6 +78,8 @@ importlib-metadata==4.8.3
     #   pytest
     #   sphinx
     #   sqlalchemy
+importlib-resources==5.4.0
+    # via alembic
 iniconfig==1.1.1
     # via pytest
 itsdangerous==2.0.1
@@ -84,6 +88,8 @@ jinja2==3.0.3
     # via
     #   -r requirements.in
     #   sphinx
+mako==1.1.6
+    # via alembic
 markupsafe==2.0.1
     # via jinja2
 mypy==0.931
@@ -159,6 +165,7 @@ sphinxcontrib-serializinghtml==1.1.5
 sqlalchemy==1.4.30
     # via
     #   -r requirements.in
+    #   alembic
     #   databases
 starlette==0.17.1
     # via -r requirements.in
