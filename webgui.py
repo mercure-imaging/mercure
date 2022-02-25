@@ -609,21 +609,21 @@ async def control_services(request) -> Response:
 async def get_series_events(request):
     logger.debug(request.query_params)
     task_id = request.query_params.get("task_id", "")
-    return JSONResponse(monitor.get_series_events(task_id))
+    return JSONResponse(await monitor.get_series_events(task_id))
 
 
 @app.route("/api/get-series", methods=["GET"])
 @requires(["authenticated"])
 async def get_series(request):
     series_uid = request.query_params.get("series_uid", "")
-    return JSONResponse(monitor.get_series(series_uid))
+    return JSONResponse(await monitor.get_series(series_uid))
 
 
 @app.route("/api/get-tasks", methods=["GET"])
 @requires(["authenticated"])
 async def get_tasks(request):
     series_uid = request.query_params.get("series_uid", "")
-    return JSONResponse(monitor.get_tasks(series_uid))
+    return JSONResponse(await monitor.get_tasks(series_uid))
 
 
 ###################################################################################

@@ -5,12 +5,15 @@ Helper functions and definitions for monitoring mercure's operations via the boo
 """
 
 # Standard python includes
-import json
+import asyncio
+
 from typing import Any, Dict, Optional
-import requests
 import logging
+
+import aiohttp
 from common.types import Task
 import daiquiri
+from common.helper import loop
 
 # Create local logger instance
 logger = daiquiri.getLogger("config")
@@ -74,6 +77,30 @@ class severity:
     CRITICAL = 3
 
 
+def post(endpoint: str, **kwargs) -> None:
+    async def do_post(endpoint, kwargs) -> None:
+        logger.debug(f"Posting to {endpoint}: {kwargs}")
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.post(bookkeeper_address + "/" + endpoint, **kwargs) as resp:
+                    logger.debug(f"Response from {endpoint}: {resp.status}")
+                    if resp.status != 200:
+                        logger.warning(f"Failed POST request to bookkeeper endpoint {endpoint}: status: {resp.status}")
+        except aiohttp.client_exceptions.ClientConnectorError as e:
+            logger.error(f"Failed POST request to bookkeeper endpoint {endpoint}: {e}")
+
+    asyncio.ensure_future(do_post(endpoint, kwargs), loop=loop)
+
+
+async def get(endpoint: str, payload: Any) -> Any:
+    async with aiohttp.ClientSession() as session:
+        async with session.get(bookkeeper_address + "/" + endpoint, params=payload) as resp:
+            if resp.status != 200:
+                logger.error(f"Failed GET request to bookkeeper endpoint {endpoint}: status: {resp.status}")
+                return {}
+            return await resp.json()
+
+
 def configure(module, instance, address) -> None:
     """Configures the connection to the bookkeeper module. If not called, events
     will not be transmitted to the bookkeeper."""
@@ -87,32 +114,29 @@ def send_event(event, severity=severity.INFO, description: str = "") -> None:
     """Sends information about general mercure events to the bookkeeper (e.g., during module start)."""
     if not bookkeeper_address:
         return
-    try:
-        payload = {
-            "sender": sender_name,
-            "event": event,
-            "severity": severity,
-            "description": description,
-        }
-        requests.post(bookkeeper_address + "/mercure-event", data=payload, timeout=1)
-    except requests.exceptions.RequestException:
-        logger.error("Failed request to bookkeeper")
+    logger.debug(f"Monitor (mercure-event): level {severity} {event}: {description}")
+    payload = {
+        "sender": sender_name,
+        "event": event,
+        "severity": severity,
+        "description": description,
+    }
+    post("mercure-event", data=payload)
+    # requests.post(bookkeeper_address + "/mercure-event", data=payload, timeout=1)
 
 
 def send_webgui_event(event, user, description="") -> None:
     """Sends information about an event on the webgui to the bookkeeper."""
     if not bookkeeper_address:
         return
-    try:
-        payload = {
-            "sender": sender_name,
-            "event": event,
-            "user": user,
-            "description": description,
-        }
-        requests.post(bookkeeper_address + "/webgui-event", data=payload, timeout=1)
-    except requests.exceptions.RequestException:
-        logger.error("Failed request to bookkeeper")
+    payload = {
+        "sender": sender_name,
+        "event": event,
+        "user": user,
+        "description": description,
+    }
+    post("webgui-event", data=payload)
+    # requests.post(bookkeeper_address + "/webgui-event", data=payload, timeout=1)
 
 
 def send_register_series(tags: Dict[str, str]) -> None:
@@ -120,10 +144,9 @@ def send_register_series(tags: Dict[str, str]) -> None:
     fully received and the DICOM tags have been parsed."""
     if not bookkeeper_address:
         return
-    try:
-        requests.post(bookkeeper_address + "/register-series", data=tags, timeout=1)
-    except requests.exceptions.RequestException:
-        logger.error("Failed request to bookkeeper")
+    logger.debug(f"Monitor (register-series): series_uid={tags.get('series_uid',None)}")
+    # requests.post(bookkeeper_address + "/register-series", data=tags, timeout=1)
+    post("register-series", data=tags)
 
 
 def send_register_task(task: Task) -> None:
@@ -131,61 +154,40 @@ def send_register_task(task: Task) -> None:
     fully received and the DICOM tags have been parsed."""
     if not bookkeeper_address:
         return
-    try:
-        logger.debug(f"Monitor (register-task): task.id={task.id} ")
-        requests.post(bookkeeper_address + "/register-task", data=json.dumps(task.dict()), timeout=1)
-    except requests.exceptions.RequestException:
-        logger.error("Failed request to bookkeeper")
+    logger.debug(f"Monitor (register-task): task.id={task.id} ")
+    post("register-task", json=task.dict())
+    # requests.post(bookkeeper_address + "/register-task", data=json.dumps(task.dict()), timeout=1)
 
 
 def send_series_event(event, task_id, series_uid, file_count, target, info) -> None:
     """Send an event related to a specific series to the bookkeeper."""
     if not bookkeeper_address:
         return
-    try:
-        logger.debug(f"Monitor (series-event): event={event} task_id={task_id} series_uid={series_uid} info={info}")
-        payload = {
-            "sender": sender_name,
-            "event": event,
-            "series_uid": series_uid,
-            "file_count": file_count,
-            "target": target,
-            "info": info,
-            "task_id": task_id,
-        }
-        requests.post(bookkeeper_address + "/series-event", data=payload, timeout=1)
-    except requests.exceptions.RequestException:
-        logger.error("Failed request to bookkeeper")
+
+    logger.debug(f"Monitor (series-event): event={event} task_id={task_id} series_uid={series_uid} info={info}")
+    payload = {
+        "sender": sender_name,
+        "event": event,
+        "series_uid": series_uid,
+        "file_count": file_count,
+        "target": target,
+        "info": info,
+        "task_id": task_id,
+    }
+    post("series-event", data=payload)
+    # requests.post(bookkeeper_address + "/series-event", data=payload, timeout=1)
 
 
-def get_series_events(task_id="") -> Any:
+async def get_series_events(task_id="") -> Any:
     """Send an event related to a specific series to the bookkeeper."""
-    try:
-        payload = {
-            "task_id": task_id,
-        }
-        return requests.get(bookkeeper_address + "/series-events", params=payload, timeout=1).json()
-    except requests.exceptions.RequestException:
-        logger.error("Failed request to bookkeeper")
+    return await get("series-events", {"task_id": task_id})
 
 
-def get_series(series_uid="") -> Any:
+async def get_series(series_uid="") -> Any:
     """Send an event related to a specific series to the bookkeeper."""
-    try:
-        payload = {
-            "series_uid": series_uid,
-        }
-        return requests.get(bookkeeper_address + "/series", params=payload, timeout=1).json()
-    except requests.exceptions.RequestException:
-        logger.error("Failed request to bookkeeper")
+    return await get("series", {"series_uid": series_uid})
 
 
-def get_tasks(series_uid="") -> Any:
+async def get_tasks(series_uid="") -> Any:
     """Send an event related to a specific series to the bookkeeper."""
-    try:
-        payload = {
-            "series_uid": series_uid,
-        }
-        return requests.get(bookkeeper_address + "/tasks", params=payload, timeout=1).json()
-    except requests.exceptions.RequestException:
-        logger.error("Failed request to bookkeeper")
+    return await get("tasks", {"series_uid": series_uid})
