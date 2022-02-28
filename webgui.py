@@ -604,12 +604,12 @@ async def control_services(request) -> Response:
     return JSONResponse("{ }")
 
 
-@app.route("/api/get-series-events", methods=["GET"])
+@app.route("/api/get-task-events", methods=["GET"])
 @requires(["authenticated"])
 async def get_series_events(request):
     logger.debug(request.query_params)
     task_id = request.query_params.get("task_id", "")
-    return JSONResponse(await monitor.get_series_events(task_id))
+    return JSONResponse(await monitor.get_task_events(task_id))
 
 
 @app.route("/api/get-series", methods=["GET"])

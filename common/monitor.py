@@ -159,28 +159,27 @@ def send_register_task(task: Task) -> None:
     # requests.post(bookkeeper_address + "/register-task", data=json.dumps(task.dict()), timeout=1)
 
 
-def send_series_event(event, task_id, series_uid, file_count, target, info) -> None:
+def send_task_event(event, task_id, file_count, target, info) -> None:
     """Send an event related to a specific series to the bookkeeper."""
     if not bookkeeper_address:
         return
 
-    logger.debug(f"Monitor (series-event): event={event} task_id={task_id} series_uid={series_uid} info={info}")
+    logger.debug(f"Monitor (task-event): event={event} task_id={task_id} info={info}")
     payload = {
         "sender": sender_name,
         "event": event,
-        "series_uid": series_uid,
         "file_count": file_count,
         "target": target,
         "info": info,
         "task_id": task_id,
     }
-    post("series-event", data=payload)
+    post("task-event", data=payload)
     # requests.post(bookkeeper_address + "/series-event", data=payload, timeout=1)
 
 
-async def get_series_events(task_id="") -> Any:
+async def get_task_events(task_id="") -> Any:
     """Send an event related to a specific series to the bookkeeper."""
-    return await get("series-events", {"task_id": task_id})
+    return await get("task-events", {"task_id": task_id})
 
 
 async def get_series(series_uid="") -> Any:

@@ -112,7 +112,7 @@ $('#series-table').DataTable( {
         console.log( selectedRows.data()[0][0])
         $.ajax({
             type: 'GET',
-            url: '/api/get-series-events',
+            url: '/api/get-task-events',
             data: {'task_id': selectedRows.data()[0][0]},
             dataType: 'json',
             error: function () {

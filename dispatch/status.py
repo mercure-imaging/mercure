@@ -11,7 +11,7 @@ from typing import Optional
 import daiquiri
 
 # App-specific includes
-from common.monitor import s_events, send_series_event
+from common.monitor import s_events, send_task_event
 from common.constants import mercure_names
 from common.types import Task
 
@@ -47,7 +47,7 @@ def has_been_send(folder) -> bool:
 
 def is_target_json_valid(folder) -> Optional[Task]:
     """
-    Checks if the task.json file exists and is valid. Returns the content 
+    Checks if the task.json file exists and is valid. Returns the content
     of the file (or None if the file is invalid)
     """
     path = Path(folder) / mercure_names.TASKFILE
@@ -58,10 +58,9 @@ def is_target_json_valid(folder) -> Optional[Task]:
             target = Task(**json.load(f))
     except:
         logger.exception("task.json has invalid format")
-        send_series_event(
+        send_task_event(
             s_events.ERROR,
             "TODO",
-            "None",
             0,
             "None",
             f"task.json has invalid format",

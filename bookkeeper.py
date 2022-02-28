@@ -141,15 +141,15 @@ dicom_series = sqlalchemy.Table(
     sqlalchemy.Column("tag_stationname", sqlalchemy.String),
 )
 
-series_events = sqlalchemy.Table(
-    "series_events",
+task_events = sqlalchemy.Table(
+    "task_events",
     metadata,
     sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
     sqlalchemy.Column("task_id", sqlalchemy.String, sqlalchemy.ForeignKey("tasks.id"), nullable=True),
     sqlalchemy.Column("time", sqlalchemy.DateTime),
     sqlalchemy.Column("sender", sqlalchemy.String, default="Unknown"),
     sqlalchemy.Column("event", sqlalchemy.String),
-    sqlalchemy.Column("series_uid", sqlalchemy.String),
+    # sqlalchemy.Column("series_uid", sqlalchemy.String),
     sqlalchemy.Column("file_count", sqlalchemy.Integer),
     sqlalchemy.Column("target", sqlalchemy.String),
     sqlalchemy.Column("info", sqlalchemy.String),
@@ -178,7 +178,7 @@ series_sequence_data = sqlalchemy.Table(
     sqlalchemy.Column("data", sqlalchemy.JSON),
 )
 
-tasks = sqlalchemy.Table(
+tasks_table = sqlalchemy.Table(
     "tasks",
     metadata,
     sqlalchemy.Column("id", sqlalchemy.String, primary_key=True),
@@ -350,7 +350,7 @@ async def register_task(request) -> JSONResponse:
         study_uid = payload["info"]["uid"]
     data = await request.json()
 
-    query = tasks.insert().values(
+    query = tasks_table.insert().values(
         id=id, series_uid=series_uid, study_uid=study_uid, time=datetime.datetime.now(), data=data
     )
     tasks = BackgroundTasks()
@@ -358,23 +358,23 @@ async def register_task(request) -> JSONResponse:
     return JSONResponse({"ok": ""}, background=tasks)
 
 
-@app.route("/series-event", methods=["POST"])
-async def post_series_event(request) -> JSONResponse:
+@app.route("/task-event", methods=["POST"])
+async def post_task_event(request) -> JSONResponse:
     """Endpoint for logging all events related to one series."""
     payload = dict(await request.form())
     sender = payload.get("sender", "Unknown")
     event = payload.get("event", monitor.s_events.UNKNOWN)
-    series_uid = payload.get("series_uid", "")
+    # series_uid = payload.get("series_uid", "")
     file_count = payload.get("file_count", 0)
     target = payload.get("target", "")
     info = payload.get("info", "")
     task_id = payload.get("task_id")
 
-    query = series_events.insert().values(
+    query = task_events.insert().values(
         sender=sender,
         event=event,
         task_id=task_id,
-        series_uid=series_uid,
+        # series_uid=None,
         file_count=file_count,
         target=target,
         info=info,

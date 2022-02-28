@@ -114,7 +114,7 @@ def search_folder(counter) -> bool:
         with task_json.open("w") as f:
             task = {**task, "nomad_info": job_info}
             json.dump(task, f)
-       
+
         # Copy input images if configured in rule
         if task_typed.process and task_typed.process.retain_input_images == "True":
             push_input_images(in_folder, out_folder)
@@ -124,9 +124,7 @@ def search_folder(counter) -> bool:
             logger.error("Processing failed.")
             move_results(str(p_folder), None, False, False)
             trigger_notification(task.get("info"), mercure_events.ERROR)
-            monitor.send_series_event(
-                monitor.s_events.ERROR, task_typed.id, task_typed.info.uid, 0, "", "Processing failed"
-            )
+            monitor.send_task_event(monitor.s_events.ERROR, task_typed.id, 0, "", "Processing failed")
             continue
 
         needs_dispatching = True if task.get("dispatch") else False
@@ -135,15 +133,11 @@ def search_folder(counter) -> bool:
         (p_folder / "nomad_job.json").unlink()
         (p_folder / ".processing").unlink()
         p_folder.rmdir()
-        monitor.send_series_event(
-            monitor.s_events.UNKNOWN, task_typed.id, task_typed.info.uid, 0, "", "Processing complete"
-        )
+        monitor.send_task_event(monitor.s_events.UNKNOWN, task_typed.id, 0, "", "Processing complete")
         # If dispatching not needed, then trigger the completion notification (for Nomad)
         if not needs_dispatching:
             trigger_notification(task.get("info"), mercure_events.COMPLETION)
-            monitor.send_series_event(
-                monitor.s_events.COMPLETE, task_typed.id, task_typed.info.uid, 0, "", "Task complete"
-            )
+            monitor.send_task_event(monitor.s_events.COMPLETE, task_typed.id, 0, "", "Task complete")
 
     # Check if processing has been suspended via the UI
     if processor_lockfile and processor_lockfile.exists():
@@ -175,7 +169,7 @@ def search_folder(counter) -> bool:
         return True
     except Exception:
         logger.exception(f"Problems while processing series {task}")
-        monitor.send_series_event(monitor.s_events.ERROR, task.id, None, 0, "", "Exception while processing")
+        monitor.send_task_event(monitor.s_events.ERROR, task.id, 0, "", "Exception while processing")
         monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, "Exception while processing series")
         return False
 
@@ -224,7 +218,9 @@ def main(args=sys.argv[1:]) -> None:
     if "--reload" in args or os.getenv("MERCURE_ENV", "PROD").lower() == "dev":
         # start_reloader will only return in a monitored subprocess
         reloader = hupper.start_reloader("processor.main")
+        import logging
 
+        logging.getLogger("watchdog").setLevel(logging.WARNING)
     logger.info("")
     logger.info(f"mercure DICOM Processor ver {mercure_defs.VERSION}")
     logger.info("--------------------------------------------")

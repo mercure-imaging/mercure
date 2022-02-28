@@ -116,7 +116,7 @@ def run_router(args=None) -> None:
         except Exception:
             error_message = f"Problems while processing series {series_uid}"
             logger.exception(error_message)
-            monitor.send_series_event(monitor.s_events.ERROR, task_id, series_uid, 0, "", error_message)
+            monitor.send_task_event(monitor.s_events.ERROR, task_id, 0, "", error_message)
             monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
         # If termination is requested, stop processing series after the active one has been completed
         if helper.is_terminated():

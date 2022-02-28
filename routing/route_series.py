@@ -68,7 +68,7 @@ def route_series(task_id: str, series_UID: str) -> None:
     logger.info("DICOM files found: " + str(len(fileList)))
     if not len(fileList):
         error_message = f"No tags files found for series {series_UID}"
-        monitor.send_series_event(monitor.s_events.ERROR, task_id, series_UID, 0, "", error_message)
+        monitor.send_task_event(monitor.s_events.ERROR, task_id, 0, "", error_message)
         monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
         return
 
@@ -86,12 +86,12 @@ def route_series(task_id: str, series_UID: str) -> None:
     except Exception:
         error_message = f"Invalid tag for series {series_UID}"
         logger.exception(error_message)
-        monitor.send_series_event(monitor.s_events.ERROR, task_id, series_UID, 0, "", error_message)
+        monitor.send_task_event(monitor.s_events.ERROR, task_id, 0, "", error_message)
         monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
         return
 
     monitor.send_register_series(tagsList)
-    monitor.send_series_event(monitor.s_events.REGISTERED, task_id, series_UID, len(fileList), "", "Registered series")
+    monitor.send_task_event(monitor.s_events.REGISTERED, task_id, len(fileList), "", "Registered series")
 
     # Now test the routing rules and evaluate which rules have been triggered. If one of the triggered
     # rules enforces discarding, discard_series will be True.
@@ -205,20 +205,22 @@ def push_series_complete(
         error_message = f"Unable to create lock file {destination_path}/{mercure_names.LOCK}"
         logger.error(error_message)
         monitor.send_event(
-            monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message,
+            monitor.m_events.PROCESSING,
+            monitor.severity.ERROR,
+            error_message,
         )
         return
 
     if discard_rule:
         info_text = "Discard by rule " + discard_rule
-        monitor.send_series_event(monitor.s_events.DISCARD, task_id, series_UID, len(file_list), "", info_text)
+        monitor.send_task_event(monitor.s_events.DISCARD, task_id, len(file_list), "", info_text)
 
     if not push_files(file_list, destination_path, copy_files):
         error_message = f"Problem while moving completed files from {series_UID}"
         logger.error(error_message)
         monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
 
-    monitor.send_series_event(monitor.s_events.MOVE, task_id, series_UID, len(file_list), destination_path, "")
+    monitor.send_task_event(monitor.s_events.MOVE, task_id, len(file_list), destination_path, "")
 
     try:
         lock.free()
@@ -356,7 +358,9 @@ def push_serieslevel_processing(
                     error_message = f"Unable to create outgoing folder {folder_name}"
                     logger.exception(error_message)
                     monitor.send_event(
-                        monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message,
+                        monitor.m_events.PROCESSING,
+                        monitor.severity.ERROR,
+                        error_message,
                     )
                     return False
 
@@ -364,7 +368,9 @@ def push_serieslevel_processing(
                     error_message = f"Creating folder not possible {folder_name}"
                     logger.error(error_message)
                     monitor.send_event(
-                        monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message,
+                        monitor.m_events.PROCESSING,
+                        monitor.severity.ERROR,
+                        error_message,
                     )
                     return False
 
@@ -389,7 +395,9 @@ def push_serieslevel_processing(
                     error_message = f"Unable to push files into processing folder {target_folder}"
                     logger.error(error_message)
                     monitor.send_event(
-                        monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message,
+                        monitor.m_events.PROCESSING,
+                        monitor.severity.ERROR,
+                        error_message,
                     )
                     return False
 
@@ -495,10 +503,9 @@ def push_serieslevel_outgoing(
         if not create_series_task(task_id, target_folder, target_rules, "", series_UID, tags_list, target):
             continue
 
-        monitor.send_series_event(
+        monitor.send_task_event(
             monitor.s_events.ROUTE,
             task_id,
-            series_UID,
             len(file_list),
             target,
             ", ".join(selected_targets[target]),
@@ -520,12 +527,12 @@ def push_serieslevel_outgoing(
                 logger.error(f"Source folder {source_folder}")
                 logger.error(f"Target folder {target_folder}")
                 monitor.send_event(
-                    monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message,
+                    monitor.m_events.PROCESSING,
+                    monitor.severity.ERROR,
+                    error_message,
                 )
 
-        monitor.send_series_event(
-            monitor.s_events.MOVE, task_id, series_UID, len(file_list), folder_name, ""
-        )
+        monitor.send_task_event(monitor.s_events.MOVE, task_id, len(file_list), folder_name, "")
 
         try:
             lock.free()
@@ -606,7 +613,8 @@ def route_error_files() -> None:
             error_files_found += 1
 
             shutil.move(
-                config.mercure.incoming_folder + "/" + entry.name, config.mercure.error_folder + "/" + entry.name,
+                config.mercure.incoming_folder + "/" + entry.name,
+                config.mercure.error_folder + "/" + entry.name,
             )
 
             dicom_filename = entry.name[:-6]
@@ -628,7 +636,7 @@ def route_error_files() -> None:
 
 def trigger_serieslevel_notification(current_rule: str, tags_list: Dict[str, str], event) -> None:
     if event == mercure_events.RECEPTION:
-        if config.mercure.rules[current_rule].notification_trigger_reception == 'True':
+        if config.mercure.rules[current_rule].notification_trigger_reception == "True":
             notification.send_webhook(
                 config.mercure.rules[current_rule].get("notification_webhook", ""),
                 config.mercure.rules[current_rule].get("notification_payload", ""),
@@ -636,7 +644,7 @@ def trigger_serieslevel_notification(current_rule: str, tags_list: Dict[str, str
                 current_rule,
             )
     if event == mercure_events.COMPLETION:
-        if config.mercure.rules[current_rule].notification_trigger_completion == 'True':
+        if config.mercure.rules[current_rule].notification_trigger_completion == "True":
             notification.send_webhook(
                 config.mercure.rules[current_rule].get("notification_webhook", ""),
                 config.mercure.rules[current_rule].get("notification_payload", ""),
@@ -644,7 +652,7 @@ def trigger_serieslevel_notification(current_rule: str, tags_list: Dict[str, str
                 current_rule,
             )
     if event == mercure_events.ERROR:
-        if config.mercure.rules[current_rule].notification_trigger_error == 'True':
+        if config.mercure.rules[current_rule].notification_trigger_error == "True":
             notification.send_webhook(
                 config.mercure.rules[current_rule].get("notification_webhook", ""),
                 config.mercure.rules[current_rule].get("notification_payload", ""),
