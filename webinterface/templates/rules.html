@@ -2,6 +2,10 @@
 
 {% block title %}Rules{% endblock %}
 
+{% block extra_head %}
+<script type="text/javascript" src="{{ url_for('static', path='/js/bulma-quickview.min.js') }}"></script>
+{% endblock %}
+
 {% block content %}
 <main role="main">
     <div class="container">
