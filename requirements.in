@@ -9,7 +9,7 @@ alembic
 # logging / monitoring
 graphyte
 daiquiri
-requests
+aiohttp
 types-requests
 
 # documentation
@@ -33,7 +33,8 @@ distro
 passlib
 sqlalchemy
 databases
-databases[postgresql]
+# databases[postgresql]
+databases[aiopg]
 psycopg2
 asyncpg
 

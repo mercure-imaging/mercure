@@ -69,8 +69,6 @@ app = Starlette(debug=True)
 ###################################################################################
 
 metadata = sqlalchemy.MetaData(schema=DATABASE_SCHEMA)
-engine = sqlalchemy.create_engine(DATABASE_URL)
-connection: Connection
 
 mercure_events = sqlalchemy.Table(
     "mercure_events",
@@ -188,6 +186,28 @@ tasks_table = sqlalchemy.Table(
     sqlalchemy.Column("data", JSONB),
 )
 
+
+class CustomJSONEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, datetime.datetime):
+            return obj.strftime("%Y-%m-%d %H:%M:%S")
+        elif isinstance(obj, datetime.date):
+            return obj.strftime("%Y-%m-%d")
+        else:
+            try:
+                dict_ = dict(obj)
+            except TypeError:
+                pass
+            else:
+                return dict_
+            return super(CustomJSONEncoder, self).default(obj)
+
+
+class CustomJSONResponse(JSONResponse):
+    def render(self, content: Any) -> bytes:
+        return json.dumps(content, cls=CustomJSONEncoder).encode("utf-8")
+
+
 ###################################################################################
 ## Event handlers
 ###################################################################################
@@ -195,22 +215,21 @@ tasks_table = sqlalchemy.Table(
 
 def create_database() -> None:
     """Creates all tables in the database if they do not exist."""
-    metadata.create_all(engine)
+    metadata.create_all(sqlalchemy.create_engine(DATABASE_URL).connect())
 
 
 @app.on_event("startup")
 async def startup() -> None:
     """Connects to database on startup. If the database does not exist, it will
     be created."""
-    global connection
-    connection = engine.connect()
+    await database.connect()
     create_database()
 
 
 @app.on_event("shutdown")
 async def shutdown() -> None:
     """Disconnect from database on shutdown."""
-    engine.dispose()
+    await database.disconnect()
 
 
 ###################################################################################
@@ -218,13 +237,13 @@ async def shutdown() -> None:
 ###################################################################################
 
 
-async def execute_db_operation(operation) -> None:
-    global connection
-    """Executes a previously prepared database operation."""
-    try:
-        connection.execute(operation)
-    except:
-        pass
+# async def execute_db_operation(operation) -> None:
+#     global connection
+#     """Executes a previously prepared database operation."""
+#     try:
+#         connection.execute(operation)
+#     except:
+#         pass
 
 
 @app.route("/test", methods=["GET", "POST"])
@@ -245,9 +264,9 @@ async def post_mercure_event(request) -> JSONResponse:
     query = mercure_events.insert().values(
         sender=sender, event=event, severity=severity, description=description, time=datetime.datetime.now()
     )
-    tasks = BackgroundTasks()
-    tasks.add_task(execute_db_operation, operation=query)
-    return JSONResponse({"ok": ""}, background=tasks)
+    result = await database.execute(query)
+    logger.debug(result)
+    return JSONResponse({"ok": ""})
 
 
 @app.route("/webgui-event", methods=["POST"])
@@ -262,9 +281,10 @@ async def post_webgui_event(request) -> JSONResponse:
     query = webgui_events.insert().values(
         sender=sender, event=event, user=user, description=description, time=datetime.datetime.now()
     )
-    tasks = BackgroundTasks()
-    tasks.add_task(execute_db_operation, operation=query)
-    return JSONResponse({"ok": ""}, background=tasks)
+    await database.execute(query)
+    # tasks = BackgroundTasks()
+    # tasks.add_task(execute_db_operation, operation=query)
+    return JSONResponse({"ok": ""})
 
 
 @app.route("/register-dicom", methods=["POST"])
@@ -278,62 +298,62 @@ async def register_dicom(request) -> JSONResponse:
     query = dicom_files.insert().values(
         filename=filename, file_uid=file_uid, series_uid=series_uid, time=datetime.datetime.now()
     )
-    tasks = BackgroundTasks()
-    tasks.add_task(execute_db_operation, operation=query)
-    return JSONResponse({"ok": ""}, background=tasks)
+    result = await database.execute(query)
+    logger.debug(f"Result: {result}")
+
+    # tasks = BackgroundTasks()
+    # tasks.add_task(execute_db_operation, operation=query)
+    return JSONResponse({"ok": ""})
 
 
 async def parse_and_submit_tags(payload) -> None:
-    global connection
     """Helper function that reads series information from the request body."""
-    try:
-        query = dicom_series.insert().values(
-            time=datetime.datetime.now(),
-            series_uid=payload.get("SeriesInstanceUID", ""),
-            study_uid=payload.get("StudyInstanceUID", ""),
-            tag_patientname=payload.get("PatientName", ""),
-            tag_patientid=payload.get("PatientID", ""),
-            tag_accessionnumber=payload.get("AccessionNumber", ""),
-            tag_seriesnumber=payload.get("SeriesNumber", ""),
-            tag_studyid=payload.get("StudyID", ""),
-            tag_patientbirthdate=payload.get("PatientBirthDate", ""),
-            tag_patientsex=payload.get("PatientSex", ""),
-            tag_acquisitiondate=payload.get("AcquisitionDate", ""),
-            tag_acquisitiontime=payload.get("AcquisitionTime", ""),
-            tag_modality=payload.get("Modality", ""),
-            tag_bodypartexamined=payload.get("BodyPartExamined", ""),
-            tag_studydescription=payload.get("StudyDescription", ""),
-            tag_seriesdescription=payload.get("SeriesDescription", ""),
-            tag_protocolname=payload.get("ProtocolName", ""),
-            tag_codevalue=payload.get("CodeValue", ""),
-            tag_codemeaning=payload.get("CodeMeaning", ""),
-            tag_sequencename=payload.get("SequenceName", ""),
-            tag_scanningsequence=payload.get("ScanningSequence", ""),
-            tag_sequencevariant=payload.get("SequenceVariant", ""),
-            tag_slicethickness=payload.get("SliceThickness", ""),
-            tag_contrastbolusagent=payload.get("ContrastBolusAgent", ""),
-            tag_referringphysicianname=payload.get("ReferringPhysicianName", ""),
-            tag_manufacturer=payload.get("Manufacturer", ""),
-            tag_manufacturermodelname=payload.get("ManufacturerModelName", ""),
-            tag_magneticfieldstrength=payload.get("MagneticFieldStrength", ""),
-            tag_deviceserialnumber=payload.get("DeviceSerialNumber", ""),
-            tag_softwareversions=payload.get("SoftwareVersions", ""),
-            tag_stationname=payload.get("StationName", ""),
-        )
-        connection.execute(query)
-    except Exception as e:
-        print(e)
-        # TODO: Implement differentiation between IntegrityError and other exceptions
-        pass
+    query = dicom_series.insert().values(
+        time=datetime.datetime.now(),
+        series_uid=payload.get("SeriesInstanceUID", ""),
+        study_uid=payload.get("StudyInstanceUID", ""),
+        tag_patientname=payload.get("PatientName", ""),
+        tag_patientid=payload.get("PatientID", ""),
+        tag_accessionnumber=payload.get("AccessionNumber", ""),
+        tag_seriesnumber=payload.get("SeriesNumber", ""),
+        tag_studyid=payload.get("StudyID", ""),
+        tag_patientbirthdate=payload.get("PatientBirthDate", ""),
+        tag_patientsex=payload.get("PatientSex", ""),
+        tag_acquisitiondate=payload.get("AcquisitionDate", ""),
+        tag_acquisitiontime=payload.get("AcquisitionTime", ""),
+        tag_modality=payload.get("Modality", ""),
+        tag_bodypartexamined=payload.get("BodyPartExamined", ""),
+        tag_studydescription=payload.get("StudyDescription", ""),
+        tag_seriesdescription=payload.get("SeriesDescription", ""),
+        tag_protocolname=payload.get("ProtocolName", ""),
+        tag_codevalue=payload.get("CodeValue", ""),
+        tag_codemeaning=payload.get("CodeMeaning", ""),
+        tag_sequencename=payload.get("SequenceName", ""),
+        tag_scanningsequence=payload.get("ScanningSequence", ""),
+        tag_sequencevariant=payload.get("SequenceVariant", ""),
+        tag_slicethickness=payload.get("SliceThickness", ""),
+        tag_contrastbolusagent=payload.get("ContrastBolusAgent", ""),
+        tag_referringphysicianname=payload.get("ReferringPhysicianName", ""),
+        tag_manufacturer=payload.get("Manufacturer", ""),
+        tag_manufacturermodelname=payload.get("ManufacturerModelName", ""),
+        tag_magneticfieldstrength=payload.get("MagneticFieldStrength", ""),
+        tag_deviceserialnumber=payload.get("DeviceSerialNumber", ""),
+        tag_softwareversions=payload.get("SoftwareVersions", ""),
+        tag_stationname=payload.get("StationName", ""),
+    )
+    await database.execute(query)
 
 
 @app.route("/register-series", methods=["POST"])
 async def register_series(request) -> JSONResponse:
     """Endpoint that is called by the router whenever a new series arrives."""
     payload = dict(await request.form())
-    tasks = BackgroundTasks()
-    tasks.add_task(parse_and_submit_tags, payload=payload)
-    return JSONResponse({"ok": ""}, background=tasks)
+    try:
+        await parse_and_submit_tags(payload)
+    except asyncpg.exceptions.UniqueViolationError:
+        logger.debug("Series already registered.")
+
+    return JSONResponse({"ok": ""})
 
 
 @app.route("/register-task", methods=["POST"])
@@ -353,9 +373,8 @@ async def register_task(request) -> JSONResponse:
     query = tasks_table.insert().values(
         id=id, series_uid=series_uid, study_uid=study_uid, time=datetime.datetime.now(), data=data
     )
-    tasks = BackgroundTasks()
-    tasks.add_task(execute_db_operation, operation=query)
-    return JSONResponse({"ok": ""}, background=tasks)
+    await database.execute(query)
+    return JSONResponse({"ok": ""})
 
 
 @app.route("/task-event", methods=["POST"])
@@ -365,7 +384,12 @@ async def post_task_event(request) -> JSONResponse:
     sender = payload.get("sender", "Unknown")
     event = payload.get("event", monitor.s_events.UNKNOWN)
     # series_uid = payload.get("series_uid", "")
-    file_count = payload.get("file_count", 0)
+    try:
+        file_count = int(payload.get("file_count", 0))
+    except ValueError:
+        file_count = 0
+
+    file_count = int(file_count)
     target = payload.get("target", "")
     info = payload.get("info", "")
     task_id = payload.get("task_id")
@@ -380,9 +404,74 @@ async def post_task_event(request) -> JSONResponse:
         info=info,
         time=datetime.datetime.now(),
     )
-    tasks = BackgroundTasks()
-    tasks.add_task(execute_db_operation, operation=query)
-    return JSONResponse({"ok": ""}, background=tasks)
+    await database.execute(query)
+    return JSONResponse({"ok": ""})
+
+
+@app.route("/series", methods=["GET"])
+async def get_series(request) -> JSONResponse:
+    """Endpoint for retrieving series in the database."""
+    series_uid = request.query_params.get("series_uid", "")
+    query = dicom_series.select()
+    if series_uid:
+        query = query.where(dicom_series.c.series_uid == series_uid)
+
+    result = await database.fetch_all(query)
+    series = [dict(row) for row in result]
+
+    for i, line in enumerate(series):
+        series[i] = {
+            k: line[k] for k in line if k in ("id", "time", "series_uid", "tag_seriesdescription", "tag_modality")
+        }
+
+    return CustomJSONResponse(series)
+
+
+@app.route("/tasks", methods=["GET"])
+async def get_tasks(request) -> JSONResponse:
+    """Endpoint for retrieving tasks in the database."""
+    query = sqlalchemy.select(
+        tasks_table.c.id, tasks_table.c.time, dicom_series.c.tag_seriesdescription, dicom_series.c.tag_modality
+    ).join(
+        dicom_series,
+        sqlalchemy.or_(
+            (dicom_series.c.study_uid == tasks_table.c.study_uid),
+            (dicom_series.c.series_uid == tasks_table.c.series_uid),
+        ),
+    )
+    # query = sqlalchemy.text(
+    #     """ select tasks.id as task_id, tasks.time, tasks.series_uid, tasks.study_uid, "tag_seriesdescription", "tag_modality" from tasks
+    #         join dicom_series on tasks.study_uid = dicom_series.study_uid or tasks.series_uid = dicom_series.series_uid """
+    # )
+    results = await database.fetch_all(query)
+    return CustomJSONResponse(results)
+
+
+@app.route("/task-events", methods=["GET"])
+async def get_task_events(request) -> JSONResponse:
+    """Endpoint for getting all events related to one series."""
+
+    # series_uid = request.query_params.get("series_uid", "")
+    task_id = request.query_params.get("task_id", "")
+
+    query = task_events.select().order_by(task_events.c.time)
+    # if series_uid:
+    #     query = query.where(series_events.c.series_uid == series_uid)
+    # elif task_id:
+    query = query.where(task_events.c.task_id == task_id)
+    results = await database.fetch_all(query)
+    return CustomJSONResponse(results)
+
+
+@app.route("/dicom-files", methods=["GET"])
+async def get_dicom_files(request) -> JSONResponse:
+    """Endpoint for getting all events related to one series."""
+    series_uid = request.query_params.get("series_uid", "")
+    query = dicom_files.select().order_by(dicom_files.c.time)
+    if series_uid:
+        query = query.where(dicom_files.c.series_uid == series_uid)
+    results = await database.fetch_all(query)
+    return CustomJSONResponse(results)
 
 
 ###################################################################################

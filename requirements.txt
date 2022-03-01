@@ -8,6 +8,10 @@ aiocontextvars==0.2.2
     # via databases
 aiofiles==0.8.0
     # via -r requirements.in
+aiohttp==3.8.1
+    # via -r requirements.in
+aiosignal==1.2.0
+    # via aiohttp
 alabaster==0.7.12
     # via sphinx
 alembic==1.7.6
@@ -16,18 +20,24 @@ anyio==3.5.0
     # via starlette
 asgiref==3.4.1
     # via uvicorn
+async-timeout==4.0.2
+    # via aiohttp
 asyncpg==0.25.0
-    # via
-    #   -r requirements.in
-    #   databases
+    # via -r requirements.in
+asynctest==0.13.0
+    # via aiohttp
 attrs==21.4.0
-    # via pytest
+    # via
+    #   aiohttp
+    #   pytest
 babel==2.9.1
     # via sphinx
 certifi==2021.10.8
     # via requests
 charset-normalizer==2.0.10
-    # via requests
+    # via
+    #   aiohttp
+    #   requests
 click==8.0.3
     # via uvicorn
 contextlib2==21.6.0
@@ -39,7 +49,7 @@ contextvars==2.4
     #   sniffio
 daiquiri==3.0.1
     # via -r requirements.in
-databases[postgresql]==0.5.5
+databases[aiopg]==0.5.5
     # via -r requirements.in
 dataclasses==0.8 ; python_version < "3.7"
     # via
@@ -55,6 +65,10 @@ docutils==0.17.1
     # via
     #   sphinx
     #   sphinx-rtd-theme
+frozenlist==1.2.0
+    # via
+    #   aiohttp
+    #   aiosignal
 graphyte==1.7.0
     # via -r requirements.in
 greenlet==1.1.2
@@ -66,13 +80,18 @@ hupper==1.10.3
 idna==3.3
     # via
     #   anyio
+    #   idna-ssl
     #   requests
+    #   yarl
+idna-ssl==1.1.0
+    # via aiohttp
 imagesize==1.3.0
     # via sphinx
 immutables==0.16
     # via contextvars
 importlib-metadata==4.8.3
     # via
+    #   alembic
     #   click
     #   pluggy
     #   pytest
@@ -91,7 +110,13 @@ jinja2==3.0.3
 mako==1.1.6
     # via alembic
 markupsafe==2.0.1
-    # via jinja2
+    # via
+    #   jinja2
+    #   mako
+multidict==5.2.0
+    # via
+    #   aiohttp
+    #   yarl
 mypy==0.931
     # via -r requirements.in
 mypy-extensions==0.4.3
@@ -134,7 +159,6 @@ pytz==2021.3
     # via babel
 requests==2.27.1
     # via
-    #   -r requirements.in
     #   docker
     #   python-nomad
     #   sphinx
@@ -186,8 +210,10 @@ types-urllib3==1.26.7
 typing-extensions==4.0.1
     # via
     #   -r requirements.in
+    #   aiohttp
     #   anyio
     #   asgiref
+    #   async-timeout
     #   asyncpg
     #   h11
     #   importlib-metadata
@@ -195,6 +221,7 @@ typing-extensions==4.0.1
     #   pydantic
     #   starlette
     #   uvicorn
+    #   yarl
 urllib3==1.26.8
     # via requests
 uvicorn==0.16.0
@@ -203,5 +230,9 @@ watchdog==2.1.6
     # via -r requirements.in
 websocket-client==1.2.3
     # via docker
+yarl==1.7.2
+    # via aiohttp
 zipp==3.6.0
-    # via importlib-metadata
+    # via
+    #   importlib-metadata
+    #   importlib-resources

@@ -155,7 +155,7 @@ $.ajax({
         var jobtable = $('#series-table').DataTable();
         Object.keys(data).forEach(function (key) {
             console.log(data[key])
-            jobtable.row.add([data[key]["task_id"], data[key]["time"], data[key]["tag_modality"], data[key]["tag_seriesdescription"]])
+            jobtable.row.add([data[key]["id"], data[key]["time"], data[key]["tag_modality"], data[key]["tag_seriesdescription"]])
             // jobtable.row.add( [ key, data[key]["ACC"], data[key]["MRN"], data[key]["Scope"], data[key]["FailStage"] ] );
         })
         jobtable.draw();
