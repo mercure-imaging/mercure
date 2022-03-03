@@ -24,7 +24,8 @@ pytest-mock
 aiofiles
 jinja2
 types-Jinja2
-starlette
+# 0.15.0 breaks session management for sub-pages; the version >0.18 will fix it when released
+starlette == 0.14.2
 uvicorn == 0.16.0
 itsdangerous
 python-multipart
