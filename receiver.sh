@@ -29,6 +29,8 @@ incoming=$(cat $config | jq -r '.incoming_folder')
 port=$(cat $config | jq '.port')
 bookkeeper=$(cat $config | jq -r '.bookkeeper')
 
+bookkeeper_api_key=$(cat $config | jq -r '.bookkeeper_api_key')
+
 # Check if incoming folder exists
 if [ ! -d "$incoming" ]; then
     echo "ERROR: Cannot access incoming folder ${incoming}"
@@ -65,6 +67,13 @@ else
     bookkeeper=" $bookkeeper"
 fi
 
+if [ $bookkeeper_api_key = "null" ]
+then
+    bookkeeper_api_key=""
+else
+    bookkeeper_api_key=" $bookkeeper_api_key"
+fi
+
 echo ""
 echo "Starting receiver process on port $port, folder $incoming, bookeeper $bookkeeper"
-storescp --fork --promiscuous -od "$incoming" +uf -xcr "$binary $incoming/#f #a #c$bookkeeper" $port
+storescp --fork --promiscuous -od "$incoming" +uf -xcr "$binary $incoming/#f #a #c$bookkeeper$bookkeeper_api_key" $port

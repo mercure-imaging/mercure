@@ -23,6 +23,12 @@ from starlette.responses import JSONResponse
 from starlette.background import BackgroundTasks
 from starlette.config import Config
 from starlette.datastructures import URL
+from starlette.middleware.authentication import AuthenticationMiddleware
+from starlette.responses import JSONResponse, PlainTextResponse
+
+from starlette_auth_toolkit.base.backends import BaseTokenAuth
+from starlette.authentication import requires
+from starlette.authentication import SimpleUser
 
 # App-specific includes
 import common.monitor as monitor
@@ -59,10 +65,41 @@ BOOKKEEPER_PORT = bookkeeper_config("PORT", cast=int, default=8080)
 BOOKKEEPER_HOST = bookkeeper_config("HOST", default="0.0.0.0")
 DATABASE_URL = bookkeeper_config("DATABASE_URL", default="postgresql://mercure@localhost")
 DATABASE_SCHEMA = bookkeeper_config("DATABASE_SCHEMA", default=None)
+API_KEY = None
+
+
+def set_api_key():
+    global API_KEY
+    if API_KEY is None:
+        from common.config import read_config
+
+        try:
+            c = read_config()
+            API_KEY = c.bookkeeper_api_key
+            if not API_KEY or API_KEY == "BOOKKEEPER_TOKEN_PLACEHOLDER":
+                raise Exception("No API key set in config.json. Bookkeeper cannot function.")
+        except (ResourceWarning, FileNotFoundError) as e:
+            raise e
+
+
+class TokenAuth(BaseTokenAuth):
+    async def verify(self, token: str):
+        if API_KEY is None:
+            logger.error("API key not set")
+            return None
+        if token != API_KEY:
+            return None
+        return SimpleUser("user")
+
 
 database = databases.Database(DATABASE_URL)
 app = Starlette(debug=True)
 
+app.add_middleware(
+    AuthenticationMiddleware,
+    backend=TokenAuth(),
+    on_error=lambda _, exc: PlainTextResponse(str(exc), status_code=401),
+)
 
 ###################################################################################
 ## Definition of database tables
@@ -224,6 +261,7 @@ async def startup() -> None:
     be created."""
     await database.connect()
     create_database()
+    set_api_key()
 
 
 @app.on_event("shutdown")
@@ -253,6 +291,7 @@ async def test_endpoint(request) -> JSONResponse:
 
 
 @app.route("/mercure-event", methods=["POST"])
+@requires("authenticated")
 async def post_mercure_event(request) -> JSONResponse:
     """Endpoint for receiving mercure system events."""
     payload = dict(await request.form())
@@ -270,6 +309,7 @@ async def post_mercure_event(request) -> JSONResponse:
 
 
 @app.route("/webgui-event", methods=["POST"])
+@requires("authenticated")
 async def post_webgui_event(request) -> JSONResponse:
     """Endpoint for logging relevant events of the webgui."""
     payload = dict(await request.form())
@@ -288,6 +328,7 @@ async def post_webgui_event(request) -> JSONResponse:
 
 
 @app.route("/register-dicom", methods=["POST"])
+@requires("authenticated")
 async def register_dicom(request) -> JSONResponse:
     """Endpoint for registering newly received DICOM files. Called by the getdcmtags module."""
     payload = dict(await request.form())
@@ -345,6 +386,7 @@ async def parse_and_submit_tags(payload) -> None:
 
 
 @app.route("/register-series", methods=["POST"])
+@requires("authenticated")
 async def register_series(request) -> JSONResponse:
     """Endpoint that is called by the router whenever a new series arrives."""
     payload = dict(await request.form())
@@ -357,6 +399,7 @@ async def register_series(request) -> JSONResponse:
 
 
 @app.route("/register-task", methods=["POST"])
+@requires("authenticated")
 async def register_task(request) -> JSONResponse:
     """Endpoint that is called by the router whenever a new series arrives."""
     payload = dict(await request.json())
@@ -378,6 +421,7 @@ async def register_task(request) -> JSONResponse:
 
 
 @app.route("/task-event", methods=["POST"])
+@requires("authenticated")
 async def post_task_event(request) -> JSONResponse:
     """Endpoint for logging all events related to one series."""
     payload = dict(await request.form())
@@ -409,6 +453,7 @@ async def post_task_event(request) -> JSONResponse:
 
 
 @app.route("/series", methods=["GET"])
+@requires("authenticated")
 async def get_series(request) -> JSONResponse:
     """Endpoint for retrieving series in the database."""
     series_uid = request.query_params.get("series_uid", "")
@@ -428,6 +473,7 @@ async def get_series(request) -> JSONResponse:
 
 
 @app.route("/tasks", methods=["GET"])
+@requires("authenticated")
 async def get_tasks(request) -> JSONResponse:
     """Endpoint for retrieving tasks in the database."""
     query = sqlalchemy.select(
@@ -448,6 +494,7 @@ async def get_tasks(request) -> JSONResponse:
 
 
 @app.route("/task-events", methods=["GET"])
+@requires("authenticated")
 async def get_task_events(request) -> JSONResponse:
     """Endpoint for getting all events related to one series."""
 
@@ -464,6 +511,7 @@ async def get_task_events(request) -> JSONResponse:
 
 
 @app.route("/dicom-files", methods=["GET"])
+@requires("authenticated")
 async def get_dicom_files(request) -> JSONResponse:
     """Endpoint for getting all events related to one series."""
     series_uid = request.query_params.get("series_uid", "")
@@ -483,6 +531,12 @@ def main(args=sys.argv[1:]) -> None:
     if "--reload" in args or os.getenv("MERCURE_ENV", "PROD").lower() == "dev":
         # start_reloader will only return in a monitored subprocess
         reloader = hupper.start_reloader("bookkeeper.main")
+        import logging
+
+        logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
+        logging.getLogger("watchdog").setLevel(logging.WARNING)
+        logging.getLogger("multipart.multipart").setLevel(logging.WARNING)
+
     logger.info("")
     logger.info(f"mercure Bookkeeper ver {mercure_defs.VERSION}")
     logger.info("--------------------------------------------")

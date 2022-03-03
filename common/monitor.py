@@ -17,6 +17,7 @@ from common.helper import loop
 
 # Create local logger instance
 logger = daiquiri.getLogger("config")
+api_key: Optional[str] = None
 
 sender_name = ""
 bookkeeper_address = ""
@@ -77,11 +78,29 @@ class severity:
     CRITICAL = 3
 
 
+def set_api_key():
+    global api_key
+    logger.debug("getting api key")
+    if api_key is None:
+        from common.config import read_config
+
+        try:
+            c = read_config()
+            api_key = c.bookkeeper_api_key
+            logger.debug(f"API key: {api_key}")
+        except (ResourceWarning, FileNotFoundError):
+            logger.warning("No API key found. No bookkeeper events will be transmitted.")
+            return
+
+
 def post(endpoint: str, **kwargs) -> None:
+    if api_key is None:
+        return
+
     async def do_post(endpoint, kwargs) -> None:
         logger.debug(f"Posting to {endpoint}: {kwargs}")
         try:
-            async with aiohttp.ClientSession() as session:
+            async with aiohttp.ClientSession(headers={"Authorization": f"Token {api_key}"}) as session:
                 async with session.post(bookkeeper_address + "/" + endpoint, **kwargs) as resp:
                     logger.debug(f"Response from {endpoint}: {resp.status}")
                     if resp.status != 200:
@@ -93,7 +112,10 @@ def post(endpoint: str, **kwargs) -> None:
 
 
 async def get(endpoint: str, payload: Any) -> Any:
-    async with aiohttp.ClientSession() as session:
+    if api_key is None:
+        return
+
+    async with aiohttp.ClientSession(headers={"Authorization": f"Token {api_key}"}) as session:
         async with session.get(bookkeeper_address + "/" + endpoint, params=payload) as resp:
             if resp.status != 200:
                 logger.error(f"Failed GET request to bookkeeper endpoint {endpoint}: status: {resp.status}")
@@ -108,6 +130,8 @@ def configure(module, instance, address) -> None:
     global bookkeeper_address
     sender_name = module + "." + instance
     bookkeeper_address = "http://" + address
+    global api_key
+    set_api_key()
 
 
 def send_event(event, severity=severity.INFO, description: str = "") -> None:

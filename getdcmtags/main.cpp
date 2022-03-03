@@ -10,7 +10,7 @@
 #include "dcmtk/dcmdata/dcspchrs.h"
 #include "dcmtk/dcmdata/dctypes.h"
 
-#define VERSION "0.4.1"
+#define VERSION "0.5.0"
 
 static OFString tagSpecificCharacterSet = "";
 static OFString tagPatientName = "";
@@ -58,6 +58,7 @@ static OFString helperSenderAET = "";
 static OFString helperReceiverAET = "";
 
 static std::string bookkeeperAddress = "";
+static std::string bookkeeperToken = "";
 
 // Escape the JSON values properly to avoid problems if DICOM tags contains invalid characters
 // (see https://stackoverflow.com/questions/7724448/simple-json-string-escape-for-c)
@@ -94,6 +95,9 @@ void sendBookkeeperPost(OFString filename, OFString fileUID, OFString seriesUID)
     cmd.append(fileUID.c_str());
     cmd.append("&series_uid=");
     cmd.append(seriesUID.c_str());
+    cmd.append("\"");
+    cmd.append(" --header=\"Authorization: Token ");
+    cmd.append(bookkeeperToken);
     cmd.append("\" http://");
     cmd.append(bookkeeperAddress);
     cmd.append("/register-dicom -O /dev/null");
@@ -267,7 +271,7 @@ int main(int argc, char *argv[])
         std::cout << "getdcmtags Version " << VERSION << std::endl;
         std::cout << "------------------------" << std::endl
                   << std::endl;
-        std::cout << "Usage: [dcm file to analyze] [sending AET] [receiving AET] [ip:port of bookkeeper]" << std::endl
+        std::cout << "Usage: [dcm file to analyze] [sending AET] [receiving AET] [ip:port of bookkeeper] [api key for bookkeeper]" << std::endl
                   << std::endl;
         return 0;
     }
@@ -279,6 +283,12 @@ int main(int argc, char *argv[])
     {
         bookkeeperAddress = std::string(argv[4]);
     }
+
+    if (argc > 5)
+    {
+        bookkeeperToken = std::string(argv[5]);
+    }
+
 
     OFString origFilename = OFString(argv[1]);
     OFString path = "";

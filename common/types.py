@@ -115,6 +115,7 @@ class Config(BaseModel, Compat):
     rules: Dict[str, Rule]
     modules: Dict[str, Module]
     process_runner: Literal["docker", "nomad", ""] = ""
+    bookkeeper_api_key: Optional[str]
 
 
 class TaskInfo(BaseModel, Compat):
@@ -150,7 +151,7 @@ class TaskStudy(BaseModel, Compat):
 class TaskProcessing(BaseModel, Compat):
     module_name: str
     module_config: Optional[Module]
-    settings: Dict[str, Any] = {}    
+    settings: Dict[str, Any] = {}
     retain_input_images: Literal["False", "True"]
 
 
