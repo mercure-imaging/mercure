@@ -35,7 +35,7 @@ Key                         Meaning
 =========================== ===========================================================================
 appliance_name              Optional name of the mercure server (useful for multiple servers)
 port                        Port for receiving DICOMs (default: 11112). Must be >1024 for non-root service user.
-accept_compressed_images    Enable reception of compressed DICOMs. Use with care. Requires that all processing modules can handle compressed images.
+accept_compressed_images    Enable reception of compressed DICOMs. Use with care (see below). Requires that all processing modules can handle compressed images.
 incoming_folder             Buffer location for received DICOM files
 studies_folder              Buffer location for collecting series belonging to one study
 outgoing_folder             Buffer location for series to be dispatched
@@ -61,6 +61,8 @@ targets                     Configured targets - should be edited via web interf
 rules                       Configured rules - should be edited via web interface 
 modules                     Configured modules - should be edited via web interface 
 =========================== ===========================================================================
+
+.. tip:: By default, the mercure DICOM receiver requests incoming DICOM images in uncompressed format. Thus, compressed images need to be decompressed by the sender prior to the transfer (e.g., if sending cases from a PACS that stores images in compressed form). This avoids potential incompatibilities between different implementations of the compression algorithms and ensures best compatibility. If using mercure solely for routing purpose, it can be more efficient to accept images also in compressed form. This can be enabled by setting accept_compressed_images to "True". However, this setting requires that all processing modules that are installed on the mercure server need to be able to handle compressed images (this might not be the case for many modules, including the demo modules). Also, if accepting compressed images, it can happen that the images will still be decompressed during dispatching if the target DICOM node indicates preference for uncompressed images.
 
 
 Scaling services
