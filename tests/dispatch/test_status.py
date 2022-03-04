@@ -1,7 +1,7 @@
 import json
 from common.types import Task
 
-from dispatch.status import has_been_send, is_ready_for_sending, is_target_json_valid
+from dispatch.status import is_ready_for_sending, is_target_json_valid
 from common.constants import mercure_names
 
 pytest_plugins = ("pyfakefs",)
@@ -41,17 +41,6 @@ def test_is_read_for_sending(fs):
     target = {"info": dummy_info, "dispatch": {"target_name": "test_target"}}
     fs.create_file("/var/data/task.json", contents=json.dumps(target))
     assert is_ready_for_sending("/var/data")
-
-
-def test_has_been_send(fs):
-    fs.create_dir("/var/data/")
-    fs.create_file("/var/data/" + mercure_names.SENDLOG)
-    assert has_been_send("/var/data/")
-
-
-def test_has_been_send_not(fs):
-    fs.create_dir("/var/data/")
-    assert not has_been_send("/var/data/")
 
 
 def test_read_target(fs):

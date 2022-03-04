@@ -19,7 +19,7 @@ import common.config as config
 import common.helper as helper
 import common.monitor as monitor
 from common.constants import mercure_names
-from dispatch.status import has_been_send, is_ready_for_sending
+from dispatch.status import is_ready_for_sending
 from dispatch.send import execute
 from common.constants import mercure_defs
 
@@ -96,7 +96,7 @@ def dispatch(args) -> None:
                 logger.info("Dispatching resumed")
 
         # Now process the folders that are ready for dispatching
-        if entry.is_dir() and not has_been_send(entry) and is_ready_for_sending(entry):
+        if entry.is_dir() and is_ready_for_sending(entry):
             logger.info(f"Sending folder {entry}")
             execute(Path(entry), success_folder, error_folder, retry_max, retry_delay)
 

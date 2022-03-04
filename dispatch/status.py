@@ -40,11 +40,6 @@ def is_ready_for_sending(folder) -> Optional[Task]:
     return None
 
 
-def has_been_send(folder) -> bool:
-    """Checks if the given folder has already been sent."""
-    return (Path(folder) / mercure_names.SENDLOG).exists()
-
-
 def is_target_json_valid(folder) -> Optional[Task]:
     """
     Checks if the task.json file exists and is valid. Returns the content 

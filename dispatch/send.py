@@ -121,12 +121,16 @@ def execute(
             logger.error(error_message)            
             send_event(m_events.PROCESSING, severity.WARNING, error_message)
 
-        # Create a .sending file to indicate that this folder is being sent,
-        # otherwise the dispatcher would pick it up again if the transfer is
-        # still going on
+        # Create a .processing file to indicate that this folder is being sent,
+        # otherwise another dispatcher instance would pick it up again 
         lock_file = Path(source_folder) / mercure_names.PROCESSING
+
+        # Double check that the case has not been picked up by another instance already
+        if lock_file.exists():
+            logger.info(f"Case {source_folder} already processed by other instance")
+            return
         try:
-            lock_file.touch()
+            lock_file.touch(exist_ok=False)
         except:
             # TODO: Put a limit on these error messages -- log will run full at some point
             send_event(m_events.PROCESSING, severity.ERROR, f"Error sending {uid} to {target_name}")
@@ -145,6 +149,18 @@ def execute(
             send_series_event(s_events.ERROR, uid, 0, target_name, error_message)
             _move_sent_directory(source_folder, error_folder)
             _trigger_notification(task_content.info, mercure_events.ERROR)
+
+        # Check if a sendlog file from a previous try exists. If so, remove it
+        sendlog = Path(source_folder) / mercure_names.SENDLOG
+        if sendlog.exists():
+            try:
+                sendlog.unlink()
+            except:
+                send_event(m_events.PROCESSING, severity.ERROR, f"Error sending {uid} to {target_name}")
+                error_message = f"Unable to remove former sendlog {sendlog}"
+                send_series_event(s_events.ERROR, uid, 0, target_name, error_message)
+                logger.exception(error_message)
+                return
 
         logger.debug(f"Running command {command}")
         logger.info(f"Sending {source_folder} to target {target_name}")

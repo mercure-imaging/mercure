@@ -235,7 +235,7 @@ def process_series(folder) -> None:
     lock = None
     try:
         try:
-            lock_file.touch()
+            lock_file.touch(exist_ok=False)
             # lock = helper.FileLock(lock_file)
         except Exception as e:
             # Can't create lock file, so something must be seriously wrong
@@ -348,7 +348,7 @@ def move_results(
         logger.error(f"Folder already contains lockfile {folder}/" + mercure_names.LOCK)
         return
     try:
-        lock_file.touch()
+        lock_file.touch(exist_ok=False)
     except:
         logger.info(f"Error locking folder to be moved {folder}")
         logger.error(traceback.format_exc())

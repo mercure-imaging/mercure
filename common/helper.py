@@ -91,7 +91,7 @@ class FileLock:
     def __init__(self, path_for_lockfile: Path):
         self.lockCreated = True
         self.lockfile = path_for_lockfile
-        self.lockfile.touch()
+        self.lockfile.touch(exist_ok=False)
 
     # Destructor to ensure that the lock file gets deleted
     # if the calling function is left somewhere as result

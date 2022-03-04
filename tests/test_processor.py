@@ -142,7 +142,7 @@ def test_process_series_nomad(fs, mocker: MockerFixture):
         logger.info(k)
     for k in Path("/var/success").rglob("*"):
         logger.info(k)
-    # (processor_path / ".complete").touch()
+    # (processor_path / ".complete").touch(exist_ok=False)
     # processor.run_processor()
 
     assert (Path("/var/success") / processor_path.name).exists(), f"{processor_path.name} missing from success dir"
