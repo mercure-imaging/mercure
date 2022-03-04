@@ -1,8 +1,9 @@
 [Unit]
 Description=mercure Router
 Documentation=https://mercure-imaging.org/docs
-After=network.target
+After=network.target mercure_bookkeeper.service
 Requires=network.target
+Wants=mercure_bookkeeper.service
 
 [Service]
 Type=simple
