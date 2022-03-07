@@ -4,8 +4,10 @@ test_processor.py
 """
 import os
 import shutil
+from unittest.mock import call
 import uuid
 from pytest_mock import MockerFixture
+import common
 
 import process.process_series
 import router
@@ -20,7 +22,7 @@ import routing
 import routing.generate_taskfile
 from pathlib import Path
 
-from testing_common import load_config
+from testing_common import load_config, mocked
 from docker.models.containers import ContainerCollection
 
 from nomad.api.job import Job
@@ -69,20 +71,9 @@ config_partial = {
 }
 
 
-def create_and_route(fs, mocker, task_id, uid="TESTFAKEUID") -> List[str]:
-    mocker.patch("uuid.uuid1", new=lambda: task_id)
-    mocker.patch(
-        "routing.route_series.push_series_serieslevel", new=mocker.spy(routing.route_series, "push_series_serieslevel")
-    )
-    mocker.patch(
-        "routing.route_series.push_serieslevel_outgoing",
-        new=mocker.spy(routing.route_series, "push_serieslevel_outgoing"),
-    )
-    mocker.patch(
-        "routing.generate_taskfile.create_series_task", new=mocker.spy(routing.generate_taskfile, "create_series_task")
-    )
-    mocker.patch("router.route_series", new=mocker.spy(router, "route_series"))
-    # mocker.patch("routing.route_series.parse_ascconv", new=lambda x: {})
+def create_and_route(fs, mocked, task_id, uid="TESTFAKEUID") -> List[str]:
+    mocked.patch("uuid.uuid1", new=lambda: task_id)
+    # mocked.patch("routing.route_series.parse_ascconv", new=lambda x: {})
 
     fs.create_file(f"/var/incoming/{uid}#bar.dcm", contents="asdfasdfafd")
     fs.create_file(f"/var/incoming/{uid}#bar.tags", contents="{}")
@@ -98,20 +89,20 @@ def create_and_route(fs, mocker, task_id, uid="TESTFAKEUID") -> List[str]:
         k.name for k in Path("/var/processing").glob("**/*") if k.is_file()
     ]
 
-    mocker.patch("processor.process_series", new=mocker.spy(process.process_series, "process_series"))
+    # mocked.patch("processor.process_series", new=mocked.spy(process.process_series, "process_series"))
     return ["task.json", f"{uid}#bar.dcm", f"{uid}#bar.tags"]
 
 
-def test_process_series_nomad(fs, mocker: MockerFixture):
+def test_process_series_nomad(fs, mocked: MockerFixture):
     load_config(
         fs,
         {"process_runner": "nomad", **config_partial},
     )
     fs.create_file(f"nomad/mercure-processor-template.nomad", contents="foo")
-    mocker.patch.object(Jobs, "parse", new=lambda x, y: {})
+    mocked.patch.object(Jobs, "parse", new=lambda x, y: {})
 
     task_id = str(uuid.uuid1())
-    files = create_and_route(fs, mocker, task_id)
+    files = create_and_route(fs, mocked, task_id)
 
     processor_path = next(Path("/var/processing").iterdir())
 
@@ -130,10 +121,10 @@ def test_process_series_nomad(fs, mocker: MockerFixture):
             "Index": 1138,
         }
 
-    fake_run = mocker.Mock(return_value=b"", side_effect=fake_processor)
-    mocker.patch.object(Job, "register_job", new=lambda *args: None)
-    mocker.patch.object(Job, "dispatch_job", new=fake_run)
-    mocker.patch.object(Job, "get_job", new=lambda x, y: dict(Status="dead"))
+    fake_run = mocked.Mock(return_value=b"", side_effect=fake_processor)
+    mocked.patch.object(Job, "register_job", new=lambda *args: None)
+    mocked.patch.object(Job, "dispatch_job", new=fake_run)
+    mocked.patch.object(Job, "get_job", new=lambda x, y: dict(Status="dead"))
 
     logger.info("Run processing...")
     processor.run_processor()
@@ -193,6 +184,16 @@ def test_process_series_nomad(fs, mocker: MockerFixture):
         },
     }
 
+    common.monitor.send_task_event.assert_has_calls(
+        [
+            call("REGISTERED", task_id, 1, "", "Registered series"),
+            call("UNKNOWN", task_id, 0, "", "Processing job dispatched."),
+            call("UNKNOWN", task_id, 0, "", "Processing complete"),
+            call("COMPLETE", task_id, 0, "", "Task complete"),
+        ]
+    )
+    common.monitor.send_task_event.reset_mock()
+
     fs.create_file(f"/var/incoming/FAILEDFAILED#bar.dcm", contents="asdfasdfafd")
     fs.create_file(f"/var/incoming/FAILEDFAILED#bar.tags", contents="{}")
 
@@ -205,7 +206,7 @@ def test_process_series_nomad(fs, mocker: MockerFixture):
             "Index": 1138,
         }
 
-    mocker.patch.object(Job, "dispatch_job", new=process_failed)
+    mocked.patch.object(Job, "dispatch_job", new=process_failed)
 
     router.run_router()
     processor_path = next(Path("/var/processing").iterdir())
@@ -218,6 +219,15 @@ def test_process_series_nomad(fs, mocker: MockerFixture):
     assert ["task.json"] == [
         k.name for k in (Path("/var/error") / processor_path.name / "out").rglob("*") if k.is_file()
     ]
+    print(common.monitor.send_event.call_args_list)
+
+    common.monitor.send_task_event.assert_has_calls(
+        [
+            call("REGISTERED", task_id, 1, "", "Registered series"),
+            call("UNKNOWN", task_id, 0, "", "Processing job dispatched."),
+            call("ERROR", task_id, 0, "", "Processing failed"),
+        ]
+    )
 
 
 class my_fake_container:
@@ -235,14 +245,14 @@ class my_fake_container:
         pass
 
 
-def test_process_series(fs, mocker: MockerFixture):
+def test_process_series(fs, mocked: MockerFixture):
     global processor_path
     load_config(
         fs,
         {"process_runner": "docker", **config_partial},
     )
     task_id = str(uuid.uuid1())
-    files = create_and_route(fs, mocker, task_id)
+    files = create_and_route(fs, mocked, task_id)
     processor_path = Path()
 
     def fake_processor(tag, environment, volumes: Dict, **kwargs):
@@ -255,10 +265,10 @@ def test_process_series(fs, mocker: MockerFixture):
             print(f"Moving {child} to {out_ / child.name})")
             shutil.copy(child, out_ / child.name)
 
-        return mocker.DEFAULT
+        return mocked.DEFAULT
 
-    fake_run = mocker.Mock(return_value=my_fake_container(), side_effect=fake_processor)  # type: ignore
-    mocker.patch.object(ContainerCollection, "run", new=fake_run)
+    fake_run = mocked.Mock(return_value=my_fake_container(), side_effect=fake_processor)  # type: ignore
+    mocked.patch.object(ContainerCollection, "run", new=fake_run)
     processor.run_processor()
 
     # processor_path = next(Path("/var/processing").iterdir())
@@ -279,3 +289,12 @@ def test_process_series(fs, mocker: MockerFixture):
 
     assert [] == [k.name for k in Path("/var/processing").glob("**/*")]
     assert files == [k.name for k in (Path("/var/success") / processor_path.name).glob("*") if k.is_file()]
+
+    common.monitor.send_task_event.assert_has_calls(
+        [
+            call("REGISTERED", task_id, 1, "", "Registered series"),
+            call("UNKNOWN", task_id, 0, "test_module", "Processing job running."),
+            call("UNKNOWN", task_id, 0, "", "Processing job complete"),
+            call("COMPLETE", task_id, 0, "", "Task complete"),
+        ]
+    )

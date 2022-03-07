@@ -18,7 +18,7 @@ from typing_extensions import Literal
 import daiquiri
 
 # App-specific includes
-from common.monitor import s_events, send_task_event, send_event, m_events, severity
+from common.monitor import s_events, m_events, severity
 from dispatch.retry import increase_retry
 from dispatch.status import is_ready_for_sending
 from common.constants import mercure_names
@@ -86,7 +86,7 @@ EOF"""
 
     else:
         error_message = f"Target in task file does not exist {target_name}"
-        send_event(m_events.PROCESSING, severity.ERROR, error_message)
+        monitor.send_event(m_events.PROCESSING, severity.ERROR, error_message)
         logger.exception(error_message)
         return "", {}, False
 
@@ -125,7 +125,7 @@ def execute(
     if (uid == "uid-missing") or (target_name == "target_name-missing"):
         error_message = f"Missing information for folder {source_folder}"
         logger.error(error_message)
-        send_event(m_events.PROCESSING, severity.WARNING, error_message)
+        monitor.send_event(m_events.PROCESSING, severity.WARNING, error_message)
 
     # Create a .sending file to indicate that this folder is being sent,
     # otherwise the dispatcher would pick it up again if the transfer is
@@ -135,8 +135,8 @@ def execute(
         lock_file.touch()
     except:
         # TODO: Put a limit on these error messages -- log will run full at some point
-        send_event(m_events.PROCESSING, severity.ERROR, f"Error sending {task_content.id} to {target_name}")
-        send_task_event(
+        monitor.send_event(m_events.PROCESSING, severity.ERROR, f"Error sending {task_content.id} to {target_name}")
+        monitor.send_task_event(
             s_events.ERROR,
             task_content.id,
             0,
@@ -153,7 +153,7 @@ def execute(
     if not command:
         error_message = f"Settings for target {target_name} incorrect. Unable to dispatch job {uid}"
         logger.error(error_message)
-        send_task_event(
+        monitor.send_task_event(
             s_events.ERROR,
             task_content.id,
             0,
@@ -165,6 +165,7 @@ def execute(
 
     logger.debug(f"Running command {command}")
     logger.info(f"Sending {source_folder} to target {target_name}")
+
     try:
         if needs_splitting:
             result = check_output(split(command), stderr=subprocess.STDOUT, **opts)
@@ -174,7 +175,7 @@ def execute(
         logger.debug(result.decode("utf-8"))
         # Send bookkeeper notification
         file_count = len(list(Path(source_folder).glob(mercure_names.DCMFILTER)))
-        send_task_event(
+        monitor.send_task_event(
             s_events.DISPATCH,
             task_content.id,
             file_count,
@@ -182,7 +183,7 @@ def execute(
             "",
         )
         _move_sent_directory(source_folder, success_folder)
-        send_task_event(s_events.MOVE, task_content.id, 0, success_folder, "")
+        monitor.send_task_event(s_events.MOVE, task_content.id, 0, str(success_folder), "")
         _trigger_notification(task_content.info, mercure_events.COMPLETION)
     except CalledProcessError as e:
         dcmsend_error_message = None
@@ -192,8 +193,8 @@ def execute(
         else:
             logger.error(f"Failed. Command exited with value {e.returncode}: \n {command}")
         logger.debug(e.output)
-        send_event(m_events.PROCESSING, severity.ERROR, f"Error sending TODO to {target_name}")
-        send_task_event(
+        monitor.send_event(m_events.PROCESSING, severity.ERROR, f"Error sending TODO to {target_name}")
+        monitor.send_task_event(
             s_events.ERROR,
             task_content.id,
             0,
@@ -205,10 +206,10 @@ def execute(
             lock_file.unlink()
         else:
             logger.info(f"Max retries reached, moving to {error_folder}")
-            send_task_event(s_events.SUSPEND, task_content.id, 0, target_name, "Max retries reached")
+            monitor.send_task_event(s_events.SUSPEND, task_content.id, 0, target_name, "Max retries reached")
             _move_sent_directory(source_folder, error_folder)
-            send_task_event(s_events.MOVE, task_content.id, 0, error_folder, "")
-            send_event(m_events.PROCESSING, severity.ERROR, f"Series suspended after reaching max retries")
+            monitor.send_task_event(s_events.MOVE, task_content.id, 0, error_folder, "")
+            monitor.send_event(m_events.PROCESSING, severity.ERROR, f"Series suspended after reaching max retries")
             _trigger_notification(task_content.info, mercure_events.ERROR)
 
 
@@ -230,7 +231,7 @@ def _move_sent_directory(source_folder, destination_folder) -> None:
             (destination_folder / source_folder.name / mercure_names.PROCESSING).unlink()
     except:
         logger.info(f"Error moving folder {source_folder} to {destination_folder}")
-        send_event(m_events.PROCESSING, severity.ERROR, f"Error moving {source_folder} to {destination_folder}")
+        monitor.send_event(m_events.PROCESSING, severity.ERROR, f"Error moving {source_folder} to {destination_folder}")
 
 
 def _trigger_notification(task_info: TaskInfo, event) -> None:
@@ -248,14 +249,14 @@ def _trigger_notification(task_info: TaskInfo, event) -> None:
         if not current_rule:
             error_text = f"Missing applied_rule in task file in job {task_info.uid}"
             logger.exception(error_text)
-            monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_text)
+            monitor.monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_text)
             continue
 
         # Check if the mercure configuration still contains that rule
         if not isinstance(config.mercure.rules.get(current_rule, ""), Rule):
             error_text = f"Applied rule not existing anymore in mercure configuration from job {task_info.uid}"
             logger.exception(error_text)
-            monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_text)
+            monitor.monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_text)
             continue
 
         # Now fire the webhook if configured

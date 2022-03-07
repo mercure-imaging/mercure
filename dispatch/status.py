@@ -9,9 +9,10 @@ import json
 from pathlib import Path
 from typing import Optional
 import daiquiri
+from common import monitor
 
 # App-specific includes
-from common.monitor import s_events, send_task_event
+from common.monitor import s_events
 from common.constants import mercure_names
 from common.types import Task
 
@@ -58,7 +59,7 @@ def is_target_json_valid(folder) -> Optional[Task]:
             target = Task(**json.load(f))
     except:
         logger.exception("task.json has invalid format")
-        send_task_event(
+        monitor.send_task_event(
             s_events.ERROR,
             "TODO",
             0,

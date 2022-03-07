@@ -24,7 +24,7 @@ import hupper
 import common.config as config
 import common.helper as helper
 import common.monitor as monitor
-from common.monitor import send_task_event, s_events
+from common.monitor import s_events
 from common.constants import mercure_defs
 
 
@@ -124,11 +124,11 @@ def delete_folder(entry) -> None:
     try:
         rmtree(delete_path)
         logger.info(f"Deleted folder {delete_path} from {series_uid}")
-        send_task_event(s_events.CLEAN, Path(delete_path).stem, 0, delete_path, "Deleted folder")
+        monitor.send_task_event(s_events.CLEAN, Path(delete_path).stem, 0, delete_path, "Deleted folder")
     except Exception as e:
         logger.info(f"Unable to delete folder {delete_path}")
         logger.exception(e)
-        send_task_event(s_events.ERROR, Path(delete_path).stem, 0, delete_path, "Unable to delete folder")
+        monitor.send_task_event(s_events.ERROR, Path(delete_path).stem, 0, delete_path, "Unable to delete folder")
         monitor.send_event(
             monitor.m_events.PROCESSING,
             monitor.severity.ERROR,
