@@ -3,8 +3,11 @@ nomad/
 vagrant/
 .pytest_cache
 .mypy_cache
+.git
 .github
 __pycache__
+**/__pycache__
 docs/
 build-docker.sh
+push-docker.sh
 index.html.*
