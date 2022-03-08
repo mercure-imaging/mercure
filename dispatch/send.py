@@ -111,8 +111,6 @@ def execute(
         delay = target_info.next_retry_at        
 
     if target_info and time.time() >= delay:
-        logger.info(f"Folder {source_folder} is ready for sending")
-
         uid = task_info.get("uid", "uid-missing")
         target_name: str = target_info.get("target_name", "target_name-missing")
 
@@ -124,13 +122,11 @@ def execute(
         # Create a .processing file to indicate that this folder is being sent,
         # otherwise another dispatcher instance would pick it up again 
         lock_file = Path(source_folder) / mercure_names.PROCESSING
-
-        # Double check that the case has not been picked up by another instance already
-        if lock_file.exists():
-            logger.info(f"Case {source_folder} already processed by other instance")
-            return
         try:
             lock_file.touch(exist_ok=False)
+        except FileExistsError:
+            # Return if the case has already been locked by another instance in the meantime
+            return
         except:
             # TODO: Put a limit on these error messages -- log will run full at some point
             send_event(m_events.PROCESSING, severity.ERROR, f"Error sending {uid} to {target_name}")
@@ -138,6 +134,9 @@ def execute(
             send_series_event(s_events.ERROR, uid, 0, target_name, error_message)
             logger.exception(error_message)
             return
+
+        logger.info("---------")
+        logger.info(f"Folder {source_folder} is ready for sending")
 
         # Compose the command for dispatching the results
         command, opts, needs_splitting = _create_command(target_info, source_folder)
@@ -203,6 +202,7 @@ def execute(
                 send_series_event(s_events.MOVE, uid, 0, error_folder, "")
                 send_event(m_events.PROCESSING, severity.ERROR, f"Series suspended after reaching max retries")
                 _trigger_notification(task_content.info, mercure_events.ERROR)
+        logger.info(f"Done with dispatching folder {source_folder}")
     else:
         pass
         # logger.warning(f"Folder {source_folder} is *not* ready for sending")
