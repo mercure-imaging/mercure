@@ -18,6 +18,7 @@ else
 echo "Aborted."
 exit 0
 fi
+read -p "Push also under tag 'latest' (y/n)? " ANS_LATEST
 
 docker push mercureimaging/mercure-base:$TAG
 docker push mercureimaging/mercure-router:$TAG
@@ -30,6 +31,20 @@ docker push mercureimaging/mercure-ui:$TAG
 docker push mercureimaging/alpine-sshd:latest
 docker push mercureimaging/processing-step:$TAG
 docker push mercureimaging/mercure-dummy-processor:$TAG
+
+if [ "$ANS_LATEST" = "y" ]; then
+echo "Now pushing images as 'latest'..."
+docker push mercureimaging/mercure-base:latest
+docker push mercureimaging/mercure-router:latest
+docker push mercureimaging/mercure-processor:latest
+docker push mercureimaging/mercure-receiver:latest
+docker push mercureimaging/mercure-dispatcher:latest
+docker push mercureimaging/mercure-bookkeeper:latest
+docker push mercureimaging/mercure-cleaner:latest
+docker push mercureimaging/mercure-ui:latest
+docker push mercureimaging/processing-step:latest
+docker push mercureimaging/mercure-dummy-processor:latest
+fi
 
 echo ""
 echo "Done."
