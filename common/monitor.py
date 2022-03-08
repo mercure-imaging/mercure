@@ -9,6 +9,7 @@ import asyncio
 
 from typing import Any, Dict, Optional
 import logging
+from urllib.error import HTTPError
 
 import aiohttp
 from common.types import Task
@@ -80,14 +81,12 @@ class severity:
 
 def set_api_key():
     global api_key
-    logger.debug("getting api key")
     if api_key is None:
         from common.config import read_config
 
         try:
             c = read_config()
             api_key = c.bookkeeper_api_key
-            logger.debug(f"API key: {api_key}")
         except (ResourceWarning, FileNotFoundError):
             logger.warning("No API key found. No bookkeeper events will be transmitted.")
             return
@@ -111,7 +110,7 @@ def post(endpoint: str, **kwargs) -> None:
     asyncio.ensure_future(do_post(endpoint, kwargs), loop=loop)
 
 
-async def get(endpoint: str, payload: Any) -> Any:
+async def get(endpoint: str, payload: Any = {}) -> Any:
     if api_key is None:
         return
 
@@ -119,7 +118,7 @@ async def get(endpoint: str, payload: Any) -> Any:
         async with session.get(bookkeeper_address + "/" + endpoint, params=payload) as resp:
             if resp.status != 200:
                 logger.error(f"Failed GET request to bookkeeper endpoint {endpoint}: status: {resp.status}")
-                return {}
+                raise HTTPError(resp.status)
             return await resp.json()
 
 
@@ -202,15 +201,12 @@ def send_task_event(event, task_id, file_count, target, info) -> None:
 
 
 async def get_task_events(task_id="") -> Any:
-    """Send an event related to a specific series to the bookkeeper."""
     return await get("task-events", {"task_id": task_id})
 
 
 async def get_series(series_uid="") -> Any:
-    """Send an event related to a specific series to the bookkeeper."""
     return await get("series", {"series_uid": series_uid})
 
 
-async def get_tasks(series_uid="") -> Any:
-    """Send an event related to a specific series to the bookkeeper."""
-    return await get("tasks", {"series_uid": series_uid})
+async def get_tasks() -> Any:
+    return await get("tasks")

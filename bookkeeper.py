@@ -7,6 +7,8 @@ and stores the information in a Postgres database.
 # Standard python includes
 import os
 import sys
+from typing import Any
+import asyncpg
 from sqlalchemy.engine.base import Connection
 from sqlalchemy.dialects.postgresql import JSONB
 import uvicorn
@@ -15,6 +17,7 @@ import daiquiri
 import databases
 import sqlalchemy
 import hupper
+import json
 
 # Starlette-related includes
 from starlette.applications import Starlette

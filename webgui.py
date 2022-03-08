@@ -5,6 +5,7 @@ The web-based graphical user interface of mercure.
 """
 
 # Standard python includes
+from urllib.error import HTTPError
 import uvicorn
 import base64
 import sys
@@ -609,21 +610,30 @@ async def control_services(request) -> Response:
 async def get_series_events(request):
     logger.debug(request.query_params)
     task_id = request.query_params.get("task_id", "")
-    return JSONResponse(await monitor.get_task_events(task_id))
+    try:
+        return JSONResponse(await monitor.get_task_events(task_id))
+    except HTTPError as e:
+        return JSONResponse({"error": str(e)}, status_code=e.status_code)
 
 
 @app.route("/api/get-series", methods=["GET"])
 @requires(["authenticated"])
 async def get_series(request):
     series_uid = request.query_params.get("series_uid", "")
-    return JSONResponse(await monitor.get_series(series_uid))
+    try:
+        return JSONResponse(await monitor.get_series(series_uid))
+    except HTTPError as e:
+        return JSONResponse({"error": str(e)}, status_code=e.status_code)
 
 
 @app.route("/api/get-tasks", methods=["GET"])
 @requires(["authenticated"])
 async def get_tasks(request):
     series_uid = request.query_params.get("series_uid", "")
-    return JSONResponse(await monitor.get_tasks(series_uid))
+    try:
+        return JSONResponse(await monitor.get_tasks(series_uid))
+    except HTTPError as e:
+        return JSONResponse({"error": str(e)}, status_code=e.status_code)
 
 
 ###################################################################################
@@ -654,9 +664,12 @@ async def server_error(request, exc) -> Response:
     """
     Return an HTTP 500 page.
     """
-    template = "500.html"
-    context = {"request": request, "mercure_version": mercure_defs.VERSION}
-    return templates.TemplateResponse(template, context, status_code=500)
+    if request.method == "GET":
+        template = "500.html"
+        context = {"request": request, "mercure_version": mercure_defs.VERSION}
+        return templates.TemplateResponse(template, context, status_code=500)
+    else:
+        return JSONResponse({"error": str(exc)}, status_code=500)
 
 
 ###################################################################################
