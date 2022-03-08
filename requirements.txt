@@ -16,8 +16,6 @@ alabaster==0.7.12
     # via sphinx
 alembic==1.7.6
     # via -r requirements.in
-anyio==3.5.0
-    # via starlette
 asgiref==3.4.1
     # via uvicorn
 async-timeout==4.0.2
@@ -40,13 +38,8 @@ charset-normalizer==2.0.10
     #   requests
 click==8.0.3
     # via uvicorn
-contextlib2==21.6.0
-    # via starlette
 contextvars==2.4
-    # via
-    #   aiocontextvars
-    #   anyio
-    #   sniffio
+    # via aiocontextvars
 daiquiri==3.0.1
     # via -r requirements.in
 databases[aiopg]==0.5.5
@@ -54,7 +47,6 @@ databases[aiopg]==0.5.5
 dataclasses==0.8 ; python_version < "3.7"
     # via
     #   -r requirements.in
-    #   anyio
     #   h11
     #   pydantic
 distro==1.6.0
@@ -79,7 +71,6 @@ hupper==1.10.3
     # via -r requirements.in
 idna==3.3
     # via
-    #   anyio
     #   idna-ssl
     #   requests
     #   yarl
@@ -164,8 +155,6 @@ requests==2.27.1
     #   sphinx
 six==1.16.0
     # via python-multipart
-sniffio==1.2.0
-    # via anyio
 snowballstemmer==2.2.0
     # via sphinx
 sphinx==4.4.0
@@ -191,7 +180,11 @@ sqlalchemy==1.4.30
     #   -r requirements.in
     #   alembic
     #   databases
-starlette==0.17.1
+starlette==0.14.2
+    # via
+    #   -r requirements.in
+    #   starlette-auth-toolkit
+starlette-auth-toolkit==0.5.0
     # via -r requirements.in
 toml==0.10.2
     # via pytest
@@ -211,7 +204,6 @@ typing-extensions==4.0.1
     # via
     #   -r requirements.in
     #   aiohttp
-    #   anyio
     #   asgiref
     #   async-timeout
     #   asyncpg
@@ -219,7 +211,6 @@ typing-extensions==4.0.1
     #   importlib-metadata
     #   mypy
     #   pydantic
-    #   starlette
     #   uvicorn
     #   yarl
 urllib3==1.26.8
