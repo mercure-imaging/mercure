@@ -64,6 +64,7 @@ mercure: Config
 
 
 def get_loglevel() -> int:
+    """Returns the logging level that should be used for printing messages."""
     if any(re.findall(r"pytest|py.test", sys.argv[0])):
         return logging.DEBUG
 
@@ -78,7 +79,17 @@ def get_loglevel() -> int:
 
 
 def get_runner() -> str:
+    """Returns the name of the mechanism that is used for running mercure in the current installation (systemd, docker, nomad)."""
     return os.getenv("MERCURE_RUNNER", "systemd")
+
+
+def get_logformat() -> str:
+    """Returns the format that should be used for log messages. Includes the time for docker and nomad, but not for systemd as journalctl 
+    already outputs the time of the log events."""
+    if get_runner() == "systemd":
+        return "%(color)s%(levelname)-8.8s " "%(name)s: %(message)s%(color_stop)s"
+    else:
+        return "%(asctime)s %(color)s%(levelname)-8.8s " "%(name)s: %(message)s%(color_stop)s"
 
 
 def read_config() -> Config:

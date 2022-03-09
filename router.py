@@ -29,7 +29,7 @@ daiquiri.setup(
     outputs=(
         daiquiri.output.Stream(
             formatter=daiquiri.formatter.ColorFormatter(
-                fmt="%(color)s%(levelname)-8.8s " "%(name)s: %(message)s%(color_stop)s"
+                fmt=config.get_logformat()
             )
         ),
     ),

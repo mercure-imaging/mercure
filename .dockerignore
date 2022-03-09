@@ -1,6 +1,5 @@
 docker/
-nomad/
-vagrant/
+addons/
 .pytest_cache
 .mypy_cache
 .git
