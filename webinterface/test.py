@@ -32,6 +32,7 @@ test_app = Starlette()
 
 
 @test_app.route("/", methods=["GET"])
+@requires("authenticated", redirect="login")
 async def index(request):
     template = "test.html"
     context = {

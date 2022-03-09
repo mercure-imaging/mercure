@@ -139,7 +139,7 @@ app.mount("/targets", targets.targets_app)
 app.mount("/modules", modules.modules_app)
 app.mount("/users", users.users_app)
 app.mount("/queue", queue.queue_app)
-
+app.mount("/test", test.test_app)
 
 ###################################################################################
 ## Logs endpoints
