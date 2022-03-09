@@ -110,13 +110,7 @@ class SessionAuthBackend(AuthenticationBackend):
         return AuthCredentials(credentials), ExtendedUser(username, is_admin)
 
 
-webgui_config = Config(
-    (
-        os.getenv("MERCURE_CONFIG_FOLDER")
-        or "/opt/mercure/config"
-    )
-    + "/webgui.env"
-)
+webgui_config = Config((os.getenv("MERCURE_CONFIG_FOLDER") or "/opt/mercure/config") + "/webgui.env")
 
 
 # Note: PutSomethingRandomHere is the default value in the shipped configuration file.
@@ -230,9 +224,9 @@ async def show_log(request) -> Response:
         start_date_cmd = ""
         end_date_cmd = ""
         if start_timestamp:
-            start_date_cmd = f"--since \"{start_timestamp}\""
+            start_date_cmd = f'--since "{start_timestamp}"'
         if end_timestamp:
-            end_date_cmd = f"--until \"{end_timestamp}\""
+            end_date_cmd = f'--until "{end_timestamp}"'
 
         run_result = await async_run(
             f"sudo journalctl -n 1000 -u "
@@ -488,8 +482,8 @@ async def homepage(request) -> Response:
             disk_total = 1
 
         used_space = 100 * disk_used / disk_total
-        free_space = disk_free // (2 ** 30)
-        total_space = disk_total // (2 ** 30)
+        free_space = disk_free // (2**30)
+        total_space = disk_total // (2**30)
     except:
         used_space = -1
         free_space = "N/A"
@@ -544,7 +538,7 @@ async def homepage(request) -> Response:
         "free_space": free_space,
         "total_space": total_space,
         "service_status": service_status,
-        "runtime": runtime
+        "runtime": runtime,
     }
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
@@ -684,7 +678,11 @@ async def emergency_response(request) -> Response:
 def launch_emergency_app() -> None:
     """Launches a minimal application to inform the user about the incorrect configuration"""
     # emergency_app = Starlette(debug=True)
-    emergency_app = Router([Route("/{whatever:path}", endpoint=emergency_response, methods=["GET", "POST"]),])
+    emergency_app = Router(
+        [
+            Route("/{whatever:path}", endpoint=emergency_response, methods=["GET", "POST"]),
+        ]
+    )
     uvicorn.run(emergency_app, host=WEBGUI_HOST, port=WEBGUI_PORT)
 
 
@@ -697,6 +695,9 @@ def main(args=sys.argv[1:]) -> None:
     if "--reload" in args or os.getenv("MERCURE_ENV", "PROD").lower() == "dev":
         # start_reloader will only return in a monitored subprocess
         reloader = hupper.start_reloader("webgui.main")
+        import logging
+
+        logging.getLogger("watchdog").setLevel(logging.WARNING)
     try:
         services.read_services()
         config.read_config()

@@ -97,7 +97,7 @@ def dispatch(args) -> None:
 
         # Now process the folders that are ready for dispatching
         if entry.is_dir() and not has_been_send(entry) and is_ready_for_sending(entry):
-            logger.info(f"Sending folder {entry}")
+            logger.debug(f"Sending folder {entry}")
             execute(Path(entry), success_folder, error_folder, retry_max, retry_delay)
 
         # If termination is requested, stop processing series after the

@@ -61,7 +61,6 @@ def run_router(args=None) -> None:
         return
 
     helper.g_log("events.run", 1)
-
     # logger.info('')
     # logger.info('Processing incoming folder...')
 

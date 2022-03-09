@@ -57,13 +57,7 @@ daiquiri.setup(
 logger = daiquiri.getLogger("bookkeeper")
 
 
-bookkeeper_config = Config(
-    (
-        os.getenv("MERCURE_CONFIG_FOLDER")
-        or "/opt/mercure/config"
-    )
-    + "/bookkeeper.env"
-)    
+bookkeeper_config = Config((os.getenv("MERCURE_CONFIG_FOLDER") or "/opt/mercure/config") + "/bookkeeper.env")
 
 BOOKKEEPER_PORT = bookkeeper_config("PORT", cast=int, default=8080)
 BOOKKEEPER_HOST = bookkeeper_config("HOST", default="0.0.0.0")
@@ -474,7 +468,6 @@ async def get_series(request) -> JSONResponse:
         series[i] = {
             k: line[k] for k in line if k in ("id", "time", "series_uid", "tag_seriesdescription", "tag_modality")
         }
-
     return CustomJSONResponse(series)
 
 
@@ -545,8 +538,6 @@ def main(args=sys.argv[1:]) -> None:
         reloader = hupper.start_reloader("bookkeeper.main")
         import logging
 
-        logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
-        logging.getLogger("watchdog").setLevel(logging.WARNING)
         logging.getLogger("multipart.multipart").setLevel(logging.WARNING)
 
     logger.info("")
