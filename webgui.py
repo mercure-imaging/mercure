@@ -144,12 +144,13 @@ async def show_first_log(request) -> Response:
         return PlainTextResponse("No services configured")
 
 
-def get_nomad_logs(service) -> bytes:
+def get_nomad_logs(service, log_size: int) -> bytes:
+    """Reads the service log when running a nomad-type installation."""
     allocations = nomad_connection.job.get_allocations("mercure")
     alloc_id = next((a["ID"] for a in allocations if a["ClientStatus"] == "running"))
 
     def nomad_log_type(type="stderr") -> Any:
-        return nomad_connection.client.stream_logs.stream(alloc_id, service, type, origin="end", offset=10000)
+        return nomad_connection.client.stream_logs.stream(alloc_id, service, type, origin="end", offset=log_size)
 
     log_response = nomad_log_type() or nomad_log_type("stdout")
     return base64.b64decode(json.loads(log_response).get("Data", ""))
@@ -209,7 +210,7 @@ async def show_log(request) -> Response:
     # Fetch the log files depending on how mercure has been installed
     if runtime == "nomad" and nomad_connection is not None:
         try:
-            raw_logs = get_nomad_logs(requested_service)
+            raw_logs = get_nomad_logs(requested_service, 50000)
             return_code = 0
         except:
             pass
