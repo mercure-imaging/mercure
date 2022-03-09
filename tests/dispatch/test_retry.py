@@ -28,6 +28,7 @@ def test_execute_increase(fs, mocker):
     fs.create_dir(source)
 
     target = {
+        "id": "task_id",
         "info": dummy_info,
         "dispatch": {"target_name": "test_target"},
     }
@@ -46,6 +47,7 @@ def test_execute_increase_fail(fs, mocker):
     source = "/var/data"
     fs.create_dir(source)
     target = {
+        "id": "task_id",
         "info": dummy_info,
         "dispatch": {
             "target_name": "test_target",

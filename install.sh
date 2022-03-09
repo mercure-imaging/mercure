@@ -31,6 +31,8 @@ then
   SECRET=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1 || true)
 fi
 
+BOOKKEEPER_SECRET=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1 || true)
+
 DB_PWD="${MERCURE_PASSWORD:-unset}"
 if [ "$DB_PWD" = "unset" ]
 then
@@ -106,6 +108,8 @@ install_configuration () {
       sed -i -e "s/mercure:ChangePasswordHere@localhost/mercure:$DB_PWD@db/" "$CONFIG_PATH"/bookkeeper.env
       sed -i -e "s/0.0.0.0:8080/bookkeeper:8080/" "$CONFIG_PATH"/mercure.json
     fi
+    
+    sed -i -e "s/BOOKKEEPER_TOKEN_PLACEHOLDER/$BOOKKEEPER_SECRET/" "$CONFIG_PATH"/mercure.json
     sed -i -e "s/PutSomethingRandomHere/$SECRET/" "$CONFIG_PATH"/webgui.env
     sudo chown -R $OWNER:$OWNER "$CONFIG_PATH"
     sudo chmod -R o-r "$CONFIG_PATH"

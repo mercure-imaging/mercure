@@ -18,7 +18,7 @@ from typing_extensions import Literal
 import daiquiri
 
 # App-specific includes
-from common.monitor import s_events, send_series_event, send_event, m_events, severity
+from common.monitor import s_events, m_events, severity
 from dispatch.retry import increase_retry
 from dispatch.status import is_ready_for_sending
 from common.constants import mercure_names
@@ -49,7 +49,7 @@ DCMSEND_ERROR_CODES = {
 
 def _create_command(dispatch_info: TaskDispatch, folder: Path) -> Tuple[str, dict, bool]:
     """Composes the command for calling the dcmsend tool from DCMTK, which is used for sending out the DICOMS."""
-    target_name: str = dispatch_info.get("target_name","")
+    target_name: str = dispatch_info.get("target_name", "")
 
     if isinstance(config.mercure.targets.get(target_name, ""), DicomTarget):
         # Read the connection information from the configuration
@@ -86,13 +86,17 @@ EOF"""
 
     else:
         error_message = f"Target in task file does not exist {target_name}"
-        send_event(m_events.PROCESSING, severity.ERROR, error_message)
-        logger.exception(error_message)        
+        monitor.send_event(m_events.PROCESSING, severity.ERROR, error_message)
+        logger.exception(error_message)
         return "", {}, False
 
 
 def execute(
-    source_folder: Path, success_folder: Path, error_folder: Path, retry_max, retry_delay,
+    source_folder: Path,
+    success_folder: Path,
+    error_folder: Path,
+    retry_max,
+    retry_delay,
 ):
     """
     Execute the dcmsend command. It will create a .sending file to indicate that
@@ -108,7 +112,7 @@ def execute(
 
     delay: float = 0
     if target_info and target_info.next_retry_at:
-        delay = target_info.next_retry_at        
+        delay = target_info.next_retry_at
 
     if target_info and time.time() >= delay:
         uid = task_info.get("uid", "uid-missing")
@@ -116,11 +120,11 @@ def execute(
 
         if (uid == "uid-missing") or (target_name == "target_name-missing"):
             error_message = f"Missing information for folder {source_folder}"
-            logger.error(error_message)            
-            send_event(m_events.PROCESSING, severity.WARNING, error_message)
+            logger.error(error_message)
+            monitor.send_event(m_events.PROCESSING, severity.WARNING, error_message)
 
         # Create a .processing file to indicate that this folder is being sent,
-        # otherwise another dispatcher instance would pick it up again 
+        # otherwise another dispatcher instance would pick it up again
         lock_file = Path(source_folder) / mercure_names.PROCESSING
         try:
             lock_file.touch(exist_ok=False)
@@ -129,9 +133,9 @@ def execute(
             return
         except:
             # TODO: Put a limit on these error messages -- log will run full at some point
-            send_event(m_events.PROCESSING, severity.ERROR, f"Error sending {uid} to {target_name}")
+            monitor.send_event(m_events.PROCESSING, severity.ERROR, f"Error sending {uid} to {target_name}")
             error_message = f"Unable to create lock file {lock_file}"
-            send_series_event(s_events.ERROR, uid, 0, target_name, error_message)
+            monitor.send_task_event(s_events.ERROR, task_content.id, 0, target_name, error_message)
             logger.exception(error_message)
             return
 
@@ -145,8 +149,10 @@ def execute(
         if not command:
             error_message = f"Settings for target {target_name} incorrect. Unable to dispatch job {uid}"
             logger.error(error_message)
-            send_series_event(s_events.ERROR, uid, 0, target_name, error_message)
+            monitor.send_task_event(s_events.ERROR, task_content.id, 0, target_name, error_message)
             _move_sent_directory(source_folder, error_folder)
+            monitor.send_task_event(s_events.MOVE, task_content.id, 0, error_folder, "")
+            monitor.send_event(m_events.PROCESSING, severity.ERROR, f"Series suspended after reaching max retries")
             _trigger_notification(task_content.info, mercure_events.ERROR)
 
         # Check if a sendlog file from a previous try exists. If so, remove it
@@ -155,34 +161,34 @@ def execute(
             try:
                 sendlog.unlink()
             except:
-                send_event(m_events.PROCESSING, severity.ERROR, f"Error sending {uid} to {target_name}")
+                monitor.send_event(m_events.PROCESSING, severity.ERROR, f"Error sending {uid} to {target_name}")
                 error_message = f"Unable to remove former sendlog {sendlog}"
-                send_series_event(s_events.ERROR, uid, 0, target_name, error_message)
+                monitor.send_task_event(s_events.ERROR, task_content.id, 0, target_name, error_message)
                 logger.exception(error_message)
                 return
 
         logger.debug(f"Running command {command}")
         logger.info(f"Sending {source_folder} to target {target_name}")
-        try:               
+        try:
             if needs_splitting:
                 result = check_output(split(command), stderr=subprocess.STDOUT, **opts)
             else:
-                result = check_output(command, stderr=subprocess.STDOUT, **opts)            
+                result = check_output(command, stderr=subprocess.STDOUT, **opts)
             logger.info(f"Folder {source_folder} successfully sent, moving to {success_folder}")
             logger.debug(result.decode("utf-8"))
             # Send bookkeeper notification
             file_count = len(list(Path(source_folder).glob(mercure_names.DCMFILTER)))
-            send_series_event(
+            monitor.send_task_event(
                 s_events.DISPATCH,
-                uid,
+                task_content.id,
                 file_count,
                 target_name,
                 "",
             )
             _move_sent_directory(source_folder, success_folder)
-            send_series_event(s_events.MOVE, uid, 0, success_folder, "")
+            monitor.send_task_event(s_events.MOVE, task_content.id, 0, str(success_folder), "")
             _trigger_notification(task_content.info, mercure_events.COMPLETION)
-        except CalledProcessError as e:            
+        except CalledProcessError as e:
             dcmsend_error_message = None
             if isinstance(config.mercure.targets.get(target_name, ""), DicomTarget):
                 dcmsend_error_message = DCMSEND_ERROR_CODES.get(e.returncode, None)
@@ -190,17 +196,17 @@ def execute(
             else:
                 logger.error(f"Failed. Command exited with value {e.returncode}: \n {command}")
             logger.debug(e.output)
-            send_event(m_events.PROCESSING, severity.ERROR, f"Error sending {uid} to {target_name}")
-            send_series_event(s_events.ERROR, uid, 0, target_name, dcmsend_error_message or e.output)
+            monitor.send_event(m_events.PROCESSING, severity.ERROR, f"Error sending {uid} to {target_name}")
+            monitor.send_task_event(s_events.ERROR, task_content.id, 0, target_name, dcmsend_error_message or e.output)
             retry_increased = increase_retry(source_folder, retry_max, retry_delay)
             if retry_increased:
                 lock_file.unlink()
             else:
                 logger.info(f"Max retries reached, moving to {error_folder}")
-                send_series_event(s_events.SUSPEND, uid, 0, target_name, "Max retries reached")
+                monitor.send_task_event(s_events.SUSPEND, task_content.id, 0, target_name, "Max retries reached")
                 _move_sent_directory(source_folder, error_folder)
-                send_series_event(s_events.MOVE, uid, 0, error_folder, "")
-                send_event(m_events.PROCESSING, severity.ERROR, f"Series suspended after reaching max retries")
+                monitor.send_task_event(s_events.MOVE, task_content.id, 0, error_folder, "")
+                monitor.send_event(m_events.PROCESSING, severity.ERROR, f"Series suspended after reaching max retries")
                 _trigger_notification(task_content.info, mercure_events.ERROR)
         logger.info(f"Done with dispatching folder {source_folder}")
     else:
@@ -226,7 +232,7 @@ def _move_sent_directory(source_folder, destination_folder) -> None:
             (destination_folder / source_folder.name / mercure_names.PROCESSING).unlink()
     except:
         logger.info(f"Error moving folder {source_folder} to {destination_folder}")
-        send_event(m_events.PROCESSING, severity.ERROR, f"Error moving {source_folder} to {destination_folder}")
+        monitor.send_event(m_events.PROCESSING, severity.ERROR, f"Error moving {source_folder} to {destination_folder}")
 
 
 def _trigger_notification(task_info: TaskInfo, event) -> None:
@@ -234,10 +240,10 @@ def _trigger_notification(task_info: TaskInfo, event) -> None:
     # check all rules that are contained in triggered_rules (applied only to series-level dispatching)
     selected_rules: Dict[str, Literal[True]] = {}
     if task_info.applied_rule:
-        selected_rules[task_info.applied_rule]=True
+        selected_rules[task_info.applied_rule] = True
     else:
         if not isinstance(task_info.triggered_rules, str):
-            selected_rules=task_info.triggered_rules
+            selected_rules = task_info.triggered_rules
 
     for current_rule in selected_rules:
         # Check if the rule is available
@@ -253,29 +259,29 @@ def _trigger_notification(task_info: TaskInfo, event) -> None:
             logger.exception(error_text)
             monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_text)
             continue
-        
+
         # Now fire the webhook if configured
         if event == mercure_events.RECEPTION:
-            if config.mercure.rules[current_rule].notification_trigger_reception == 'True':          
+            if config.mercure.rules[current_rule].notification_trigger_reception == "True":
                 notification.send_webhook(
                     config.mercure.rules[current_rule].get("notification_webhook", ""),
                     config.mercure.rules[current_rule].get("notification_payload", ""),
                     mercure_events.RECEPTION,
-                    current_rule
+                    current_rule,
                 )
         if event == mercure_events.COMPLETION:
-            if config.mercure.rules[current_rule].notification_trigger_completion == 'True':
+            if config.mercure.rules[current_rule].notification_trigger_completion == "True":
                 notification.send_webhook(
                     config.mercure.rules[current_rule].get("notification_webhook", ""),
                     config.mercure.rules[current_rule].get("notification_payload", ""),
                     mercure_events.COMPLETION,
-                    current_rule
+                    current_rule,
                 )
         if event == mercure_events.ERROR:
-            if config.mercure.rules[current_rule].notification_trigger_error == 'True':
+            if config.mercure.rules[current_rule].notification_trigger_error == "True":
                 notification.send_webhook(
                     config.mercure.rules[current_rule].get("notification_webhook", ""),
                     config.mercure.rules[current_rule].get("notification_payload", ""),
                     mercure_events.ERROR,
-                    current_rule
+                    current_rule,
                 )

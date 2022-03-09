@@ -1,5 +1,5 @@
 #!/bin/bash
-set -euo
+set -euo pipefail
 
 #################################################################
 # Create mercure from scratch in Docker environment
@@ -74,14 +74,17 @@ else
   fi
 fi
 
+build_component () {
+  docker build docker/$1 -t $PREFIX/mercure-$1:$TAG -t $PREFIX/mercure-$1:latest --build-arg VERSION_TAG=$TAG
+}
+
 docker build --no-cache -t $PREFIX/mercure-base:$TAG -t $PREFIX/mercure-base:latest -f docker/base/Dockerfile .
-docker build docker/ui -t $PREFIX/mercure-ui:$TAG -t $PREFIX/mercure-ui:latest --build-arg VERSION_TAG=$TAG
-docker build docker/bookkeeper -t $PREFIX/mercure-bookkeeper:$TAG -t $PREFIX/mercure-bookkeeper:latest --build-arg VERSION_TAG=$TAG
-docker build docker/cleaner -t $PREFIX/mercure-cleaner:$TAG -t $PREFIX/mercure-cleaner:latest --build-arg VERSION_TAG=$TAG
-docker build docker/dispatcher -t $PREFIX/mercure-dispatcher:$TAG -t $PREFIX/mercure-dispatcher:latest --build-arg VERSION_TAG=$TAG
-docker build docker/processor -t $PREFIX/mercure-processor:$TAG -t $PREFIX/mercure-processor:latest --build-arg VERSION_TAG=$TAG
-docker build docker/receiver -t $PREFIX/mercure-receiver:$TAG -t $PREFIX/mercure-receiver:latest --build-arg VERSION_TAG=$TAG
-docker build docker/router -t $PREFIX/mercure-router:$TAG -t $PREFIX/mercure-router:latest --build-arg VERSION_TAG=$TAG
+
+for component in ui bookkeeper cleaner processor receiver router
+do
+  build_component $component
+done
+
 docker build nomad/sshd -t $PREFIX/alpine-sshd:latest
 docker build nomad/processing -t $PREFIX/processing-step:$TAG -t $PREFIX/processing-step:latest
 docker build nomad/dummy-processor -t $PREFIX/mercure-dummy-processor:$TAG -t $PREFIX/processing-step:latest

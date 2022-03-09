@@ -6,6 +6,7 @@ Helper functions for generating task files in json format, which describe the jo
 
 # Standard python includes
 import json
+from pathlib import Path
 import daiquiri
 import socket
 from datetime import datetime
@@ -34,6 +35,7 @@ logger = daiquiri.getLogger("generate_taskfile")
 
 
 def compose_task(
+    task_id: str,
     uid: str,
     uid_type: Literal["series", "study"],
     triggered_rules: Dict[str, Literal[True]],
@@ -47,6 +49,7 @@ def compose_task(
     logger.debug("Composing task.")
 
     task = Task(
+        id=task_id,
         # Add general information about the job
         info=add_info(uid, uid_type, triggered_rules, applied_rule, tags_list),
         # Add dispatch information -- completed only if the job includes a dispatching step
@@ -94,7 +97,10 @@ def add_processing(uid: str, applied_rule: str, tags_list: Dict[str, str]) -> Op
 
         # Store in the target structure
         process_info: TaskProcessing = TaskProcessing(
-            module_name=module_name, module_config=module_config, settings=settings, retain_input_images=applied_rule_info.processing_retain_images
+            module_name=module_name,
+            module_config=module_config,
+            settings=settings,
+            retain_input_images=applied_rule_info.processing_retain_images,
         )
         return process_info
 
@@ -206,6 +212,7 @@ def add_info(
 
 
 def create_series_task(
+    task_id: str,
     folder_name: str,
     triggered_rules: Dict[str, Literal[True]],
     applied_rule: str,
@@ -217,7 +224,7 @@ def create_series_task(
     Writes a task file for the received series, containing all information needed by the processor and dispatcher. Additional information is written into the file as well
     """
     # Compose the JSON content for the file
-    task = compose_task(series_UID, "series", triggered_rules, applied_rule, tags_list, target)
+    task = compose_task(task_id, series_UID, "series", triggered_rules, applied_rule, tags_list, target)
 
     task_filename = folder_name + mercure_names.TASKFILE
     try:
@@ -229,11 +236,12 @@ def create_series_task(
         logger.error(task.dict())
         monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
         return False
-
+    monitor.send_register_task(task)
     return True
 
 
 def create_study_task(
+    task_id: str,
     folder_name: str,
     triggered_rules: Dict[str, Literal[True]],
     applied_rule: str,
@@ -244,22 +252,25 @@ def create_study_task(
     Generate task file with information on the study
     """
     # Compose the JSON content for the file
-    task_json = compose_task(study_UID, "study", triggered_rules, applied_rule, tags_list, "")
+    task = compose_task(task_id, study_UID, "study", triggered_rules, applied_rule, tags_list, "")
 
     task_filename = folder_name + mercure_names.TASKFILE
+    logger.debug(f"Writing study task file {task_filename}")
     try:
         with open(task_filename, "w") as task_file:
-            json.dump(task_json.dict(), task_file)
+            json.dump(task.dict(), task_file)
     except:
         error_message = f"Unable to create study task file {task_filename}"
         logger.exception(error_message)
         monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
         return False
+    monitor.send_register_task(task)
 
     return True
 
 
 def update_study_task(
+    task_id: str,
     folder_name: str,
     triggered_rules: Dict[str, Literal[True]],
     applied_rule: str,

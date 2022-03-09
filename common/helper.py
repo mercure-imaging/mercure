@@ -9,7 +9,7 @@ from pathlib import Path
 import threading
 from typing import Callable, Optional
 import graphyte
-
+import aiohttp
 
 # Global variable to broadcast when the process should terminate
 terminate = False

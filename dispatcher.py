@@ -27,13 +27,7 @@ from common.constants import mercure_defs
 # Setup daiquiri logger
 daiquiri.setup(
     config.get_loglevel(),
-    outputs=(
-        daiquiri.output.Stream(
-            formatter=daiquiri.formatter.ColorFormatter(
-                fmt=config.get_logformat()
-            )
-        ),
-    ),
+    outputs=(daiquiri.output.Stream(formatter=daiquiri.formatter.ColorFormatter(fmt=config.get_logformat())),),
 )
 # Create local logger instance
 logger = daiquiri.getLogger("dispatcher")

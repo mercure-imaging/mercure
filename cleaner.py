@@ -24,7 +24,7 @@ import hupper
 import common.config as config
 import common.helper as helper
 import common.monitor as monitor
-from common.monitor import send_series_event, s_events
+from common.monitor import s_events
 from common.constants import mercure_defs
 
 
@@ -124,11 +124,11 @@ def delete_folder(entry) -> None:
     try:
         rmtree(delete_path)
         logger.info(f"Deleted folder {delete_path} from {series_uid}")
-        send_series_event(s_events.CLEAN, series_uid, 0, delete_path, "Deleted folder")
+        monitor.send_task_event(s_events.CLEAN, Path(delete_path).stem, 0, delete_path, "Deleted folder")
     except Exception as e:
         logger.info(f"Unable to delete folder {delete_path}")
         logger.exception(e)
-        send_series_event(s_events.ERROR, series_uid, 0, delete_path, "Unable to delete folder")
+        monitor.send_task_event(s_events.ERROR, Path(delete_path).stem, 0, delete_path, "Unable to delete folder")
         monitor.send_event(
             monitor.m_events.PROCESSING,
             monitor.severity.ERROR,
@@ -157,6 +157,9 @@ def main(args=sys.argv[1:]) -> None:
     if "--reload" in args or os.getenv("MERCURE_ENV", "PROD").lower() == "dev":
         # start_reloader will only return in a monitored subprocess
         reloader = hupper.start_reloader("cleaner.main")
+        import logging
+
+        logging.getLogger("watchdog").setLevel(logging.WARNING)
     logger.info("")
     logger.info(f"mercure DICOM Cleaner ver {mercure_defs.VERSION}")
     logger.info("--------------------------------------------")

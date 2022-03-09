@@ -10,6 +10,7 @@
     "discard_folder"             : "/opt/mercure/data/discard",
     "processing_folder"          : "/opt/mercure/data/processing",
     "bookkeeper"                 : "0.0.0.0:8080",
+    "bookkeeper_api_key"         : "BOOKKEEPER_TOKEN_PLACEHOLDER",
     "graphite_ip"                :       "",
     "graphite_port"              :     2003,
     "router_scan_interval"       :        1,

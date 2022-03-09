@@ -20,7 +20,7 @@ def get_user_information(request) -> dict:
     return {
         "logged_in": request.user.is_authenticated,
         "user": request.user.display_name,
-        "is_admin": request.user.is_admin,
+        "is_admin": request.user.is_admin if request.user.is_authenticated else False,
     }
 
 

@@ -49,7 +49,11 @@ def nomad_runtime(task: Task, folder: str) -> bool:
 
     with open("nomad/mercure-processor-template.nomad", "r") as f:
         rendered = Template(f.read()).render(
-            image=module.docker_tag, mercure_tag=mercure_version.get_image_tag(), constraints=module.constraints, resources=module.resources, uid=os.getuid()
+            image=module.docker_tag,
+            mercure_tag=mercure_version.get_image_tag(),
+            constraints=module.constraints,
+            resources=module.resources,
+            uid=os.getuid(),
         )
     logger.debug("----- job definition -----")
     logger.debug(rendered)
@@ -72,6 +76,7 @@ def nomad_runtime(task: Task, folder: str) -> bool:
     with open(f_path / "nomad_job.json", "w") as json_file:
         json.dump(job_info, json_file, indent=4)
 
+    monitor.send_task_event(monitor.s_events.UNKNOWN, task.id, 0, "", "Processing job dispatched.")
     return True
 
 
@@ -133,26 +138,28 @@ def docker_runtime(task: Task, folder: str) -> bool:
     perform_image_update = True
     if docker_tag in docker_pull_throttle:
         timediff = datetime.now() - docker_pull_throttle[docker_tag]
-        #logger.info("Time elapsed since update " + str(timediff.total_seconds()))
+        # logger.info("Time elapsed since update " + str(timediff.total_seconds()))
         if timediff.total_seconds() < 3600:
             perform_image_update = False
 
     # Get the latest image from Docker Hub
     if perform_image_update:
-        try: 
+        try:
             docker_pull_throttle[docker_tag] = datetime.now()
             logger.info("Checking for update of docker image " + docker_tag + " ...")
             pulled_image = docker_client.images.pull(docker_tag)
             if pulled_image is not None:
-                digest_string = pulled_image.attrs.get("RepoDigests")[0] if pulled_image.attrs.get("RepoDigests") else "None"
+                digest_string = (
+                    pulled_image.attrs.get("RepoDigests")[0] if pulled_image.attrs.get("RepoDigests") else "None"
+                )
                 logger.info("Using DIGEST " + digest_string)
             # Clean dangling container images, which occur when the :latest image has been replaced
-            prune_result = docker_client.images.prune(filters={'dangling': True})
+            prune_result = docker_client.images.prune(filters={"dangling": True})
             logger.info(prune_result)
             logger.info("Update done")
         except Exception as e:
             # Don't use ERROR here because the exception will be raised for all Docker images that
-            # have been built locally and are not present in the Docker Registry. 
+            # have been built locally and are not present in the Docker Registry.
             logger.info("Couldn't check for module update (this is normal for unpublished modules)")
             logger.info(e)
 
@@ -178,18 +185,20 @@ def docker_runtime(task: Task, folder: str) -> bool:
             **arguments,
             user=uid_string,
             group_add=[os.getegid()],
-            detach=True
+            detach=True,
         )
-
+        monitor.send_task_event(
+            monitor.s_events.UNKNOWN, task.id, 0, task.process.module_name, f"Processing job running."
+        )
         # Wait for end of container execution
         docker_result = container.wait()
         logger.info(docker_result)
 
         # Print the log out of the module
-        logger.info("=== MODULE OUTPUT - BEGIN ========================================") 
+        logger.info("=== MODULE OUTPUT - BEGIN ========================================")
         if container.logs() is not None:
-            logger.info(container.logs().decode('utf-8'))
-        logger.info("=== MODULE OUTPUT - END ==========================================") 
+            logger.info(container.logs().decode("utf-8"))
+        logger.info("=== MODULE OUTPUT - END ==========================================")
 
         # Check if the processing was successful (i.e., container returned exit code 0)
         exit_code = docker_result.get("StatusCode")
@@ -233,6 +242,7 @@ def process_series(folder) -> None:
 
     lock_file = Path(folder) / mercure_names.PROCESSING
     lock = None
+    task: Optional[Task] = None
     try:
         try:
             lock_file.touch(exist_ok=False)
@@ -255,7 +265,7 @@ def process_series(folder) -> None:
             raise Exception(f"Task file does not exist")
 
         with open(taskfile_path, "r") as f:
-            task: Task = Task(**json.load(f))
+            task = Task(**json.load(f))
 
         if task.dispatch:
             needs_dispatching = True
@@ -283,30 +293,42 @@ def process_series(folder) -> None:
         logger.error("Processing error.")
         logger.error(traceback.format_exc())
     finally:
+        if task is not None:
+            task_id = task.id
+        else:
+            task_id = "Unknown"
         if config.get_runner() in ("docker", "systemd") and config.mercure.process_runner != "nomad":
             logger.info("Docker processing complete")
             # Copy the task to the output folder (in case the module didn't move it)
             push_input_task(f_path / "in", f_path / "out")
             # If configured in the rule, copy the input images to the output folder
-            if task.process and task.process.retain_input_images=="True":
+            if task is not None and task.process and task.process.retain_input_images == "True":
                 push_input_images(f_path / "in", f_path / "out")
             # Push the results either to the success or error folder
             move_results(folder, lock, processing_success, needs_dispatching)
             shutil.rmtree(folder, ignore_errors=True)
 
             if processing_success:
+                monitor.send_task_event(monitor.s_events.UNKNOWN, task_id, 0, "", "Processing job complete")
                 # If dispatching not needed, then trigger the completion notification (for docker/systemd)
                 if not needs_dispatching:
-                    trigger_notification(task.info, mercure_events.COMPLETION)
+                    monitor.send_task_event(monitor.s_events.COMPLETE, task_id, 0, "", "Task complete")
+                    # TODO: task really is never none if processing_success is true
+                    trigger_notification(task.info, mercure_events.COMPLETION)  # type: ignore
+
             else:
-                trigger_notification(task.info, mercure_events.ERROR)
+                monitor.send_task_event(monitor.s_events.ERROR, task_id, 0, "", "Processing failed")
+                if task is not None:  # TODO: handle if task is none?
+                    trigger_notification(task.info, mercure_events.ERROR)
         else:
             if processing_success:
                 logger.info(f"Done submitting for processing")
             else:
                 logger.info(f"Unable to process task")
                 move_results(folder, lock, False, False)
-                trigger_notification(task.info, mercure_events.ERROR)
+                monitor.send_task_event(monitor.s_events.ERROR, task_id, 0, "", "Unable to process task")
+                if task is not None:
+                    trigger_notification(task.info, mercure_events.ERROR)
     return
 
 
@@ -314,28 +336,28 @@ def push_input_task(input_folder: Path, output_folder: Path):
     task_json = output_folder / "task.json"
     if not task_json.exists():
         try:
-            shutil.copyfile(input_folder / "task.json", output_folder / "task.json")    
-        except:    
+            shutil.copyfile(input_folder / "task.json", output_folder / "task.json")
+        except:
             error_msg = f"Error copying task file to outfolder {output_folder}"
             logger.info(error_msg)
-            monitor.send_event(
-                monitor.m_events.PROCESSING, monitor.severity.ERROR, error_msg
-            )
+            monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_msg)
 
 
-def push_input_images(input_folder: Path, output_folder: Path):  
+def push_input_images(input_folder: Path, output_folder: Path):
     error_while_copying = False
     for entry in os.scandir(input_folder):
         if entry.name.endswith(mercure_names.DCM):
             try:
-                shutil.copyfile(input_folder / entry.name, output_folder / entry.name)    
-            except: 
+                shutil.copyfile(input_folder / entry.name, output_folder / entry.name)
+            except:
                 logger.info(f"Error copying file to outfolder {entry.name}")
                 error_while_copying = True
     if error_while_copying:
         monitor.send_event(
-            monitor.m_events.PROCESSING, monitor.severity.ERROR, f"Error while copying files to output folder {output_folder}"
-        )        
+            monitor.m_events.PROCESSING,
+            monitor.severity.ERROR,
+            f"Error while copying files to output folder {output_folder}",
+        )
 
 
 def move_results(

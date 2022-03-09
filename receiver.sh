@@ -30,6 +30,8 @@ port=$(cat $config | jq '.port')
 bookkeeper=$(cat $config | jq -r '.bookkeeper')
 accept_compressed=$(cat $config | jq -r '.accept_compressed_images')
 
+bookkeeper_api_key=$(cat $config | jq -r '.bookkeeper_api_key')
+
 # Check if incoming folder exists
 if [ ! -d "$incoming" ]; then
     echo "ERROR: Cannot access incoming folder ${incoming}"
@@ -71,8 +73,15 @@ if [ $accept_compressed = "True" ]
 then
     echo "NOTE: Accepting all supported transfer syntaxes"
     transfer_syntax_option="+xa"
+fi 
+
+if [ $bookkeeper_api_key = "null" ]
+then
+    bookkeeper_api_key=""
+else
+    bookkeeper_api_key=" $bookkeeper_api_key"
 fi
 
 echo ""
 echo "Starting receiver process on port $port, folder $incoming, bookeeper $bookkeeper"
-storescp --fork --promiscuous $transfer_syntax_option -od "$incoming" +uf -xcr "$binary $incoming/#f #a #c$bookkeeper" $port
+storescp --fork --promiscuous $transfer_syntax_option -od "$incoming" +uf -xcr "$binary $incoming/#f #a #c$bookkeeper$bookkeeper_api_key" $port

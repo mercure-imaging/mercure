@@ -38,13 +38,13 @@ def test_is_not_read_for_sending_while_sending(fs):
 def test_is_read_for_sending(fs):
     fs.create_dir("/var/data/")
     fs.create_file("/var/data/a.dcm")
-    target = {"info": dummy_info, "dispatch": {"target_name": "test_target"}}
+    target = {"id": "task_id", "info": dummy_info, "dispatch": {"target_name": "test_target"}}
     fs.create_file("/var/data/task.json", contents=json.dumps(target))
     assert is_ready_for_sending("/var/data")
 
 
 def test_read_target(fs):
-    target = {"info": dummy_info, "dispatch": {"target_name": "test_target"}}
+    target = {"id": "task_id", "info": dummy_info, "dispatch": {"target_name": "test_target"}}
     fs.create_file("/var/data/" + mercure_names.TASKFILE, contents=json.dumps(target))
     task_content = is_target_json_valid("/var/data/")
     assert task_content
