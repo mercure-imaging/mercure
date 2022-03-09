@@ -69,10 +69,11 @@ BOOKKEEPER_PORT = bookkeeper_config("PORT", cast=int, default=8080)
 BOOKKEEPER_HOST = bookkeeper_config("HOST", default="0.0.0.0")
 DATABASE_URL = bookkeeper_config("DATABASE_URL", default="postgresql://mercure@localhost")
 DATABASE_SCHEMA = bookkeeper_config("DATABASE_SCHEMA", default=None)
+DEBUG_MODE = bookkeeper_config("DEBUG", cast=bool, default=False)
 API_KEY = None
 
 
-def set_api_key():
+def set_api_key() -> None:
     global API_KEY
     if API_KEY is None:
         from common.config import read_config
@@ -97,7 +98,8 @@ class TokenAuth(BaseTokenAuth):
 
 
 database = databases.Database(DATABASE_URL)
-app = Starlette(debug=True)
+
+app = Starlette(debug=DEBUG_MODE)
 
 app.add_middleware(
     AuthenticationMiddleware,
