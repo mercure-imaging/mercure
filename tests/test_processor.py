@@ -184,7 +184,7 @@ def test_process_series_nomad(fs, mocked: MockerFixture):
         },
     }
 
-    common.monitor.send_task_event.assert_has_calls(
+    common.monitor.send_task_event.assert_has_calls(  # type: ignore
         [
             call("REGISTERED", task_id, 1, "", "Registered series"),
             call("UNKNOWN", task_id, 0, "", "Processing job dispatched."),
@@ -192,7 +192,7 @@ def test_process_series_nomad(fs, mocked: MockerFixture):
             call("COMPLETE", task_id, 0, "", "Task complete"),
         ]
     )
-    common.monitor.send_task_event.reset_mock()
+    common.monitor.send_task_event.reset_mock()  # type: ignore
 
     fs.create_file(f"/var/incoming/FAILEDFAILED#bar.dcm", contents="asdfasdfafd")
     fs.create_file(f"/var/incoming/FAILEDFAILED#bar.tags", contents="{}")
@@ -219,9 +219,9 @@ def test_process_series_nomad(fs, mocked: MockerFixture):
     assert ["task.json"] == [
         k.name for k in (Path("/var/error") / processor_path.name / "out").rglob("*") if k.is_file()
     ]
-    print(common.monitor.send_event.call_args_list)
+    print(common.monitor.send_event.call_args_list)  # type: ignore
 
-    common.monitor.send_task_event.assert_has_calls(
+    common.monitor.send_task_event.assert_has_calls(  # type: ignore
         [
             call("REGISTERED", task_id, 1, "", "Registered series"),
             call("UNKNOWN", task_id, 0, "", "Processing job dispatched."),
@@ -290,7 +290,7 @@ def test_process_series(fs, mocked: MockerFixture):
     assert [] == [k.name for k in Path("/var/processing").glob("**/*")]
     assert files == [k.name for k in (Path("/var/success") / processor_path.name).glob("*") if k.is_file()]
 
-    common.monitor.send_task_event.assert_has_calls(
+    common.monitor.send_task_event.assert_has_calls(  # type: ignore
         [
             call("REGISTERED", task_id, 1, "", "Registered series"),
             call("UNKNOWN", task_id, 0, "test_module", "Processing job running."),

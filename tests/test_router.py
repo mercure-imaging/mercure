@@ -65,7 +65,7 @@ def test_route_series_fail(fs: FakeFilesystem, mocked, fake_process):
     # with pytest.raises(PermissionError):
     # routing.route_series(series_uid, config)
     router.run_router()
-    common.monitor.send_task_event.assert_called_with(
+    common.monitor.send_task_event.assert_called_with(  # type: ignore
         "ERROR",
         task_id,
         0,
@@ -97,7 +97,7 @@ def test_route_series(fs: FakeFilesystem, mocked, fake_process):
     routing.route_series.push_series_serieslevel.assert_called_once_with(task_id, {"catchall": True}, [f"{series_uid}#bar"], series_uid, tags)  # type: ignore
     routing.route_series.push_serieslevel_outgoing.assert_called_once_with(task_id, {"catchall": True}, [f"{series_uid}#bar"], series_uid, tags, {"test_target": ["catchall"]})  # type: ignore
 
-    common.monitor.send_task_event.assert_has_calls(
+    common.monitor.send_task_event.assert_has_calls(  # type: ignore
         [
             call("REGISTERED", task_id, 1, "", "Registered series"),
             call("ROUTE", task_id, 1, "test_target", "catchall"),
@@ -123,17 +123,17 @@ def test_route_series(fs: FakeFilesystem, mocked, fake_process):
     assert task.info.triggered_rules["catchall"] == True  # type: ignore
     assert task.process == {}
     assert task.study == {}
-    common.monitor.send_register_task.assert_called_once_with(task)
+    common.monitor.send_register_task.assert_called_once_with(task)  # type: ignore
 
-    fake_process.register(
-        f"dcmsend {config.targets['test_target'].ip} {config.targets['test_target'].port} +sd /var/outgoing/{task_id} -aet -aec foo -nuc +sp *.dcm -to 60 +crf /var/outgoing/{task_id}/sent.txt"
+    fake_process.register(  # type: ignore
+        f"dcmsend {config.targets['test_target'].ip} {config.targets['test_target'].port} +sd /var/outgoing/{task_id} -aet -aec foo -nuc +sp *.dcm -to 60 +crf /var/outgoing/{task_id}/sent.txt"  # type: ignore
     )
     common.monitor.configure("dispatcher", "test", config.bookkeeper)
     dispatcher.dispatch("")
 
     assert Path(f"/var/success/{task_id}").is_dir()
 
-    common.monitor.send_task_event.assert_has_calls(
+    common.monitor.send_task_event.assert_has_calls(  # type: ignore
         [call("DISPATCH", task_id, 1, "test_target", ""), call("MOVE", task_id, 0, "/var/success", "")],
     )
     # print(common.monitor.send_event.call_args_list)

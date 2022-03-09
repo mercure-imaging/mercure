@@ -249,14 +249,14 @@ def _trigger_notification(task_info: TaskInfo, event) -> None:
         if not current_rule:
             error_text = f"Missing applied_rule in task file in job {task_info.uid}"
             logger.exception(error_text)
-            monitor.monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_text)
+            monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_text)
             continue
 
         # Check if the mercure configuration still contains that rule
         if not isinstance(config.mercure.rules.get(current_rule, ""), Rule):
             error_text = f"Applied rule not existing anymore in mercure configuration from job {task_info.uid}"
             logger.exception(error_text)
-            monitor.monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_text)
+            monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_text)
             continue
 
         # Now fire the webhook if configured

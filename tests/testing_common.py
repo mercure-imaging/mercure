@@ -11,18 +11,18 @@ import common.config as config
 from common.types import Config
 
 
-def spy_on(mocker, obj):
+def spy_on(mocker, obj) -> None:
     pieces = obj.split(".")
     module = ".".join(pieces[0:-1])
     mocker.patch(obj, new=mocker.spy(eval(module), pieces[-1]))
 
 
-def spies(mocker, list_of_spies):
+def spies(mocker, list_of_spies) -> None:
     for spy in list_of_spies:
         spy_on(mocker, spy)
 
 
-def attach_spies(mocker):
+def attach_spies(mocker) -> None:
     spies(
         mocker,
         [
