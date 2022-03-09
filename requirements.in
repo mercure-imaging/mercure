@@ -20,6 +20,8 @@ sphinx-rtd-theme
 pytest
 pyfakefs
 pytest-mock
+pytest-subprocess
+
 
 # user interface
 aiofiles

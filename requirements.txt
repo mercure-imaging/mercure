@@ -138,7 +138,10 @@ pytest==6.2.5
     # via
     #   -r requirements.in
     #   pytest-mock
+    #   pytest-subprocess
 pytest-mock==3.6.1
+    # via -r requirements.in
+pytest-subprocess==1.4.1
     # via -r requirements.in
 python-json-logger==2.0.2
     # via daiquiri
