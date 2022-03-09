@@ -21,8 +21,9 @@ import json
 
 # Starlette-related includes
 from starlette.applications import Starlette
-from starlette.responses import JSONResponse
-from starlette.responses import JSONResponse
+from starlette.responses import Response, JSONResponse
+
+
 from starlette.background import BackgroundTasks
 from starlette.config import Config
 from starlette.datastructures import URL
@@ -528,6 +529,12 @@ async def get_dicom_files(request) -> JSONResponse:
 ###################################################################################
 ## Main entry function
 ###################################################################################
+@app.exception_handler(500)
+async def server_error(request, exc) -> Response:
+    """
+    Return an HTTP 500 page.
+    """
+    return JSONResponse({"error": "Internal server error"}, status_code=500)
 
 
 def main(args=sys.argv[1:]) -> None:

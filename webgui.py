@@ -612,8 +612,8 @@ async def get_series_events(request):
     task_id = request.query_params.get("task_id", "")
     try:
         return JSONResponse(await monitor.get_task_events(task_id))
-    except HTTPError as e:
-        return JSONResponse({"error": str(e)}, status_code=e.status_code)
+    except monitor.MonitorHTTPError as e:
+        return JSONResponse({"error": e.message}, status_code=e.status_code)
 
 
 @app.route("/api/get-series", methods=["GET"])
@@ -622,18 +622,17 @@ async def get_series(request):
     series_uid = request.query_params.get("series_uid", "")
     try:
         return JSONResponse(await monitor.get_series(series_uid))
-    except HTTPError as e:
-        return JSONResponse({"error": str(e)}, status_code=e.status_code)
+    except monitor.MonitorHTTPError as e:
+        return JSONResponse({"error": e.message}, status_code=e.status_code)
 
 
 @app.route("/api/get-tasks", methods=["GET"])
 @requires(["authenticated"])
 async def get_tasks(request):
-    series_uid = request.query_params.get("series_uid", "")
     try:
-        return JSONResponse(await monitor.get_tasks(series_uid))
-    except HTTPError as e:
-        return JSONResponse({"error": str(e)}, status_code=e.status_code)
+        return JSONResponse(await monitor.get_tasks())
+    except monitor.MonitorHTTPError as e:
+        return JSONResponse({"error": e.status_code}, status_code=e.status_code)
 
 
 ###################################################################################
@@ -669,7 +668,7 @@ async def server_error(request, exc) -> Response:
         context = {"request": request, "mercure_version": mercure_defs.VERSION}
         return templates.TemplateResponse(template, context, status_code=500)
     else:
-        return JSONResponse({"error": str(exc)}, status_code=500)
+        return JSONResponse({"error": "Internal server error"}, status_code=500)
 
 
 ###################################################################################

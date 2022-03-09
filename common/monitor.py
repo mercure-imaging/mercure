@@ -6,6 +6,7 @@ Helper functions and definitions for monitoring mercure's operations via the boo
 
 # Standard python includes
 import asyncio
+from json import JSONDecodeError
 
 from typing import Any, Dict, Optional
 import logging
@@ -79,7 +80,16 @@ class severity:
     CRITICAL = 3
 
 
-def set_api_key():
+class MonitorHTTPError(Exception):
+    """Exception raised when a HTTP error occurs."""
+
+    def __init__(self, status_code: int, message: str):
+        self.status_code = status_code
+        self.message = message
+        logger.debug("HTTP error: %s", message)
+
+
+def set_api_key() -> None:
     global api_key
     if api_key is None:
         from common.config import read_config
@@ -118,7 +128,18 @@ async def get(endpoint: str, payload: Any = {}) -> Any:
         async with session.get(bookkeeper_address + "/" + endpoint, params=payload) as resp:
             if resp.status != 200:
                 logger.error(f"Failed GET request to bookkeeper endpoint {endpoint}: status: {resp.status}")
-                raise HTTPError(resp.status)
+                if resp.content_type == "application/json":
+                    try:
+                        err_json = await resp.json()
+                    except JSONDecodeError:
+                        raise MonitorHTTPError(resp.status, await resp.text())
+                else:
+                    raise MonitorHTTPError(resp.status, await resp.text())
+                try:
+                    raise MonitorHTTPError(resp.status, str(err_json["error"]))
+                except KeyError:
+                    raise MonitorHTTPError(resp.status, "Unknown error")
+
             return await resp.json()
 
 
