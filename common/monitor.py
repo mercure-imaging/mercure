@@ -7,15 +7,16 @@ Helper functions and definitions for monitoring mercure's operations via the boo
 # Standard python includes
 import asyncio
 from json import JSONDecodeError
-
 from typing import Any, Dict, Optional
 import logging
 from urllib.error import HTTPError
-
 import aiohttp
-from common.types import Task
 import daiquiri
+
+# App-specific includes
+from common.types import Task
 from common.helper import loop
+
 
 # Create local logger instance
 logger = daiquiri.getLogger("config")
@@ -92,8 +93,7 @@ class MonitorHTTPError(Exception):
 def set_api_key() -> None:
     global api_key
     if api_key is None:
-        from common.config import read_config
-
+        from common.config import read_config        
         try:
             c = read_config()
             api_key = c.bookkeeper_api_key
@@ -147,8 +147,8 @@ def configure(module, instance, address) -> None:
     """Configures the connection to the bookkeeper module. If not called, events
     will not be transmitted to the bookkeeper."""
     global sender_name
-    global bookkeeper_address
     sender_name = module + "." + instance
+    global bookkeeper_address
     bookkeeper_address = "http://" + address
     global api_key
     set_api_key()
@@ -194,8 +194,7 @@ def send_register_series(tags: Dict[str, str]) -> None:
 
 
 def send_register_task(task: Task) -> None:
-    """Registers a received series on the bookkeeper. This should be called when a series has been
-    fully received and the DICOM tags have been parsed."""
+    """Registers a new task on the bookkeeper. This should be called whenever a new task has been created."""
     if not bookkeeper_address:
         return
     logger.debug(f"Monitor (register-task): task.id={task.id} ")
@@ -204,7 +203,7 @@ def send_register_task(task: Task) -> None:
 
 
 def send_task_event(event, task_id, file_count, target, info) -> None:
-    """Send an event related to a specific series to the bookkeeper."""
+    """Send an event related to a specific task to the bookkeeper."""
     if not bookkeeper_address:
         return
 

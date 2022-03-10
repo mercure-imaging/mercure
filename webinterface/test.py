@@ -1,31 +1,28 @@
 """
-queue.py
+test.py
 ========
-Queue page for the graphical user interface of mercure.
+Test page for querying the bookkeeper database from the webgui.
 """
 
 # Standard python includes
-import os
-from pathlib import Path
-import json
 import daiquiri
-from typing import Dict
-import collections
 
 # Starlette-related includes
 from starlette.applications import Starlette
-from starlette.responses import PlainTextResponse, JSONResponse
 from starlette.authentication import requires
 
 # App-specific includes
-import common.config as config
-from common.constants import mercure_defs, mercure_names
+from common.constants import mercure_defs
 from webinterface.common import get_user_information
 from webinterface.common import templates
-from common.types import Task
 
 
 logger = daiquiri.getLogger("test")
+
+
+###################################################################################
+## Test endpoints
+###################################################################################
 
 
 test_app = Starlette()
