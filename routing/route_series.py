@@ -48,6 +48,9 @@ def route_series(task_id: str, series_UID: str) -> None:
     # Create lock file in the incoming folder and prevent other instances from working on this series
     try:
         lock = helper.FileLock(lock_file)
+    except FileExistsError:
+        # Series likely already processed by other instance of router
+        return
     except:
         # Can't create lock file, so something must be seriously wrong
         error_message = f"Unable to create lock file {lock_file}"
