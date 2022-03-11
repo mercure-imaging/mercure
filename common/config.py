@@ -13,6 +13,7 @@ from typing_extensions import Literal
 import daiquiri
 from typing import Dict, cast
 import re
+from common.exceptions import handle_error
 
 # App-specific includes
 import common.monitor as monitor
@@ -24,10 +25,7 @@ from common.types import Config
 logger = daiquiri.getLogger("config")
 
 configuration_timestamp: float = 0
-configuration_filename = (
-    os.getenv("MERCURE_CONFIG_FOLDER")
-    or "/opt/mercure/config"
-) + "/mercure.json"
+configuration_filename = (os.getenv("MERCURE_CONFIG_FOLDER") or "/opt/mercure/config") + "/mercure.json"
 
 mercure_defaults = {
     "appliance_name": "master",
@@ -84,7 +82,7 @@ def get_runner() -> str:
 
 
 def get_logformat() -> str:
-    """Returns the format that should be used for log messages. Includes the time for docker and nomad, but not for systemd as journalctl 
+    """Returns the format that should be used for log messages. Includes the time for docker and nomad, but not for systemd as journalctl
     already outputs the time of the log events."""
     if get_runner() == "systemd":
         return "%(color)s%(levelname)-8.8s " "%(name)s: %(message)s%(color_stop)s"
@@ -179,9 +177,7 @@ def save_config() -> None:
         lock.free()
     except:
         # Can't delete lock file, so something must be seriously wrong
-        error_message = f"Unable to remove lock file {lock_file}"
-        logger.error(error_message)
-        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
+        handle_error(f"Unable to remove lock file {lock_file}", logger, None)
         return
 
 
@@ -210,9 +206,7 @@ def write_configfile(json_content) -> None:
         lock.free()
     except:
         # Can't delete lock file, so something must be seriously wrong
-        error_message = f"Unable to remove lock file {lock_file}"
-        logger.error(error_message)
-        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
+        handle_error(f"Unable to remove lock file {lock_file}", logger, None)
         return
 
 
@@ -242,8 +236,12 @@ def check_folders() -> bool:
             entry,
         )
         if not Path(mercure.dict()[entry]).exists():
-            error_message = f"Folder not found {mercure.dict()[entry]}"
-            logger.error(error_message)
-            monitor.send_event(monitor.m_events.CONFIG_UPDATE, monitor.severity.CRITICAL, error_message)
+            handle_error(
+                f"Folder not found {mercure.dict()[entry]}",
+                logger,
+                None,
+                event_type=monitor.m_events.CONFIG_UPDATE,
+                severity=monitor.severity.CRITICAL,
+            )
             return False
     return True

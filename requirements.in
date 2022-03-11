@@ -18,7 +18,7 @@ sphinx-rtd-theme
 
 # testing
 pytest
-pyfakefs
+pyfakefs ~= 4.5.5
 pytest-mock
 pytest-subprocess
 

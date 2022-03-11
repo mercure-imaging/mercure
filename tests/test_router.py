@@ -3,13 +3,16 @@ test_router.py
 ==============
 """
 import importlib
+import os
 import stat
+from typing import Tuple
 from unittest.mock import call
 import json
 from pprint import pprint
 import uuid
 
 import pytest
+from common.helper import FileLock
 from common.types import *
 import common
 from pyfakefs.fake_filesystem import FakeFilesystem
@@ -25,6 +28,27 @@ from testing_common import load_config, mocked
 
 rules = {
     "rules": {
+        "route_study": {
+            "rule": """@StudyDescription@ == "foo" """,
+            "target": "test_target_2",
+            "disabled": "False",
+            "fallback": "False",
+            "contact": "",
+            "comment": "",
+            "tags": "",
+            "action": "route",
+            "action_trigger": "study",
+            "study_trigger_condition": "timeout",
+            "study_trigger_series": "",
+            "priority": "normal",
+            "processing_module": "",
+            "processing_settings": "",
+            "notification_webhook": "",
+            "notification_payload": "",
+            "notification_trigger_reception": "False",
+            "notification_trigger_completion": "False",
+            "notification_trigger_error": "False",
+        },
         "catchall": {
             "rule": """@SeriesInstanceUID@ == "foo" """,
             "target": "test_target",
@@ -45,36 +69,202 @@ rules = {
             "notification_trigger_reception": "False",
             "notification_trigger_completion": "False",
             "notification_trigger_error": "False",
-        }
+        },
+        "broken": {
+            "rule": """ 1/0 """,
+            "target": "test_target",
+            "disabled": "False",
+            "fallback": "False",
+            "contact": "",
+            "comment": "",
+            "tags": "",
+            "action": "route",
+            "action_trigger": "series",
+            "study_trigger_condition": "timeout",
+            "study_trigger_series": "",
+            "priority": "normal",
+            "processing_module": "",
+            "processing_settings": "",
+            "notification_webhook": "",
+            "notification_payload": "",
+            "notification_trigger_reception": "False",
+            "notification_trigger_completion": "False",
+            "notification_trigger_error": "False",
+        },
     }
 }
 
 
-def test_route_series_fail(fs: FakeFilesystem, mocked, fake_process):
-    config = load_config(fs, rules)
-    # attach_spies(mocker)
-    # mocker.patch("routing.route_series.parse_ascconv", new=lambda x: {})
+def create_series(mocked, fs, config, tags) -> Tuple[str, str]:
     task_id = "test_task_" + str(uuid.uuid1())
     series_uid = str(uuid.uuid4())
+
     mocked.patch("uuid.uuid1", new=lambda: task_id)
+
+    fs.create_file(f"{config.incoming_folder}/{series_uid}#baz.dcm", contents="asdfasdfafd")
+    fs.create_file(f"{config.incoming_folder}/{series_uid}#baz.tags", contents=tags)
+    return task_id, series_uid
+
+
+def test_route_series_fail1(fs: FakeFilesystem, mocked, fake_process):
+    config = load_config(fs, rules)
+
     tags = {"SeriesInstanceUID": "foo"}
-    fs.create_file(f"/var/incoming/{series_uid}#bar.dcm", contents="asdfasdfafd")
-    fs.create_file(f"/var/incoming/{series_uid}#bar.tags", contents="error")
-    # fake_filesystem.set_uid(1)
+    task_id, series_uid = create_series(mocked, fs, config, "foobar")
+
     common.monitor.configure("router", "test", config.bookkeeper)
-    # with pytest.raises(PermissionError):
-    # routing.route_series(series_uid, config)
     router.run_router()
-    common.monitor.send_task_event.assert_called_with(  # type: ignore
+    print(common.monitor.send_task_event.call_args_list)  # type: ignore
+    common.monitor.send_task_event.assert_any_call(  # type: ignore
         "ERROR",
         task_id,
         0,
         "",
         f"Invalid tag for series {series_uid}",
     )
-    # fs.remove(f"/var/incoming/{series_uid}#bar.tags")
-    # fs.create_file(f"/var/incoming/{series_uid}#bar.tags", contents="error", st_mode=stat.S_IFDIR | 0o333)
-    # router.run_router()
+
+
+def test_route_series_fail2(fs: FakeFilesystem, mocked, fake_process):
+    config = load_config(fs, rules)
+
+    tags = {"SeriesInstanceUID": "foo"}
+    task_id, series_uid = create_series(mocked, fs, config, json.dumps(tags))
+
+    router.run_router()
+    common.monitor.send_event.assert_any_call(  # type: ignore
+        "CONFIG_UPDATE",
+        2,
+        "Invalid rule encountered:  1/0 ",
+    )
+    common.monitor.send_task_event.reset_mock()  # type: ignore
+
+
+def test_route_series_fail3(fs: FakeFilesystem, mocked, fake_process):
+    config = load_config(fs, rules)
+
+    tags = {"SeriesInstanceUID": "foo"}
+    task_id, series_uid = create_series(mocked, fs, config, json.dumps(tags))
+
+    real_mkdir = os.mkdir
+
+    def no_create_destination(dest):
+        if config.outgoing_folder in dest:
+            raise Exception("no")
+        else:
+            real_mkdir(dest)
+
+    mocked.patch("os.mkdir", new=no_create_destination)
+    router.run_router()
+    common.monitor.send_task_event.assert_any_call(  # type: ignore
+        "ERROR",
+        task_id,
+        0,
+        "",
+        f"Unable to create outgoing folder {config.outgoing_folder}/{task_id}",
+    )
+
+    def fake_create_destination(dest):
+        if config.outgoing_folder in dest:
+            pass
+        else:
+            real_mkdir(dest)
+
+    mocked.patch("os.mkdir", new=fake_create_destination)
+    router.run_router()
+    common.monitor.send_task_event.assert_any_call(  # type: ignore
+        "ERROR",
+        task_id,
+        0,
+        "",
+        f"Creating folder not possible {config.outgoing_folder}/{task_id}",
+    )
+
+
+def test_route_series_fail4(fs: FakeFilesystem, mocked, fake_process):
+    config = load_config(fs, rules)
+
+    tags = {"SeriesInstanceUID": "foo"}
+    task_id, series_uid = create_series(mocked, fs, config, json.dumps(tags))
+
+    mocked.patch("shutil.move", side_effect=Exception("no moving"))
+    router.run_router()
+    common.monitor.send_task_event.assert_any_call(  # type: ignore
+        "ERROR",
+        task_id,
+        0,
+        "",
+        f"Problem while pushing file to outgoing {series_uid}#baz\nSource folder {config.incoming_folder}/\nTarget folder {config.outgoing_folder}/{task_id}/",
+    )
+
+
+def task_will_dispatch_to(task, config, fake_process) -> None:
+    t = config.targets[task.dispatch.target_name]
+    expect_command = f"dcmsend {t.ip} {t.port} +sd /var/outgoing/{task.id} -aet -aec {t.aet_target} -nuc +sp *.dcm -to 60 +crf /var/outgoing/{task.id}/sent.txt"  # type: ignore
+    fake_process.register(expect_command)  # type: ignore
+    common.monitor.configure("dispatcher", "test", config.bookkeeper)
+    dispatcher.dispatch("")
+
+    assert Path(f"/var/success/{task.id}").is_dir()
+
+    common.monitor.send_task_event.assert_has_calls(  # type: ignore
+        [call("DISPATCH", task.id, 1, task.dispatch.target_name, ""), call("MOVE", task.id, 0, "/var/success", "")],
+    )
+
+
+def test_route_study(fs: FakeFilesystem, mocked, fake_process):
+    config = load_config(fs, rules)
+
+    study_uid = str(uuid.uuid4())
+    rule_name = "route_study"
+    tags = {
+        "StudyInstanceUID": study_uid,
+        "SeriesInstanceUID": "bar",
+        "StudyDescription": "foo",
+        "SeriesDescription": "series_desc",
+    }
+    task_id, series_uid = create_series(mocked, fs, config, json.dumps(tags))
+    common.monitor.configure("router", "test", config.bookkeeper)
+
+    router.run_router()
+    router.route_studies.assert_called_once()  # type: ignore
+    routing.route_studies.route_study.assert_called_once()  # type: ignore
+    routing.route_studies.move_study_folder.assert_called_with(task_id, f"{study_uid}#{rule_name}", "OUTGOING")  # type: ignore
+
+    out_path = Path(f"/var/outgoing/{task_id}")
+
+    try:
+        assert ["task.json", f"{series_uid}#baz.dcm", f"{series_uid}#baz.tags"] == [
+            k.name for k in out_path.glob("*") if k.is_file()
+        ]
+    except AssertionError as k:
+        message = f"Expected results are missing: {k.args[0]}"
+        k.args = (message,)  # wrap it up in new tuple
+        raise
+
+    with open(out_path / "task.json") as e:
+        task: Task = Task(**json.load(e))
+
+    assert task.id == task_id
+    assert task.dispatch.target_name == "test_target_2"  # type: ignore
+    assert task.info.uid == study_uid
+    assert task.info.uid_type == "study"
+    assert task.info.triggered_rules["route_study"] == True  # type: ignore
+    assert task.process == {}
+    assert isinstance(task.study, TaskStudy)
+    assert task.study.study_uid == study_uid
+    assert task.study.complete_trigger == "timeout"
+    assert task.study.received_series == [tags["SeriesDescription"]]
+
+    common.monitor.send_register_task.assert_called_once_with(task)  # type: ignore
+
+    task_will_dispatch_to(task, config, fake_process)
+    # common.monitor.send_task_event.assert_any_call(  # type: ignore
+    #     "ROUTED",
+    #     task_id,
+    #     0,
+    #     "",
+    #     f"Routed to test_target",
+    # )
 
 
 def test_route_series(fs: FakeFilesystem, mocked, fake_process):
@@ -125,17 +315,7 @@ def test_route_series(fs: FakeFilesystem, mocked, fake_process):
     assert task.study == {}
     common.monitor.send_register_task.assert_called_once_with(task)  # type: ignore
 
-    fake_process.register(  # type: ignore
-        f"dcmsend {config.targets['test_target'].ip} {config.targets['test_target'].port} +sd /var/outgoing/{task_id} -aet -aec foo -nuc +sp *.dcm -to 60 +crf /var/outgoing/{task_id}/sent.txt"  # type: ignore
-    )
-    common.monitor.configure("dispatcher", "test", config.bookkeeper)
-    dispatcher.dispatch("")
-
-    assert Path(f"/var/success/{task_id}").is_dir()
-
-    common.monitor.send_task_event.assert_has_calls(  # type: ignore
-        [call("DISPATCH", task_id, 1, "test_target", ""), call("MOVE", task_id, 0, "/var/success", "")],
-    )
+    task_will_dispatch_to(task, config, fake_process)
     # print(common.monitor.send_event.call_args_list)
     # common.monitor.send_event.assert_not_called()
 

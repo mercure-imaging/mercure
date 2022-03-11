@@ -27,7 +27,7 @@ if [ ! -f "VERSION" ]; then
     echo "Error: VERSION file missing. Unable to proceed."
     exit 1
 fi
-VERSION=`cat VERSION`
+VERSION="dev" #`cat VERSION`
 TAG=${MERCURE_TAG:-$VERSION}
 
 # Define where mercure is going to store things
@@ -78,7 +78,7 @@ build_component () {
   docker build docker/$1 -t $PREFIX/mercure-$1:$TAG -t $PREFIX/mercure-$1:latest --build-arg VERSION_TAG=$TAG
 }
 
-docker build --no-cache -t $PREFIX/mercure-base:$TAG -t $PREFIX/mercure-base:latest -f docker/base/Dockerfile .
+docker build -t $PREFIX/mercure-base:$TAG -t $PREFIX/mercure-base:latest -f docker/base/Dockerfile .
 
 for component in ui bookkeeper cleaner processor receiver router
 do

@@ -89,7 +89,7 @@ def create_and_route(fs, mocked, task_id, uid="TESTFAKEUID") -> List[str]:
         k.name for k in Path("/var/processing").glob("**/*") if k.is_file()
     ]
 
-    # mocked.patch("processor.process_series", new=mocked.spy(process.process_series, "process_series"))
+    mocked.patch("processor.process_series", new=mocked.spy(processor, "process_series"))
     return ["task.json", f"{uid}#bar.dcm", f"{uid}#bar.tags"]
 
 
@@ -128,7 +128,7 @@ def test_process_series_nomad(fs, mocked: MockerFixture):
 
     logger.info("Run processing...")
     processor.run_processor()
-    process.process_series.process_series.assert_called_once_with(str(processor_path))  # type: ignore
+    processor.process_series.assert_called_once_with(str(processor_path))  # type: ignore
 
     fake_run.assert_called_once_with("processor-test_module", meta={"PATH": processor_path.name})
 
@@ -272,7 +272,7 @@ def test_process_series(fs, mocked: MockerFixture):
     processor.run_processor()
 
     # processor_path = next(Path("/var/processing").iterdir())
-    process.process_series.process_series.assert_called_once_with(str(processor_path))  # type: ignore
+    # process.process_series.process_series.assert_called_once_with(str(processor_path))  # type: ignore
 
     uid_string = f"{os.getuid()}:{os.getegid()}"
     fake_run.assert_called_once_with(

@@ -8,6 +8,7 @@ Helper functions for mercure's processor module
 import json
 import os
 from pathlib import Path
+import sys
 from typing import Any, Dict, cast, Optional
 import json
 import shutil
@@ -22,6 +23,8 @@ from jinja2 import Template
 import common.monitor as monitor
 import common.helper as helper
 import common.config as config
+from common.exceptions import handle_error
+
 from common.constants import mercure_names
 from common.types import Task, TaskInfo, Module, Rule
 import common.notification as notification
@@ -203,12 +206,7 @@ def docker_runtime(task: Task, folder: str) -> bool:
         # Check if the processing was successful (i.e., container returned exit code 0)
         exit_code = docker_result.get("StatusCode")
         if exit_code != 0:
-            logger.error(f"The container returned non-zero exit code {exit_code}")
-            monitor.send_event(
-                monitor.m_events.PROCESSING,
-                monitor.severity.ERROR,
-                f"Error while running container {docker_tag} - {exit_code}",
-            )
+            handle_error(f"Error while running container {docker_tag} - exit code {exit_code}", logger, task.id)
             processing_success = False
 
         # Remove the container now to avoid that the drive gets full
@@ -216,19 +214,11 @@ def docker_runtime(task: Task, folder: str) -> bool:
 
     except docker.errors.APIError:
         # Something really serious happened
-        logger.info("API error while trying to run Docker container")
-        logger.error(traceback.format_exc())
-        monitor.send_event(
-            monitor.m_events.PROCESSING, monitor.severity.ERROR, f"Docker API error while trying to run {docker_tag}"
-        )
+        handle_error(f"API error while trying to run Docker container, tag: {docker_tag}", logger, task.id)
         processing_success = False
 
     except docker.errors.ImageNotFound:
-        logger.info("Error running the specified Docker container")
-        logger.info(f"Container image not found {docker_tag}")
-        monitor.send_event(
-            monitor.m_events.PROCESSING, monitor.severity.ERROR, f"Error: Image for container {docker_tag} not found"
-        )
+        handle_error(f"Error running docker container. Image for tag {docker_tag} not found.", logger, task.id)
         processing_success = False
 
     return processing_success
@@ -243,6 +233,7 @@ def process_series(folder) -> None:
     lock_file = Path(folder) / mercure_names.PROCESSING
     lock = None
     task: Optional[Task] = None
+    taskfile_path = Path(folder) / mercure_names.TASKFILE
     try:
         try:
             lock_file.touch(exist_ok=False)
@@ -259,7 +250,6 @@ def process_series(folder) -> None:
             )
             raise e
 
-        taskfile_path = Path(folder) / mercure_names.TASKFILE
         if not taskfile_path.exists():
             logger.error(f"Task file does not exist")
             raise Exception(f"Task file does not exist")
@@ -290,8 +280,14 @@ def process_series(folder) -> None:
             raise Exception("Unable to determine valid runtime for processing")
     except Exception as e:
         processing_success = False
-        logger.error("Processing error.")
-        logger.error(traceback.format_exc())
+        if task is not None:
+            handle_error("Processing error.", logger, task.id)
+        else:
+            try:
+                task_id = json.load(open(taskfile_path, "r"))["id"]
+                handle_error("Processing error.", logger, task_id)
+            except Exception:
+                handle_error("Processing error.", logger, None)
     finally:
         if task is not None:
             task_id = task.id
@@ -303,9 +299,9 @@ def process_series(folder) -> None:
             push_input_task(f_path / "in", f_path / "out")
             # If configured in the rule, copy the input images to the output folder
             if task is not None and task.process and task.process.retain_input_images == "True":
-                push_input_images(f_path / "in", f_path / "out")
+                push_input_images(task_id, f_path / "in", f_path / "out")
             # Push the results either to the success or error folder
-            move_results(folder, lock, processing_success, needs_dispatching)
+            move_results(task_id, folder, lock, processing_success, needs_dispatching)
             shutil.rmtree(folder, ignore_errors=True)
 
             if processing_success:
@@ -314,21 +310,21 @@ def process_series(folder) -> None:
                 if not needs_dispatching:
                     monitor.send_task_event(monitor.s_events.COMPLETE, task_id, 0, "", "Task complete")
                     # TODO: task really is never none if processing_success is true
-                    trigger_notification(task.info, mercure_events.COMPLETION)  # type: ignore
+                    trigger_notification(task, mercure_events.COMPLETION)  # type: ignore
 
             else:
                 monitor.send_task_event(monitor.s_events.ERROR, task_id, 0, "", "Processing failed")
                 if task is not None:  # TODO: handle if task is none?
-                    trigger_notification(task.info, mercure_events.ERROR)
+                    trigger_notification(task, mercure_events.ERROR)
         else:
             if processing_success:
                 logger.info(f"Done submitting for processing")
             else:
                 logger.info(f"Unable to process task")
-                move_results(folder, lock, False, False)
+                move_results(task_id, folder, lock, False, False)
                 monitor.send_task_event(monitor.s_events.ERROR, task_id, 0, "", "Unable to process task")
                 if task is not None:
-                    trigger_notification(task.info, mercure_events.ERROR)
+                    trigger_notification(task, mercure_events.ERROR)
     return
 
 
@@ -338,30 +334,31 @@ def push_input_task(input_folder: Path, output_folder: Path):
         try:
             shutil.copyfile(input_folder / "task.json", output_folder / "task.json")
         except:
-            error_msg = f"Error copying task file to outfolder {output_folder}"
-            logger.info(error_msg)
-            monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_msg)
+            try:
+                task_id = json.load(open(input_folder / "task.json", "r"))["id"]
+                handle_error(f"Error copying task file to outfolder {output_folder}", logger, task_id)
+            except Exception:
+                handle_error(f"Error copying task file to outfolder {output_folder}", logger, None)
 
 
-def push_input_images(input_folder: Path, output_folder: Path):
+def push_input_images(task_id: str, input_folder: Path, output_folder: Path):
     error_while_copying = False
     for entry in os.scandir(input_folder):
         if entry.name.endswith(mercure_names.DCM):
             try:
                 shutil.copyfile(input_folder / entry.name, output_folder / entry.name)
             except:
-                logger.info(f"Error copying file to outfolder {entry.name}")
+                logger.exception(f"Error copying file to outfolder {entry.name}")
                 error_while_copying = True
+                error_info = sys.exc_info()
     if error_while_copying:
-        monitor.send_event(
-            monitor.m_events.PROCESSING,
-            monitor.severity.ERROR,
-            f"Error while copying files to output folder {output_folder}",
+        handle_error(
+            f"Error while copying files to output folder {output_folder}", logger, task_id, exc_info=error_info
         )
 
 
 def move_results(
-    folder: str, lock: Optional[helper.FileLock], processing_success: bool, needs_dispatching: bool
+    task_id: str, folder: str, lock: Optional[helper.FileLock], processing_success: bool, needs_dispatching: bool
 ) -> None:
     # Create a new lock file to ensure that no other process picks up the folder while copying
     logger.debug(f"Moving results folder {folder} {'with' if needs_dispatching else 'without'} dispatching")
@@ -371,28 +368,25 @@ def move_results(
         return
     try:
         lock_file.touch(exist_ok=False)
-    except:
-        logger.info(f"Error locking folder to be moved {folder}")
-        logger.error(traceback.format_exc())
-        monitor.send_event(
-            monitor.m_events.PROCESSING, monitor.severity.ERROR, f"Error locking folder to be moved {folder}"
-        )
+    except Exception:
+        handle_error(f"Error locking folder to be moved {folder}", logger, task_id)
+
     if lock is not None:
         lock.free()
 
     if not processing_success:
         logger.debug(f"Failing: {folder}")
-        move_out_folder(folder, config.mercure.error_folder, move_all=True)
+        move_out_folder(task_id, folder, config.mercure.error_folder, move_all=True)
     else:
         if needs_dispatching:
             logger.debug(f"Dispatching: {folder}")
-            move_out_folder(folder, config.mercure.outgoing_folder)
+            move_out_folder(task_id, folder, config.mercure.outgoing_folder)
         else:
             logger.debug(f"Success: {folder}")
-            move_out_folder(folder, config.mercure.success_folder)
+            move_out_folder(task_id, folder, config.mercure.success_folder)
 
 
-def move_out_folder(source_folder_str, destination_folder_str, move_all=False) -> None:
+def move_out_folder(task_id: str, source_folder_str, destination_folder_str, move_all=False) -> None:
     source_folder = Path(source_folder_str)
     destination_folder = Path(destination_folder_str)
 
@@ -414,28 +408,21 @@ def move_out_folder(source_folder_str, destination_folder_str, move_all=False) -
             lockfile.unlink()
 
     except:
-        logger.info(f"Error moving folder {source_folder} to {destination_folder}")
-        logger.error(traceback.format_exc())
-        monitor.send_event(
-            monitor.m_events.PROCESSING, monitor.severity.ERROR, f"Error moving {source_folder} to {destination_folder}"
-        )
+        handle_error(f"Error moving folder {source_folder} to {destination_folder}", logger, task_id)
 
 
-def trigger_notification(task_info: TaskInfo, event) -> None:
+def trigger_notification(task: Task, event) -> None:
+    task_info = task.info
     current_rule = task_info.get("applied_rule")
     logger.debug(f"Notification {event}")
     # Check if the rule is available
     if not current_rule:
-        error_text = f"Missing applied_rule in task file in job {task_info.uid}"
-        logger.exception(error_text)
-        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_text)
+        handle_error(f"Missing applied_rule in task file in task {task.id}", logger, task.id)
         return
 
     # Check if the mercure configuration still contains that rule
     if not isinstance(config.mercure.rules.get(current_rule, ""), Rule):
-        error_text = f"Applied rule not existing anymore in mercure configuration from job {task_info.uid}"
-        logger.exception(error_text)
-        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_text)
+        handle_error(f"Applied rule not existing anymore in mercure configuration from task {task.id}", logger, task.id)
         return
 
     # Now fire the webhook if configured

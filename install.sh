@@ -13,7 +13,7 @@ if [ ! -f "VERSION" ]; then
     echo "Error: VERSION file missing. Unable to proceed."
     exit 1
 fi
-VERSION=`cat VERSION`
+VERSION="dev" #`cat VERSION`
 IMAGE_TAG=":$VERSION"
 echo "mercure Installer - Version $VERSION"
 echo ""
@@ -119,7 +119,7 @@ install_configuration () {
 
 install_nomad () {
   echo "Installing Nomad..."
-  NOMAD_VERSION=1.2.0
+  NOMAD_VERSION=1.2.6
   if [ ! -x "$(command -v unzip)" ]; then 
     sudo apt-get install -y unzip
   fi 

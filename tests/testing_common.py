@@ -29,16 +29,21 @@ def attach_spies(mocker) -> None:
             "routing.route_series.push_series_serieslevel",
             "routing.route_series.push_serieslevel_outgoing",
             "routing.generate_taskfile.create_series_task",
+            "routing.route_studies.move_study_folder",
+            "routing.route_studies.push_studylevel_error",
+            "routing.generate_taskfile.create_study_task",
             "common.monitor.post",
             "common.monitor.send_event",
             "common.monitor.send_register_series",
             "common.monitor.send_register_task",
             "common.monitor.send_task_event",
             "router.route_series",
-            # "process.process_series",
+            "router.route_studies",
+            "routing.route_studies.route_study",
+            "process.process_series",
         ],
     )
-    mocker.patch("processor.process_series", new=mocker.spy(process.process_series, "process_series"))
+    # mocker.patch("processor.process_series", new=mocker.spy(process.process_series, "process_series"))
 
     # spy_on(mocker, "routing.route_series.push_series_serieslevel")
     # # mocker.patch(

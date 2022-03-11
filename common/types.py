@@ -170,6 +170,7 @@ class Task(BaseModel, Compat):
 
 class TaskHasStudy(BaseModel, Compat):
     info: TaskInfo
+    id: str
     dispatch: Union[TaskDispatch, EmptyDict] = cast(EmptyDict, {})
     process: Union[Module, EmptyDict] = cast(EmptyDict, {})
     study: TaskStudy

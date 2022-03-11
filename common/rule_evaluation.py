@@ -10,6 +10,7 @@ import daiquiri
 
 # App-specific includes
 import common.monitor as monitor
+from common.exceptions import handle_error
 
 # Create local logger instance
 logger = daiquiri.getLogger("rule_evaluation")
@@ -57,9 +58,7 @@ def parse_rule(rule: str, tags: Dict[str, str]) -> Union[Any, bool]:
         logger.info(f"Result: {result}")
         return result
     except Exception as e:
-        logger.error(f"ERROR: {e}")
-        logger.warn(f"WARNING: Invalid rule expression {rule}", '"' + rule + '"')
-        monitor.send_event(monitor.m_events.CONFIG_UPDATE, monitor.severity.ERROR, f"Invalid rule encountered {rule}")
+        handle_error(f"Invalid rule encountered: {rule}", logger, None, event_type=monitor.m_events.CONFIG_UPDATE)
         return False
 
 
@@ -119,7 +118,7 @@ def test_completion_series(value: str) -> str:
     return "True"
 
 
-def parse_completion_series(completion_str: str, received_series: list) -> bool:
+def parse_completion_series(task_id: str, completion_str: str, received_series: list) -> bool:
     """Evaluates the configuration string defining which series are required using the list of received series as input.
     Returns true if all required series have arrived, otherwise false is returned."""
 
@@ -177,10 +176,9 @@ def parse_completion_series(completion_str: str, received_series: list) -> bool:
         result: bool = eval(parsed_str, {"__builtins__": {}}, {})
         return result
     except Exception as e:
-        logger.error(f"ERROR: {e}")
-        error_message = f"Invalid completion condition: {parsed_str}"
-        logger.warn(error_message)
-        monitor.send_event(monitor.m_events.CONFIG_UPDATE, monitor.severity.ERROR, error_message)
+        handle_error(
+            f"Invalid completion condition: {parsed_str}", logger, task_id, event_type=monitor.m_events.CONFIG_UPDATE
+        )
         return False
 
 

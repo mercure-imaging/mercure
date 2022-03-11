@@ -22,6 +22,7 @@ import hupper
 
 # App-specific includes
 import common.config as config
+from common.exceptions import handle_error
 import common.helper as helper
 import common.monitor as monitor
 from common.monitor import s_events
@@ -31,13 +32,7 @@ from common.constants import mercure_defs
 # Setup daiquiri logger
 daiquiri.setup(
     config.get_loglevel(),
-    outputs=(
-        daiquiri.output.Stream(
-            formatter=daiquiri.formatter.ColorFormatter(
-                fmt=config.get_logformat()
-            )
-        ),
-    ),
+    outputs=(daiquiri.output.Stream(formatter=daiquiri.formatter.ColorFormatter(fmt=config.get_logformat())),),
 )
 logger = daiquiri.getLogger("cleaner")
 
@@ -65,11 +60,12 @@ def clean(args) -> None:
     try:
         config.read_config()
     except Exception:
-        logger.exception("Unable to read configuration. Skipping processing.")
-        monitor.send_event(
-            monitor.m_events.CONFIG_UPDATE,
-            monitor.severity.WARNING,
-            "Unable to read configuration (possibly locked)",
+        handle_error(
+            "Unable to read configuration. Skipping processing.",
+            logger,
+            None,
+            event_type=monitor.m_events.CONFIG_UPDATE,
+            severity=monitor.severity.WARNING,
         )
         return
 
@@ -92,8 +88,7 @@ def _is_offpeak(offpeak_start: str, offpeak_end: str, current_time: _time) -> bo
         start_time = datetime.strptime(offpeak_start, "%H:%M").time()
         end_time = datetime.strptime(offpeak_end, "%H:%M").time()
     except Exception as e:
-        logger.error("Error parsing offpeak time, please check configuration")
-        logger.exception(e)
+        handle_error(f"Unable to parse offpeak time: {offpeak_start}, {offpeak_end}", logger, None)
         return True
 
     if start_time < end_time:
@@ -126,14 +121,7 @@ def delete_folder(entry) -> None:
         logger.info(f"Deleted folder {delete_path} from {series_uid}")
         monitor.send_task_event(s_events.CLEAN, Path(delete_path).stem, 0, delete_path, "Deleted folder")
     except Exception as e:
-        logger.info(f"Unable to delete folder {delete_path}")
-        logger.exception(e)
-        monitor.send_task_event(s_events.ERROR, Path(delete_path).stem, 0, delete_path, "Unable to delete folder")
-        monitor.send_event(
-            monitor.m_events.PROCESSING,
-            monitor.severity.ERROR,
-            f"Unable to delete folder {delete_path}",
-        )
+        handle_error(f"Unable to delete folder {delete_path}", logger, Path(delete_path).stem, target=delete_path)
 
 
 def find_series_uid(work_dir) -> str:
