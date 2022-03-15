@@ -6,6 +6,8 @@ Helper functions and definitions for monitoring mercure's operations via the boo
 
 # Standard python includes
 import asyncio
+from enum import Enum, auto
+import enum
 from json import JSONDecodeError
 
 from typing import Any, Dict, Optional
@@ -25,53 +27,67 @@ sender_name = ""
 bookkeeper_address = ""
 
 
-class m_events:
+@enum.unique
+class StringEnum(Enum):
+    """An enum class that can be converted to a string based on the name, so str(enum.FOO) == "FOO" """
+
+    def __str__(self):
+        return self.name
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__}.{self.name}>"
+
+    def _generate_next_value_(name, *args):
+        return name
+
+
+class m_events(StringEnum):
     """Event types for general mercure monitoring."""
 
-    UNKNOWN = "UNKNOWN"
-    BOOT = "BOOT"
-    SHUTDOWN = "SHUTDOWN"
-    SHUTDOWN_REQUEST = "SHUTDOWN_REQUEST"
-    CONFIG_UPDATE = "CONFIG_UPDATE"
-    PROCESSING = "PROCESSING"
+    UNKNOWN = auto()
+    BOOT = auto()
+    SHUTDOWN = auto()
+    SHUTDOWN_REQUEST = auto()
+    CONFIG_UPDATE = auto()
+    PROCESSING = auto()
 
 
-class w_events:
+class w_events(StringEnum):
     """Event types for monitoring the webgui activity."""
 
-    UNKNOWN = "UNKNOWN"
-    LOGIN = "LOGIN"
-    LOGIN_FAIL = "LOGIN_FAIL"
-    LOGOUT = "LOGOUT"
-    USER_CREATE = "USER_CREATE"
-    USER_DELETE = "USER_DELETE"
-    USER_EDIT = "USER_EDIT"
-    RULE_CREATE = "RULE_CREATE"
-    RULE_DELETE = "RULE_DELETE"
-    RULE_EDIT = "RULE_EDIT"
-    TARGET_CREATE = "TARGET_CREATE"
-    TARGET_DELETE = "TARGET_DELETE"
-    TARGET_EDIT = "TARGET_EDIT"
-    SERVICE_CONTROL = "SERVICE_CONTROL"
-    CONFIG_EDIT = "CONFIG_EDIT"
+    UNKNOWN = auto()
+    LOGIN = auto()
+    LOGIN_FAIL = auto()
+    LOGOUT = auto()
+    USER_CREATE = auto()
+    USER_DELETE = auto()
+    USER_EDIT = auto()
+    RULE_CREATE = auto()
+    RULE_DELETE = auto()
+    RULE_EDIT = auto()
+    TARGET_CREATE = auto()
+    TARGET_DELETE = auto()
+    TARGET_EDIT = auto()
+    SERVICE_CONTROL = auto()
+    CONFIG_EDIT = auto()
 
 
-class s_events:
+class s_events(StringEnum):
     """Event types for monitoring everything related to one specific series."""
 
-    UNKNOWN = "UNKNOWN"
-    REGISTERED = "REGISTERED"
-    ROUTE = "ROUTE"
-    DISCARD = "DISCARD"
-    DISPATCH = "DISPATCH"
-    CLEAN = "CLEAN"
-    ERROR = "ERROR"
-    MOVE = "MOVE"
-    SUSPEND = "SUSPEND"
-    COMPLETE = "COMPLETE"
+    UNKNOWN = auto()
+    REGISTERED = auto()
+    ROUTE = auto()
+    DISCARD = auto()
+    DISPATCH = auto()
+    CLEAN = auto()
+    ERROR = auto()
+    MOVE = auto()
+    SUSPEND = auto()
+    COMPLETE = auto()
 
 
-class severity:
+class severity(Enum):
     """Severity level associated to the mercure events."""
 
     INFO = 0
@@ -154,28 +170,28 @@ def configure(module, instance, address) -> None:
     set_api_key()
 
 
-def send_event(event, severity=severity.INFO, description: str = "") -> None:
+def send_event(event: m_events, severity: severity = severity.INFO, description: str = "") -> None:
     """Sends information about general mercure events to the bookkeeper (e.g., during module start)."""
     if not bookkeeper_address:
         return
-    logger.debug(f"Monitor (mercure-event): level {severity} {event}: {description}")
+    logger.debug(f"Monitor (mercure-event): level {severity.value} {event}: {description}")
     payload = {
         "sender": sender_name,
-        "event": event,
-        "severity": severity,
+        "event": event.value,
+        "severity": severity.value,
         "description": description,
     }
     post("mercure-event", data=payload)
     # requests.post(bookkeeper_address + "/mercure-event", data=payload, timeout=1)
 
 
-def send_webgui_event(event, user, description="") -> None:
+def send_webgui_event(event: w_events, user: str, description="") -> None:
     """Sends information about an event on the webgui to the bookkeeper."""
     if not bookkeeper_address:
         return
     payload = {
         "sender": sender_name,
-        "event": event,
+        "event": event.value,
         "user": user,
         "description": description,
     }
@@ -203,7 +219,7 @@ def send_register_task(task: Task) -> None:
     # requests.post(bookkeeper_address + "/register-task", data=json.dumps(task.dict()), timeout=1)
 
 
-def send_task_event(event, task_id, file_count, target, info) -> None:
+def send_task_event(event: s_events, task_id, file_count, target, info) -> None:
     """Send an event related to a specific series to the bookkeeper."""
     if not bookkeeper_address:
         return
@@ -211,7 +227,7 @@ def send_task_event(event, task_id, file_count, target, info) -> None:
     logger.debug(f"Monitor (task-event): event={event} task_id={task_id} info={info}")
     payload = {
         "sender": sender_name,
-        "event": event,
+        "event": event.value,
         "file_count": file_count,
         "target": target,
         "info": info,

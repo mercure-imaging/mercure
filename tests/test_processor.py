@@ -4,10 +4,12 @@ test_processor.py
 """
 import os
 import shutil
+import unittest
 from unittest.mock import call
 import uuid
 from pytest_mock import MockerFixture
 import common
+from common.monitor import s_events
 
 import process.process_series
 import router
@@ -22,7 +24,8 @@ import routing
 import routing.generate_taskfile
 from pathlib import Path
 
-from testing_common import load_config, mocked
+from testing_common import *
+
 from docker.models.containers import ContainerCollection
 
 from nomad.api.job import Job
@@ -32,41 +35,18 @@ import socket
 logger = daiquiri.getLogger("test_processor")
 
 processor_path = Path()
-config_partial = {
+config_partial: Dict[str, Dict] = {
     "modules": {
-        "test_module": {
-            "docker_tag": "busybox:stable",
-            "additional_volumes": "",
-            "environment": "",
-            "docker_arguments": "",
-            "settings": {},
-            "contact": "",
-            "comment": "",
-        }
+        "test_module": Module(docker_tag="busybox:stable").dict(),
     },
     "rules": {
-        "catchall": {
-            "rule": "True",
-            # "target": "test_target",
-            "disabled": "False",
-            "fallback": "False",
-            "contact": "",
-            "comment": "",
-            "tags": "",
-            "action": "process",
-            "action_trigger": "series",
-            "study_trigger_condition": "timeout",
-            "study_trigger_series": "",
-            "priority": "normal",
-            "processing_module": "test_module",
-            "processing_settings": "",
-            "processing_retain_images": "False",
-            "notification_webhook": "",
-            "notification_payload": "",
-            "notification_trigger_reception": "False",
-            "notification_trigger_completion": "False",
-            "notification_trigger_error": "False",
-        }
+        "catchall": Rule(
+            rule="True",
+            action="process",
+            action_trigger="series",
+            study_trigger_condition="timeout",
+            processing_module="test_module",
+        ).dict()
     },
 }
 
@@ -84,7 +64,6 @@ def create_and_route(fs, mocked, task_id, uid="TESTFAKEUID") -> List[str]:
     routing.route_series.push_series_serieslevel.assert_called_once_with(task_id, {"catchall": True}, [f"{uid}#bar"], uid, {})  # type: ignore
     routing.route_series.push_serieslevel_outgoing.assert_called_once_with(task_id, {"catchall": True}, [f"{uid}#bar"], uid, {}, {})  # type: ignore
 
-    processor_path = next(Path("/var/processing").iterdir())
     assert ["task.json", f"{uid}#bar.dcm", f"{uid}#bar.tags"] == [
         k.name for k in Path("/var/processing").glob("**/*") if k.is_file()
     ]
@@ -93,9 +72,8 @@ def create_and_route(fs, mocked, task_id, uid="TESTFAKEUID") -> List[str]:
     return ["task.json", f"{uid}#bar.dcm", f"{uid}#bar.tags"]
 
 
-def test_process_series_nomad(fs, mocked: MockerFixture):
-    load_config(
-        fs,
+def test_process_series_nomad(fs, mercure_config: Callable[[Dict], Config], mocked: MockerFixture):
+    mercure_config(
         {"process_runner": "nomad", **config_partial},
     )
     fs.create_file(f"nomad/mercure-processor-template.nomad", contents="foo")
@@ -106,22 +84,25 @@ def test_process_series_nomad(fs, mocked: MockerFixture):
 
     processor_path = next(Path("/var/processing").iterdir())
 
-    def fake_processor(tag=None, meta=None, **kwargs):
+    def fake_processor(tag=None, meta=None, do_process=True, **kwargs):
         in_ = processor_path / "in"
         out_ = processor_path / "out"
         # print(f"Processing {processor_path}")
         for child in in_.iterdir():
             # print(f"Moving {child} to {out_ / child.name})")
             shutil.copy(child, out_ / child.name)
-        return {
+        return unittest.mock.DEFAULT
+
+    fake_run = mocked.Mock(
+        side_effect=fake_processor,
+        return_value={
             "DispatchedJobID": "mercure-processor/dispatch-1624378734-e8388181",
             "EvalID": "f2fd681b-bc41-50cc-3d15-79f2f5c661e2",
             "EvalCreateIndex": 1138,
             "JobCreateIndex": 1137,
             "Index": 1138,
-        }
-
-    fake_run = mocked.Mock(return_value=b"", side_effect=fake_processor)
+        },
+    )
     mocked.patch.object(Job, "register_job", new=lambda *args: None)
     mocked.patch.object(Job, "dispatch_job", new=fake_run)
     mocked.patch.object(Job, "get_job", new=lambda x, y: dict(Status="dead"))
@@ -160,36 +141,20 @@ def test_process_series_nomad(fs, mocked: MockerFixture):
         "dispatch": {},
         "process": {
             "module_name": "test_module",
-            "module_config": {
-                "docker_tag": "busybox:stable",
-                "additional_volumes": "",
-                "environment": "",
-                "constraints": "",
-                "resources": "",
-                "docker_arguments": "",
-                "settings": {},
-                "contact": "",
-                "comment": "",
-            },
+            "module_config": {"constraints": "", "resources": "", **config_partial["modules"]["test_module"]},
             "settings": {},
             "retain_input_images": "False",
         },
         "study": {},
-        "nomad_info": {
-            "DispatchedJobID": "mercure-processor/dispatch-1624378734-e8388181",
-            "EvalID": "f2fd681b-bc41-50cc-3d15-79f2f5c661e2",
-            "EvalCreateIndex": 1138,
-            "JobCreateIndex": 1137,
-            "Index": 1138,
-        },
+        "nomad_info": fake_run.return_value,
     }
 
     common.monitor.send_task_event.assert_has_calls(  # type: ignore
         [
-            call("REGISTERED", task_id, 1, "", "Registered series"),
-            call("UNKNOWN", task_id, 0, "", "Processing job dispatched."),
-            call("UNKNOWN", task_id, 0, "", "Processing complete"),
-            call("COMPLETE", task_id, 0, "", "Task complete"),
+            call(s_events.REGISTERED, task_id, 1, "", "Registered series"),
+            call(s_events.UNKNOWN, task_id, 0, "", "Processing job dispatched."),
+            call(s_events.UNKNOWN, task_id, 0, "", "Processing complete"),
+            call(s_events.COMPLETE, task_id, 0, "", "Task complete"),
         ]
     )
     common.monitor.send_task_event.reset_mock()  # type: ignore
@@ -223,9 +188,9 @@ def test_process_series_nomad(fs, mocked: MockerFixture):
 
     common.monitor.send_task_event.assert_has_calls(  # type: ignore
         [
-            call("REGISTERED", task_id, 1, "", "Registered series"),
-            call("UNKNOWN", task_id, 0, "", "Processing job dispatched."),
-            call("ERROR", task_id, 0, "", "Processing failed"),
+            call(s_events.REGISTERED, task_id, 1, "", "Registered series"),
+            call(s_events.UNKNOWN, task_id, 0, "", "Processing job dispatched."),
+            call(s_events.ERROR, task_id, 0, "", "Processing failed"),
         ]
     )
 
@@ -245,10 +210,9 @@ class my_fake_container:
         pass
 
 
-def test_process_series(fs, mocked: MockerFixture):
+def test_process_series(fs, mercure_config: Callable[[Dict], Config], mocked: MockerFixture):
     global processor_path
-    load_config(
-        fs,
+    config = mercure_config(
         {"process_runner": "docker", **config_partial},
     )
     task_id = str(uuid.uuid1())
@@ -276,7 +240,7 @@ def test_process_series(fs, mocked: MockerFixture):
 
     uid_string = f"{os.getuid()}:{os.getegid()}"
     fake_run.assert_called_once_with(
-        "busybox:stable",
+        config.modules["test_module"].docker_tag,
         environment={"MERCURE_IN_DIR": "/data", "MERCURE_OUT_DIR": "/output"},
         user=uid_string,
         group_add=[os.getegid()],
@@ -292,9 +256,9 @@ def test_process_series(fs, mocked: MockerFixture):
 
     common.monitor.send_task_event.assert_has_calls(  # type: ignore
         [
-            call("REGISTERED", task_id, 1, "", "Registered series"),
-            call("UNKNOWN", task_id, 0, "test_module", "Processing job running."),
-            call("UNKNOWN", task_id, 0, "", "Processing job complete"),
-            call("COMPLETE", task_id, 0, "", "Task complete"),
+            call(s_events.REGISTERED, task_id, 1, "", "Registered series"),
+            call(s_events.UNKNOWN, task_id, 0, "test_module", "Processing job running."),
+            call(s_events.UNKNOWN, task_id, 0, "", "Processing job complete"),
+            call(s_events.COMPLETE, task_id, 0, "", "Task complete"),
         ]
     )

@@ -3,6 +3,7 @@ testing_common.py
 =================
 """
 import os
+from typing import Callable, Dict, Any
 
 import pytest
 import process
@@ -28,19 +29,19 @@ def attach_spies(mocker) -> None:
         [
             "routing.route_series.push_series_serieslevel",
             "routing.route_series.push_serieslevel_outgoing",
+            "routing.route_studies.route_study",
             "routing.generate_taskfile.create_series_task",
             "routing.route_studies.move_study_folder",
             "routing.route_studies.push_studylevel_error",
             "routing.generate_taskfile.create_study_task",
+            "router.route_series",
+            "router.route_studies",
+            "process.process_series",
             "common.monitor.post",
             "common.monitor.send_event",
             "common.monitor.send_register_series",
             "common.monitor.send_register_task",
             "common.monitor.send_task_event",
-            "router.route_series",
-            "router.route_studies",
-            "routing.route_studies.route_study",
-            "process.process_series",
         ],
     )
     # mocker.patch("processor.process_series", new=mocker.spy(process.process_series, "process_series"))
@@ -73,12 +74,18 @@ def mocked(mocker):
     return mocker
 
 
-def load_config(fs, extra) -> Config:
+@pytest.fixture(scope="function", autouse=True)
+def mercure_config(fs) -> Callable[[Dict], Config]:
     config_path = os.path.realpath(os.path.dirname(os.path.realpath(__file__)) + "/data/test_config.json")
     fs.add_real_file(config_path, target_path=config.configuration_filename, read_only=False)
     for k in ["incoming", "studies", "outgoing", "success", "error", "discard", "processing"]:
         fs.create_dir(f"/var/{k}")
-    config.read_config()
-    config.mercure = Config(**{**config.mercure.dict(), **extra})  #   # type: ignore
-    config.save_config()
-    return config.mercure
+
+    def set_config(extra: Dict[Any, Any] = {}) -> Config:
+        config.read_config()
+        config.mercure = Config(**{**config.mercure.dict(), **extra})  #   # type: ignore
+        config.save_config()
+        return config.mercure
+
+    set_config()
+    return set_config
