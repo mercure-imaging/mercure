@@ -34,7 +34,7 @@ from common.constants import (
 )
 
 
-logger = daiquiri.getLogger("process_series")
+logger = config.get_logger()
 
 
 def nomad_runtime(task: Task, folder: str) -> bool:
@@ -107,7 +107,7 @@ def docker_runtime(task: Task, folder: str) -> bool:
 
     real_folder = Path(folder)
 
-    if config.get_runner() == "docker":
+    if helper.get_runner() == "docker":
         # We want to bind the correct path into the processor, but if we're inside docker we need to use the host path
         try:
             base_path = Path(docker_client.api.inspect_volume("mercure_data")["Options"]["device"])
@@ -206,7 +206,7 @@ def docker_runtime(task: Task, folder: str) -> bool:
         # Check if the processing was successful (i.e., container returned exit code 0)
         exit_code = docker_result.get("StatusCode")
         if exit_code != 0:
-            handle_error(f"Error while running container {docker_tag} - exit code {exit_code}", logger, task.id)
+            handle_error(f"Error while running container {docker_tag} - exit code {exit_code}", task.id)
             processing_success = False
 
         # Remove the container now to avoid that the drive gets full
@@ -214,11 +214,11 @@ def docker_runtime(task: Task, folder: str) -> bool:
 
     except docker.errors.APIError:
         # Something really serious happened
-        handle_error(f"API error while trying to run Docker container, tag: {docker_tag}", logger, task.id)
+        handle_error(f"API error while trying to run Docker container, tag: {docker_tag}", task.id)
         processing_success = False
 
     except docker.errors.ImageNotFound:
-        handle_error(f"Error running docker container. Image for tag {docker_tag} not found.", logger, task.id)
+        handle_error(f"Error running docker container. Image for tag {docker_tag} not found.", task.id)
         processing_success = False
 
     return processing_success
@@ -267,11 +267,11 @@ def process_series(folder) -> None:
                 # logger.info(f"Moving {child}")
                 child.rename(f_path / "in" / child.name)
         (f_path / "out").mkdir()
-        if config.get_runner() == "nomad" or config.mercure.process_runner == "nomad":
+        if helper.get_runner() == "nomad" or config.mercure.process_runner == "nomad":
             logger.debug("Processing with Nomad.")
             # Use nomad if we're being run inside nomad, or we're configured to use nomad regardless
             processing_success = nomad_runtime(task, folder)
-        elif config.get_runner() in ("docker", "systemd"):
+        elif helper.get_runner() in ("docker", "systemd"):
             logger.debug("Processing with Docker")
             # Use docker if we're being run inside docker or just by systemd
             processing_success = docker_runtime(task, folder)
@@ -281,19 +281,19 @@ def process_series(folder) -> None:
     except Exception as e:
         processing_success = False
         if task is not None:
-            handle_error("Processing error.", logger, task.id)
+            handle_error("Processing error.", task.id)
         else:
             try:
                 task_id = json.load(open(taskfile_path, "r"))["id"]
-                handle_error("Processing error.", logger, task_id)
+                handle_error("Processing error.", task_id)
             except Exception:
-                handle_error("Processing error.", logger, None)
+                handle_error("Processing error.", None)
     finally:
         if task is not None:
             task_id = task.id
         else:
             task_id = "Unknown"
-        if config.get_runner() in ("docker", "systemd") and config.mercure.process_runner != "nomad":
+        if helper.get_runner() in ("docker", "systemd") and config.mercure.process_runner != "nomad":
             logger.info("Docker processing complete")
             # Copy the task to the output folder (in case the module didn't move it)
             push_input_task(f_path / "in", f_path / "out")
@@ -336,9 +336,9 @@ def push_input_task(input_folder: Path, output_folder: Path):
         except:
             try:
                 task_id = json.load(open(input_folder / "task.json", "r"))["id"]
-                handle_error(f"Error copying task file to outfolder {output_folder}", logger, task_id)
+                handle_error(f"Error copying task file to outfolder {output_folder}", task_id)
             except Exception:
-                handle_error(f"Error copying task file to outfolder {output_folder}", logger, None)
+                handle_error(f"Error copying task file to outfolder {output_folder}", None)
 
 
 def push_input_images(task_id: str, input_folder: Path, output_folder: Path):
@@ -352,9 +352,7 @@ def push_input_images(task_id: str, input_folder: Path, output_folder: Path):
                 error_while_copying = True
                 error_info = sys.exc_info()
     if error_while_copying:
-        handle_error(
-            f"Error while copying files to output folder {output_folder}", logger, task_id, exc_info=error_info
-        )
+        handle_error(f"Error while copying files to output folder {output_folder}", task_id, exc_info=error_info)
 
 
 def move_results(
@@ -369,7 +367,7 @@ def move_results(
     try:
         lock_file.touch(exist_ok=False)
     except Exception:
-        handle_error(f"Error locking folder to be moved {folder}", logger, task_id)
+        handle_error(f"Error locking folder to be moved {folder}", task_id)
 
     if lock is not None:
         lock.free()
@@ -408,7 +406,7 @@ def move_out_folder(task_id: str, source_folder_str, destination_folder_str, mov
             lockfile.unlink()
 
     except:
-        handle_error(f"Error moving folder {source_folder} to {destination_folder}", logger, task_id)
+        handle_error(f"Error moving folder {source_folder} to {destination_folder}", task_id)
 
 
 def trigger_notification(task: Task, event) -> None:
@@ -417,12 +415,12 @@ def trigger_notification(task: Task, event) -> None:
     logger.debug(f"Notification {event}")
     # Check if the rule is available
     if not current_rule:
-        handle_error(f"Missing applied_rule in task file in task {task.id}", logger, task.id)
+        handle_error(f"Missing applied_rule in task file in task {task.id}", task.id)
         return
 
     # Check if the mercure configuration still contains that rule
     if not isinstance(config.mercure.rules.get(current_rule, ""), Rule):
-        handle_error(f"Applied rule not existing anymore in mercure configuration from task {task.id}", logger, task.id)
+        handle_error(f"Applied rule not existing anymore in mercure configuration from task {task.id}", task.id)
         return
 
     # Now fire the webhook if configured

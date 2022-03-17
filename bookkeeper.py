@@ -35,26 +35,16 @@ from starlette.authentication import requires
 from starlette.authentication import SimpleUser
 
 # App-specific includes
+from common import config
 import common.monitor as monitor
 from common.constants import mercure_defs
-from common import config
 
 
 ###################################################################################
 ## Configuration and initialization
 ###################################################################################
 
-daiquiri.setup(
-    config.get_loglevel(),
-    outputs=(
-        daiquiri.output.Stream(
-            formatter=daiquiri.formatter.ColorFormatter(
-                fmt=config.get_logformat()
-            )
-        ),
-    ),
-)
-logger = daiquiri.getLogger("bookkeeper")
+logger = config.get_logger()
 
 
 bookkeeper_config = Config((os.getenv("MERCURE_CONFIG_FOLDER") or "/opt/mercure/config") + "/bookkeeper.env")

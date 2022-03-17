@@ -38,7 +38,7 @@ from common.constants import (
 
 
 # Create local logger instance
-logger = daiquiri.getLogger("route_studies")
+logger = config.get_logger()
 
 
 def route_studies() -> None:
@@ -108,7 +108,7 @@ def is_study_complete(folder: str) -> bool:
         complete_trigger = study.complete_trigger
 
         if not complete_trigger:
-            handle_error(f"Missing trigger condition in task file in study folder {folder}", logger, task.id)
+            handle_error(f"Missing trigger condition in task file in study folder {folder}", task.id)
             return False
 
         complete_required_series = study.get("complete_required_series", "")
@@ -120,7 +120,6 @@ def is_study_complete(folder: str) -> bool:
             complete_trigger = mercure_rule.STUDY_TRIGGER_CONDITION_TIMEOUT
             handle_error(
                 f"Missing series for trigger condition in study folder {folder}. Using timeout instead",
-                logger,
                 task.id,
                 severity=monitor.severity.WARNING,
             )
@@ -131,11 +130,11 @@ def is_study_complete(folder: str) -> bool:
         elif complete_trigger == mercure_rule.STUDY_TRIGGER_CONDITION_RECEIVED_SERIES:
             return check_study_series(task, complete_required_series)
         else:
-            handle_error(f"Invalid trigger condition in task file in study folder {folder}", logger, task.id)
+            handle_error(f"Invalid trigger condition in task file in study folder {folder}", task.id)
             return False
 
     except Exception:
-        handle_error(f"Invalid task file in study folder {folder}", logger, task.id)
+        handle_error(f"Invalid task file in study folder {folder}", task.id)
         return False
 
 
@@ -189,9 +188,9 @@ def route_study(study) -> bool:
         try:
             with open(Path(study_folder) / mercure_names.TASKFILE, "r") as json_file:
                 task: Task = Task(**json.load(json_file))
-            handle_error(f"Unable to create study lock file {lock_file}", logger, task.id)
+            handle_error(f"Unable to create study lock file {lock_file}", task.id)
         except:
-            handle_error(f"Unable to create study lock file {lock_file}", logger, None)
+            handle_error(f"Unable to create study lock file {lock_file}", None)
         return False
 
     try:
@@ -201,9 +200,9 @@ def route_study(study) -> bool:
     except Exception:
         try:
             with open(Path(study_folder) / mercure_names.TASKFILE, "r") as json_file:
-                handle_error(f"Invalid task file in study folder {study_folder}", logger, json.load(json_file)["id"])
+                handle_error(f"Invalid task file in study folder {study_folder}", json.load(json_file)["id"])
         except:
-            handle_error(f"Invalid task file in study folder {study_folder}", logger, None)
+            handle_error(f"Invalid task file in study folder {study_folder}", None)
         return False
 
     action_result = True
@@ -211,7 +210,7 @@ def route_study(study) -> bool:
     action = info.get("action", "")
 
     if not action:
-        handle_error(f"Missing action in study folder {study_folder}", logger, task.id)
+        handle_error(f"Missing action in study folder {study_folder}", task.id)
         return False
 
     # TODO: Clean folder for duplicate DICOMs (i.e., if series have been sent twice -- check by instance UID)
@@ -224,15 +223,15 @@ def route_study(study) -> bool:
         action_result = push_studylevel_processing(study, task)
     else:
         # This point should not be reached (discard actions should be handled on the series level)
-        handle_error(f"Invalid task action in study folder {study_folder}", logger, task.id)
+        handle_error(f"Invalid task action in study folder {study_folder}", task.id)
         return False
 
     if not action_result:
-        handle_error(f"Error during processing of study {study}", logger, task.id)
+        handle_error(f"Error during processing of study {study}", task.id)
         return False
 
     if not remove_study_folder(task.id, study, lock):
-        handle_error(f"Error removing folder of study {study}", logger, task.id)
+        handle_error(f"Error removing folder of study {study}", task.id)
         return False
 
     return True
@@ -278,14 +277,14 @@ def push_studylevel_error(study: str) -> None:
         lock = helper.FileLock(lock_file)
     except:
         # Can't create lock file, so something must be seriously wrong
-        handle_error(f"Unable to lock study for removal {lock_file}", logger)
+        handle_error(f"Unable to lock study for removal {lock_file}")
         return
     if not move_study_folder(None, study, "ERROR"):
         # At this point, we can only wait for manual intervention
-        handle_error(f"Unable to move study to ERROR folder {lock_file}", logger)
+        handle_error(f"Unable to move study to ERROR folder {lock_file}")
         return
     if not remove_study_folder(None, study, lock):
-        handle_error(f"Unable to delete study folder {lock_file}", logger)
+        handle_error(f"Unable to delete study folder {lock_file}")
         return
 
 
@@ -304,7 +303,7 @@ def move_study_folder(task_id: Union[str, None], study: str, destination: str) -
     elif destination == "OUTGOING":
         destination_folder = config.mercure.outgoing_folder
     else:
-        handle_error(f"Unknown destination {destination} requested for {study}", logger, task_id)
+        handle_error(f"Unknown destination {destination} requested for {study}", task_id)
         return False
 
     # Create unique name of destination folder
@@ -314,11 +313,11 @@ def move_study_folder(task_id: Union[str, None], study: str, destination: str) -
     try:
         os.mkdir(destination_folder)
     except Exception:
-        handle_error(f"Unable to create study destination folder {destination_folder}", logger, task_id)
+        handle_error(f"Unable to create study destination folder {destination_folder}", task_id)
         return False
 
     if not Path(destination_folder).exists():
-        handle_error(f"Creating study destination folder not possible {destination_folder}", logger, task_id)
+        handle_error(f"Creating study destination folder not possible {destination_folder}", task_id)
         return False
 
     # Create lock file in destination folder (to prevent any other module to work on the folder). Note that
@@ -328,7 +327,7 @@ def move_study_folder(task_id: Union[str, None], study: str, destination: str) -
         lock = helper.FileLock(lock_file)
     except:
         # Can't create lock file, so something must be seriously wrong
-        handle_error(f"Unable to create lock file {destination_folder}/{mercure_names.LOCK}", logger, task_id)
+        handle_error(f"Unable to create lock file {destination_folder}/{mercure_names.LOCK}", task_id)
         return False
 
     # Move all files except the lock file
@@ -340,7 +339,7 @@ def move_study_folder(task_id: Union[str, None], study: str, destination: str) -
                 shutil.move(source_folder + "/" + entry.name, destination_folder + "/" + entry.name)
             except Exception:
                 handle_error(
-                    f"Problem while pushing file {entry} from {source_folder} to {destination_folder}", logger, task_id
+                    f"Problem while pushing file {entry} from {source_folder} to {destination_folder}", task_id
                 )
 
     # Remove the lock file in the target folder. Would happen automatically when leaving the function,
@@ -349,7 +348,7 @@ def move_study_folder(task_id: Union[str, None], study: str, destination: str) -
         lock.free()
     except:
         # Can't delete lock file, so something must be seriously wrong
-        handle_error(f"Unable to remove lock file {lock_file}", logger, task_id)
+        handle_error(f"Unable to remove lock file {lock_file}", task_id)
         return False
 
     return True
@@ -366,13 +365,13 @@ def remove_study_folder(task_id: Union[str, None], study: str, lock: helper.File
         lock.free()
     except:
         # Can't delete lock file, so something must be seriously wrong
-        handle_error(f"Unable to remove lock file while removing study folder {study}", logger, task_id)
+        handle_error(f"Unable to remove lock file while removing study folder {study}", task_id)
         return False
     # Remove the empty study folder
     try:
         shutil.rmtree(study_folder)
     except Exception as e:
-        handle_error(f"Unable to delete study folder {study_folder}", logger, task_id)
+        handle_error(f"Unable to delete study folder {study_folder}", task_id)
     return True
 
 
@@ -380,12 +379,12 @@ def trigger_studylevel_notification(study: str, task: Task, event) -> bool:
     # Check if the applied_rule is available
     current_rule = task.info.applied_rule
     if not current_rule:
-        handle_error(f"Missing applied_rule in task file in study {study}", logger, task.id)
+        handle_error(f"Missing applied_rule in task file in study {study}", task.id)
         return False
 
     # Check if the mercure configuration still contains that rule
     if not isinstance(config.mercure.rules.get(current_rule, ""), Rule):
-        handle_error(f"Applied rule not existing anymore in mercure configuration {study}", logger, task.id)
+        handle_error(f"Applied rule not existing anymore in mercure configuration {study}", task.id)
         return False
 
     # OK, now fire out the webhook if configured

@@ -8,6 +8,7 @@ to minimum when receiving and sending exams.
 """
 
 # Standard python includes
+import logging
 import os
 import signal
 import sys
@@ -22,7 +23,9 @@ import hupper
 
 # App-specific includes
 import common.config as config
-from common.exceptions import handle_error
+import common.log_helpers as log_helpers
+
+from common.exceptions import handle_error, BookkeeperHandler
 import common.helper as helper
 import common.monitor as monitor
 from common.monitor import s_events
@@ -30,11 +33,8 @@ from common.constants import mercure_defs
 
 
 # Setup daiquiri logger
-daiquiri.setup(
-    config.get_loglevel(),
-    outputs=(daiquiri.output.Stream(formatter=daiquiri.formatter.ColorFormatter(fmt=config.get_logformat())),),
-)
-logger = daiquiri.getLogger("cleaner")
+
+logger = config.get_logger()
 
 main_loop = None  # type: helper.RepeatedTimer # type: ignore
 
@@ -62,7 +62,6 @@ def clean(args) -> None:
     except Exception:
         handle_error(
             "Unable to read configuration. Skipping processing.",
-            logger,
             None,
             event_type=monitor.m_events.CONFIG_UPDATE,
             severity=monitor.severity.WARNING,
@@ -88,7 +87,7 @@ def _is_offpeak(offpeak_start: str, offpeak_end: str, current_time: _time) -> bo
         start_time = datetime.strptime(offpeak_start, "%H:%M").time()
         end_time = datetime.strptime(offpeak_end, "%H:%M").time()
     except Exception as e:
-        handle_error(f"Unable to parse offpeak time: {offpeak_start}, {offpeak_end}", logger, None)
+        handle_error(f"Unable to parse offpeak time: {offpeak_start}, {offpeak_end}", None)
         return True
 
     if start_time < end_time:
@@ -121,7 +120,7 @@ def delete_folder(entry) -> None:
         logger.info(f"Deleted folder {delete_path} from {series_uid}")
         monitor.send_task_event(s_events.CLEAN, Path(delete_path).stem, 0, delete_path, "Deleted folder")
     except Exception as e:
-        handle_error(f"Unable to delete folder {delete_path}", logger, Path(delete_path).stem, target=delete_path)
+        handle_error(f"Unable to delete folder {delete_path}", Path(delete_path).stem, target=delete_path)
 
 
 def find_series_uid(work_dir) -> str:

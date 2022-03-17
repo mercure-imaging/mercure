@@ -32,7 +32,7 @@ from common.constants import (
 )
 
 # Create local logger instance
-logger = daiquiri.getLogger("send")
+logger = config.get_logger()
 
 
 DCMSEND_ERROR_CODES = {
@@ -86,7 +86,7 @@ EOF"""
         return command, dict(shell=True, executable="/bin/bash"), False
 
     else:
-        handle_error(f"Target in task file does not exist {target_name}", logger, task_id)
+        handle_error(f"Target in task file does not exist {target_name}", task_id)
         return "", {}, False
 
 
@@ -118,9 +118,7 @@ def execute(
         target_name: str = target_info.get("target_name", "target_name-missing")
 
         if (uid == "uid-missing") or (target_name == "target_name-missing"):
-            handle_error(
-                f"Missing information for folder {source_folder}", logger, task_content.id, severity=severity.WARNING
-            )
+            handle_error(f"Missing information for folder {source_folder}", task_content.id, severity=severity.WARNING)
 
         # Create a .processing file to indicate that this folder is being sent,
         # otherwise another dispatcher instance would pick it up again
@@ -134,7 +132,6 @@ def execute(
             # TODO: Put a limit on these error messages -- log will run full at some point
             handle_error(
                 f"Error sending {uid} to {target_name}, could not create lock file for folder {source_folder}",
-                logger,
                 task_content.id,
                 target=target_name,
             )
@@ -150,7 +147,6 @@ def execute(
         if not command:
             handle_error(
                 f"Settings for target {target_name} incorrect. Unable to dispatch job {uid}",
-                logger,
                 task_content.id,
                 target=target_name,
             )
@@ -165,7 +161,6 @@ def execute(
             except:
                 handle_error(
                     f"Error sending {uid} to {target_name}: unable to remove former sendlog {sendlog}",
-                    logger,
                     task_content.id,
                 )
                 return
@@ -202,7 +197,6 @@ def execute(
 
             handle_error(
                 f"Error sending uid {uid} in task {task_content.id} to {target_name}:\n {dcmsend_error_message or e.output}",
-                logger,
                 task_content.id,
                 target=target_name,
             )
@@ -241,7 +235,7 @@ def _move_sent_directory(task_id, source_folder, destination_folder) -> None:
             shutil.move(source_folder, destination_folder / source_folder.name)
             (destination_folder / source_folder.name / mercure_names.PROCESSING).unlink()
     except:
-        handle_error(f"Error moving folder {source_folder} to {destination_folder}", logger, task_id)
+        handle_error(f"Error moving folder {source_folder} to {destination_folder}", task_id)
 
 
 def _trigger_notification(task: Task, event) -> None:
@@ -259,14 +253,12 @@ def _trigger_notification(task: Task, event) -> None:
     for current_rule in selected_rules:
         # Check if the rule is available
         if not current_rule:
-            handle_error(f"Missing applied_rule in task file in task {task.id}", logger, task.id)
+            handle_error(f"Missing applied_rule in task file in task {task.id}", task.id)
             continue
 
         # Check if the mercure configuration still contains that rule
         if not isinstance(config.mercure.rules.get(current_rule, ""), Rule):
-            handle_error(
-                f"Applied rule not existing anymore in mercure configuration from task {task.id}", logger, task.id
-            )
+            handle_error(f"Applied rule not existing anymore in mercure configuration from task {task.id}", task.id)
             continue
 
         # Now fire the webhook if configured

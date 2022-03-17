@@ -32,7 +32,7 @@ from nomad.api.job import Job
 from nomad.api.jobs import Jobs
 import socket
 
-logger = daiquiri.getLogger("test_processor")
+logger = config.get_logger()
 
 processor_path = Path()
 config_partial: Dict[str, Dict] = {

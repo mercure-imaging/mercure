@@ -17,21 +17,16 @@ from typing import Dict
 
 # App-specific includes
 from common.constants import mercure_defs, mercure_names
-from common.exceptions import handle_error
 import common.helper as helper
 import common.config as config
 import common.monitor as monitor
 from routing.route_series import route_series, route_error_files
 from routing.route_studies import route_studies
+from common.exceptions import handle_error
 
 
-# Setup daiquiri logger
-daiquiri.setup(
-    config.get_loglevel(),
-    outputs=(daiquiri.output.Stream(formatter=daiquiri.formatter.ColorFormatter(fmt=config.get_logformat())),),
-)
 # Create local logger instance
-logger = daiquiri.getLogger("router")
+logger = config.get_logger()
 main_loop = None  # type: helper.RepeatedTimer # type: ignore
 
 
@@ -64,7 +59,6 @@ def run_router(args=None) -> None:
     except Exception:
         handle_error(
             "Unable to update configuration. Skipping processing.",
-            logger,
             None,
             severity=monitor.severity.WARNING,
             event_type=monitor.m_events.CONFIG_UPDATE,
@@ -112,7 +106,7 @@ def run_router(args=None) -> None:
         try:
             route_series(task_id, series_uid)
         except Exception:
-            handle_error(f"Problems while processing series {series_uid}", logger, task_id)
+            handle_error(f"Problems while processing series {series_uid}", task_id)
         # If termination is requested, stop processing series after the active one has been completed
         if helper.is_terminated():
             return

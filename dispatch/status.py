@@ -16,7 +16,9 @@ from common.monitor import s_events
 from common.constants import mercure_names
 from common.types import Task
 
-logger = daiquiri.getLogger("status")
+from common import config
+
+logger = config.get_logger()
 
 
 def is_ready_for_sending(folder) -> Optional[Task]:

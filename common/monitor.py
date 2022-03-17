@@ -6,94 +6,24 @@ Helper functions and definitions for monitoring mercure's operations via the boo
 
 # Standard python includes
 import asyncio
-from enum import Enum, auto
-import enum
+
 from json import JSONDecodeError
 
 from typing import Any, Dict, Optional
-import logging
 from urllib.error import HTTPError
 
 import aiohttp
 from common.types import Task
-import daiquiri
 from common.helper import loop
+from common.enums import *
+from common import log_helpers
 
 # Create local logger instance
-logger = daiquiri.getLogger("config")
+logger = log_helpers.get_logger()
 api_key: Optional[str] = None
 
 sender_name = ""
 bookkeeper_address = ""
-
-
-@enum.unique
-class StringEnum(Enum):
-    """An enum class that can be converted to a string based on the name, so str(enum.FOO) == "FOO" """
-
-    def __str__(self):
-        return self.name
-
-    def __repr__(self):
-        return f"<{self.__class__.__name__}.{self.name}>"
-
-    def _generate_next_value_(name, *args):
-        return name
-
-
-class m_events(StringEnum):
-    """Event types for general mercure monitoring."""
-
-    UNKNOWN = auto()
-    BOOT = auto()
-    SHUTDOWN = auto()
-    SHUTDOWN_REQUEST = auto()
-    CONFIG_UPDATE = auto()
-    PROCESSING = auto()
-
-
-class w_events(StringEnum):
-    """Event types for monitoring the webgui activity."""
-
-    UNKNOWN = auto()
-    LOGIN = auto()
-    LOGIN_FAIL = auto()
-    LOGOUT = auto()
-    USER_CREATE = auto()
-    USER_DELETE = auto()
-    USER_EDIT = auto()
-    RULE_CREATE = auto()
-    RULE_DELETE = auto()
-    RULE_EDIT = auto()
-    TARGET_CREATE = auto()
-    TARGET_DELETE = auto()
-    TARGET_EDIT = auto()
-    SERVICE_CONTROL = auto()
-    CONFIG_EDIT = auto()
-
-
-class s_events(StringEnum):
-    """Event types for monitoring everything related to one specific series."""
-
-    UNKNOWN = auto()
-    REGISTERED = auto()
-    ROUTE = auto()
-    DISCARD = auto()
-    DISPATCH = auto()
-    CLEAN = auto()
-    ERROR = auto()
-    MOVE = auto()
-    SUSPEND = auto()
-    COMPLETE = auto()
-
-
-class severity(Enum):
-    """Severity level associated to the mercure events."""
-
-    INFO = 0
-    WARNING = 1
-    ERROR = 2
-    CRITICAL = 3
 
 
 class MonitorHTTPError(Exception):
@@ -172,9 +102,10 @@ def configure(module, instance, address) -> None:
 
 def send_event(event: m_events, severity: severity = severity.INFO, description: str = "") -> None:
     """Sends information about general mercure events to the bookkeeper (e.g., during module start)."""
+    logger.debug(f"Monitor (mercure-event): level {severity.value} {event}: {description}")
+
     if not bookkeeper_address:
         return
-    logger.debug(f"Monitor (mercure-event): level {severity.value} {event}: {description}")
     payload = {
         "sender": sender_name,
         "event": event.value,
@@ -221,10 +152,11 @@ def send_register_task(task: Task) -> None:
 
 def send_task_event(event: s_events, task_id, file_count, target, info) -> None:
     """Send an event related to a specific series to the bookkeeper."""
+    logger.debug(f"Monitor (task-event): event={event} task_id={task_id} info={info}")
+
     if not bookkeeper_address:
         return
 
-    logger.debug(f"Monitor (task-event): event={event} task_id={task_id} info={info}")
     payload = {
         "sender": sender_name,
         "event": event.value,

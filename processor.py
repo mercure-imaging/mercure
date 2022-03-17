@@ -33,13 +33,8 @@ from process.process_series import (
 from common.types import Task
 
 
-# Setup daiquiri logger
-daiquiri.setup(
-    config.get_loglevel(),
-    outputs=(daiquiri.output.Stream(formatter=daiquiri.formatter.ColorFormatter(fmt=config.get_logformat())),),
-)
 # Create local logger instance
-logger = daiquiri.getLogger("processor")
+logger = config.get_logger()
 main_loop = None  # type: helper.RepeatedTimer # type: ignore
 
 
@@ -167,12 +162,12 @@ def search_folder(counter) -> bool:
         for p in (Path(task) / "out" / "task.json", Path(task) / "in" / "task.json"):
             try:
                 task_id = json.load(open(p))["id"]
-                handle_error("Exception while processing", logger, task_id)
+                handle_error("Exception while processing", task_id)
                 break
             except:
                 pass
         else:
-            handle_error("Exception while processing", logger, None)
+            handle_error("Exception while processing", None)
 
         return False
 
@@ -186,7 +181,6 @@ def run_processor(args=None) -> None:
     except Exception:
         handle_error(
             "Unable to update configuration. Skipping processing",
-            logger,
             None,
             severity=monitor.severity.WARNING,
             event_type=monitor.m_events.CONFIG_UPDATE,

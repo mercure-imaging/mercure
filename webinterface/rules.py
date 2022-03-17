@@ -24,8 +24,7 @@ from webinterface.common import *
 import webinterface.tagslist as tagslist
 
 
-daiquiri.setup(config.get_loglevel())
-logger = daiquiri.getLogger("targets")
+logger = config.get_logger()
 
 
 ###################################################################################
@@ -131,12 +130,41 @@ async def rules_edit_post(request) -> Response:
     if not editrule in config.mercure.rules:
         return PlainTextResponse("Rule does not exist anymore.")
 
+    old_rule = config.mercure.rules[editrule]
     # Ensure that the processing settings are valid. Should happen on the client side too, but can't hurt
     # to check again
     try:
         new_processing_settings: Dict = json.loads(form.get("processing_settings", "{}"))
     except:
         new_processing_settings = {}
+
+    # new_rule = Rule(
+    #     disabled=form["status_disabled"],
+    #     fallback=form["status_fallback"],
+    #     processing_settings=new_processing_settings,
+    #     **{
+    #         k: form[k]
+    #         for k in (
+    #             "rule",
+    #             "target",
+    #             "contact",
+    #             "comment",
+    #             "tags",
+    #             "action",
+    #             "action_trigger",
+    #             "study_trigger_condition",
+    #             "study_trigger_series",
+    #             "priority",
+    #             "processing_module",
+    #             "processing_retain_images",
+    #             "notification_webhook",
+    #             "notification_payload",
+    #             "notification_trigger_reception",
+    #             "notification_trigger_completion",
+    #             "notification_trigger_error",
+    #         )
+    #     },
+    # )
 
     new_rule: Rule = Rule(
         rule=form.get("rule", "False"),

@@ -32,7 +32,7 @@ from common.constants import (
 
 
 # Create local logger instance
-logger = daiquiri.getLogger("generate_taskfile")
+logger = config.get_logger()
 
 
 def compose_task(
@@ -131,7 +131,9 @@ def add_study(
     return study_info
 
 
-def add_dispatching(task_id:str, uid: str, applied_rule: str, tags_list: Dict[str, str], target: str) -> Optional[TaskDispatch]:
+def add_dispatching(
+    task_id: str, uid: str, applied_rule: str, tags_list: Dict[str, str], target: str
+) -> Optional[TaskDispatch]:
     """
     Adds information about the desired dispatching step into the task file, which is evaluated by the dispatcher. For series-level dispatching,
     the target information is provided in string "target", as dispatch operations from multiple rules to the same target are combined (to avoid
@@ -169,7 +171,7 @@ def add_dispatching(task_id:str, uid: str, applied_rule: str, tags_list: Dict[st
 
     # Check if the selected target actually exists in the configuration (could have been deleted by now)
     if not config.mercure.targets.get(target_used, {}):
-        handle_error(f"Target {target_used} does not exist for UID {uid}", logger, task_id)
+        handle_error(f"Target {target_used} does not exist for UID {uid}", task_id)
         return None
 
     # All looks good, fill the dispatching section and return it
@@ -231,7 +233,7 @@ def create_series_task(
         with open(task_filename, "w") as task_file:
             json.dump(task.dict(), task_file)
     except:
-        handle_error(f"Unable to create series task file {task_filename} with contents {task.dict()}", logger, task.id)
+        handle_error(f"Unable to create series task file {task_filename} with contents {task.dict()}", task.id)
         return False
     return True
 
@@ -257,7 +259,7 @@ def create_study_task(
         with open(task_filename, "w") as task_file:
             json.dump(task.dict(), task_file)
     except:
-        handle_error(f"Unable to create study task file {task_filename}", logger, task.id)
+        handle_error(f"Unable to create study task file {task_filename}", task.id)
         return False
 
     return True
@@ -282,12 +284,12 @@ def update_study_task(
         with open(task_filename, "r") as task_file:
             task: Task = Task(**json.load(task_file))
     except:
-        handle_error(f"Unable to open study task file {task_filename}", logger, task_id)
+        handle_error(f"Unable to open study task file {task_filename}", task_id)
         return False
 
     # Ensure that the task file contains the study information
     if not task.study:
-        handle_error(f"Study information missing in task file {task_filename}", logger, task_id)
+        handle_error(f"Study information missing in task file {task_filename}", task_id)
         return False
 
     study = cast(TaskStudy, task.study)
@@ -306,7 +308,7 @@ def update_study_task(
         with open(task_filename, "w") as task_file:
             json.dump(task.dict(), task_file)
     except:
-        handle_error(f"Unable to write task file {task_filename}", logger, task.id)
+        handle_error(f"Unable to write task file {task_filename}", task.id)
         return False
 
     return True
