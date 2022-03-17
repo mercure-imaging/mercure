@@ -19,7 +19,7 @@ from common.enums import *
 from common import log_helpers
 
 # Create local logger instance
-logger = log_helpers.get_logger()
+logger = log_helpers.get_logger("monitor", True)
 api_key: Optional[str] = None
 
 sender_name = ""
@@ -102,7 +102,7 @@ def configure(module, instance, address) -> None:
 
 def send_event(event: m_events, severity: severity = severity.INFO, description: str = "") -> None:
     """Sends information about general mercure events to the bookkeeper (e.g., during module start)."""
-    logger.debug(f"Monitor (mercure-event): level {severity.value} {event}: {description}")
+    logger.debug(f'Monitor (mercure-event): level {severity.value} {event}: "{description}"')
 
     if not bookkeeper_address:
         return

@@ -1,24 +1,45 @@
 import logging, re, sys, os
 import daiquiri
-from sqlalchemy import true
-from common import helper
+from typing import Optional
+from common import exceptions, helper
 
 setup_complete = False
 
 
-def get_logger(name=None) -> daiquiri.KeywordArgumentAdapter:
+class ExceptionsKeywordArgumentAdapter(daiquiri.KeywordArgumentAdapter):
+    def process(self, msg, kwargs):
+        msg, kwargs = super().process(msg, kwargs)
+        # if kwargs.get("exc_info") not in (False, None):
+        #     kwargs["exc_info"] = True if sys.exc_info()[2] is not None else False
+        return msg, kwargs
+
+
+def get_logger(name: Optional[str] = "handle_error", is_monitor=False) -> daiquiri.KeywordArgumentAdapter:
     global setup_complete
+
     if not setup_complete:
         daiquiri.setup(
             get_loglevel(),
             outputs=(
                 daiquiri.output.Stream(
-                    formatter=daiquiri.formatter.ColorExtrasFormatter(fmt=get_logformat(), keywords=["event_type"])
+                    formatter=daiquiri.formatter.ColorExtrasFormatter(
+                        fmt=get_logformat(), keywords=["event_type", "severity"]
+                    )
                 ),
             ),
         )
-        setup_complete = True
-    return daiquiri.getLogger(name)
+
+        if not is_monitor:
+            setup_complete = True
+            logger = ExceptionsKeywordArgumentAdapter(logging.getLogger(name), {})
+
+            handler = exceptions.BookkeeperHandler()
+            logger.logger.addHandler(handler)
+            return logger
+
+    if not is_monitor:
+        return ExceptionsKeywordArgumentAdapter(logging.getLogger(name), {})
+    return logging.getLogger(name)
 
 
 def get_loglevel() -> int:
