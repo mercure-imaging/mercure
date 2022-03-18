@@ -15,7 +15,6 @@ import pprint
 # from mypy_extensions import TypedDict
 from typing_extensions import Literal
 from typing import Dict, Optional, cast
-from common.exceptions import handle_error
 from common.types import *
 
 # App-specific includes
@@ -171,7 +170,7 @@ def add_dispatching(
 
     # Check if the selected target actually exists in the configuration (could have been deleted by now)
     if not config.mercure.targets.get(target_used, {}):
-        handle_error(f"Target {target_used} does not exist for UID {uid}", task_id)
+        logger.error(f"Target {target_used} does not exist for UID {uid}", task_id)  # handle_error
         return None
 
     # All looks good, fill the dispatching section and return it
@@ -233,7 +232,9 @@ def create_series_task(
         with open(task_filename, "w") as task_file:
             json.dump(task.dict(), task_file)
     except:
-        handle_error(f"Unable to create series task file {task_filename} with contents {task.dict()}", task.id)
+        logger.error(
+            f"Unable to create series task file {task_filename} with contents {task.dict()}", task.id
+        )  # handle_error
         return False
     return True
 
@@ -259,7 +260,7 @@ def create_study_task(
         with open(task_filename, "w") as task_file:
             json.dump(task.dict(), task_file)
     except:
-        handle_error(f"Unable to create study task file {task_filename}", task.id)
+        logger.error(f"Unable to create study task file {task_filename}", task.id)  # handle_error
         return False
 
     return True
@@ -284,12 +285,12 @@ def update_study_task(
         with open(task_filename, "r") as task_file:
             task: Task = Task(**json.load(task_file))
     except:
-        handle_error(f"Unable to open study task file {task_filename}", task_id)
+        logger.error(f"Unable to open study task file {task_filename}", task_id)  # handle_error
         return False
 
     # Ensure that the task file contains the study information
     if not task.study:
-        handle_error(f"Study information missing in task file {task_filename}", task_id)
+        logger.error(f"Study information missing in task file {task_filename}", task_id)  # handle_error
         return False
 
     study = cast(TaskStudy, task.study)
@@ -308,7 +309,7 @@ def update_study_task(
         with open(task_filename, "w") as task_file:
             json.dump(task.dict(), task_file)
     except:
-        handle_error(f"Unable to write task file {task_filename}", task.id)
+        logger.error(f"Unable to write task file {task_filename}", task.id)  # handle_error
         return False
 
     return True

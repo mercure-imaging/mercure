@@ -1,45 +1,105 @@
 import logging, re, sys, os
 import daiquiri
-from typing import Optional
-from common import exceptions, helper
+from common import helper
+from common import enums, monitor
 
 setup_complete = False
 
 
+class BookkeeperHandler(logging.Handler):
+    def __init__(self) -> None:
+        super().__init__(logging.WARNING)
+
+    def emit(self, record: logging.LogRecord) -> None:
+        message = record.msg
+
+        if record.levelname == "CRITICAL":
+            severity = enums.severity.CRITICAL
+        elif record.levelname == "ERROR":
+            severity = enums.severity.ERROR
+        elif record.levelname == "WARNING":
+            severity = enums.severity.WARNING
+
+        effective_task = getattr(record, "args_task") or getattr(record, "context_task", None)
+        if effective_task is not None:
+            if severity in (enums.severity.CRITICAL, enums.severity.ERROR):
+                t_type = enums.s_events.ERROR
+            else:
+                t_type = enums.s_events.UNKNOWN
+            monitor.send_task_event(
+                t_type,
+                effective_task,  # type: ignore
+                getattr(record, "file_count", 0),
+                getattr(record, "target", ""),
+                message,
+            )
+
+        monitor.send_event(getattr(record, "event_type", enums.m_events.PROCESSING), severity, message)
+
+
+class CustomLogRecord(logging.LogRecord):
+    def getMessage(self):
+        msg = str(self.msg)
+        if self.args:
+            msg = msg % self.args
+
+        context_task = getattr(self, "context_task", None)
+        task = self.args_task if self.args_task is not None else context_task
+        if task is not None:
+            msg = f"{msg} [task: {task}]"
+        return msg
+
+    def __init__(self, name, level, pathname, lineno, msg, args, exc_info, func=None, sinfo=None, **kwargs):
+        if len(args) > 0:
+            self.args_task = args[0]
+            args = args[1:]
+        else:
+            self.args_task = None
+        super().__init__(name, level, pathname, lineno, msg, None, exc_info, func, sinfo, **kwargs)
+
+
 class ExceptionsKeywordArgumentAdapter(daiquiri.KeywordArgumentAdapter):
+    def __init__(self, logger: logging.Logger, extra: dict):
+        super().__init__(logger, extra)
+        self.logger.addHandler(BookkeeperHandler())
+
     def process(self, msg, kwargs):
         msg, kwargs = super().process(msg, kwargs)
-        # if kwargs.get("exc_info") not in (False, None):
-        #     kwargs["exc_info"] = True if sys.exc_info()[2] is not None else False
+        if kwargs.get("exc_info") != False:
+            kwargs["exc_info"] = True if sys.exc_info()[2] is not None else False
         return msg, kwargs
 
+    def setTask(self, task_id: str):
+        self.extra["context_task"] = task_id
 
-def get_logger(name: Optional[str] = "handle_error", is_monitor=False) -> daiquiri.KeywordArgumentAdapter:
+    def clearTask(self):
+        if "task" in self.extra:
+            del self.extra["context_task"]
+
+
+logging.setLogRecordFactory(CustomLogRecord)
+
+logger = ExceptionsKeywordArgumentAdapter(logging.getLogger("handle_error"), {})
+
+
+def get_logger() -> ExceptionsKeywordArgumentAdapter:
     global setup_complete
-
+    global logger
     if not setup_complete:
         daiquiri.setup(
             get_loglevel(),
             outputs=(
                 daiquiri.output.Stream(
                     formatter=daiquiri.formatter.ColorExtrasFormatter(
-                        fmt=get_logformat(), keywords=["event_type", "severity"]
+                        fmt=get_logformat(), keywords=["event_type", "severity", "context_task"]
                     )
                 ),
             ),
         )
+        setup_complete = True
+        return logger
 
-        if not is_monitor:
-            setup_complete = True
-            logger = ExceptionsKeywordArgumentAdapter(logging.getLogger(name), {})
-
-            handler = exceptions.BookkeeperHandler()
-            logger.logger.addHandler(handler)
-            return logger
-
-    if not is_monitor:
-        return ExceptionsKeywordArgumentAdapter(logging.getLogger(name), {})
-    return logging.getLogger(name)
+    return logger
 
 
 def get_loglevel() -> int:
@@ -64,4 +124,4 @@ def get_logformat() -> str:
     if runner == "systemd":
         return "%(color)s%(levelname)-8.8s " "%(module)s: %(message)s%(color_stop)s %(extras)s"
     else:
-        return "%(asctime)s %(color)s%(levelname)-8.8s " "%(module)s: %(message)s%(color_stop)s"
+        return "%(asctime)s %(color)s%(levelname)-8.8s " "%(module)s: %(message)s%(color_stop)s %(extras)s"

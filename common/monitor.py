@@ -8,6 +8,7 @@ Helper functions and definitions for monitoring mercure's operations via the boo
 import asyncio
 
 from json import JSONDecodeError
+import daiquiri
 
 from typing import Any, Dict, Optional
 from urllib.error import HTTPError
@@ -16,10 +17,9 @@ import aiohttp
 from common.types import Task
 from common.helper import loop
 from common.enums import *
-from common import log_helpers
 
 # Create local logger instance
-logger = log_helpers.get_logger("monitor", True)
+logger = daiquiri.getLogger("monitor")  # log_helpers.get_logger("monitor", True)
 api_key: Optional[str] = None
 
 sender_name = ""

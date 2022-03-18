@@ -20,7 +20,6 @@ import hupper
 import common.helper as helper
 import common.config as config
 import common.monitor as monitor
-from common.exceptions import handle_error
 from common.constants import mercure_defs, mercure_names, mercure_events
 from process.status import is_ready_for_processing
 from process.process_series import (
@@ -162,12 +161,12 @@ def search_folder(counter) -> bool:
         for p in (Path(task) / "out" / "task.json", Path(task) / "in" / "task.json"):
             try:
                 task_id = json.load(open(p))["id"]
-                handle_error("Exception while processing", task_id)
+                logger.error("Exception while processing", task_id)  # handle_error
                 break
             except:
                 pass
         else:
-            handle_error("Exception while processing", None)
+            logger.error("Exception while processing", None)  # handle_error
 
         return False
 
@@ -179,10 +178,9 @@ def run_processor(args=None) -> None:
     try:
         config.read_config()
     except Exception:
-        handle_error(
+        logger.warning(  # handle_error
             "Unable to update configuration. Skipping processing",
             None,
-            severity=monitor.severity.WARNING,
             event_type=monitor.m_events.CONFIG_UPDATE,
         )
         return
