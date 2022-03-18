@@ -29,7 +29,7 @@ General and Project-Specific Settings
 
 General settings, which are applied to all anonymization steps, as well as project-specific settings can be defined. Project-specific settings are applied when a series (or study) has been sent to mercure with a certain Application Entity Title (AET). For example, if a series has been sent to mercure using the (receiver) AET "myproject", the "general" settings are applied and, in addition, the settings defined in the section "myproject" are applied (if settings are defined in both sections, project settings overrule the duplicate general settings).
 
-The prefix "AZ\_" can be added to the AET and will be ignored for the project assignment (i.e., both AETs "myproject" and "AZ\_myproject" will be assigned to project "myproject"). This allows defining one global rule for all anonymization tasks by testing in the Selection Rule if "AZ\_" is contained in the ReceiverAET (i.e., 'AZ\_' in @ReceiverAET@).
+The prefix "az\_" can be added to the AET and will be ignored for the project assignment (i.e., both AETs "myproject" and "az\_myproject" will be assigned to project "myproject"). This allows defining one global rule for all anonymization tasks by testing in the Selection Rule if "az\_" is contained in the ReceiverAET (i.e., 'az\_' in @ReceiverAET@).
 
 .. code-block::
 
