@@ -241,6 +241,8 @@ def test_route_series(fs: FakeFilesystem, mercure_config, mocked, fake_process):
     common.monitor.send_task_event.assert_has_calls(  # type: ignore
         [
             call(s_events.REGISTERED, task_id, 1, "", "Registered series"),
+            call(s_events.ERROR, task_id, 0, "", 'Invalid rule encountered: @StudyDescription@ == "foo" '),
+            call(s_events.ERROR, task_id, 0, "", "Invalid rule encountered:  1/0 "),
             call(s_events.ROUTE, task_id, 1, "test_target", "route_series"),
             call(s_events.MOVE, task_id, 1, f"/var/outgoing/{task_id}", ""),
         ]

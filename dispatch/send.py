@@ -15,8 +15,6 @@ from shlex import split
 from subprocess import PIPE, CalledProcessError, check_output
 from typing import Dict, Tuple, cast
 from typing_extensions import Literal
-import daiquiri
-from common.exceptions import handle_error
 
 # App-specific includes
 from common.monitor import s_events, m_events, severity
@@ -86,7 +84,7 @@ EOF"""
         return command, dict(shell=True, executable="/bin/bash"), False
 
     else:
-        handle_error(f"Target in task file does not exist {target_name}", task_id)
+        logger.error(f"Target in task file does not exist {target_name}", task_id)  # handle_error
         return "", {}, False
 
 
@@ -118,7 +116,7 @@ def execute(
         target_name: str = target_info.get("target_name", "target_name-missing")
 
         if (uid == "uid-missing") or (target_name == "target_name-missing"):
-            handle_error(f"Missing information for folder {source_folder}", task_content.id, severity=severity.WARNING)
+            logger.warning(f"Missing information for folder {source_folder}", task_content.id)
 
         # Create a .processing file to indicate that this folder is being sent,
         # otherwise another dispatcher instance would pick it up again
@@ -130,7 +128,7 @@ def execute(
             return
         except:
             # TODO: Put a limit on these error messages -- log will run full at some point
-            handle_error(
+            logger.error(  # handle_error
                 f"Error sending {uid} to {target_name}, could not create lock file for folder {source_folder}",
                 task_content.id,
                 target=target_name,
@@ -145,7 +143,7 @@ def execute(
 
         # If no command is returned, then the selected target does not exist anymore
         if not command:
-            handle_error(
+            logger.error(  # handle_error
                 f"Settings for target {target_name} incorrect. Unable to dispatch job {uid}",
                 task_content.id,
                 target=target_name,
@@ -159,7 +157,7 @@ def execute(
             try:
                 sendlog.unlink()
             except:
-                handle_error(
+                logger.error(  # handle_error
                     f"Error sending {uid} to {target_name}: unable to remove former sendlog {sendlog}",
                     task_content.id,
                 )
@@ -195,7 +193,7 @@ def execute(
                 logger.error(f"Failed. Command exited with value {e.returncode}: \n {command}")
             logger.debug(e.output)
 
-            handle_error(
+            logger.error(  # handle_error
                 f"Error sending uid {uid} in task {task_content.id} to {target_name}:\n {dcmsend_error_message or e.output}",
                 task_content.id,
                 target=target_name,
@@ -235,7 +233,7 @@ def _move_sent_directory(task_id, source_folder, destination_folder) -> None:
             shutil.move(source_folder, destination_folder / source_folder.name)
             (destination_folder / source_folder.name / mercure_names.PROCESSING).unlink()
     except:
-        handle_error(f"Error moving folder {source_folder} to {destination_folder}", task_id)
+        logger.error(f"Error moving folder {source_folder} to {destination_folder}", task_id)  # handle_error
 
 
 def _trigger_notification(task: Task, event) -> None:
@@ -253,12 +251,14 @@ def _trigger_notification(task: Task, event) -> None:
     for current_rule in selected_rules:
         # Check if the rule is available
         if not current_rule:
-            handle_error(f"Missing applied_rule in task file in task {task.id}", task.id)
+            logger.error(f"Missing applied_rule in task file in task {task.id}", task.id)  # handle_error
             continue
 
         # Check if the mercure configuration still contains that rule
         if not isinstance(config.mercure.rules.get(current_rule, ""), Rule):
-            handle_error(f"Applied rule not existing anymore in mercure configuration from task {task.id}", task.id)
+            logger.error(
+                f"Applied rule not existing anymore in mercure configuration from task {task.id}", task.id
+            )  # handle_error
             continue
 
         # Now fire the webhook if configured

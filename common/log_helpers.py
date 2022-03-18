@@ -1,22 +1,112 @@
 import logging, re, sys, os
+from typing import Tuple
 import daiquiri
-from typing import Optional
-from common import exceptions, helper
+from common import helper
+from common import enums, monitor
 
 setup_complete = False
 
 
+class BookkeeperHandler(logging.Handler):
+    def __init__(self, level=logging.WARNING) -> None:
+        super().__init__(level)
+
+    def emit(self, record: logging.LogRecord) -> None:
+        task = None
+        if isinstance(record.args, (list, tuple)) and len(record.args) > 0:
+            task = record.args[0]
+            record.args = record.args[1:]
+
+            if task is not None:
+                record.task = task  # type: ignore
+
+                if not hasattr(record, "_daiquiri_extra_keys"):
+                    record._daiquiri_extra_keys = set("task")  # type: ignore
+                else:
+                    record._daiquiri_extra_keys.add("task")  # type: ignore
+
+        message = record.msg
+
+        if record.levelname == "CRITICAL":
+            severity = enums.severity.CRITICAL
+        elif record.levelname == "ERROR":
+            severity = enums.severity.ERROR
+        elif record.levelname == "WARNING":
+            severity = enums.severity.WARNING
+
+        task_id = getattr(record, "task", None)
+        if task_id is not None:
+            if severity in (enums.severity.CRITICAL, enums.severity.ERROR):
+                t_type = enums.s_events.ERROR
+            else:
+                t_type = enums.s_events.UNKNOWN
+            monitor.send_task_event(
+                t_type,
+                task_id,  # type: ignore
+                getattr(record, "file_count", 0),
+                getattr(record, "target", ""),
+                message,
+            )
+
+        monitor.send_event(getattr(record, "event_type", enums.m_events.PROCESSING), severity, message)
+
+# This breaks uvicorn
+# class CustomLogRecord(logging.LogRecord):
+#     def getMessage(self):
+#         msg = str(self.msg)
+#         if self.args:
+#             msg = msg % self.args
+
+#         context_task = getattr(self, "context_task", None)
+#         task = self.args_task if self.args_task is not None else context_task
+#         if task is not None:
+#             msg = f"{msg} [task: {task}]"
+#         return msg
+
+#     def __init__(self, name, level, pathname, lineno, msg, args, exc_info, func=None, sinfo=None, **kwargs):
+#         if len(args) > 0:
+#             self.args_task = args[0]
+#             args = args[1:]
+#         else:
+#             self.args_task = None
+#         super().__init__(name, level, pathname, lineno, msg, None, exc_info, func, sinfo, **kwargs)
+
+
 class ExceptionsKeywordArgumentAdapter(daiquiri.KeywordArgumentAdapter):
-    def process(self, msg, kwargs):
+    def __init__(self, logger: logging.Logger, extra: dict) -> None:
+        super().__init__(logger, extra)
+        self.logger.addHandler(BookkeeperHandler())
+
+    def process(self, msg, kwargs) -> Tuple[str, dict]:
+        if sys.exc_info()[0] is not None and "exc_info" not in kwargs:
+            kwargs["exc_info"] = True
         msg, kwargs = super().process(msg, kwargs)
-        # if kwargs.get("exc_info") not in (False, None):
-        #     kwargs["exc_info"] = True if sys.exc_info()[2] is not None else False
-        return msg, kwargs
+
+        extra = kwargs["extra"]
+        if "context_task" in extra:
+            extra["task"] = extra["context_task"]
+            del extra["context_task"]
+            extra["_daiquiri_extra_keys"].discard("context_task")
+            extra["_daiquiri_extra_keys"].add("task")
+
+        return msg, kwargs  # {"extra": {"_daiquiri_extra_keys": set()}}
+
+    def setTask(self, task_id: str) -> None:
+        self.extra["context_task"] = task_id
+
+    def clearTask(self) -> None:
+        if "task" in self.extra:
+            del self.extra["context_task"]
 
 
-def get_logger(name: Optional[str] = "handle_error", is_monitor=False) -> daiquiri.KeywordArgumentAdapter:
+# logging.setLogRecordFactory(CustomLogRecord)
+
+logger = ExceptionsKeywordArgumentAdapter(logging.getLogger("handle_error"), {})
+
+
+def get_logger() -> ExceptionsKeywordArgumentAdapter:
     global setup_complete
-
+    global logger
     if not setup_complete:
         daiquiri.setup(
             get_loglevel(),
@@ -28,18 +118,10 @@ def get_logger(name: Optional[str] = "handle_error", is_monitor=False) -> daiqui
                 ),
             ),
         )
+        setup_complete = True
+        return logger
 
-        if not is_monitor:
-            setup_complete = True
-            logger = ExceptionsKeywordArgumentAdapter(logging.getLogger(name), {})
-
-            handler = exceptions.BookkeeperHandler()
-            logger.logger.addHandler(handler)
-            return logger
-
-    if not is_monitor:
-        return ExceptionsKeywordArgumentAdapter(logging.getLogger(name), {})
-    return logging.getLogger(name)
+    return logger
 
 
 def get_loglevel() -> int:
@@ -64,4 +146,4 @@ def get_logformat() -> str:
     if runner == "systemd":
         return "%(color)s%(levelname)-8.8s " "%(module)s: %(message)s%(color_stop)s %(extras)s"
     else:
-        return "%(asctime)s %(color)s%(levelname)-8.8s " "%(module)s: %(message)s%(color_stop)s"
+        return "%(asctime)s %(color)s%(levelname)-8.8s " "%(module)s: %(message)s%(color_stop)s %(extras)s"

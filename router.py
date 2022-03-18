@@ -22,7 +22,6 @@ import common.config as config
 import common.monitor as monitor
 from routing.route_series import route_series, route_error_files
 from routing.route_studies import route_studies
-from common.exceptions import handle_error
 
 
 # Create local logger instance
@@ -57,10 +56,9 @@ def run_router(args=None) -> None:
     try:
         config.read_config()
     except Exception:
-        handle_error(
+        logger.warning(  # handle_error
             "Unable to update configuration. Skipping processing.",
             None,
-            severity=monitor.severity.WARNING,
             event_type=monitor.m_events.CONFIG_UPDATE,
         )
         return
@@ -104,9 +102,12 @@ def run_router(args=None) -> None:
     for series_uid in sorted(complete_series):
         task_id = str(uuid.uuid1())
         try:
+            logger.setTask(task_id)
             route_series(task_id, series_uid)
         except Exception:
-            handle_error(f"Problems while processing series {series_uid}", task_id)
+            logger.error(f"Problems while processing series {series_uid}", task_id)  # handle_error
+        finally:
+            logger.clearTask()
         # If termination is requested, stop processing series after the active one has been completed
         if helper.is_terminated():
             return

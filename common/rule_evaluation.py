@@ -11,7 +11,6 @@ import daiquiri
 # App-specific includes
 import common.monitor as monitor
 from common import config
-from common.exceptions import handle_error
 
 # Create local logger instance
 logger = config.get_logger()
@@ -59,7 +58,9 @@ def parse_rule(rule: str, tags: Dict[str, str]) -> Union[Any, bool]:
         logger.info(f"Result: {result}")
         return result
     except Exception as e:
-        handle_error(f"Invalid rule encountered: {rule}", None, event_type=monitor.m_events.CONFIG_UPDATE)
+        logger.error(
+            f"Invalid rule encountered: {rule}", None, event_type=monitor.m_events.CONFIG_UPDATE
+        )  # handle_error
         return False
 
 
@@ -177,7 +178,9 @@ def parse_completion_series(task_id: str, completion_str: str, received_series: 
         result: bool = eval(parsed_str, {"__builtins__": {}}, {})
         return result
     except Exception as e:
-        handle_error(f"Invalid completion condition: {parsed_str}", task_id, event_type=monitor.m_events.CONFIG_UPDATE)
+        logger.error(
+            f"Invalid completion condition: {parsed_str}", task_id, event_type=monitor.m_events.CONFIG_UPDATE
+        )  # handle_error
         return False
 
 

@@ -190,7 +190,7 @@ def test_process_series_nomad(fs, mercure_config: Callable[[Dict], Config], mock
         [
             call(s_events.REGISTERED, task_id, 1, "", "Registered series"),
             call(s_events.UNKNOWN, task_id, 0, "", "Processing job dispatched."),
-            call(s_events.ERROR, task_id, 0, "", "Processing failed"),
+            call(s_events.ERROR, task_id, 0, "", "Processing failed."),
         ]
     )
 

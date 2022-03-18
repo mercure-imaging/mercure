@@ -152,10 +152,9 @@ def save_config() -> None:
     try:
         lock.free()
     except:
-        from common.exceptions import handle_error
 
         # Can't delete lock file, so something must be seriously wrong
-        handle_error(f"Unable to remove lock file {lock_file}", None)
+        logger.error(f"Unable to remove lock file {lock_file}", None)  # handle_error
         return
 
 
@@ -183,10 +182,9 @@ def write_configfile(json_content) -> None:
     try:
         lock.free()
     except:
-        from common.exceptions import handle_error
 
         # Can't delete lock file, so something must be seriously wrong
-        handle_error(f"Unable to remove lock file {lock_file}", None)
+        logger.error(f"Unable to remove lock file {lock_file}", None)  # handle_error
         return
 
 
@@ -216,13 +214,11 @@ def check_folders() -> bool:
             entry,
         )
         if not Path(mercure.dict()[entry]).exists():
-            from common.exceptions import handle_error
 
-            handle_error(
+            logger.critical(  # handle_error
                 f"Folder not found {mercure.dict()[entry]}",
                 None,
                 event_type=monitor.m_events.CONFIG_UPDATE,
-                severity=monitor.severity.CRITICAL,
             )
             return False
     return True
