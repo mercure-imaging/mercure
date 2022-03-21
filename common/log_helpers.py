@@ -114,7 +114,7 @@ def get_logger() -> ExceptionsKeywordArgumentAdapter:
             outputs=(
                 daiquiri.output.Stream(
                     formatter=daiquiri.formatter.ColorExtrasFormatter(
-                        fmt=get_logformat(), keywords=["event_type", "severity"]
+                        fmt=get_logformat(), keywords=["event_type", "severity", "context_task"]
                     )
                 ),
             ),
