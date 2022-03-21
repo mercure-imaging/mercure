@@ -25,6 +25,7 @@ from common.types import DicomTarget, SftpTarget, Task, TaskDispatch, TaskInfo, 
 import common.config as config
 import common.monitor as monitor
 import common.notification as notification
+import common.log_helpers as log_helpers
 from common.constants import (
     mercure_events,
 )
@@ -88,6 +89,7 @@ EOF"""
         return "", {}, False
 
 
+@log_helpers.clear_task_decorator
 def execute(
     source_folder: Path,
     success_folder: Path,
@@ -104,6 +106,8 @@ def execute(
     task_content = is_ready_for_sending(source_folder)
     if not task_content:
         return
+    logger.setTask(task_content.id)
+
     target_info = task_content.dispatch
     task_info = task_content.info
 

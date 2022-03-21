@@ -102,12 +102,9 @@ def run_router(args=None) -> None:
     for series_uid in sorted(complete_series):
         task_id = str(uuid.uuid1())
         try:
-            logger.setTask(task_id)
             route_series(task_id, series_uid)
         except Exception:
             logger.error(f"Problems while processing series {series_uid}", task_id)  # handle_error
-        finally:
-            logger.clearTask()
         # If termination is requested, stop processing series after the active one has been completed
         if helper.is_terminated():
             return

@@ -20,6 +20,7 @@ import common.rule_evaluation as rule_evaluation
 import common.monitor as monitor
 import common.notification as notification
 import common.helper as helper
+import common.log_helpers as log_helpers
 from common.types import Rule, Task, TaskHasStudy, TaskInfo
 from common.constants import (
     mercure_defs,
@@ -165,6 +166,7 @@ def check_study_series(task: TaskHasStudy, required_series: str) -> bool:
     return rule_evaluation.parse_completion_series(task.id, required_series, received_series)
 
 
+@log_helpers.clear_task_decorator
 def route_study(study) -> bool:
     """
     Processses the study in the folder 'study'. Loads the task file and delegates the action to helper functions
@@ -205,37 +207,34 @@ def route_study(study) -> bool:
         return False
 
     logger.setTask(task.id)
-    try:
-        action_result = True
-        info: TaskInfo = task.info
-        action = info.get("action", "")
+    action_result = True
+    info: TaskInfo = task.info
+    action = info.get("action", "")
 
-        if not action:
-            logger.error(f"Missing action in study folder {study_folder}", task.id)  # handle_error
-            return False
+    if not action:
+        logger.error(f"Missing action in study folder {study_folder}", task.id)  # handle_error
+        return False
 
-        # TODO: Clean folder for duplicate DICOMs (i.e., if series have been sent twice -- check by instance UID)
+    # TODO: Clean folder for duplicate DICOMs (i.e., if series have been sent twice -- check by instance UID)
 
-        if action == mercure_actions.NOTIFICATION:
-            action_result = push_studylevel_notification(study, task)
-        elif action == mercure_actions.ROUTE:
-            action_result = push_studylevel_dispatch(study, task)
-        elif action == mercure_actions.PROCESS or action == mercure_actions.BOTH:
-            action_result = push_studylevel_processing(study, task)
-        else:
-            # This point should not be reached (discard actions should be handled on the series level)
-            logger.error(f"Invalid task action in study folder {study_folder}", task.id)  # handle_error
-            return False
+    if action == mercure_actions.NOTIFICATION:
+        action_result = push_studylevel_notification(study, task)
+    elif action == mercure_actions.ROUTE:
+        action_result = push_studylevel_dispatch(study, task)
+    elif action == mercure_actions.PROCESS or action == mercure_actions.BOTH:
+        action_result = push_studylevel_processing(study, task)
+    else:
+        # This point should not be reached (discard actions should be handled on the series level)
+        logger.error(f"Invalid task action in study folder {study_folder}", task.id)  # handle_error
+        return False
 
-        if not action_result:
-            logger.error(f"Error during processing of study {study}", task.id)  # handle_error
-            return False
+    if not action_result:
+        logger.error(f"Error during processing of study {study}", task.id)  # handle_error
+        return False
 
-        if not remove_study_folder(task.id, study, lock):
-            logger.error(f"Error removing folder of study {study}", task.id)  # handle_error
-            return False
-    finally:
-        logger.clearTask()
+    if not remove_study_folder(task.id, study, lock):
+        logger.error(f"Error removing folder of study {study}", task.id)  # handle_error
+        return False
     return True
 
 

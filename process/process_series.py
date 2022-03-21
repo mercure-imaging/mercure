@@ -28,6 +28,7 @@ from common.constants import mercure_names
 from common.types import Task, TaskInfo, Module, Rule
 import common.notification as notification
 from common.version import mercure_version
+import common.log_helpers as log_helpers
 from common.constants import (
     mercure_events,
 )
@@ -223,6 +224,7 @@ def docker_runtime(task: Task, folder: str) -> bool:
     return processing_success
 
 
+@log_helpers.clear_task_decorator
 def process_series(folder) -> None:
     logger.info("----------------------------------------------------------------------------------")
     logger.info(f"Now processing {folder}")
@@ -255,7 +257,7 @@ def process_series(folder) -> None:
 
         with open(taskfile_path, "r") as f:
             task = Task(**json.load(f))
-
+        logger.setTask(task.id)
         if task.dispatch:
             needs_dispatching = True
 

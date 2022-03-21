@@ -94,10 +94,22 @@ class ExceptionsKeywordArgumentAdapter(daiquiri.KeywordArgumentAdapter):
 
     def setTask(self, task_id: str) -> None:
         self.extra["context_task"] = task_id
+        logger.debug(f"Setting task")
 
     def clearTask(self) -> None:
-        if "task" in self.extra:
+        if "context_task" in self.extra:
+            logger.debug("Clearing task")
             del self.extra["context_task"]
+
+
+def clear_task_decorator(func):
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        finally:
+            get_logger().clearTask()
+
+    return wrapper
 
 
 # logging.setLogRecordFactory(CustomLogRecord)

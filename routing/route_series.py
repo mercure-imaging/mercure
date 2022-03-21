@@ -20,6 +20,7 @@ import common.rule_evaluation as rule_evaluation
 import common.monitor as monitor
 import common.helper as helper
 import common.notification as notification
+import common.log_helpers as log_helpers
 from common.types import Rule
 from common.constants import (
     mercure_defs,
@@ -36,10 +37,12 @@ from routing.generate_taskfile import create_series_task, create_study_task, upd
 logger = config.get_logger()
 
 
+@log_helpers.clear_task_decorator
 def route_series(task_id: str, series_UID: str) -> None:
     """
     Processes the series with the given series UID from the incoming folder.
     """
+    logger.setTask(task_id)
     lock_file = Path(config.mercure.incoming_folder + "/" + str(series_UID) + mercure_names.LOCK)
     if lock_file.exists():
         # Series is locked, so another instance might be working on it
