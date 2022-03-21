@@ -54,6 +54,7 @@ import webinterface.rules as rules
 import webinterface.targets as targets
 import webinterface.modules as modules
 import webinterface.queue as queue
+import webinterface.api as api
 import webinterface.test as test
 from webinterface.common import *
 
@@ -124,7 +125,9 @@ app.mount("/targets", targets.targets_app)
 app.mount("/modules", modules.modules_app)
 app.mount("/users", users.users_app)
 app.mount("/queue", queue.queue_app)
+app.mount("/api", api.api_app)
 app.mount("/test", test.test_app)
+
 
 ###################################################################################
 ## Logs endpoints
@@ -589,36 +592,6 @@ async def control_services(request) -> Response:
     monitor_string = "action: " + action + "; services: " + form.get("services", "")
     monitor.send_webgui_event(monitor.w_events.SERVICE_CONTROL, request.user.display_name, monitor_string)
     return JSONResponse("{ }")
-
-
-@app.route("/api/get-task-events", methods=["GET"])
-@requires(["authenticated"])
-async def get_series_events(request):
-    logger.debug(request.query_params)
-    task_id = request.query_params.get("task_id", "")
-    try:
-        return JSONResponse(await monitor.get_task_events(task_id))
-    except monitor.MonitorHTTPError as e:
-        return JSONResponse({"error": e.message}, status_code=e.status_code)
-
-
-@app.route("/api/get-series", methods=["GET"])
-@requires(["authenticated"])
-async def get_series(request):
-    series_uid = request.query_params.get("series_uid", "")
-    try:
-        return JSONResponse(await monitor.get_series(series_uid))
-    except monitor.MonitorHTTPError as e:
-        return JSONResponse({"error": e.message}, status_code=e.status_code)
-
-
-@app.route("/api/get-tasks", methods=["GET"])
-@requires(["authenticated"])
-async def get_tasks(request):
-    try:
-        return JSONResponse(await monitor.get_tasks())
-    except monitor.MonitorHTTPError as e:
-        return JSONResponse({"error": e.status_code}, status_code=e.status_code)
 
 
 ###################################################################################

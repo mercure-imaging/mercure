@@ -62,6 +62,7 @@ if [ $bookkeeper = "null" ]
 then
     # If bookkeeper is not configured, drop the argument in the binary call
     bookkeeper=""
+    bookkeeper_api_key=""
 else
     echo "Bookkeeper: $bookkeeper"
     # If configured, add preceding space so that both that two arguments are passed
