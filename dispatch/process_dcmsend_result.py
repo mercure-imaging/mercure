@@ -6,8 +6,7 @@ from typing import Dict
 import daiquiri
 from common import config
 
-daiquiri.setup(config.get_loglevel())
-logger = daiquiri.getLogger("process_dcmsend_result")
+logger = config.get_logger()
 
 
 def _parse_header(header) -> Dict:

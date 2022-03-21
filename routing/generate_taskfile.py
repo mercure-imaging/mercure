@@ -31,7 +31,7 @@ from common.constants import (
 
 
 # Create local logger instance
-logger = daiquiri.getLogger("generate_taskfile")
+logger = config.get_logger()
 
 
 def compose_task(
@@ -53,7 +53,7 @@ def compose_task(
         # Add general information about the job
         info=add_info(uid, uid_type, triggered_rules, applied_rule, tags_list),
         # Add dispatch information -- completed only if the job includes a dispatching step
-        dispatch=add_dispatching(uid, applied_rule, tags_list, target) or cast(EmptyDict, {}),
+        dispatch=add_dispatching(task_id, uid, applied_rule, tags_list, target) or cast(EmptyDict, {}),
         # Add processing information -- completed only if the job includes a processing step
         process=add_processing(uid, applied_rule, tags_list) or cast(EmptyDict, {}),
         # Add information about the study, included all collected series
@@ -130,7 +130,9 @@ def add_study(
     return study_info
 
 
-def add_dispatching(uid: str, applied_rule: str, tags_list: Dict[str, str], target: str) -> Optional[TaskDispatch]:
+def add_dispatching(
+    task_id: str, uid: str, applied_rule: str, tags_list: Dict[str, str], target: str
+) -> Optional[TaskDispatch]:
     """
     Adds information about the desired dispatching step into the task file, which is evaluated by the dispatcher. For series-level dispatching,
     the target information is provided in string "target", as dispatch operations from multiple rules to the same target are combined (to avoid
@@ -168,9 +170,7 @@ def add_dispatching(uid: str, applied_rule: str, tags_list: Dict[str, str], targ
 
     # Check if the selected target actually exists in the configuration (could have been deleted by now)
     if not config.mercure.targets.get(target_used, {}):
-        error_message = f"Target {target_used} does not exist for UID {uid}"
-        logger.error(error_message)
-        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
+        logger.error(f"Target {target_used} does not exist for UID {uid}", task_id)  # handle_error
         return None
 
     # All looks good, fill the dispatching section and return it
@@ -225,18 +225,17 @@ def create_series_task(
     """
     # Compose the JSON content for the file
     task = compose_task(task_id, series_UID, "series", triggered_rules, applied_rule, tags_list, target)
+    monitor.send_register_task(task)
 
     task_filename = folder_name + mercure_names.TASKFILE
     try:
         with open(task_filename, "w") as task_file:
             json.dump(task.dict(), task_file)
     except:
-        error_message = f"Unable to create series task file {task_filename}"
-        logger.exception(error_message)
-        logger.error(task.dict())
-        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
+        logger.error(
+            f"Unable to create series task file {task_filename} with contents {task.dict()}", task.id
+        )  # handle_error
         return False
-    monitor.send_register_task(task)
     return True
 
 
@@ -253,6 +252,7 @@ def create_study_task(
     """
     # Compose the JSON content for the file
     task = compose_task(task_id, study_UID, "study", triggered_rules, applied_rule, tags_list, "")
+    monitor.send_register_task(task)
 
     task_filename = folder_name + mercure_names.TASKFILE
     logger.debug(f"Writing study task file {task_filename}")
@@ -260,11 +260,8 @@ def create_study_task(
         with open(task_filename, "w") as task_file:
             json.dump(task.dict(), task_file)
     except:
-        error_message = f"Unable to create study task file {task_filename}"
-        logger.exception(error_message)
-        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
+        logger.error(f"Unable to create study task file {task_filename}", task.id)  # handle_error
         return False
-    monitor.send_register_task(task)
 
     return True
 
@@ -288,16 +285,12 @@ def update_study_task(
         with open(task_filename, "r") as task_file:
             task: Task = Task(**json.load(task_file))
     except:
-        error_message = f"Unable to open study task file {task_filename}"
-        logger.exception(error_message)
-        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
+        logger.error(f"Unable to open study task file {task_filename}", task_id)  # handle_error
         return False
 
     # Ensure that the task file contains the study information
     if not task.study:
-        error_message = f"Study information missing in task file {task_filename}"
-        logger.error(error_message)
-        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
+        logger.error(f"Study information missing in task file {task_filename}", task_id)  # handle_error
         return False
 
     study = cast(TaskStudy, task.study)
@@ -316,9 +309,7 @@ def update_study_task(
         with open(task_filename, "w") as task_file:
             json.dump(task.dict(), task_file)
     except:
-        error_message = f"Unable to write task file {task_filename}"
-        logger.exception(error_message)
-        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
+        logger.error(f"Unable to write task file {task_filename}", task.id)  # handle_error
         return False
 
     return True

@@ -13,6 +13,7 @@ import json
 import asyncio
 import traceback
 from .helper import loop
+import common.config as config
 
 # App-specific includes
 from common.constants import (
@@ -21,7 +22,7 @@ from common.constants import (
 
 
 # Create local logger instance
-logger = daiquiri.getLogger("notification")
+logger = config.get_logger()
 
 
 def post(url: str, payload: Any) -> None:

@@ -22,8 +22,7 @@ from common.types import DicomTarget, SftpTarget
 from webinterface.common import *
 
 
-daiquiri.setup(config.get_loglevel())
-logger = daiquiri.getLogger("targets")
+logger = config.get_logger()
 
 
 ###################################################################################
@@ -215,9 +214,7 @@ async def targets_test_post(request) -> Response:
         response = False
         stderr = b""
 
-        command = (
-            "sftp -o StrictHostKeyChecking=no " + f""" "{target.user}@{target.host}:{target.folder}" <<< "" """
-        )
+        command = "sftp -o StrictHostKeyChecking=no " + f""" "{target.user}@{target.host}:{target.folder}" <<< "" """
         if target.password:
             command = f"sshpass -p {target.password} " + command
         logger.debug(command)

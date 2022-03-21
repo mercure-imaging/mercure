@@ -6,7 +6,6 @@ mercure's configuration management, used by various mercure modules
 
 # Standard python includes
 import json
-import logging
 import os, sys
 from pathlib import Path
 from typing_extensions import Literal
@@ -14,20 +13,23 @@ import daiquiri
 from typing import Dict, cast
 import re
 
-# App-specific includes
+
 import common.monitor as monitor
 import common.helper as helper
 from common.constants import mercure_names
 from common.types import Config
 
+
+from common.log_helpers import get_logger
+
+
+logger = get_logger()
+
 # Create local logger instance
-logger = daiquiri.getLogger("config")
+
 
 configuration_timestamp: float = 0
-configuration_filename = (
-    os.getenv("MERCURE_CONFIG_FOLDER")
-    or "/opt/mercure/config"
-) + "/mercure.json"
+configuration_filename = (os.getenv("MERCURE_CONFIG_FOLDER") or "/opt/mercure/config") + "/mercure.json"
 
 mercure_defaults = {
     "appliance_name": "master",
@@ -63,36 +65,8 @@ mercure_defaults = {
 mercure: Config
 
 
-def get_loglevel() -> int:
-    """Returns the logging level that should be used for printing messages."""
-    if any(re.findall(r"pytest|py.test", sys.argv[0])):
-        return logging.DEBUG
-
-    level = os.getenv("MERCURE_LOG_LEVEL", "info").lower()
-    if level == "error":
-        return logging.ERROR
-    if level == "info":
-        return logging.INFO
-    if level == "debug":
-        return logging.DEBUG
-    return logging.INFO
-
-
-def get_runner() -> str:
-    """Returns the name of the mechanism that is used for running mercure in the current installation (systemd, docker, nomad)."""
-    return os.getenv("MERCURE_RUNNER", "systemd")
-
-
-def get_logformat() -> str:
-    """Returns the format that should be used for log messages. Includes the time for docker and nomad, but not for systemd as journalctl 
-    already outputs the time of the log events."""
-    if get_runner() == "systemd":
-        return "%(color)s%(levelname)-8.8s " "%(name)s: %(message)s%(color_stop)s"
-    else:
-        return "%(asctime)s %(color)s%(levelname)-8.8s " "%(name)s: %(message)s%(color_stop)s"
-
-
 def read_config() -> Config:
+
     """Reads the configuration settings (rules, targets, general settings) from the configuration file. The configuration will
     only be updated if the file has changed compared the the last function call. If the configuration file is locked by
     another process, an exception will be raised."""
@@ -178,10 +152,9 @@ def save_config() -> None:
     try:
         lock.free()
     except:
+
         # Can't delete lock file, so something must be seriously wrong
-        error_message = f"Unable to remove lock file {lock_file}"
-        logger.error(error_message)
-        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
+        logger.error(f"Unable to remove lock file {lock_file}", None)  # handle_error
         return
 
 
@@ -209,10 +182,9 @@ def write_configfile(json_content) -> None:
     try:
         lock.free()
     except:
+
         # Can't delete lock file, so something must be seriously wrong
-        error_message = f"Unable to remove lock file {lock_file}"
-        logger.error(error_message)
-        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
+        logger.error(f"Unable to remove lock file {lock_file}", None)  # handle_error
         return
 
 
@@ -242,8 +214,11 @@ def check_folders() -> bool:
             entry,
         )
         if not Path(mercure.dict()[entry]).exists():
-            error_message = f"Folder not found {mercure.dict()[entry]}"
-            logger.error(error_message)
-            monitor.send_event(monitor.m_events.CONFIG_UPDATE, monitor.severity.CRITICAL, error_message)
+
+            logger.critical(  # handle_error
+                f"Folder not found {mercure.dict()[entry]}",
+                None,
+                event_type=monitor.m_events.CONFIG_UPDATE,
+            )
             return False
     return True

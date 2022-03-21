@@ -11,15 +11,11 @@ from pydantic import BaseModel, create_model_from_typeddict
 import daiquiri
 
 
-logger = daiquiri.getLogger("test")
-
-
 # TODO: Add description for the individual classes
 
 
 class Compat:
     def get(self, item, els=None) -> Any:
-        # logger.info(repr(traceback.format_stack()[-2].splitlines()[1]))
         return self.__dict__.get(item, els) or els
 
 
@@ -170,6 +166,7 @@ class Task(BaseModel, Compat):
 
 class TaskHasStudy(BaseModel, Compat):
     info: TaskInfo
+    id: str
     dispatch: Union[TaskDispatch, EmptyDict] = cast(EmptyDict, {})
     process: Union[Module, EmptyDict] = cast(EmptyDict, {})
     study: TaskStudy

@@ -10,10 +10,16 @@ import threading
 from typing import Callable, Optional
 import graphyte
 import aiohttp
+import os
 
 # Global variable to broadcast when the process should terminate
 terminate = False
 loop = asyncio.get_event_loop()
+
+
+def get_runner() -> str:
+    """Returns the name of the mechanism that is used for running mercure in the current installation (systemd, docker, nomad)."""
+    return os.getenv("MERCURE_RUNNER", "systemd")
 
 
 def trigger_terminate() -> None:

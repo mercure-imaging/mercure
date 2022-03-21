@@ -15,23 +15,23 @@ from shlex import split
 from subprocess import PIPE, CalledProcessError, check_output
 from typing import Dict, Tuple, cast
 from typing_extensions import Literal
-import daiquiri
 
 # App-specific includes
-from common.monitor import s_events, m_events, severity
+from common.monitor import task_event, m_events, severity
 from dispatch.retry import increase_retry
 from dispatch.status import is_ready_for_sending
 from common.constants import mercure_names
-from common.types import DicomTarget, SftpTarget, TaskDispatch, TaskInfo, Rule
+from common.types import DicomTarget, SftpTarget, Task, TaskDispatch, TaskInfo, Rule
 import common.config as config
 import common.monitor as monitor
 import common.notification as notification
+import common.log_helpers as log_helpers
 from common.constants import (
     mercure_events,
 )
 
 # Create local logger instance
-logger = daiquiri.getLogger("send")
+logger = config.get_logger()
 
 
 DCMSEND_ERROR_CODES = {
@@ -47,7 +47,7 @@ DCMSEND_ERROR_CODES = {
 }
 
 
-def _create_command(dispatch_info: TaskDispatch, folder: Path) -> Tuple[str, dict, bool]:
+def _create_command(task_id: str, dispatch_info: TaskDispatch, folder: Path) -> Tuple[str, dict, bool]:
     """Composes the command for calling the dcmsend tool from DCMTK, which is used for sending out the DICOMS."""
     target_name: str = dispatch_info.get("target_name", "")
 
@@ -85,12 +85,11 @@ EOF"""
         return command, dict(shell=True, executable="/bin/bash"), False
 
     else:
-        error_message = f"Target in task file does not exist {target_name}"
-        monitor.send_event(m_events.PROCESSING, severity.ERROR, error_message)
-        logger.exception(error_message)
+        logger.error(f"Target in task file does not exist {target_name}", task_id)  # handle_error
         return "", {}, False
 
 
+@log_helpers.clear_task_decorator
 def execute(
     source_folder: Path,
     success_folder: Path,
@@ -107,6 +106,8 @@ def execute(
     task_content = is_ready_for_sending(source_folder)
     if not task_content:
         return
+    logger.setTask(task_content.id)
+
     target_info = task_content.dispatch
     task_info = task_content.info
 
@@ -119,9 +120,7 @@ def execute(
         target_name: str = target_info.get("target_name", "target_name-missing")
 
         if (uid == "uid-missing") or (target_name == "target_name-missing"):
-            error_message = f"Missing information for folder {source_folder}"
-            logger.error(error_message)
-            monitor.send_event(m_events.PROCESSING, severity.WARNING, error_message)
+            logger.warning(f"Missing information for folder {source_folder}", task_content.id)
 
         # Create a .processing file to indicate that this folder is being sent,
         # otherwise another dispatcher instance would pick it up again
@@ -133,27 +132,28 @@ def execute(
             return
         except:
             # TODO: Put a limit on these error messages -- log will run full at some point
-            monitor.send_event(m_events.PROCESSING, severity.ERROR, f"Error sending {uid} to {target_name}")
-            error_message = f"Unable to create lock file {lock_file}"
-            monitor.send_task_event(s_events.ERROR, task_content.id, 0, target_name, error_message)
-            logger.exception(error_message)
+            logger.error(  # handle_error
+                f"Error sending {uid} to {target_name}, could not create lock file for folder {source_folder}",
+                task_content.id,
+                target=target_name,
+            )
             return
 
         logger.info("---------")
         logger.info(f"Folder {source_folder} is ready for sending")
 
         # Compose the command for dispatching the results
-        command, opts, needs_splitting = _create_command(target_info, source_folder)
+        command, opts, needs_splitting = _create_command(task_content.id, target_info, source_folder)
 
         # If no command is returned, then the selected target does not exist anymore
         if not command:
-            error_message = f"Settings for target {target_name} incorrect. Unable to dispatch job {uid}"
-            logger.error(error_message)
-            monitor.send_task_event(s_events.ERROR, task_content.id, 0, target_name, error_message)
-            _move_sent_directory(source_folder, error_folder)
-            monitor.send_task_event(s_events.MOVE, task_content.id, 0, error_folder, "")
-            monitor.send_event(m_events.PROCESSING, severity.ERROR, f"Series suspended after reaching max retries")
-            _trigger_notification(task_content.info, mercure_events.ERROR)
+            logger.error(  # handle_error
+                f"Settings for target {target_name} incorrect. Unable to dispatch job {uid}",
+                task_content.id,
+                target=target_name,
+            )
+            _move_sent_directory(task_content.id, source_folder, error_folder)
+            _trigger_notification(task_content, mercure_events.ERROR)
 
         # Check if a sendlog file from a previous try exists. If so, remove it
         sendlog = Path(source_folder) / mercure_names.SENDLOG
@@ -161,10 +161,10 @@ def execute(
             try:
                 sendlog.unlink()
             except:
-                monitor.send_event(m_events.PROCESSING, severity.ERROR, f"Error sending {uid} to {target_name}")
-                error_message = f"Unable to remove former sendlog {sendlog}"
-                monitor.send_task_event(s_events.ERROR, task_content.id, 0, target_name, error_message)
-                logger.exception(error_message)
+                logger.error(  # handle_error
+                    f"Error sending {uid} to {target_name}: unable to remove former sendlog {sendlog}",
+                    task_content.id,
+                )
                 return
 
         logger.debug(f"Running command {command}")
@@ -179,15 +179,15 @@ def execute(
             # Send bookkeeper notification
             file_count = len(list(Path(source_folder).glob(mercure_names.DCMFILTER)))
             monitor.send_task_event(
-                s_events.DISPATCH,
+                task_event.DISPATCH,
                 task_content.id,
                 file_count,
                 target_name,
                 "",
             )
-            _move_sent_directory(source_folder, success_folder)
-            monitor.send_task_event(s_events.MOVE, task_content.id, 0, str(success_folder), "")
-            _trigger_notification(task_content.info, mercure_events.COMPLETION)
+            _move_sent_directory(task_content.id, source_folder, success_folder)
+            monitor.send_task_event(task_event.MOVE, task_content.id, 0, str(success_folder), "")
+            _trigger_notification(task_content, mercure_events.COMPLETION)
         except CalledProcessError as e:
             dcmsend_error_message = None
             if isinstance(config.mercure.targets.get(target_name, ""), DicomTarget):
@@ -196,25 +196,31 @@ def execute(
             else:
                 logger.error(f"Failed. Command exited with value {e.returncode}: \n {command}")
             logger.debug(e.output)
-            monitor.send_event(m_events.PROCESSING, severity.ERROR, f"Error sending {uid} to {target_name}")
-            monitor.send_task_event(s_events.ERROR, task_content.id, 0, target_name, dcmsend_error_message or e.output)
+
+            logger.error(  # handle_error
+                f"Error sending uid {uid} in task {task_content.id} to {target_name}:\n {dcmsend_error_message or e.output}",
+                task_content.id,
+                target=target_name,
+            )
+
             retry_increased = increase_retry(source_folder, retry_max, retry_delay)
             if retry_increased:
                 lock_file.unlink()
             else:
                 logger.info(f"Max retries reached, moving to {error_folder}")
-                monitor.send_task_event(s_events.SUSPEND, task_content.id, 0, target_name, "Max retries reached")
-                _move_sent_directory(source_folder, error_folder)
-                monitor.send_task_event(s_events.MOVE, task_content.id, 0, error_folder, "")
+                monitor.send_task_event(task_event.SUSPEND, task_content.id, 0, target_name, "Max retries reached")
+                _move_sent_directory(task_content.id, source_folder, error_folder)
+                monitor.send_task_event(task_event.MOVE, task_content.id, 0, error_folder, "")
                 monitor.send_event(m_events.PROCESSING, severity.ERROR, f"Series suspended after reaching max retries")
-                _trigger_notification(task_content.info, mercure_events.ERROR)
+                _trigger_notification(task_content, mercure_events.ERROR)
+
         logger.info(f"Done with dispatching folder {source_folder}")
     else:
         pass
         # logger.warning(f"Folder {source_folder} is *not* ready for sending")
 
 
-def _move_sent_directory(source_folder, destination_folder) -> None:
+def _move_sent_directory(task_id, source_folder, destination_folder) -> None:
     """
     This check is needed if there is already a folder with the same name
     in the success folder. If so a new directory is create with a timestamp
@@ -231,13 +237,14 @@ def _move_sent_directory(source_folder, destination_folder) -> None:
             shutil.move(source_folder, destination_folder / source_folder.name)
             (destination_folder / source_folder.name / mercure_names.PROCESSING).unlink()
     except:
-        logger.info(f"Error moving folder {source_folder} to {destination_folder}")
-        monitor.send_event(m_events.PROCESSING, severity.ERROR, f"Error moving {source_folder} to {destination_folder}")
+        logger.error(f"Error moving folder {source_folder} to {destination_folder}", task_id)  # handle_error
 
 
-def _trigger_notification(task_info: TaskInfo, event) -> None:
+def _trigger_notification(task: Task, event) -> None:
     # Select which notifications need to be sent. If applied_rule is not empty, check only this rule. Otherwise,
     # check all rules that are contained in triggered_rules (applied only to series-level dispatching)
+    task_info = task.info
+
     selected_rules: Dict[str, Literal[True]] = {}
     if task_info.applied_rule:
         selected_rules[task_info.applied_rule] = True
@@ -248,16 +255,14 @@ def _trigger_notification(task_info: TaskInfo, event) -> None:
     for current_rule in selected_rules:
         # Check if the rule is available
         if not current_rule:
-            error_text = f"Missing applied_rule in task file in job {task_info.uid}"
-            logger.exception(error_text)
-            monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_text)
+            logger.error(f"Missing applied_rule in task file in task {task.id}", task.id)  # handle_error
             continue
 
         # Check if the mercure configuration still contains that rule
         if not isinstance(config.mercure.rules.get(current_rule, ""), Rule):
-            error_text = f"Applied rule not existing anymore in mercure configuration from job {task_info.uid}"
-            logger.exception(error_text)
-            monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_text)
+            logger.error(
+                f"Applied rule not existing anymore in mercure configuration from task {task.id}", task.id
+            )  # handle_error
             continue
 
         # Now fire the webhook if configured

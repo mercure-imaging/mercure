@@ -15,8 +15,10 @@ from starlette.authentication import requires
 
 # App-specific includes
 import common.config as config
+import common.helper as helper
 from common.constants import mercure_defs
 from common.types import Module
+
 from webinterface.common import get_user_information
 from webinterface.common import templates
 
@@ -124,7 +126,7 @@ async def edit_module(request):
     if config.mercure.modules[module].settings:
         settings_string = json.dumps(config.mercure.modules[module].settings, indent=4, sort_keys=False)
 
-    runtime = config.get_runner()
+    runtime = helper.get_runner()
 
     template = "modules_edit.html"
     context = {

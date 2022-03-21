@@ -128,7 +128,7 @@ pydantic==1.9.0
     # via -r requirements.in
 pydicom==2.2.2
     # via -r requirements.in
-pyfakefs==4.5.4
+pyfakefs==4.5.5
     # via -r requirements.in
 pygments==2.11.2
     # via sphinx

@@ -24,13 +24,8 @@ from dispatch.send import execute
 from common.constants import mercure_defs
 
 
-# Setup daiquiri logger
-daiquiri.setup(
-    config.get_loglevel(),
-    outputs=(daiquiri.output.Stream(formatter=daiquiri.formatter.ColorFormatter(fmt=config.get_logformat())),),
-)
 # Create local logger instance
-logger = daiquiri.getLogger("dispatcher")
+logger = config.get_logger()
 main_loop = None  # type: helper.RepeatedTimer # type: ignore
 
 

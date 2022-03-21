@@ -8,6 +8,7 @@ import pytest
 
 from dispatch.send import execute, is_ready_for_sending
 from common.constants import mercure_names
+from testing_common import *
 
 dummy_info = {
     "action": "route",

@@ -7,6 +7,7 @@ Provides functions for routing and processing of studies (consisting of multiple
 # Standard python includes
 import os
 from pathlib import Path
+from typing import Optional, Union
 import uuid
 import json
 import shutil
@@ -19,6 +20,7 @@ import common.rule_evaluation as rule_evaluation
 import common.monitor as monitor
 import common.notification as notification
 import common.helper as helper
+import common.log_helpers as log_helpers
 from common.types import Rule, Task, TaskHasStudy, TaskInfo
 from common.constants import (
     mercure_defs,
@@ -36,7 +38,7 @@ from common.constants import (
 
 
 # Create local logger instance
-logger = daiquiri.getLogger("route_studies")
+logger = config.get_logger()
 
 
 def route_studies() -> None:
@@ -60,9 +62,11 @@ def route_studies() -> None:
             error_message = f"Problems while processing study {dir_entry}"
             logger.exception(error_message)
             # TODO: Add study events to bookkeeper
-            # monitor.send_series_event(monitor.s_events.ERROR, entry, 0, "", "Exception while processing")
+            # monitor.send_series_event(monitor.task_event.ERROR, entry, 0, "", "Exception while processing")
             monitor.send_event(
-                monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message,
+                monitor.m_events.PROCESSING,
+                monitor.severity.ERROR,
+                error_message,
             )
         if not study_success:
             # Move the study to the error folder to avoid repeated processing
@@ -104,9 +108,7 @@ def is_study_complete(folder: str) -> bool:
         complete_trigger = study.complete_trigger
 
         if not complete_trigger:
-            error_text = f"Missing trigger condition in task file in study folder {folder}"
-            logger.error(error_text)
-            monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_text)
+            logger.error(f"Missing trigger condition in task file in study folder {folder}", task.id)  # handle_error
             return False
 
         complete_required_series = study.get("complete_required_series", "")
@@ -116,10 +118,8 @@ def is_study_complete(folder: str) -> bool:
             not complete_required_series
         ):
             complete_trigger = mercure_rule.STUDY_TRIGGER_CONDITION_TIMEOUT
-            warning_text = f"Missing series for trigger condition in study folder {folder}. Using timeout instead"
-            logger.warning(warning_text)
-            monitor.send_event(
-                monitor.m_events.PROCESSING, monitor.severity.WARNING, warning_text,
+            logger.warning(  # handle_error
+                f"Missing series for trigger condition in study folder {folder}. Using timeout instead", task.id
             )
 
         # Check for trigger condition
@@ -128,15 +128,11 @@ def is_study_complete(folder: str) -> bool:
         elif complete_trigger == mercure_rule.STUDY_TRIGGER_CONDITION_RECEIVED_SERIES:
             return check_study_series(task, complete_required_series)
         else:
-            error_text = f"Invalid trigger condition in task file in study folder {folder}"
-            logger.error(error_text)
-            monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_text)
+            logger.error(f"Invalid trigger condition in task file in study folder {folder}", task.id)  # handle_error
             return False
 
     except Exception:
-        error_text = f"Invalid task file in study folder {folder}"
-        logger.exception(error_text)
-        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_text)
+        logger.error(f"Invalid task file in study folder {folder}", task.id)  # handle_error
         return False
 
 
@@ -167,9 +163,10 @@ def check_study_series(task: TaskHasStudy, required_series: str) -> bool:
         received_series = task.study.received_series
 
     # Check if the completion criteria is fulfilled
-    return rule_evaluation.parse_completion_series(required_series, received_series)
+    return rule_evaluation.parse_completion_series(task.id, required_series, received_series)
 
 
+@log_helpers.clear_task_decorator
 def route_study(study) -> bool:
     """
     Processses the study in the folder 'study'. Loads the task file and delegates the action to helper functions
@@ -187,29 +184,35 @@ def route_study(study) -> bool:
         lock = helper.FileLock(lock_file)
     except:
         # Can't create lock file, so something must be seriously wrong
-        error_message = f"Unable to create study lock file {lock_file}"
-        logger.error(error_message)
-        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
+        try:
+            with open(Path(study_folder) / mercure_names.TASKFILE, "r") as json_file:
+                task: Task = Task(**json.load(json_file))
+            logger.error(f"Unable to create study lock file {lock_file}", task.id)  # handle_error
+        except:
+            logger.error(f"Unable to create study lock file {lock_file}", None)  # handle_error
         return False
 
     try:
         # Read stored task file to determine completeness criteria
         with open(Path(study_folder) / mercure_names.TASKFILE, "r") as json_file:
-            task: Task = Task(**json.load(json_file))
+            task = Task(**json.load(json_file))
     except Exception:
-        error_text = f"Invalid task file in study folder {study_folder}"
-        logger.exception(error_text)
-        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_text)
+        try:
+            with open(Path(study_folder) / mercure_names.TASKFILE, "r") as json_file:
+                logger.error(
+                    f"Invalid task file in study folder {study_folder}", json.load(json_file)["id"]
+                )  # handle_error
+        except:
+            logger.error(f"Invalid task file in study folder {study_folder}", None)  # handle_error
         return False
 
+    logger.setTask(task.id)
     action_result = True
     info: TaskInfo = task.info
     action = info.get("action", "")
 
     if not action:
-        error_text = f"Missing action in study folder {study_folder}"
-        logger.exception(error_text)
-        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_text)
+        logger.error(f"Missing action in study folder {study_folder}", task.id)  # handle_error
         return False
 
     # TODO: Clean folder for duplicate DICOMs (i.e., if series have been sent twice -- check by instance UID)
@@ -222,23 +225,16 @@ def route_study(study) -> bool:
         action_result = push_studylevel_processing(study, task)
     else:
         # This point should not be reached (discard actions should be handled on the series level)
-        error_text = f"Invalid task action in study folder {study_folder}"
-        logger.exception(error_text)
-        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_text)
+        logger.error(f"Invalid task action in study folder {study_folder}", task.id)  # handle_error
         return False
 
     if not action_result:
-        error_text = f"Error during processing of study {study}"
-        logger.exception(error_text)
-        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_text)
+        logger.error(f"Error during processing of study {study}", task.id)  # handle_error
         return False
 
-    if not remove_study_folder(study, lock):
-        error_text = f"Error removing folder of study {study}"
-        logger.exception(error_text)
-        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_text)
+    if not remove_study_folder(task.id, study, lock):
+        logger.error(f"Error removing folder of study {study}", task.id)  # handle_error
         return False
-
     return True
 
 
@@ -247,7 +243,7 @@ def push_studylevel_dispatch(study: str, task: Task) -> bool:
     Pushes the study folder to the dispatchter, including the generated task file containing the destination information
     """
     trigger_studylevel_notification(study, task, mercure_events.RECEPTION)
-    return move_study_folder(study, "OUTGOING")
+    return move_study_folder(task.id, study, "OUTGOING")
 
 
 def push_studylevel_processing(study: str, task: Task) -> bool:
@@ -255,7 +251,7 @@ def push_studylevel_processing(study: str, task: Task) -> bool:
     Pushes the study folder to the processor, including the generated task file containing the processing instructions
     """
     trigger_studylevel_notification(study, task, mercure_events.RECEPTION)
-    return move_study_folder(study, "PROCESSING")
+    return move_study_folder(task.id, study, "PROCESSING")
 
 
 def push_studylevel_notification(study: str, task: Task) -> bool:
@@ -264,7 +260,7 @@ def push_studylevel_notification(study: str, task: Task) -> bool:
     """
     trigger_studylevel_notification(study, task, mercure_events.RECEPTION)
     trigger_studylevel_notification(study, task, mercure_events.COMPLETION)
-    move_study_folder(study, "SUCCESS")
+    move_study_folder(task.id, study, "SUCCESS")
     return True
 
 
@@ -282,24 +278,18 @@ def push_studylevel_error(study: str) -> None:
         lock = helper.FileLock(lock_file)
     except:
         # Can't create lock file, so something must be seriously wrong
-        error_message = f"Unable to lock study for removal {lock_file}"
-        logger.error(error_message)
-        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
+        logger.error(f"Unable to lock study for removal {lock_file}")  # handle_error
         return
-    if not move_study_folder(study, "ERROR"):
+    if not move_study_folder(None, study, "ERROR"):
         # At this point, we can only wait for manual intervention
-        error_message = f"Unable to move study to ERROR folder {lock_file}"
-        logger.error(error_message)
-        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
+        logger.error(f"Unable to move study to ERROR folder {lock_file}")  # handle_error
         return
-    if not remove_study_folder(study, lock):
-        error_message = f"Unable to delete study folder {lock_file}"
-        logger.error(error_message)
-        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
+    if not remove_study_folder(None, study, lock):
+        logger.error(f"Unable to delete study folder {lock_file}")  # handle_error
         return
 
 
-def move_study_folder(study: str, destination: str) -> bool:
+def move_study_folder(task_id: Union[str, None], study: str, destination: str) -> bool:
     """
     Moves the study subfolder to the specified destination with proper locking of the folders
     """
@@ -314,9 +304,7 @@ def move_study_folder(study: str, destination: str) -> bool:
     elif destination == "OUTGOING":
         destination_folder = config.mercure.outgoing_folder
     else:
-        error_message = f"Unknown destination {destination} requested for {study}"
-        logger.exception(error_message)
-        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
+        logger.error(f"Unknown destination {destination} requested for {study}", task_id)  # handle_error
         return False
 
     # Create unique name of destination folder
@@ -326,15 +314,11 @@ def move_study_folder(study: str, destination: str) -> bool:
     try:
         os.mkdir(destination_folder)
     except Exception:
-        error_message = f"Unable to create study destination folder {destination_folder}"
-        logger.exception(error_message)
-        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
+        logger.error(f"Unable to create study destination folder {destination_folder}", task_id)  # handle_error
         return False
 
     if not Path(destination_folder).exists():
-        error_message = f"Creating study destination folder not possible {destination_folder}"
-        logger.error(error_message)
-        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
+        logger.error(f"Creating study destination folder not possible {destination_folder}", task_id)  # handle_error
         return False
 
     # Create lock file in destination folder (to prevent any other module to work on the folder). Note that
@@ -344,24 +328,19 @@ def move_study_folder(study: str, destination: str) -> bool:
         lock = helper.FileLock(lock_file)
     except:
         # Can't create lock file, so something must be seriously wrong
-        error_message = f"Unable to create lock file {destination_folder}/{mercure_names.LOCK}"
-        logger.error(error_message)
-        monitor.send_event(
-            monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message,
-        )
+        logger.error(f"Unable to create lock file {destination_folder}/{mercure_names.LOCK}", task_id)  # handle_error
         return False
 
     # Move all files except the lock file
-    for entry in os.scandir(source_folder):
+    # FIXME: if we don't use a list instead of an iterator, in testing we get an error from pyfakefs about the iterator changing during the iteration
+    for entry in list(os.scandir(source_folder)):
         # Move all files but exclude the lock file in the source folder
         if not entry.name.endswith(mercure_names.LOCK):
             try:
                 shutil.move(source_folder + "/" + entry.name, destination_folder + "/" + entry.name)
             except Exception:
-                error_message = f"Problem while pushing file {entry} from {source_folder} to {destination_folder}"
-                logger.exception(error_message)
-                monitor.send_event(
-                    monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message,
+                logger.error(  # handle_error
+                    f"Problem while pushing file {entry} from {source_folder} to {destination_folder}", task_id
                 )
 
     # Remove the lock file in the target folder. Would happen automatically when leaving the function,
@@ -370,15 +349,13 @@ def move_study_folder(study: str, destination: str) -> bool:
         lock.free()
     except:
         # Can't delete lock file, so something must be seriously wrong
-        error_message = f"Unable to remove lock file {lock_file}"
-        logger.error(error_message)
-        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
+        logger.error(f"Unable to remove lock file {lock_file}", task_id)  # handle_error
         return False
 
     return True
 
 
-def remove_study_folder(study: str, lock: helper.FileLock) -> bool:
+def remove_study_folder(task_id: Union[str, None], study: str, lock: helper.FileLock) -> bool:
     """
     Removes a study folder containing nothing but the lock file (called during cleanup after all files have
     been moved somewhere else already)
@@ -389,20 +366,13 @@ def remove_study_folder(study: str, lock: helper.FileLock) -> bool:
         lock.free()
     except:
         # Can't delete lock file, so something must be seriously wrong
-        error_message = f"Unable to remove lock file while removing study folder {study}"
-        logger.error(error_message)
-        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
+        logger.error(f"Unable to remove lock file while removing study folder {study}", task_id)  # handle_error
         return False
     # Remove the empty study folder
     try:
         shutil.rmtree(study_folder)
     except Exception as e:
-        error_message = f"Unable to delete folder {study_folder}"
-        logger.error(error_message)
-        logger.exception(e)
-        monitor.send_event(
-            monitor.m_events.PROCESSING, monitor.severity.ERROR, f"Unable to delete study folder {study_folder}",
-        )
+        logger.error(f"Unable to delete study folder {study_folder}", task_id)  # handle_error
     return True
 
 
@@ -410,21 +380,17 @@ def trigger_studylevel_notification(study: str, task: Task, event) -> bool:
     # Check if the applied_rule is available
     current_rule = task.info.applied_rule
     if not current_rule:
-        error_text = f"Missing applied_rule in task file in study {study}"
-        logger.exception(error_text)
-        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_text)
+        logger.error(f"Missing applied_rule in task file in study {study}", task.id)  # handle_error
         return False
 
     # Check if the mercure configuration still contains that rule
     if not isinstance(config.mercure.rules.get(current_rule, ""), Rule):
-        error_text = f"Applied rule not existing anymore in mercure configuration {study}"
-        logger.exception(error_text)
-        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_text)
+        logger.error(f"Applied rule not existing anymore in mercure configuration {study}", task.id)  # handle_error
         return False
 
     # OK, now fire out the webhook if configured
     if event == mercure_events.RECEPTION:
-        if config.mercure.rules[current_rule].notification_trigger_reception == 'True':
+        if config.mercure.rules[current_rule].notification_trigger_reception == "True":
             notification.send_webhook(
                 config.mercure.rules[current_rule].get("notification_webhook", ""),
                 config.mercure.rules[current_rule].get("notification_payload", ""),
@@ -432,7 +398,7 @@ def trigger_studylevel_notification(study: str, task: Task, event) -> bool:
                 current_rule,
             )
     if event == mercure_events.COMPLETION:
-        if config.mercure.rules[current_rule].notification_trigger_completion == 'True':
+        if config.mercure.rules[current_rule].notification_trigger_completion == "True":
             notification.send_webhook(
                 config.mercure.rules[current_rule].get("notification_webhook", ""),
                 config.mercure.rules[current_rule].get("notification_payload", ""),
@@ -440,7 +406,7 @@ def trigger_studylevel_notification(study: str, task: Task, event) -> bool:
                 current_rule,
             )
     if event == mercure_events.ERROR:
-        if config.mercure.rules[current_rule].notification_trigger_error == 'True':
+        if config.mercure.rules[current_rule].notification_trigger_error == "True":
             notification.send_webhook(
                 config.mercure.rules[current_rule].get("notification_webhook", ""),
                 config.mercure.rules[current_rule].get("notification_payload", ""),

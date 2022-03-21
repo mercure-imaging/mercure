@@ -6,78 +6,24 @@ Helper functions and definitions for monitoring mercure's operations via the boo
 
 # Standard python includes
 import asyncio
+
 from json import JSONDecodeError
+import daiquiri
 
 from typing import Any, Dict, Optional
-import logging
 from urllib.error import HTTPError
 
 import aiohttp
 from common.types import Task
-import daiquiri
 from common.helper import loop
+from common.enums import *
 
 # Create local logger instance
-logger = daiquiri.getLogger("config")
+logger = daiquiri.getLogger("monitor")  # log_helpers.get_logger("monitor", True)
 api_key: Optional[str] = None
 
 sender_name = ""
 bookkeeper_address = ""
-
-
-class m_events:
-    """Event types for general mercure monitoring."""
-
-    UNKNOWN = "UNKNOWN"
-    BOOT = "BOOT"
-    SHUTDOWN = "SHUTDOWN"
-    SHUTDOWN_REQUEST = "SHUTDOWN_REQUEST"
-    CONFIG_UPDATE = "CONFIG_UPDATE"
-    PROCESSING = "PROCESSING"
-
-
-class w_events:
-    """Event types for monitoring the webgui activity."""
-
-    UNKNOWN = "UNKNOWN"
-    LOGIN = "LOGIN"
-    LOGIN_FAIL = "LOGIN_FAIL"
-    LOGOUT = "LOGOUT"
-    USER_CREATE = "USER_CREATE"
-    USER_DELETE = "USER_DELETE"
-    USER_EDIT = "USER_EDIT"
-    RULE_CREATE = "RULE_CREATE"
-    RULE_DELETE = "RULE_DELETE"
-    RULE_EDIT = "RULE_EDIT"
-    TARGET_CREATE = "TARGET_CREATE"
-    TARGET_DELETE = "TARGET_DELETE"
-    TARGET_EDIT = "TARGET_EDIT"
-    SERVICE_CONTROL = "SERVICE_CONTROL"
-    CONFIG_EDIT = "CONFIG_EDIT"
-
-
-class s_events:
-    """Event types for monitoring everything related to one specific series."""
-
-    UNKNOWN = "UNKNOWN"
-    REGISTERED = "REGISTERED"
-    ROUTE = "ROUTE"
-    DISCARD = "DISCARD"
-    DISPATCH = "DISPATCH"
-    CLEAN = "CLEAN"
-    ERROR = "ERROR"
-    MOVE = "MOVE"
-    SUSPEND = "SUSPEND"
-    COMPLETE = "COMPLETE"
-
-
-class severity:
-    """Severity level associated to the mercure events."""
-
-    INFO = 0
-    WARNING = 1
-    ERROR = 2
-    CRITICAL = 3
 
 
 class MonitorHTTPError(Exception):
@@ -154,28 +100,29 @@ def configure(module, instance, address) -> None:
     set_api_key()
 
 
-def send_event(event, severity=severity.INFO, description: str = "") -> None:
+def send_event(event: m_events, severity: severity = severity.INFO, description: str = "") -> None:
     """Sends information about general mercure events to the bookkeeper (e.g., during module start)."""
+    logger.debug(f'Monitor (mercure-event): level {severity.value} {event}: "{description}"')
+
     if not bookkeeper_address:
         return
-    logger.debug(f"Monitor (mercure-event): level {severity} {event}: {description}")
     payload = {
         "sender": sender_name,
-        "event": event,
-        "severity": severity,
+        "event": event.value,
+        "severity": severity.value,
         "description": description,
     }
     post("mercure-event", data=payload)
     # requests.post(bookkeeper_address + "/mercure-event", data=payload, timeout=1)
 
 
-def send_webgui_event(event, user, description="") -> None:
+def send_webgui_event(event: w_events, user: str, description="") -> None:
     """Sends information about an event on the webgui to the bookkeeper."""
     if not bookkeeper_address:
         return
     payload = {
         "sender": sender_name,
-        "event": event,
+        "event": event.value,
         "user": user,
         "description": description,
     }
@@ -203,15 +150,16 @@ def send_register_task(task: Task) -> None:
     # requests.post(bookkeeper_address + "/register-task", data=json.dumps(task.dict()), timeout=1)
 
 
-def send_task_event(event, task_id, file_count, target, info) -> None:
+def send_task_event(event: task_event, task_id, file_count, target, info) -> None:
     """Send an event related to a specific series to the bookkeeper."""
+    logger.debug(f"Monitor (task-event): event={event} task_id={task_id} info={info}")
+
     if not bookkeeper_address:
         return
 
-    logger.debug(f"Monitor (task-event): event={event} task_id={task_id} info={info}")
     payload = {
         "sender": sender_name,
-        "event": event,
+        "event": event.value,
         "file_count": file_count,
         "target": target,
         "info": info,

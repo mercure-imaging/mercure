@@ -25,7 +25,7 @@ from webinterface.common import templates
 from common.types import Task
 
 
-logger = daiquiri.getLogger("queue")
+logger = config.get_logger()
 
 
 ###################################################################################

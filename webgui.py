@@ -44,6 +44,7 @@ from starlette.routing import Route, Router
 # App-specific includes
 import common.config as config
 import common.monitor as monitor
+import common.helper as helper
 from common.constants import mercure_defs, mercure_names
 
 import webinterface.users as users
@@ -61,11 +62,8 @@ from webinterface.common import *
 ## Helper classes
 ###################################################################################
 
-daiquiri.setup(
-    config.get_loglevel(),
-    outputs=(daiquiri.output.Stream(formatter=daiquiri.formatter.ColorFormatter(fmt=config.get_logformat())),),
-)
-logger = daiquiri.getLogger("webgui")
+
+logger = config.get_logger()
 
 
 try:
@@ -205,7 +203,7 @@ async def show_log(request) -> Response:
     raw_logs = bytes()
 
     # Get information about the type of mercure installation on the server
-    runtime = config.get_runner()
+    runtime = helper.get_runner()
 
     # Fetch the log files depending on how mercure has been installed
     if runtime == "nomad" and nomad_connection is not None:
@@ -287,7 +285,7 @@ async def configuration(request) -> Response:
     config_edited = int(request.query_params.get("edited", 0))
     os_info = distro.linux_distribution()
     os_string = f"{os_info[0]} Version {os_info[1]} ({os_info[2]})"
-    runtime = config.get_runner()
+    runtime = helper.get_runner()
     context = {
         "request": request,
         "mercure_version": mercure_defs.VERSION,
@@ -467,7 +465,7 @@ async def homepage(request) -> Response:
     free_space: Union[int, str] = 0
     total_space: Union[int, str] = 0
     disk_total: Union[int, str] = 0
-    runtime = config.get_runner()
+    runtime = helper.get_runner()
 
     try:
         disk_total, disk_used, disk_free = shutil.disk_usage(config.mercure.incoming_folder)
@@ -543,7 +541,7 @@ async def homepage(request) -> Response:
 async def control_services(request) -> Response:
     form = dict(await request.form())
     action = ""
-    runtime = config.get_runner()
+    runtime = helper.get_runner()
 
     if form.get("action", "") == "start":
         action = "start"

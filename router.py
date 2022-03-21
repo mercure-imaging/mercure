@@ -24,19 +24,8 @@ from routing.route_series import route_series, route_error_files
 from routing.route_studies import route_studies
 
 
-# Setup daiquiri logger
-daiquiri.setup(
-    config.get_loglevel(),
-    outputs=(
-        daiquiri.output.Stream(
-            formatter=daiquiri.formatter.ColorFormatter(
-                fmt=config.get_logformat()
-            )
-        ),
-    ),
-)
 # Create local logger instance
-logger = daiquiri.getLogger("router")
+logger = config.get_logger()
 main_loop = None  # type: helper.RepeatedTimer # type: ignore
 
 
@@ -67,9 +56,11 @@ def run_router(args=None) -> None:
     try:
         config.read_config()
     except Exception:
-        error_message = "Unable to update configuration. Skipping processing."
-        logger.exception(error_message)
-        monitor.send_event(monitor.m_events.CONFIG_UPDATE, monitor.severity.WARNING, error_message)
+        logger.warning(  # handle_error
+            "Unable to update configuration. Skipping processing.",
+            None,
+            event_type=monitor.m_events.CONFIG_UPDATE,
+        )
         return
 
     filecount = 0
@@ -113,10 +104,7 @@ def run_router(args=None) -> None:
         try:
             route_series(task_id, series_uid)
         except Exception:
-            error_message = f"Problems while processing series {series_uid}"
-            logger.exception(error_message)
-            monitor.send_task_event(monitor.s_events.ERROR, task_id, 0, "", error_message)
-            monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, error_message)
+            logger.error(f"Problems while processing series {series_uid}", task_id)  # handle_error
         # If termination is requested, stop processing series after the active one has been completed
         if helper.is_terminated():
             return

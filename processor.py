@@ -32,19 +32,8 @@ from process.process_series import (
 from common.types import Task
 
 
-# Setup daiquiri logger
-daiquiri.setup(
-    config.get_loglevel(),
-    outputs=(
-        daiquiri.output.Stream(
-            formatter=daiquiri.formatter.ColorFormatter(
-                fmt=config.get_logformat()
-            )
-        ),
-    ),
-)
 # Create local logger instance
-logger = daiquiri.getLogger("processor")
+logger = config.get_logger()
 main_loop = None  # type: helper.RepeatedTimer # type: ignore
 
 
@@ -117,27 +106,26 @@ def search_folder(counter) -> bool:
 
         # Copy input images if configured in rule
         if task_typed.process and task_typed.process.retain_input_images == "True":
-            push_input_images(in_folder, out_folder)
+            push_input_images(task_typed.id, in_folder, out_folder)
 
         # If the only file is task.json, the processing failed
         if [p.name for p in out_folder.rglob("*")] == ["task.json"]:
-            logger.error("Processing failed.")
-            move_results(str(p_folder), None, False, False)
-            trigger_notification(task.get("info"), mercure_events.ERROR)
-            monitor.send_task_event(monitor.s_events.ERROR, task_typed.id, 0, "", "Processing failed")
+            logger.error("Processing failed.", task_typed.id)
+            move_results(task_typed.id, str(p_folder), None, False, False)
+            trigger_notification(task_typed, mercure_events.ERROR)
             continue
 
         needs_dispatching = True if task.get("dispatch") else False
-        move_results(str(p_folder), None, True, needs_dispatching)
+        move_results(task_typed.id, str(p_folder), None, True, needs_dispatching)
         shutil.rmtree(in_folder)
         (p_folder / "nomad_job.json").unlink()
         (p_folder / ".processing").unlink()
         p_folder.rmdir()
-        monitor.send_task_event(monitor.s_events.UNKNOWN, task_typed.id, 0, "", "Processing complete")
+        monitor.send_task_event(monitor.task_event.PROCESS_COMPLETE, task_typed.id, 0, "", "Processing complete")
         # If dispatching not needed, then trigger the completion notification (for Nomad)
         if not needs_dispatching:
-            trigger_notification(task.get("info"), mercure_events.COMPLETION)
-            monitor.send_task_event(monitor.s_events.COMPLETE, task_typed.id, 0, "", "Task complete")
+            trigger_notification(task_typed, mercure_events.COMPLETION)
+            monitor.send_task_event(monitor.task_event.COMPLETE, task_typed.id, 0, "", "Task complete")
 
     # Check if processing has been suspended via the UI
     if processor_lockfile and processor_lockfile.exists():
@@ -152,6 +140,7 @@ def search_folder(counter) -> bool:
 
     # Return if no tasks have been found
     if not len(tasks):
+        logger.debug("No tasks found")
         return False
 
     sorted_tasks = sorted(tasks)
@@ -168,9 +157,16 @@ def search_folder(counter) -> bool:
         # Return true, so that the parent function will trigger another search of the folder
         return True
     except Exception:
-        logger.exception(f"Problems while processing series {task}")
-        monitor.send_task_event(monitor.s_events.ERROR, task.id, 0, "", "Exception while processing")
-        monitor.send_event(monitor.m_events.PROCESSING, monitor.severity.ERROR, "Exception while processing series")
+        for p in (Path(task) / "out" / "task.json", Path(task) / "in" / "task.json"):
+            try:
+                task_id = json.load(open(p))["id"]
+                logger.error("Exception while processing", task_id)  # handle_error
+                break
+            except:
+                pass
+        else:
+            logger.error("Exception while processing", None)  # handle_error
+
         return False
 
 
@@ -181,9 +177,10 @@ def run_processor(args=None) -> None:
     try:
         config.read_config()
     except Exception:
-        logger.exception("Unable to update configuration. Skipping processing")
-        monitor.send_event(
-            monitor.m_events.CONFIG_UPDATE, monitor.severity.WARNING, "Unable to update configuration (possibly locked)"
+        logger.warning(  # handle_error
+            "Unable to update configuration. Skipping processing",
+            None,
+            event_type=monitor.m_events.CONFIG_UPDATE,
         )
         return
 

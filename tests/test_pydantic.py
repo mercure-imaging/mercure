@@ -5,12 +5,12 @@ test_bookkeeper.py
 import bookkeeper as b
 
 
-from testing_common import load_config
+import testing_common
+from testing_common import *
 
 
-def test_config(fs, mocker):
-    c = load_config(
-        fs,
+def test_config(mercure_config, mocker):
+    c = mercure_config(
         {
             "rules": {
                 "catchall": {
