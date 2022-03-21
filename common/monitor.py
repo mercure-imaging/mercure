@@ -16,7 +16,7 @@ from urllib.error import HTTPError
 import aiohttp
 from common.types import Task
 from common.helper import loop
-from common.enums import *
+from common.event_types import *
 
 # Create local logger instance
 logger = daiquiri.getLogger("monitor")  # log_helpers.get_logger("monitor", True)

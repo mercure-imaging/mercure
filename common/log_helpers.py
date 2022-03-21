@@ -2,7 +2,7 @@ import logging, re, sys, os
 from typing import Tuple
 import daiquiri
 from common import helper
-from common import enums, monitor
+from common import event_types, monitor
 
 setup_complete = False
 
@@ -28,18 +28,18 @@ class BookkeeperHandler(logging.Handler):
         message = record.msg
 
         if record.levelname == "CRITICAL":
-            severity = enums.severity.CRITICAL
+            severity = event_types.severity.CRITICAL
         elif record.levelname == "ERROR":
-            severity = enums.severity.ERROR
+            severity = event_types.severity.ERROR
         elif record.levelname == "WARNING":
-            severity = enums.severity.WARNING
+            severity = event_types.severity.WARNING
 
         task_id = getattr(record, "task", None)
         if task_id is not None:
-            if severity in (enums.severity.CRITICAL, enums.severity.ERROR):
-                t_type = enums.task_event.ERROR
+            if severity in (event_types.severity.CRITICAL, event_types.severity.ERROR):
+                t_type = event_types.task_event.ERROR
             else:
-                t_type = enums.task_event.UNKNOWN
+                t_type = event_types.task_event.UNKNOWN
             monitor.send_task_event(
                 t_type,
                 task_id,  # type: ignore
@@ -48,29 +48,7 @@ class BookkeeperHandler(logging.Handler):
                 message,
             )
 
-        monitor.send_event(getattr(record, "event_type", enums.m_events.PROCESSING), severity, message)
-
-
-# This breaks uvicorn
-# class CustomLogRecord(logging.LogRecord):
-#     def getMessage(self):
-#         msg = str(self.msg)
-#         if self.args:
-#             msg = msg % self.args
-
-#         context_task = getattr(self, "context_task", None)
-#         task = self.args_task if self.args_task is not None else context_task
-#         if task is not None:
-#             msg = f"{msg} [task: {task}]"
-#         return msg
-
-#     def __init__(self, name, level, pathname, lineno, msg, args, exc_info, func=None, sinfo=None, **kwargs):
-#         if len(args) > 0:
-#             self.args_task = args[0]
-#             args = args[1:]
-#         else:
-#             self.args_task = None
-#         super().__init__(name, level, pathname, lineno, msg, None, exc_info, func, sinfo, **kwargs)
+        monitor.send_event(getattr(record, "event_type", event_types.m_events.PROCESSING), severity, message)
 
 
 class ExceptionsKeywordArgumentAdapter(daiquiri.KeywordArgumentAdapter):
