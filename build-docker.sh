@@ -80,7 +80,7 @@ build_component () {
 
 docker build -t $PREFIX/mercure-base:$TAG -t $PREFIX/mercure-base:latest -f docker/base/Dockerfile .
 
-for component in ui bookkeeper cleaner processor receiver router
+for component in ui bookkeeper receiver router processor dispatcher cleaner
 do
   build_component $component
 done

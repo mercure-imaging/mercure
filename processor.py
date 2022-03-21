@@ -121,11 +121,11 @@ def search_folder(counter) -> bool:
         (p_folder / "nomad_job.json").unlink()
         (p_folder / ".processing").unlink()
         p_folder.rmdir()
-        monitor.send_task_event(monitor.s_events.UNKNOWN, task_typed.id, 0, "", "Processing complete")
+        monitor.send_task_event(monitor.task_event.PROCESS_COMPLETE, task_typed.id, 0, "", "Processing complete")
         # If dispatching not needed, then trigger the completion notification (for Nomad)
         if not needs_dispatching:
             trigger_notification(task_typed, mercure_events.COMPLETION)
-            monitor.send_task_event(monitor.s_events.COMPLETE, task_typed.id, 0, "", "Task complete")
+            monitor.send_task_event(monitor.task_event.COMPLETE, task_typed.id, 0, "", "Task complete")
 
     # Check if processing has been suspended via the UI
     if processor_lockfile and processor_lockfile.exists():

@@ -17,7 +17,7 @@ from typing import Dict, Tuple, cast
 from typing_extensions import Literal
 
 # App-specific includes
-from common.monitor import s_events, m_events, severity
+from common.monitor import task_event, m_events, severity
 from dispatch.retry import increase_retry
 from dispatch.status import is_ready_for_sending
 from common.constants import mercure_names
@@ -175,14 +175,14 @@ def execute(
             # Send bookkeeper notification
             file_count = len(list(Path(source_folder).glob(mercure_names.DCMFILTER)))
             monitor.send_task_event(
-                s_events.DISPATCH,
+                task_event.DISPATCH,
                 task_content.id,
                 file_count,
                 target_name,
                 "",
             )
             _move_sent_directory(task_content.id, source_folder, success_folder)
-            monitor.send_task_event(s_events.MOVE, task_content.id, 0, str(success_folder), "")
+            monitor.send_task_event(task_event.MOVE, task_content.id, 0, str(success_folder), "")
             _trigger_notification(task_content, mercure_events.COMPLETION)
         except CalledProcessError as e:
             dcmsend_error_message = None
@@ -204,9 +204,9 @@ def execute(
                 lock_file.unlink()
             else:
                 logger.info(f"Max retries reached, moving to {error_folder}")
-                monitor.send_task_event(s_events.SUSPEND, task_content.id, 0, target_name, "Max retries reached")
+                monitor.send_task_event(task_event.SUSPEND, task_content.id, 0, target_name, "Max retries reached")
                 _move_sent_directory(task_content.id, source_folder, error_folder)
-                monitor.send_task_event(s_events.MOVE, task_content.id, 0, error_folder, "")
+                monitor.send_task_event(task_event.MOVE, task_content.id, 0, error_folder, "")
                 monitor.send_event(m_events.PROCESSING, severity.ERROR, f"Series suspended after reaching max retries")
                 _trigger_notification(task_content, mercure_events.ERROR)
 

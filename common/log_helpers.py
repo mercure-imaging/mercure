@@ -37,9 +37,9 @@ class BookkeeperHandler(logging.Handler):
         task_id = getattr(record, "task", None)
         if task_id is not None:
             if severity in (enums.severity.CRITICAL, enums.severity.ERROR):
-                t_type = enums.s_events.ERROR
+                t_type = enums.task_event.ERROR
             else:
-                t_type = enums.s_events.UNKNOWN
+                t_type = enums.task_event.UNKNOWN
             monitor.send_task_event(
                 t_type,
                 task_id,  # type: ignore
@@ -49,6 +49,7 @@ class BookkeeperHandler(logging.Handler):
             )
 
         monitor.send_event(getattr(record, "event_type", enums.m_events.PROCESSING), severity, message)
+
 
 # This breaks uvicorn
 # class CustomLogRecord(logging.LogRecord):

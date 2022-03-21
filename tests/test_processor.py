@@ -9,7 +9,7 @@ from unittest.mock import call
 import uuid
 from pytest_mock import MockerFixture
 import common
-from common.monitor import s_events
+from common.monitor import task_event
 
 import process.process_series
 import router
@@ -151,10 +151,10 @@ def test_process_series_nomad(fs, mercure_config: Callable[[Dict], Config], mock
 
     common.monitor.send_task_event.assert_has_calls(  # type: ignore
         [
-            call(s_events.REGISTERED, task_id, 1, "", "Registered series"),
-            call(s_events.UNKNOWN, task_id, 0, "", "Processing job dispatched."),
-            call(s_events.UNKNOWN, task_id, 0, "", "Processing complete"),
-            call(s_events.COMPLETE, task_id, 0, "", "Task complete"),
+            call(task_event.REGISTERED, task_id, 1, "", "Registered series."),
+            call(task_event.PROCESS_BEGIN, task_id, 0, "", "Processing job dispatched."),
+            call(task_event.PROCESS_COMPLETE, task_id, 0, "", "Processing complete"),
+            call(task_event.COMPLETE, task_id, 0, "", "Task complete"),
         ]
     )
     common.monitor.send_task_event.reset_mock()  # type: ignore
@@ -188,9 +188,9 @@ def test_process_series_nomad(fs, mercure_config: Callable[[Dict], Config], mock
 
     common.monitor.send_task_event.assert_has_calls(  # type: ignore
         [
-            call(s_events.REGISTERED, task_id, 1, "", "Registered series"),
-            call(s_events.UNKNOWN, task_id, 0, "", "Processing job dispatched."),
-            call(s_events.ERROR, task_id, 0, "", "Processing failed."),
+            call(task_event.REGISTERED, task_id, 1, "", "Registered series."),
+            call(task_event.PROCESS_BEGIN, task_id, 0, "", "Processing job dispatched."),
+            call(task_event.ERROR, task_id, 0, "", "Processing failed."),
         ]
     )
 
@@ -256,9 +256,9 @@ def test_process_series(fs, mercure_config: Callable[[Dict], Config], mocked: Mo
 
     common.monitor.send_task_event.assert_has_calls(  # type: ignore
         [
-            call(s_events.REGISTERED, task_id, 1, "", "Registered series"),
-            call(s_events.UNKNOWN, task_id, 0, "test_module", "Processing job running."),
-            call(s_events.UNKNOWN, task_id, 0, "", "Processing job complete"),
-            call(s_events.COMPLETE, task_id, 0, "", "Task complete"),
+            call(task_event.REGISTERED, task_id, 1, "", "Registered series."),
+            call(task_event.PROCESS_BEGIN, task_id, 0, "test_module", "Processing job running."),
+            call(task_event.PROCESS_COMPLETE, task_id, 0, "", "Processing job complete."),
+            call(task_event.COMPLETE, task_id, 0, "", "Task complete."),
         ]
     )

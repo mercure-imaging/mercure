@@ -13,7 +13,7 @@ import uuid
 
 import pytest
 from common.helper import FileLock
-from common.monitor import m_events, s_events, severity
+from common.monitor import m_events, task_event, severity
 from common.types import *
 import common
 from pyfakefs.fake_filesystem import FakeFilesystem
@@ -64,7 +64,7 @@ def test_route_series_fail1(fs: FakeFilesystem, mercure_config, mocked):
     router.run_router()
     print(common.monitor.send_task_event.call_args_list)  # type: ignore
     common.monitor.send_task_event.assert_any_call(  # type: ignore
-        s_events.ERROR,
+        task_event.ERROR,
         task_id,
         0,
         "",
@@ -104,7 +104,7 @@ def test_route_series_fail3(fs: FakeFilesystem, mercure_config, mocked):
     mocked.patch("os.mkdir", new=no_create_destination)
     router.run_router()
     common.monitor.send_task_event.assert_any_call(  # type: ignore
-        s_events.ERROR,
+        task_event.ERROR,
         task_id,
         0,
         "",
@@ -120,7 +120,7 @@ def test_route_series_fail3(fs: FakeFilesystem, mercure_config, mocked):
     mocked.patch("os.mkdir", new=fake_create_destination)
     router.run_router()
     common.monitor.send_task_event.assert_any_call(  # type: ignore
-        s_events.ERROR,
+        task_event.ERROR,
         task_id,
         0,
         "",
@@ -137,7 +137,7 @@ def test_route_series_fail4(fs: FakeFilesystem, mercure_config, mocked):
     mocked.patch("shutil.move", side_effect=Exception("no moving"))
     router.run_router()
     common.monitor.send_task_event.assert_any_call(  # type: ignore
-        s_events.ERROR,
+        task_event.ERROR,
         task_id,
         0,
         "",
@@ -156,8 +156,8 @@ def task_will_dispatch_to(task, config, fake_process) -> None:
 
     common.monitor.send_task_event.assert_has_calls(  # type: ignore
         [
-            call(s_events.DISPATCH, task.id, 1, task.dispatch.target_name, ""),
-            call(s_events.MOVE, task.id, 0, "/var/success", ""),
+            call(task_event.DISPATCH, task.id, 1, task.dispatch.target_name, ""),
+            call(task_event.MOVE, task.id, 0, "/var/success", ""),
         ],
     )
 
@@ -240,11 +240,11 @@ def test_route_series(fs: FakeFilesystem, mercure_config, mocked, fake_process):
 
     common.monitor.send_task_event.assert_has_calls(  # type: ignore
         [
-            call(s_events.REGISTERED, task_id, 1, "", "Registered series"),
-            call(s_events.ERROR, task_id, 0, "", 'Invalid rule encountered: @StudyDescription@ == "foo" '),
-            call(s_events.ERROR, task_id, 0, "", "Invalid rule encountered:  1/0 "),
-            call(s_events.ROUTE, task_id, 1, "test_target", "route_series"),
-            call(s_events.MOVE, task_id, 1, f"/var/outgoing/{task_id}", ""),
+            call(task_event.REGISTERED, task_id, 1, "", "Registered series."),
+            call(task_event.ERROR, task_id, 0, "", 'Invalid rule encountered: @StudyDescription@ == "foo" '),
+            call(task_event.ERROR, task_id, 0, "", "Invalid rule encountered:  1/0 "),
+            call(task_event.ROUTE, task_id, 1, "test_target", "route_series"),
+            call(task_event.MOVE, task_id, 1, f"/var/outgoing/{task_id}", ""),
         ]
     )
     out_path = next(Path("/var/outgoing").iterdir())

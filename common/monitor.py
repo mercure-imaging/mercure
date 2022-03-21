@@ -150,7 +150,7 @@ def send_register_task(task: Task) -> None:
     # requests.post(bookkeeper_address + "/register-task", data=json.dumps(task.dict()), timeout=1)
 
 
-def send_task_event(event: s_events, task_id, file_count, target, info) -> None:
+def send_task_event(event: task_event, task_id, file_count, target, info) -> None:
     """Send an event related to a specific series to the bookkeeper."""
     logger.debug(f"Monitor (task-event): event={event} task_id={task_id} info={info}")
 

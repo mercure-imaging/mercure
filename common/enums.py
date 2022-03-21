@@ -47,11 +47,13 @@ class w_events(StringEnum):
     CONFIG_EDIT = auto()
 
 
-class s_events(StringEnum):
+class task_event(StringEnum):
     """Event types for monitoring everything related to one specific series."""
 
     UNKNOWN = auto()
     REGISTERED = auto()
+    PROCESS_BEGIN = auto()
+    PROCESS_COMPLETE = auto()
     ROUTE = auto()
     DISCARD = auto()
     DISPATCH = auto()

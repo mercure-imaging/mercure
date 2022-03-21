@@ -12,7 +12,7 @@ import daiquiri
 from common import monitor
 
 # App-specific includes
-from common.monitor import s_events
+from common.monitor import task_event
 from common.constants import mercure_names
 from common.types import Task
 
@@ -57,7 +57,7 @@ def is_target_json_valid(folder) -> Optional[Task]:
     except:
         logger.exception("task.json has invalid format")
         monitor.send_task_event(
-            s_events.ERROR,
+            task_event.ERROR,
             "TODO",
             0,
             "None",
@@ -68,7 +68,7 @@ def is_target_json_valid(folder) -> Optional[Task]:
     # dispatch = target.dispatch.dict() if target.dispatch else {}
     # if not all([key in dispatch for key in ["target_ip", "target_port", "target_aet_target"]]):
     #     send_series_event(
-    #         s_events.ERROR,
+    #         task_event.ERROR,
     #         dispatch.get("series_uid", "None"),  # type: ignore
     #         0,
     #         dispatch.get("target_name", "None"),  # type: ignore

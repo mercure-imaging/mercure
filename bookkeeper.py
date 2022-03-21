@@ -416,7 +416,7 @@ async def post_task_event(request) -> JSONResponse:
     """Endpoint for logging all events related to one series."""
     payload = dict(await request.form())
     sender = payload.get("sender", "Unknown")
-    event = payload.get("event", monitor.s_events.UNKNOWN)
+    event = payload.get("event", monitor.task_event.UNKNOWN)
     # series_uid = payload.get("series_uid", "")
     try:
         file_count = int(payload.get("file_count", 0))

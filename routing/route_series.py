@@ -83,7 +83,7 @@ def route_series(task_id: str, series_UID: str) -> None:
         return
 
     monitor.send_register_series(tagsList)
-    monitor.send_task_event(monitor.s_events.REGISTERED, task_id, len(fileList), "", "Registered series")
+    monitor.send_task_event(monitor.task_event.REGISTERED, task_id, len(fileList), "", "Registered series.")
 
     # Now test the routing rules and evaluate which rules have been triggered. If one of the triggered
     # rules enforces discarding, discard_series will be True.
@@ -191,12 +191,12 @@ def push_series_complete(
 
     if discard_rule:
         info_text = "Discard by rule " + discard_rule
-        monitor.send_task_event(monitor.s_events.DISCARD, task_id, len(file_list), "", info_text)
+        monitor.send_task_event(monitor.task_event.DISCARD, task_id, len(file_list), "", info_text)
 
     if not push_files(task_id, file_list, destination_path, copy_files):
         logger.error(f"Problem while moving completed files", task_id)  # handle_error
 
-    monitor.send_task_event(monitor.s_events.MOVE, task_id, len(file_list), destination_path, "")
+    monitor.send_task_event(monitor.task_event.MOVE, task_id, len(file_list), destination_path, "")
 
     try:
         lock.free()
@@ -445,7 +445,7 @@ def push_serieslevel_outgoing(
             continue
 
         monitor.send_task_event(
-            monitor.s_events.ROUTE,
+            monitor.task_event.ROUTE,
             task_id,
             len(file_list),
             target,
@@ -468,7 +468,7 @@ def push_serieslevel_outgoing(
                     task_id,
                 )
 
-        monitor.send_task_event(monitor.s_events.MOVE, task_id, len(file_list), folder_name, "")
+        monitor.send_task_event(monitor.task_event.MOVE, task_id, len(file_list), folder_name, "")
 
         try:
             lock.free()

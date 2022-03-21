@@ -28,12 +28,11 @@ import common.log_helpers as log_helpers
 
 import common.helper as helper
 import common.monitor as monitor
-from common.monitor import s_events
+from common.monitor import task_event
 from common.constants import mercure_defs
 
 
 # Setup daiquiri logger
-
 logger = config.get_logger()
 
 main_loop = None  # type: helper.RepeatedTimer # type: ignore
@@ -117,7 +116,7 @@ def delete_folder(entry) -> None:
     try:
         rmtree(delete_path)
         logger.info(f"Deleted folder {delete_path} from {series_uid}")
-        monitor.send_task_event(s_events.CLEAN, Path(delete_path).stem, 0, delete_path, "Deleted folder")
+        monitor.send_task_event(task_event.CLEAN, Path(delete_path).stem, 0, delete_path, "Deleted folder")
     except Exception as e:
         logger.error(
             f"Unable to delete folder {delete_path}", Path(delete_path).stem, target=delete_path

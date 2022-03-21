@@ -78,7 +78,7 @@ def nomad_runtime(task: Task, folder: str) -> bool:
     with open(f_path / "nomad_job.json", "w") as json_file:
         json.dump(job_info, json_file, indent=4)
 
-    monitor.send_task_event(monitor.s_events.UNKNOWN, task.id, 0, "", "Processing job dispatched.")
+    monitor.send_task_event(monitor.task_event.PROCESS_BEGIN, task.id, 0, "", "Processing job dispatched.")
     return True
 
 
@@ -190,7 +190,7 @@ def docker_runtime(task: Task, folder: str) -> bool:
             detach=True,
         )
         monitor.send_task_event(
-            monitor.s_events.UNKNOWN, task.id, 0, task.process.module_name, f"Processing job running."
+            monitor.task_event.PROCESS_BEGIN, task.id, 0, task.process.module_name, f"Processing job running."
         )
         # Wait for end of container execution
         docker_result = container.wait()
@@ -304,15 +304,15 @@ def process_series(folder) -> None:
             shutil.rmtree(folder, ignore_errors=True)
 
             if processing_success:
-                monitor.send_task_event(monitor.s_events.UNKNOWN, task_id, 0, "", "Processing job complete")
+                monitor.send_task_event(monitor.task_event.PROCESS_COMPLETE, task_id, 0, "", "Processing job complete.")
                 # If dispatching not needed, then trigger the completion notification (for docker/systemd)
                 if not needs_dispatching:
-                    monitor.send_task_event(monitor.s_events.COMPLETE, task_id, 0, "", "Task complete")
+                    monitor.send_task_event(monitor.task_event.COMPLETE, task_id, 0, "", "Task complete.")
                     # TODO: task really is never none if processing_success is true
                     trigger_notification(task, mercure_events.COMPLETION)  # type: ignore
 
             else:
-                monitor.send_task_event(monitor.s_events.ERROR, task_id, 0, "", "Processing failed")
+                monitor.send_task_event(monitor.task_event.ERROR, task_id, 0, "", "Processing failed.")
                 if task is not None:  # TODO: handle if task is none?
                     trigger_notification(task, mercure_events.ERROR)
         else:
@@ -321,7 +321,7 @@ def process_series(folder) -> None:
             else:
                 logger.info(f"Unable to process task")
                 move_results(task_id, folder, lock, False, False)
-                monitor.send_task_event(monitor.s_events.ERROR, task_id, 0, "", "Unable to process task")
+                monitor.send_task_event(monitor.task_event.ERROR, task_id, 0, "", "Unable to process task")
                 if task is not None:
                     trigger_notification(task, mercure_events.ERROR)
     return
