@@ -6,6 +6,7 @@ and stores the information in a Postgres database.
 """
 # Standard python includes
 import os
+import subprocess
 import sys
 from typing import Any
 import asyncpg
@@ -242,7 +243,11 @@ class CustomJSONResponse(JSONResponse):
 
 def create_database() -> None:
     """Creates all tables in the database if they do not exist."""
-    metadata.create_all(sqlalchemy.create_engine(DATABASE_URL).connect())
+    subprocess.run(
+        ["alembic", "upgrade", "head"],
+        check=True,
+        env={**os.environ, "PATH": "/opt/mercure/env/bin:" + os.environ["PATH"], "DATABASE_URL": DATABASE_URL},
+    )
 
 
 @app.on_event("startup")

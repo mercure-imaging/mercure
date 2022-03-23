@@ -354,14 +354,15 @@ install_dependencies() {
     sudo mkdir "$MERCURE_BASE/env" && sudo chown $USER "$MERCURE_BASE/env"
     sudo /opt/miniconda/bin/conda create -y -q --prefix "$MERCURE_BASE/env" python=3.6
     echo "## Installing required Python packages..."
-    sudo $MERCURE_BASE/env/bin/pip install --quiet -r "$MERCURE_BASE/app/requirements.txt"
     sudo chown -R $OWNER:$OWNER "$MERCURE_BASE/env"
+    sudo su $OWNER -c "$MERCURE_BASE/env/bin/pip install --isolated --quiet -r \"$MERCURE_BASE/app/requirements.txt\""
   fi
 }
 
 install_postgres() {
   echo "## Setting up postgres..."
   sudo -u postgres -s <<- EOM
+    cd ~
     createuser mercure
     createdb mercure -O mercure
     psql -c "ALTER USER mercure WITH PASSWORD '$DB_PWD';"
