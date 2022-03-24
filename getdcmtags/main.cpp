@@ -10,7 +10,7 @@
 #include "dcmtk/dcmdata/dcspchrs.h"
 #include "dcmtk/dcmdata/dctypes.h"
 
-#define VERSION "0.5.0"
+#define VERSION "0.5.1"
 
 static OFString tagSpecificCharacterSet = "";
 static OFString tagPatientName = "";
@@ -53,6 +53,8 @@ static OFString tagSliceThickness = "";
 static OFString tagInstanceNumber = "";
 static OFString tagAcquisitionNumber = "";
 static OFString tagInstitutionName = "";
+static OFString tagMediaStorageSOPClassUID = "";
+static OFString tagAcquisitionType = "";
 
 static OFString helperSenderAET = "";
 static OFString helperReceiverAET = "";
@@ -213,6 +215,8 @@ bool writeTagsFile(OFString dcmFile, OFString originalFile)
     INSERTTAG("InstanceNumber", tagInstanceNumber, "12");
     INSERTTAG("AcquisitionNumber", tagAcquisitionNumber, "15");
     INSERTTAG("InstitutionName", tagInstitutionName, "Some institution");
+    INSERTTAG("MediaStorageSOPClassUID", tagMediaStorageSOPClassUID, "1.2.840.10008.5.1.4.1.1.4");
+    INSERTTAG("AcquisitionType", tagAcquisitionType, "SPIRAL");
 
     INSERTTAG("SenderAET", helperSenderAET, "STORESCU");
     INSERTTAG("ReceiverAET", helperReceiverAET, "ANY-SCP");
@@ -353,6 +357,8 @@ int main(int argc, char *argv[])
     READTAG(DCM_InstanceNumber, tagInstanceNumber);
     READTAG(DCM_AcquisitionNumber, tagAcquisitionNumber);
     READTAG(DCM_InstitutionName, tagInstitutionName);
+    READTAG(DCM_MediaStorageSOPClassUID, tagMediaStorageSOPClassUID);
+    READTAG(DCM_AcquisitionType, tagAcquisitionType);
 
     isConversionNeeded = true;
     if (tagSpecificCharacterSet.compare("ISO_IR 192") == 0)
