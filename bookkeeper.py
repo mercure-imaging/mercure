@@ -53,7 +53,7 @@ bookkeeper_config = Config((os.getenv("MERCURE_CONFIG_FOLDER") or "/opt/mercure/
 BOOKKEEPER_PORT = bookkeeper_config("PORT", cast=int, default=8080)
 BOOKKEEPER_HOST = bookkeeper_config("HOST", default="0.0.0.0")
 DATABASE_URL = bookkeeper_config("DATABASE_URL", default="postgresql://mercure@localhost")
-DATABASE_SCHEMA = bookkeeper_config("DATABASE_SCHEMA", default=None)
+DATABASE_SCHEMA: Any = bookkeeper_config("DATABASE_SCHEMA", default=None)
 DEBUG_MODE = bookkeeper_config("DEBUG", cast=bool, default=False)
 API_KEY = None
 
