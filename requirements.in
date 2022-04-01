@@ -5,6 +5,7 @@ hupper
 watchdog
 dataclasses; python_version < '3.7'
 alembic
+wheel
 
 # logging / monitoring
 graphyte

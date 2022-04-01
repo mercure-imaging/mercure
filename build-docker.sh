@@ -46,10 +46,14 @@ echo "Using image tag $TAG"
 echo ""
 
 FORCE_BUILD="n"
-while getopts ":y" opt; do
+CACHE="--no-cache"
+while getopts ":yc" opt; do
   case ${opt} in
     y )
       FORCE_BUILD="y"
+      ;;
+    c )
+      CACHE=""
       ;;
     \? )
       echo "Invalid Option: -$OPTARG" 1>&2
@@ -78,7 +82,7 @@ build_component () {
   docker build docker/$1 -t $PREFIX/mercure-$1:$TAG -t $PREFIX/mercure-$1:latest --build-arg VERSION_TAG=$TAG
 }
 
-docker build --no-cache -t $PREFIX/mercure-base:$TAG -t $PREFIX/mercure-base:latest -f docker/base/Dockerfile .
+docker build $CACHE -t $PREFIX/mercure-base:$TAG -t $PREFIX/mercure-base:latest -f docker/base/Dockerfile .
 
 for component in ui bookkeeper receiver router processor dispatcher cleaner
 do

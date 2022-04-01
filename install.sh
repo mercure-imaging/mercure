@@ -333,30 +333,21 @@ install_app_files() {
 install_packages() {
   echo "## Installing Linux packages..."
   sudo apt-get update
-  sudo apt-get install -y build-essential wget git dcmtk jq inetutils-ping sshpass postgresql postgresql-contrib libpq-dev git-lfs
+  sudo apt-get install -y build-essential wget git dcmtk jq inetutils-ping sshpass postgresql postgresql-contrib libpq-dev git-lfs python3-wheel python3.8-dev python3.8 python3.8-venv
 }
 
-install_conda() {
-  if [ ! -x "$(command -v conda)" ]; then # Can't find conda in PATH
-    echo "## Installing Miniconda..."
-    if [ ! -e "/opt/miniconda" ]; then
-      wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O "/tmp/miniconda.sh"
-      sudo bash /tmp/miniconda.sh -b -p /opt/miniconda
-    fi
-    PATH="/opt/miniconda/bin:$PATH"
-  fi
-}
 
 install_dependencies() {
-  install_conda
   echo "## Installing Python runtime environment..."
   if [ ! -e "$MERCURE_BASE/env" ]; then
     sudo mkdir "$MERCURE_BASE/env" && sudo chown $USER "$MERCURE_BASE/env"
-    sudo /opt/miniconda/bin/conda create -y -q --prefix "$MERCURE_BASE/env" python=3.6
-    echo "## Installing required Python packages..."
-    sudo chown -R $OWNER:$OWNER "$MERCURE_BASE/env"
-    sudo su $OWNER -c "$MERCURE_BASE/env/bin/pip install --isolated --quiet -r \"$MERCURE_BASE/app/requirements.txt\""
+    python3.8 -m venv "$MERCURE_BASE/env"
   fi
+
+  echo "## Installing required Python packages..."
+  sudo chown -R $OWNER:$OWNER "$MERCURE_BASE/env"
+  sudo su $OWNER -c "$MERCURE_BASE/env/bin/pip install --isolated wheel~=0.37.1"
+  sudo su $OWNER -c "$MERCURE_BASE/env/bin/pip install --isolated -r \"$MERCURE_BASE/app/requirements.txt\""
 }
 
 install_postgres() {
