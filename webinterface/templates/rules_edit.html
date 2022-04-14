@@ -3,6 +3,9 @@
 {% block title %}Rules{% endblock %}
 {% block extra_head %}
 <script type="text/javascript" src="{{ url_for('static', path='/js/bulma-quickview.min.js') }}"></script>
+<script type="text/javascript" src="{{ url_for('static', path='/js/dicomParser.min.js') }}"></script>
+<script type="text/javascript" src="{{ url_for('static', path='/js/dataDictionary.js') }}"></script>
+
 {% endblock %}
 {% block content %}
 <main role="main">
@@ -56,9 +59,9 @@
                         <label class="label">Selection Rule</label>
                         <div class="field has-addons">
                             <div class="control">
-                                <button class="button" type="button" onclick="showTestRule()" title="Test rule">
+                                <!-- <button class="button" type="button" onclick="showTestRule()" title="Test rule">
                                     <i class="fas fa-cogs "></i>
-                                </button>
+                                </button> -->
                             </div>
                             <div class="control is-expanded">
                                 <textarea rows="1" name="rule" id="rule" class="textarea testinclude" autocomplete='off'
@@ -74,6 +77,52 @@
                             <i class="fas fa-tags"></i>&nbsp;Available Tags
                         </button>
                     </div>
+                    <details><summary class="has-text-weight-bold" style="cursor: pointer;"><i class="fa fa-cogs"></i>&nbsp;Test Rule </summary>
+                        <div class="card column is-10" style="margin-left: auto; margin-right:auto; margin-top: 1em; margin-bottom: 1em;">
+                            <div class="card-content">
+                              <div class="content">
+
+                                <div class="tile is-ancestor">
+                                        <div class="tile is-vertical is-12">
+                                        <div class="tile" style="min-height: 10em;">
+                                            <div class="tile is-parent is-vertical" id="dropZone">
+                                            <article class="tile is-child notification is-info">
+                                                <p class="title" style="text-align: center;">Drag-and-drop a DICOM file here</p>
+                                                <p id="dropStatus">&nbsp;</p>
+                                            </article>
+                                            </div>
+                                        </div>
+                                        </div>
+                                    </div>
+
+                                    <article id="characterSetWarning" class="message is-warning is-hidden">
+                                        <div class="message-header">
+                                        <p>Unsupported character set</p>
+                                        </div>
+                                        <div class="message-body">
+                                            The testing tool does not support this character set and may behave differently from the real Mercure rule evaluator. 
+                                        </div>
+                                    </article>
+                                    <div class="container">
+                                        <div class="field">
+                                            <label class="label">Result:</label>
+                                            <div id="testresult" style="height: 3em;"></div>
+                                        </div>
+                                        <div class="field">
+                                            <label class="label">Test Values:</label>
+                                            <div class="control">
+                                                <textarea class="textarea testinclude" rows="8" placeholder="Testing tags" id="testvalues"
+                                                    name="testvalues">{{alltags|tojson(indent=4)}}</textarea>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button class="button is-dark" style="margin-left: auto; margin-right: 0; display: block; margin-top: 1em;" default autofocus id="evaltestrule" hx-post="/rules/test"
+                                        hx-include=".testinclude"  hx-target="#testresult"><i class="fas fa-cogs"></i>&nbsp;Test</button>
+                    <!-- <button class="button" type="button" id="closetestrule" onclick="closeTestRule()">Close</button> -->
+                              </div>
+                          </div>            
+                       </div>
+                    </details>
                     <div class="field">
                         <label class="label">Action</label>
                         <div class="select">
@@ -336,36 +385,6 @@
     </div>
 </main>
 
-<div class="modal" id="testrule">
-    <div class="modal-background"></div>
-    <div class="modal-card" style="width: 768px;">
-        <header class="modal-card-head">
-            <p class="modal-card-title">Test Rule</p>
-        </header>
-        <section class="modal-card-body">
-            <div class="container">
-                <div class="field">
-                    <label class="label">Result:</label>
-                    <div id="testresult" style="height: 3em;"></div>
-                </div>
-                <div class="field">
-                    <label class="label">Test Values:</label>
-                    <div class="control">
-                        <textarea class="textarea has-fixed-size testinclude" rows="8" placeholder="Testing tags" id="testvalues"
-                            name="testvalues">{{alltags|tojson(indent=4)}}</textarea>
-                    </div>
-                </div>
-            </div>
-        </section>
-        <footer class="modal-card-foot buttons is-right">
-            <button class="button is-dark" default autofocus id="evaltestrule" hx-post="/rules/test"
-                hx-include=".testinclude"  hx-target="#testresult"><i
-                    class="fas fa-cogs"></i>&nbsp;Test</button>
-            <button class="button" type="button" id="closetestrule" onclick="closeTestRule()">Close</button>
-        </footer>
-    </div>
-</div>
-
 <div class="modal" id="testcompletionseries">
     <div class="modal-background"></div>
     <div class="modal-card" style="width: 768px;">
@@ -573,7 +592,107 @@
             if ($("#action_trigger").val() == 'series') {
                 $('#study_trigger_series').prop('required', false);
             }
-        });         
+        });       
+
+
+        tagsToGet = ["SpecificCharacterSet","PatientName","SOPInstanceUID","SeriesInstanceUID","StudyInstanceUID","Modality","BodyPartExamined","ProtocolName","RetrieveAETitle","StationAETitle","Manufacturer","ManufacturerModelName","StudyDescription","CodeValue","CodeMeaning","SeriesDescription","PatientID","PatientBirthDate","PatientSex","AccessionNumber","ReferringPhysicianName","StudyID","SeriesNumber","SeriesDate","SeriesTime","AcquisitionDate","AcquisitionTime","SequenceName","ScanningSequence","SequenceVariant","MagneticFieldStrength","StationName","DeviceSerialNumber","DeviceUID","SoftwareVersions","ContrastBolusAgent","ImageComments","SliceThickness","InstanceNumber","AcquisitionNumber","InstitutionName","MediaStorageSOPClassUID","AcquisitionType"]
+        
+        function dumpDataSet(dataSet, output)
+        {
+            function getTag(tag)
+            {
+                var group = tag.substring(1,5);
+                var element = tag.substring(5,9);
+                var tagIndex = ("("+group+","+element+")").toUpperCase();
+                var attr = TAG_DICT[tagIndex];
+                return attr;
+            }
+
+
+            try {
+                var keys = [];
+                for(var propertyName in dataSet.elements) {
+                    keys.push(propertyName);
+                }
+                keys.sort();
+                for(var k=0; k < keys.length; k++) {
+                    var propertyName = keys[k];
+                    var element = dataSet.elements[propertyName];
+                    var tag = getTag(element.tag);
+                    if (tagsToGet.indexOf(tag.name) >= 0) {
+                        output[tag.name] = dataSet.string(propertyName)
+                    }
+                }
+            } catch(err) {
+                var ex = {
+                    exception: err,
+                    output: output
+                }
+                throw ex;
+            }
+        }
+        function dumpFile(file)
+        {
+            var reader = new FileReader();
+            reader.onload = function(k) {
+                var arrayBuffer = reader.result;
+                // Here we have the file data as an ArrayBuffer.  dicomParser requires as input a
+                // Uint8Array so we create that here
+                var byteArray = new Uint8Array(arrayBuffer);
+                try {
+                    dataSet = dicomParser.parseDicom(byteArray, {"untilTag": "x7fe00010"});
+                    output = {}
+                    dumpDataSet(dataSet,output)
+                    if (output["SpecificCharacterSet"] != undefined && output["SpecificCharacterSet"] != "ISO_IR 100" && output["SpecificCharacterSet"] != "ISO_IR 192") {
+                        $("#characterSetWarning").removeClass("is-hidden")
+                    } else {
+                        $("#characterSetWarning").addClass("is-hidden")
+                    }
+                    $("#dropZone article").addClass("is-success").removeClass("is-primary").removeClass("is-danger")
+                    $("#dropStatus").text("Loaded " + file.name)
+                    $('#testvalues').val(JSON.stringify(output, null, '\t'))
+                    $('#evaltestrule').click()
+                } catch (e) {
+                    $("#dropZone article").addClass("is-danger").removeClass("is-primary")
+                    $("#dropStatus").text("Error: " + e)
+                    $("#testresult").html('<span class="tag tag has-text-white  has-background-grey is-medium ruleresult">Unknown</a>')
+                    console.error(e)
+                }
+            }
+            try { 
+                reader.readAsArrayBuffer(file);
+            } catch (e) {
+                $("#dropZone article").addClass("is-danger").removeClass("is-primary")
+                $("#dropStatus").text("Error: " + e)
+                $("#testresult").html('<span class="tag tag has-text-white  has-background-grey is-medium ruleresult">Unknown</a>')
+                console.error(e)
+            }
+        }
+        function handleFileSelect(evt) {
+            evt.stopPropagation();
+            evt.preventDefault();
+            $("#dropZone article").css("outline","")
+            // Get the FileList object that contains the list of files that were dropped
+            var files = evt.dataTransfer.files;
+
+            // this UI is only built for a single file so just dump the first one
+            $("#dropStatus").text("Parsing...")
+            dumpFile(files[0]);
+        }
+
+        function handleDragOver(evt) {
+            evt.stopPropagation();
+            evt.preventDefault();
+            evt.dataTransfer.dropEffect = 'copy'; // Explicitly show this is a copy.
+            $("#dropZone article").css("outline","4px dashed blue")
+        }
+        function handleDragLeave(evt) {
+            $("#dropZone article").css("outline","")
+        }
+        var dropZone = document.getElementById('dropZone');
+        dropZone.addEventListener('dragover', handleDragOver, false);
+        dropZone.addEventListener('dragleave', handleDragLeave, false);
+        dropZone.addEventListener('drop', handleFileSelect, false);
     });
 </script>
 <script type="text/javascript" src="{{ url_for('static', path='/js/bulma-tagsinput.min.js') }}"></script>
