@@ -59,9 +59,9 @@
                         <label class="label">Selection Rule</label>
                         <div class="field has-addons">
                             <div class="control">
-                                <!-- <button class="button" type="button" onclick="showTestRule()" title="Test rule">
+                                <button id="toggletestrule" class="button" type="button" onclick="toggleTestRule()" title="Test Rule">
                                     <i class="fas fa-cogs "></i>
-                                </button> -->
+                                </button> 
                             </div>
                             <div class="control is-expanded">
                                 <textarea rows="1" name="rule" id="rule" class="textarea testinclude" autocomplete='off'
@@ -71,38 +71,15 @@
                             </div>
                         </div>
                     </div>
-                    <div class="field  is-grouped is-grouped-right">
-                        <button class="button" type="button" data-show="quickview" data-target="quickviewDefault"
-                            style="margin: 0px;">
-                            <i class="fas fa-tags"></i>&nbsp;Available Tags
-                        </button>
-                    </div>
-                    <details><summary class="has-text-weight-bold" style="cursor: pointer;"><i class="fa fa-cogs"></i>&nbsp;Test Rule </summary>
-                        <div class="card column is-10" style="margin-left: auto; margin-right:auto; margin-top: 1em; margin-bottom: 1em;">
+                    <div id="testrule" style="display: none;">
+                        <div class="card column is-12" style="margin-left: auto; margin-right:auto; margin-top: 1em; margin-bottom: 1em; padding: 0em;">
+                            <header class="card-header has-background-light">
+                                <p class="card-header-title">
+                                    <i class="fa fa-cogs"></i>&nbsp; Rule Tester
+                                </p>
+                            </header>                            
                             <div class="card-content">
-                              <div class="content">
-
-                                <div class="tile is-ancestor">
-                                        <div class="tile is-vertical is-12">
-                                        <div class="tile" style="min-height: 10em;">
-                                            <div class="tile is-parent is-vertical" id="dropZone">
-                                            <article class="tile is-child notification is-info">
-                                                <p class="title" style="text-align: center;">Drag-and-drop a DICOM file here</p>
-                                                <p id="dropStatus">&nbsp;</p>
-                                            </article>
-                                            </div>
-                                        </div>
-                                        </div>
-                                    </div>
-
-                                    <article id="characterSetWarning" class="message is-warning is-hidden">
-                                        <div class="message-header">
-                                        <p>Unsupported character set</p>
-                                        </div>
-                                        <div class="message-body">
-                                            The testing tool does not support this character set and may behave differently from the real Mercure rule evaluator. 
-                                        </div>
-                                    </article>
+                                <div class="content">
                                     <div class="container">
                                         <div class="field">
                                             <label class="label">Result:</label>
@@ -116,13 +93,42 @@
                                             </div>
                                         </div>
                                     </div>
+
+                                    <div class="tile is-ancestor" style="margin-top: 0.5em; user-select: none;">
+                                        <div class="tile is-vertical is-12">
+                                            <div class="tile" style="min-height: 8em;">
+                                                <div class="tile is-parent is-vertical" id="dropZone">
+                                                    <article class="tile is-child notification is-light ruletesterdashed">
+                                                        <p class="title is-5" style="text-align: center; margin-bottom: 0.5em;"><i class="fas fa-file-alt"></i>&nbsp; Drag-and-drop DICOM file here</p>
+                                                        <p id="dropStatus">&nbsp;</p>
+                                                    </article>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <article id="characterSetWarning" class="message is-warning is-hidden">
+                                        <div class="message-header">
+                                        <p>Unsupported Character Set</p>
+                                        </div>
+                                        <div class="message-body">
+                                            This testing tool does not support the character set and may behave differently from the rule evaluator on the mercure server.
+                                        </div>
+                                    </article>
+
                                     <button class="button is-dark" style="margin-left: auto; margin-right: 0; display: block; margin-top: 1em;" default autofocus id="evaltestrule" hx-post="/rules/test"
                                         hx-include=".testinclude"  hx-target="#testresult"><i class="fas fa-cogs"></i>&nbsp;Test</button>
-                    <!-- <button class="button" type="button" id="closetestrule" onclick="closeTestRule()">Close</button> -->
                               </div>
                           </div>            
                        </div>
-                    </details>
+                    </div>
+                    <div class="field is-grouped is-grouped-right">
+                        <button class="button" type="button" data-show="quickview" data-target="quickviewDefault"
+                            style="margin: 0px;">
+                            <i class="fas fa-tags"></i>&nbsp;Available Tags
+                        </button>
+                    </div>
+
                     <div class="field">
                         <label class="label">Action</label>
                         <div class="select">
@@ -468,15 +474,16 @@
         return true;
     }
 
-    function showTestRule() {
-        $("#testresult").html("Rule not yet tested");
-        $("#testrule").addClass("is-active");
-        $("#evaltestrule").focus();
-        $("#evaltestrule").click();
-    }
-
-    function closeTestRule() {
-        $("#testrule").removeClass("is-active");
+    function toggleTestRule() {
+        if($("#testrule").is(":visible")) {
+            $("#testrule").hide();
+            $("#toggletestrule").removeClass("is-dark");
+        }
+        else {
+            $("#testrule").show();
+            $("#toggletestrule").addClass("is-dark");
+            $("#evaltestrule").click();
+        }      
     }
 
     function showTestCompletionSeries() {
@@ -605,9 +612,11 @@
                 var element = tag.substring(5,9);
                 var tagIndex = ("("+group+","+element+")").toUpperCase();
                 var attr = TAG_DICT[tagIndex];
+                if (typeof(attr) == "undefined") {
+                    attr = "";
+                }
                 return attr;
             }
-
 
             try {
                 var keys = [];
@@ -631,13 +640,14 @@
                 throw ex;
             }
         }
+
         function dumpFile(file)
         {
+            $("#dropZone article").removeClass("ruletesterdashed")            
             var reader = new FileReader();
             reader.onload = function(k) {
                 var arrayBuffer = reader.result;
-                // Here we have the file data as an ArrayBuffer.  dicomParser requires as input a
-                // Uint8Array so we create that here
+                // Here we have the file data as an ArrayBuffer.  dicomParser requires as input a Uint8Array so we create that here
                 var byteArray = new Uint8Array(arrayBuffer);
                 try {
                     dataSet = dicomParser.parseDicom(byteArray, {"untilTag": "x7fe00010"});
@@ -648,14 +658,14 @@
                     } else {
                         $("#characterSetWarning").addClass("is-hidden")
                     }
-                    $("#dropZone article").addClass("is-success").removeClass("is-primary").removeClass("is-danger")
-                    $("#dropStatus").text("Loaded " + file.name)
-                    $('#testvalues').val(JSON.stringify(output, null, '\t'))
+                    $("#dropZone article").addClass("is-link").removeClass("is-primary").removeClass("is-danger")
+                    $("#dropStatus").text("Loaded DICOM tag values from " + file.name)
+                    $('#testvalues').val(JSON.stringify(output, null, '    '))
                     $('#evaltestrule').click()
                 } catch (e) {
                     $("#dropZone article").addClass("is-danger").removeClass("is-primary")
                     $("#dropStatus").text("Error: " + e)
-                    $("#testresult").html('<span class="tag tag has-text-white  has-background-grey is-medium ruleresult">Unknown</a>')
+                    $("#testresult").html('<span class="tag tag has-text-white has-background-grey is-medium ruleresult">Unknown</a>')
                     console.error(e)
                 }
             }
@@ -664,10 +674,11 @@
             } catch (e) {
                 $("#dropZone article").addClass("is-danger").removeClass("is-primary")
                 $("#dropStatus").text("Error: " + e)
-                $("#testresult").html('<span class="tag tag has-text-white  has-background-grey is-medium ruleresult">Unknown</a>')
+                $("#testresult").html('<span class="tag tag has-text-white has-background-grey is-medium ruleresult">Unknown</a>')
                 console.error(e)
             }
         }
+
         function handleFileSelect(evt) {
             evt.stopPropagation();
             evt.preventDefault();
@@ -684,11 +695,13 @@
             evt.stopPropagation();
             evt.preventDefault();
             evt.dataTransfer.dropEffect = 'copy'; // Explicitly show this is a copy.
-            $("#dropZone article").css("outline","4px dashed blue")
+            $("#dropZone article").css("outline","4px dashed #3273dc")
         }
+
         function handleDragLeave(evt) {
             $("#dropZone article").css("outline","")
         }
+
         var dropZone = document.getElementById('dropZone');
         dropZone.addEventListener('dragover', handleDragOver, false);
         dropZone.addEventListener('dragleave', handleDragLeave, false);
