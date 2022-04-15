@@ -10,7 +10,7 @@
         <div class="card rulecard">
             <header class="card-header has-background-light">
                 <p class="card-header-title card-toggle">
-                    <span class="icon"><i class="fas {% if targets[x].target_type == "dicom" %}fa-hdd{% elif targets[x].target_type == "sftp" %}fa-download{% endif %} fa-lg"></i></span>&nbsp;&nbsp;{{ x }}
+                    <span class="icon"><i class="fas {{get_target_handler(targets[x]).icon}} fa-lg"></i></span>&nbsp;&nbsp;{{ x }}
                 </p>
                 <a class="card-header-icon card-toggle">
                     <i class="fa fa-angle-down"></i>
@@ -20,45 +20,7 @@
                 <div class="content">
                     <table class="table is-narrow" style="margin-bottom: 8px;">
                         <col width="150">
-                        {% if targets[x].target_type == "dicom" %}
-                        <tr>
-                            <td>Type:</td>
-                            <td>DICOM Node</td>
-                        </tr>
-                        <tr>
-                            <td>Host/IP:</td>
-                            <td>{{ targets[x].ip }}</td>
-                        </tr>
-                        <tr>
-                            <td>Port:</td>
-                            <td>{{ targets[x].port }}</td>
-                        </tr>
-                        <tr>
-                            <td>AET Target:</td>
-                            <td>{{ targets[x].aet_target }}</td>
-                        </tr>
-                        <tr>
-                            <td>AET Source:</td>
-                            <td>{{ targets[x].aet_source }}</td>
-                        </tr>
-                        {% elif targets[x].target_type == "sftp" %}
-                        <tr>
-                            <td>Type:</td>
-                            <td>SFTP Server</td>
-                        </tr>
-                        <tr>
-                            <td>Host/IP:</td>
-                            <td>{{ targets[x].host }}</td>
-                        </tr>
-                        <tr>
-                            <td>User:</td>
-                            <td>{{ targets[x].user }}</td>
-                        </tr>
-                        <tr>
-                            <td>Folder:</td>
-                            <td>{{ targets[x].folder }}</td>
-                        </tr>
-                        {% endif %}
+                        {% include get_target_handler(targets[x]).view_template %}
                         <tr>
                             <td>Contact:</td>
                             <td>{{ targets[x].contact }}</td>

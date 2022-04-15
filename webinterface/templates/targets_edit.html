@@ -33,81 +33,19 @@
                         <div class="select">
                             <div class="control">
                                 <select name="target_type" id="target_type" value="{{targets[edittarget].target_type}}">
-                                    <option value="dicom" {% if targets[edittarget].target_type=="dicom" %}selected=true {%endif%}>DICOM Node</option>
-                                    <option value="sftp" {% if targets[edittarget].target_type=="sftp" %}selected=true {%endif%}>SFTP Server</option>
+                                    {% for t in target_names %}
+                                    <option value="{{ t }}" {% if targets[edittarget].target_type==t %}selected=true {%endif%}>{{t}}</option>
+                                    {% endfor %}
                                 </select>
                             </div>
                         </div>
                     </div>
 
-                    <div id="form-sftp" class="is-hidden">
-                        <div class="notification is-info" style="margin-top: 30px;">
-                            <i class="fas fa-snowplow"></i>&nbsp;&nbsp;Support for SFTP servers is experimental at this time.
-                        </div>                        
-                        <div class="field" style="margin-top: 30px;">
-                            <label class="label">Host/IP</label>
-                            <div class="control">
-                                <input name="host" class="input" required='true' autocomplete='off' type="text"
-                                    placeholder="Host name or IP" value="{{targets[edittarget].host}}" />
-                            </div>
-                        </div>
-                        <div class="field">
-                            <label class="label">Folder</label>
-                            <div class="control">
-                                <input name="folder" class="input" required='true' autocomplete='off' type="text"
-                                    placeholder="Folder" value="{{targets[edittarget].folder}}" />
-                            </div>
-                        </div>
-                        <div class="field">
-                            <label class="label">User</label>
-                            <div class="control">
-                                <input name="user" class="input" required='true' autocomplete='off' type="text"
-                                    placeholder="User" value="{{targets[edittarget].user}}" />
-                            </div>
-                        </div>
-                        <div class="field">
-                            <label class="label">Password</label>
-                            <div class="control">
-                                <input name="password" class="input" autocomplete='off' type="text"
-                                    placeholder="Password" value="{%if targets[edittarget].password%}{{targets[edittarget].password}}{%endif%}" />
-                            </div>
-                        </div>
-
+                    {% for t in target_types %}
+                    <div id="form-{{t.get_name()}}" class="target-form {% if not loop.index0 %}is-hidden{% endif %}">
+                        {% include get_target_handler(t).edit_template %}
                     </div>
-
-                    <div id="form-dicom">
-                        <div class="field" style="margin-top: 30px;">
-                            <label class="label">Host/IP</label>
-                            <div class="control">
-                                <input name="ip" class="input" required='true' autocomplete='off' type="text"
-                                    placeholder="Host name or IP" value="{{targets[edittarget]['ip']}}" minlength="7" maxlength="15"
-                                    size="15">
-                            </div>
-                        </div>
-                        <div class="field">
-                            <label class="label">Port</label>
-                            <div class="control">
-                                <input name="port" class="input" required='true' autocomplete='off' type="number" placeholder="104"
-                                    minlength="2" maxlength="5" value="{{targets[edittarget]['port']}}">
-                            </div>
-                        </div>
-                        <div class="field">
-                            <label class="label">AET Target</label>
-                            <div class="control">
-                                <input name="aet_target" class="input" required='true' autocomplete='off' type="text"
-                                    placeholder="Calling AET" value="{{targets[edittarget]['aet_target']}}"
-                                    pattern="[A-Za-z0-9_-]+">
-                            </div>
-                        </div>
-                        <div class="field">
-                            <label class="label">AET Source</label>
-                            <div class="control">
-                                <input name="aet_source" class="input" required='true' autocomplete='off' type="text"
-                                    placeholder="Outgoing AET" value="{{targets[edittarget]['aet_source']}}"
-                                    pattern="[A-Za-z0-9_-]+">
-                            </div>
-                        </div>
-                    </div>
+                    {%endfor%}
                 </div>
                 <div class="panel" data-content="information">
                     <div class="field">
@@ -142,20 +80,13 @@
 <script>
     $(document).ready(function () {
         update_form = function(value) {
-            if (value == "sftp") {
-                $('#form-sftp').removeClass('is-hidden');
-                $('#form-sftp input[was-required=true]').attr("required", true);
-                $('#form-dicom').addClass('is-hidden');
 
-                $('#form-dicom input[required=true]').attr("was-required", true);
-                $('#form-dicom input').attr("required", false);
-            } else if (value == "dicom") {
-                $('#form-dicom').removeClass('is-hidden');
-                $('#form-dicom input[was-required=true]').attr("required", true);
-                $('#form-sftp').addClass('is-hidden');
-                $('#form-sftp input[required=true]').attr("was-required", true);
-                $('#form-sftp input').attr("required", false);
-            }
+            $('.target-form').addClass('is-hidden')
+            $('.target-form input[required=true]').attr("was-required", true);
+            $('.target-form input').attr("required", false);
+
+            $('#form-'+value).removeClass('is-hidden');
+            $('#form-'+value+' input[was-required=true]').attr("required", true);
         }
         $('#target_type').on('change', function (e) {
             update_form(e.target.value)

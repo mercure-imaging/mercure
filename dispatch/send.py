@@ -29,22 +29,10 @@ import common.log_helpers as log_helpers
 from common.constants import (
     mercure_events,
 )
+import dispatch.target_types as target_types
 
 # Create local logger instance
 logger = config.get_logger()
-
-
-DCMSEND_ERROR_CODES = {
-    1: "EXITCODE_COMMANDLINE_SYNTAX_ERROR",
-    21: "EXITCODE_NO_INPUT_FILES",
-    22: "EXITCODE_INVALID_INPUT_FILE",
-    23: "EXITCODE_NO_VALID_INPUT_FILES",
-    43: "EXITCODE_CANNOT_WRITE_REPORT_FILE",
-    60: "EXITCODE_CANNOT_INITIALIZE_NETWORK",
-    61: "EXITCODE_CANNOT_NEGOTIATE_ASSOCIATION",
-    62: "EXITCODE_CANNOT_SEND_REQUEST",
-    65: "EXITCODE_CANNOT_ADD_PRESENTATION_CONTEXT",
-}
 
 
 def _create_command(task_id: str, dispatch_info: TaskDispatch, folder: Path) -> Tuple[str, dict, bool]:
@@ -108,16 +96,16 @@ def execute(
         return
     logger.setTask(task_content.id)
 
-    target_info = task_content.dispatch
+    dispatch_info = task_content.dispatch
     task_info = task_content.info
 
     delay: float = 0
-    if target_info and target_info.next_retry_at:
-        delay = target_info.next_retry_at
+    if dispatch_info and dispatch_info.next_retry_at:
+        delay = dispatch_info.next_retry_at
 
-    if target_info and time.time() >= delay:
+    if dispatch_info and time.time() >= delay:
         uid = task_info.get("uid", "uid-missing")
-        target_name: str = target_info.get("target_name", "target_name-missing")
+        target_name: str = dispatch_info.get("target_name", "target_name-missing")
 
         if (uid == "uid-missing") or (target_name == "target_name-missing"):
             logger.warning(f"Missing information for folder {source_folder}", task_content.id)
@@ -142,19 +130,6 @@ def execute(
         logger.info("---------")
         logger.info(f"Folder {source_folder} is ready for sending")
 
-        # Compose the command for dispatching the results
-        command, opts, needs_splitting = _create_command(task_content.id, target_info, source_folder)
-
-        # If no command is returned, then the selected target does not exist anymore
-        if not command:
-            logger.error(  # handle_error
-                f"Settings for target {target_name} incorrect. Unable to dispatch job {uid}",
-                task_content.id,
-                target=target_name,
-            )
-            _move_sent_directory(task_content.id, source_folder, error_folder)
-            _trigger_notification(task_content, mercure_events.ERROR)
-
         # Check if a sendlog file from a previous try exists. If so, remove it
         sendlog = Path(source_folder) / mercure_names.SENDLOG
         if sendlog.exists():
@@ -167,16 +142,22 @@ def execute(
                 )
                 return
 
-        logger.debug(f"Running command {command}")
-        logger.info(f"Sending {source_folder} to target {target_name}")
+        # Compose the command for dispatching the results
+        target = config.mercure.targets.get(dispatch_info.get("target_name", ""), None)
+
+        if not target:
+            logger.error(  # handle_error
+                f"Settings for target {target_name} incorrect. Unable to dispatch job {uid}",
+                task_content.id,
+                target=target_name,
+            )
+            _move_sent_directory(task_content.id, source_folder, error_folder)
+            _trigger_notification(task_content, mercure_events.ERROR)
+
+        handler = target_types.get_handler(target)
+
         try:
-            if needs_splitting:
-                result = check_output(split(command), stderr=subprocess.STDOUT, **opts)
-            else:
-                result = check_output(command, stderr=subprocess.STDOUT, **opts)
-            logger.info(f"Folder {source_folder} successfully sent, moving to {success_folder}")
-            logger.debug(result.decode("utf-8"))
-            # Send bookkeeper notification
+            result = handler.send_to_target(task_content.id, target, dispatch_info, source_folder)
             file_count = len(list(Path(source_folder).glob(mercure_names.DCMFILTER)))
             monitor.send_task_event(
                 task_event.DISPATCH,
@@ -188,17 +169,10 @@ def execute(
             _move_sent_directory(task_content.id, source_folder, success_folder)
             monitor.send_task_event(task_event.MOVE, task_content.id, 0, str(success_folder), "")
             _trigger_notification(task_content, mercure_events.COMPLETION)
-        except CalledProcessError as e:
-            dcmsend_error_message = None
-            if isinstance(config.mercure.targets.get(target_name, ""), DicomTarget):
-                dcmsend_error_message = DCMSEND_ERROR_CODES.get(e.returncode, None)
-                logger.exception(f"Failed command:\n {command} \nbecause of {dcmsend_error_message}")
-            else:
-                logger.error(f"Failed. Command exited with value {e.returncode}: \n {command}")
-            logger.debug(e.output)
 
+        except Exception as e:
             logger.error(  # handle_error
-                f"Error sending uid {uid} in task {task_content.id} to {target_name}:\n {dcmsend_error_message or e.output}",
+                f"Error sending uid {uid} in task {task_content.id} to {target_name}:\n {e}",
                 task_content.id,
                 target=target_name,
             )

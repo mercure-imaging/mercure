@@ -27,6 +27,10 @@ class Target(BaseModel, Compat):
     contact: Optional[str] = ""
     comment: str = ""
 
+    @classmethod
+    def get_name(cls) -> str:
+        return cls.construct().target_type
+
 
 class DicomTarget(Target):
     target_type: Literal["dicom"] = "dicom"
