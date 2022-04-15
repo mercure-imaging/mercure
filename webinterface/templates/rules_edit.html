@@ -653,14 +653,23 @@
                     dataSet = dicomParser.parseDicom(byteArray, {"untilTag": "x7fe00010"});
                     output = {}
                     dumpDataSet(dataSet,output)
+                    // Inform user if the DICOM uses an unsupported character set (the JS library is not doing a transformation)
                     if (output["SpecificCharacterSet"] != undefined && output["SpecificCharacterSet"] != "ISO_IR 100" && output["SpecificCharacterSet"] != "ISO_IR 192") {
                         $("#characterSetWarning").removeClass("is-hidden")
                     } else {
                         $("#characterSetWarning").addClass("is-hidden")
                     }
-                    $("#dropZone article").addClass("is-link").removeClass("is-primary").removeClass("is-danger")
+                    // Sort the keys alphabetically
+                    const orderedOutput = Object.keys(output).sort().reduce(
+                        (obj, key) => { 
+                            obj[key] = output[key]; 
+                            return obj;
+                        }, 
+                        {}
+                    );
+                    $("#dropZone article").addClass("is-info").removeClass("is-primary").removeClass("is-danger")
                     $("#dropStatus").text("Loaded DICOM tag values from " + file.name)
-                    $('#testvalues').val(JSON.stringify(output, null, '    '))
+                    $('#testvalues').val(JSON.stringify(orderedOutput, null, '    '))
                     $('#evaltestrule').click()
                 } catch (e) {
                     $("#dropZone article").addClass("is-danger").removeClass("is-primary")
