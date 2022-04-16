@@ -241,12 +241,12 @@ async def rules_test(request) -> Response:
 
     if result == "True":
         return PlainTextResponse(
-            '<span class="tag is-success is-medium ruleresult"><i class="fas fa-thumbs-up"></i>&nbsp;Route</span>'
+            '<span class="tag is-success is-medium ruleresult"><i class="fas fa-thumbs-up"></i>&nbsp;Trigger</span>'
         )
     else:
         if result == "False":
             return PlainTextResponse(
-                '<span class="tag is-info is-medium ruleresult"><i class="fas fa-thumbs-down"></i>&nbsp;Discard</span>'
+                '<span class="tag is-info is-medium ruleresult"><i class="fas fa-thumbs-down"></i>&nbsp;Reject</span>'
             )
         else:
             return PlainTextResponse(

@@ -89,7 +89,7 @@
                                             <label class="label">Test Values:</label>
                                             <div class="control">
                                                 <textarea class="textarea testinclude" rows="8" placeholder="Testing tags" id="testvalues"
-                                                    name="testvalues">{{alltags|tojson(indent=4)}}</textarea>
+                                                    name="testvalues" spellcheck="false">{{alltags|tojson(indent=4)}}</textarea>
                                             </div>
                                         </div>
                                     </div>
@@ -99,7 +99,7 @@
                                             <div class="tile" style="min-height: 8em;">
                                                 <div class="tile is-parent is-vertical" id="dropZone">
                                                     <article class="tile is-child notification is-light ruletesterdashed">
-                                                        <p class="title is-5" style="text-align: center; margin-bottom: 0.5em;"><i class="fas fa-file-alt"></i>&nbsp; Drag-and-drop DICOM file here</p>
+                                                        <p class="title is-5" style="text-align: center; margin-bottom: 0.5em;"><i class="fas fa-file-upload"></i>&nbsp; Drag &amp; drop DICOM file here</p>
                                                         <p id="dropStatus">&nbsp;</p>
                                                     </article>
                                                 </div>
@@ -115,12 +115,14 @@
                                             This testing tool does not support the character set and may behave differently from the rule evaluator on the mercure server.
                                         </div>
                                     </article>
-
-                                    <button class="button is-dark" style="margin-left: auto; margin-right: 0; display: block; margin-top: 1em;" default autofocus id="evaltestrule" hx-post="/rules/test"
-                                        hx-include=".testinclude"  hx-target="#testresult"><i class="fas fa-cogs"></i>&nbsp;Test</button>
-                              </div>
-                          </div>            
-                       </div>
+                                    <div class="buttons">
+                                        <button class="button is-dark" default autofocus id="evaltestrule" hx-post="/rules/test"
+                                            hx-include=".testinclude"  hx-target="#testresult"><i class="fas fa-play"></i>&nbsp;Run Test</button>
+                                        <button class="button" type="button" onclick="resetTestRule()"><i class="fas fa-undo-alt"></i>&nbsp;Reset</button>
+                                    </div>
+                                </div>
+                            </div>            
+                        </div>
                     </div>
                     <div class="field is-grouped is-grouped-right">
                         <button class="button" type="button" data-show="quickview" data-target="quickviewDefault"
@@ -486,6 +488,14 @@
         }      
     }
 
+    function resetTestRule() {
+        resetTags = {{alltags|tojson(indent=4)}};
+        $('#testvalues').val(JSON.stringify(resetTags, null, '    '));
+        $("#dropZone article").removeClass("is-danger").removeClass("is-dark").addClass("ruletesterdashed");
+        $("#dropStatus").text("");
+        $('#evaltestrule').click()
+    }
+
     function showTestCompletionSeries() {
         $("#testcompletionseries").addClass("is-active");
         $("#evaltestcompletionseries").click();
@@ -601,9 +611,9 @@
             }
         });       
 
+        // Obtain a list of the tags that should be read from the DICOM file
+        tagsToGet = {{alltags|list|tojson}}
 
-        tagsToGet = ["SpecificCharacterSet","PatientName","SOPInstanceUID","SeriesInstanceUID","StudyInstanceUID","Modality","BodyPartExamined","ProtocolName","RetrieveAETitle","StationAETitle","Manufacturer","ManufacturerModelName","StudyDescription","CodeValue","CodeMeaning","SeriesDescription","PatientID","PatientBirthDate","PatientSex","AccessionNumber","ReferringPhysicianName","StudyID","SeriesNumber","SeriesDate","SeriesTime","AcquisitionDate","AcquisitionTime","SequenceName","ScanningSequence","SequenceVariant","MagneticFieldStrength","StationName","DeviceSerialNumber","DeviceUID","SoftwareVersions","ContrastBolusAgent","ImageComments","SliceThickness","InstanceNumber","AcquisitionNumber","InstitutionName","MediaStorageSOPClassUID","AcquisitionType"]
-        
         function dumpDataSet(dataSet, output)
         {
             function getTag(tag)
@@ -639,6 +649,18 @@
                 }
                 throw ex;
             }
+
+            for (var tag in tagsToGet) {
+                if (!(tagsToGet[tag] in output)) 
+                {
+                    output[tagsToGet[tag]] = "";
+                } else {
+                    if (typeof(output[tagsToGet[tag]]) == "undefined")
+                    {
+                        output[tagsToGet[tag]] = "";
+                    }
+                }
+            }
         }
 
         function dumpFile(file)
@@ -667,12 +689,12 @@
                         }, 
                         {}
                     );
-                    $("#dropZone article").addClass("is-info").removeClass("is-primary").removeClass("is-danger")
-                    $("#dropStatus").text("Loaded DICOM tag values from " + file.name)
+                    $("#dropZone article").removeClass("is-danger").addClass("is-dark")
+                    $("#dropStatus").text("Loaded tags from DICOM file " + file.name)
                     $('#testvalues').val(JSON.stringify(orderedOutput, null, '    '))
                     $('#evaltestrule').click()
                 } catch (e) {
-                    $("#dropZone article").addClass("is-danger").removeClass("is-primary")
+                    $("#dropZone article").addClass("is-danger").removeClass("is-primary").removeClass("is-info")
                     $("#dropStatus").text("Error: " + e)
                     $("#testresult").html('<span class="tag tag has-text-white has-background-grey is-medium ruleresult">Unknown</a>')
                     console.error(e)
@@ -681,7 +703,7 @@
             try { 
                 reader.readAsArrayBuffer(file);
             } catch (e) {
-                $("#dropZone article").addClass("is-danger").removeClass("is-primary")
+                $("#dropZone article").addClass("is-danger").removeClass("is-dark")
                 $("#dropStatus").text("Error: " + e)
                 $("#testresult").html('<span class="tag tag has-text-white has-background-grey is-medium ruleresult">Unknown</a>')
                 console.error(e)
