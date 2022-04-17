@@ -149,7 +149,9 @@ The following helper macros can be used in combination with the set() command. T
    * - @fake_acc@
      - Inserts a fake ACC number, generated from a time stamp (unique when using one server)
    * - @value@
-     - Inserts the current value of the tag
+     - Inserts the original value of the current tag
+   * - @value(gggg,eeee)@
+     - Inserts the original value of the tag (gggg,eeee)
 
 
 Presets
