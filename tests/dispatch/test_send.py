@@ -69,7 +69,7 @@ def test_execute_error_case(fs, mocked):
 
     mocked.patch("dispatch.target_types.base.check_output", side_effect=CalledProcessError(1, cmd="None"))
     execute(Path(source), Path(success), Path(error), 10, 1)
-    print(common.monitor.send_event.call_args_list)
+    # print(common.monitor.send_event.call_args_list)   # type: ignore
 
     common.monitor.send_event.assert_has_calls(  # type: ignore
         [

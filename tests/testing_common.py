@@ -84,6 +84,7 @@ def mercure_config(fs) -> Callable[[Dict], Config]:
     def set_config(extra: Dict[Any, Any] = {}) -> Config:
         config.read_config()
         config.mercure = Config(**{**config.mercure.dict(), **extra})  #   # type: ignore
+        print(config.mercure.targets)
         config.save_config()
         return config.mercure
 
