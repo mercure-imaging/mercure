@@ -145,7 +145,7 @@ def execute(
         # Compose the command for dispatching the results
         target = config.mercure.targets.get(dispatch_info.get("target_name", ""), None)
 
-        if not target:
+        if target is None:
             logger.error(  # handle_error
                 f"Settings for target {target_name} incorrect. Unable to dispatch job {uid}",
                 task_content.id,
@@ -153,7 +153,9 @@ def execute(
             )
             _move_sent_directory(task_content.id, source_folder, error_folder)
             _trigger_notification(task_content, mercure_events.ERROR)
+            return
 
+        print(target)
         handler = target_types.get_handler(target)
 
         try:

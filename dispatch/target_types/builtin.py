@@ -1,13 +1,15 @@
 from common.types import DicomTarget, SftpTarget
 import common.config as config
-from shlex import split
 from common.constants import mercure_names
-from pathlib import Path
-from .registry import handler_for
 from webinterface.common import async_run
+
 import json
+from pathlib import Path
+from shlex import split
+
 from starlette.responses import JSONResponse
 
+from .registry import handler_for
 from .base import SubprocessTargetHandler
 
 DCMSEND_ERROR_CODES = {
@@ -25,7 +27,7 @@ logger = config.get_logger()
 
 
 @handler_for(DicomTarget)
-class DicomTargetHandler(SubprocessTargetHandler):
+class DicomTargetHandler(SubprocessTargetHandler[DicomTarget]):
     view_template = "targets/dicom.html"
     edit_template = "targets/dicom-edit.html"
     icon = "fa-hdd"
@@ -40,7 +42,7 @@ class DicomTargetHandler(SubprocessTargetHandler):
             [
                 "dcmsend",
                 target_ip,
-                target_port,
+                str(target_port),
                 "+sd",
                 str(source_folder),
                 "-aet",
@@ -80,16 +82,16 @@ class DicomTargetHandler(SubprocessTargetHandler):
             if cecho_result == 0:
                 cecho_response = True
 
-        return JSONResponse(json.dumps({"ping": ping_response, "c-echo": cecho_response}))
+        return json.dumps({"ping": ping_response, "c-echo": cecho_response})
 
 
 @handler_for(SftpTarget)
-class SftpTargetHandler(SubprocessTargetHandler):
+class SftpTargetHandler(SubprocessTargetHandler[SftpTarget]):
     view_template = "targets/sftp.html"
     edit_template = "targets/sftp-edit.html"
     icon = "fa-download"
 
-    def _create_command(target: SftpTarget, source_folder: Path):
+    def _create_command(self, target: SftpTarget, source_folder: Path):
         command = (
             "sftp -o StrictHostKeyChecking=no "
             + f""" "{target.user}@{target.host}:{target.folder}" """
@@ -107,7 +109,7 @@ EOF"""
     def handle_error(self, e, command):
         logger.error(f"Failed. Command exited with value {e.returncode}: \n {command}")
 
-    async def test_connection(self, target: DicomTarget, target_name: str):
+    async def test_connection(self, target: SftpTarget, target_name: str):
         ping_response = False
         ping_result, *_ = await async_run(f"ping -w 1 -c 1 {target.host}")
         ping_response = True if ping_result == 0 else False
@@ -120,6 +122,6 @@ EOF"""
         logger.debug(command)
         result, stdout, stderr = await async_run(command, shell=True, executable="/bin/bash")
         response = True if result == 0 else False
-        return JSONResponse(
-            json.dumps(dict(ping=ping_response, loggedin=response, err=stderr.decode("utf-8") if not response else ""))
+        return json.dumps(
+            dict(ping=ping_response, loggedin=response, err=stderr.decode("utf-8") if not response else "")
         )

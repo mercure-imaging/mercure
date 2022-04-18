@@ -1,14 +1,31 @@
-from typing import Dict
-from common.types import Target, Any
+from typing import Callable, Dict, KeysView, Type, Union
+from common.types import Target
 from .base import TargetHandler
 
 
-_registry: Dict[Target, TargetHandler] = {}
-_registry_names: Dict[str, Target] = {}
+_registry: Dict[Type[Target], TargetHandler] = {}
+_registry_names: Dict[str, Type[Target]] = {}
 
 
-def handler_for(target_type):
-    def decorator(Cls):
+# def register_handler_class(Cls: Type[TargetHandler]):
+#     try:
+#         target_type = typing.get_args(Cls.__orig_bases__[0])[0]
+#     except:
+#         return None
+
+#     if not isinstance(target_type, Target):
+#         return None
+#     _registry[target_type] = Cls()
+#     _registry_names[target_type.get_name()] = target_type
+
+#     assert target_type != Target and issubclass(
+#         target_type, Target
+#     ), f"Target handlers must be handlers for Target subclasses, but {Cls.__name__} is registered on {target_type}"
+#     return Cls
+
+
+def handler_for(target_type) -> Callable[[Type[TargetHandler]], Type[TargetHandler]]:
+    def decorator(Cls: Type[TargetHandler]):
         _registry[target_type] = Cls()
         _registry_names[target_type.get_name()] = target_type
 
@@ -20,7 +37,9 @@ def handler_for(target_type):
     return decorator
 
 
-def get_handler(target) -> TargetHandler:
+def get_handler(target: Union[Target, Type[Target], str]) -> TargetHandler:
+    if isinstance(target, Target):
+        return _registry[type(target)]
     if isinstance(target, type):
         return _registry[target]
     if isinstance(target, str):
@@ -32,12 +51,12 @@ def get_handler(target) -> TargetHandler:
     return _registry[type(target)]
 
 
-def type_from_name(name):
+def type_from_name(name) -> Type[Target]:
     try:
         return _registry_names[name]
     except:
         raise ValueError(f"No such target type {name}")
 
 
-def target_types():
+def target_types() -> KeysView[Type[Target]]:
     return _registry.keys()

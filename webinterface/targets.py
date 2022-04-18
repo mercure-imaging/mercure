@@ -132,7 +132,8 @@ async def targets_edit_post(request) -> Union[RedirectResponse, PlainTextRespons
     if not edittarget in config.mercure.targets:
         return PlainTextResponse("Target does not exist anymore.")
 
-    config.mercure.targets[edittarget] = target_types.type_from_name(form["target_type"])(**form)
+    TargetType = target_types.type_from_name(form["target_type"])
+    config.mercure.targets[edittarget] = TargetType(**form)
 
     try:
         config.save_config()
@@ -181,4 +182,4 @@ async def targets_test_post(request) -> Response:
     target = config.mercure.targets[testtarget]
 
     # return PlainTextResponse(f"Testing {testtarget}")
-    return await target_types.get_handler(target).test_connection(target, testtarget)
+    return JSONResponse(await target_types.get_handler(target).test_connection(target, testtarget))
