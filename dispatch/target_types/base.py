@@ -45,5 +45,5 @@ class SubprocessTargetHandler(TargetHandler[TargetTypeVar]):
             self.handle_error(e, command)
             raise
 
-    def handle_error(self, e, command):
+    def handle_error(self, e, command) -> None:
         logger.error(f"Failed. Command exited with value {e.returncode}: \n {command}")

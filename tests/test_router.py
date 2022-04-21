@@ -147,7 +147,7 @@ def test_route_series_fail4(fs: FakeFilesystem, mercure_config, mocked):
 
 def task_will_dispatch_to(task, config, fake_process) -> None:
     t = config.targets[task.dispatch.target_name]
-    expect_command = f"dcmsend {t.ip} {t.port} +sd /var/outgoing/{task.id} -aet {t.aet_source} -aec {t.aet_target} -nuc +sp '*.dcm' -to 60 +crf /var/outgoing/{task.id}/sent.txt"  # type: ignore
+    expect_command = f"dcmsend {t.ip} {t.port} +sd /var/outgoing/{task.id} -aet -aec {t.aet_target} -nuc +sp *.dcm -to 60 +crf /var/outgoing/{task.id}/sent.txt"  # type: ignore
     fake_process.register(expect_command)  # type: ignore
     common.monitor.configure("dispatcher", "test", config.bookkeeper)
     dispatcher.dispatch("")
