@@ -155,7 +155,6 @@ def execute(
             _trigger_notification(task_content, mercure_events.ERROR)
             return
 
-        print(target)
         handler = target_types.get_handler(target)
 
         try:
