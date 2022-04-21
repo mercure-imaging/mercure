@@ -602,8 +602,8 @@
         });       
 
 
-        tagsToGet = ["SpecificCharacterSet","PatientName","SOPInstanceUID","SeriesInstanceUID","StudyInstanceUID","Modality","BodyPartExamined","ProtocolName","RetrieveAETitle","StationAETitle","Manufacturer","ManufacturerModelName","StudyDescription","CodeValue","CodeMeaning","SeriesDescription","PatientID","PatientBirthDate","PatientSex","AccessionNumber","ReferringPhysicianName","StudyID","SeriesNumber","SeriesDate","SeriesTime","AcquisitionDate","AcquisitionTime","SequenceName","ScanningSequence","SequenceVariant","MagneticFieldStrength","StationName","DeviceSerialNumber","DeviceUID","SoftwareVersions","ContrastBolusAgent","ImageComments","SliceThickness","InstanceNumber","AcquisitionNumber","InstitutionName","MediaStorageSOPClassUID","AcquisitionType"]
-        
+        tagsToGet = {{ alltags|list|tojson }}
+                
         function dumpDataSet(dataSet, output)
         {
             function getTag(tag)
@@ -624,6 +624,9 @@
                     keys.push(propertyName);
                 }
                 keys.sort();
+                for(var t of tagsToGet){
+                    output[t] = ""
+                }
                 for(var k=0; k < keys.length; k++) {
                     var propertyName = keys[k];
                     var element = dataSet.elements[propertyName];
@@ -654,7 +657,7 @@
                     output = {}
                     dumpDataSet(dataSet,output)
                     // Inform user if the DICOM uses an unsupported character set (the JS library is not doing a transformation)
-                    if (output["SpecificCharacterSet"] != undefined && output["SpecificCharacterSet"] != "ISO_IR 100" && output["SpecificCharacterSet"] != "ISO_IR 192") {
+                    if (output["SpecificCharacterSet"] != undefined && output["SpecificCharacterSet"] != "" && output["SpecificCharacterSet"] != "ISO_IR 100" && output["SpecificCharacterSet"] != "ISO_IR 192") {
                         $("#characterSetWarning").removeClass("is-hidden")
                     } else {
                         $("#characterSetWarning").addClass("is-hidden")

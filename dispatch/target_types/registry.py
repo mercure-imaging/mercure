@@ -24,14 +24,14 @@ _registry_names: Dict[str, Type[Target]] = {}
 #     return Cls
 
 
-def handler_for(target_type) -> Callable[[Type[TargetHandler]], Type[TargetHandler]]:
+def handler_for(target_type: Type[Target]) -> Callable[[Type[TargetHandler]], Type[TargetHandler]]:
     def decorator(Cls: Type[TargetHandler]):
-        _registry[target_type] = Cls()
-        _registry_names[target_type.get_name()] = target_type
-
         assert target_type != Target and issubclass(
             target_type, Target
         ), f"Target handlers must be handlers for Target subclasses, but {Cls.__name__} is registered on {target_type}"
+
+        _registry[target_type] = Cls()
+        _registry_names[target_type.get_name()] = target_type
         return Cls
 
     return decorator

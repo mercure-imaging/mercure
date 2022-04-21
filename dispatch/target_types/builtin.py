@@ -38,22 +38,9 @@ class DicomTargetHandler(SubprocessTargetHandler[DicomTarget]):
         target_aet_target = target.aet_target or ""
         target_aet_source = target.aet_source or ""
         dcmsend_status_file = str(Path(source_folder) / mercure_names.SENDLOG)
-        command = " ".join(
-            [
-                "dcmsend",
-                target_ip,
-                str(target_port),
-                "+sd",
-                str(source_folder),
-                "-aet",
-                target_aet_source,
-                "-aec",
-                target_aet_target,
-                "-nuc +sp '*.dcm' -to 60 +crf",
-                dcmsend_status_file,
-            ]
+        command = split(
+            f"""dcmsend {target_ip} {target_port} +sd {source_folder} -aet {target_aet_source} -aec {target_aet_target} -nuc +sp '*.dcm' -to 60 +crf {dcmsend_status_file}"""
         )
-        # f"""dcmsend {target_ip} {target_port} +sd {source_folder} -aet {target_aet_source} -aec {target_aet_target} -nuc +sp '*.dcm' -to 60 +crf {dcmsend_status_file}"""
         return command, {}
 
     def handle_error(self, e, command):
@@ -105,9 +92,6 @@ EOF"""
         if target.password:
             command = f"sshpass -p {target.password} " + command
         return split(command), dict(shell=True, executable="/bin/bash")
-
-    def handle_error(self, e, command):
-        logger.error(f"Failed. Command exited with value {e.returncode}: \n {command}")
 
     async def test_connection(self, target: SftpTarget, target_name: str):
         ping_response = False
