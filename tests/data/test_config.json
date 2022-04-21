@@ -23,6 +23,7 @@
     "offpeak_end": "06:00",
     "targets": {
         "test_target": {
+            "target_type": "dicom",
             "ip": "0.0.0.0",
             "port": "11112",
             "aet_target": "foo"
@@ -31,6 +32,11 @@
             "ip": "0.0.0.1",
             "port": "11113",
             "aet_target": "bar"
+        },
+        "sftp_target": {
+            "folder": "/",
+            "user": "foo",
+            "host": "bar"
         }
     },
     "rules": {},

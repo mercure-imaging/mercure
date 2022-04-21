@@ -20,6 +20,7 @@ import common.monitor as monitor
 from common.constants import mercure_defs
 from common.types import DicomTarget, SftpTarget
 from webinterface.common import *
+import dispatch.target_types as target_types
 
 
 logger = config.get_logger()
@@ -54,6 +55,7 @@ async def show_targets(request) -> Response:
         "page": "targets",
         "targets": config.mercure.targets,
         "used_targets": used_targets,
+        "get_target_handler": target_types.get_handler,
     }
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
@@ -107,6 +109,9 @@ async def targets_edit(request) -> Response:
         "page": "targets",
         "targets": config.mercure.targets,
         "edittarget": edittarget,
+        "get_target_handler": target_types.get_handler,
+        "target_types": target_types.target_types(),
+        "target_names": [k.get_name() for k in target_types.target_types()],
     }
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
@@ -127,17 +132,8 @@ async def targets_edit_post(request) -> Union[RedirectResponse, PlainTextRespons
     if not edittarget in config.mercure.targets:
         return PlainTextResponse("Target does not exist anymore.")
 
-    if form["target_type"] == "dicom":
-        config.mercure.targets[edittarget] = DicomTarget(
-            ip=form["ip"], port=form["port"], aet_target=form["aet_target"], aet_source=form["aet_source"]
-        )
-    elif form["target_type"] == "sftp":
-        config.mercure.targets[edittarget] = SftpTarget(
-            host=form["host"], user=form["user"], folder=form["folder"], password=form["password"]
-        )
-
-    config.mercure.targets[edittarget].contact = form["contact"]
-    config.mercure.targets[edittarget].comment = form["comment"]
+    TargetType = target_types.type_from_name(form["target_type"])
+    config.mercure.targets[edittarget] = TargetType(**form)
 
     try:
         config.save_config()
@@ -184,44 +180,6 @@ async def targets_test_post(request) -> Response:
 
     testtarget = request.path_params["target"]
     target = config.mercure.targets[testtarget]
-    ping_response = False
-    cecho_response = False
 
-    if isinstance(target, DicomTarget):
-        target_ip = target.ip or ""
-        target_port = target.port or ""
-        target_aec = target.aet_target or "ANY-SCP"
-        target_aet = target.aet_source or "ECHOSCU"
-
-        logger.info(f"Testing target {testtarget}")
-
-        if target_ip and target_port:
-            ping_result, *_ = await async_run(f"ping -w 1 -c 1 {target_ip}")
-            if ping_result == 0:
-                ping_response = True
-
-            cecho_result, *_ = await async_run(
-                f"echoscu -to 2 -aec {target_aec} -aet {target_aet} {target_ip} {target_port}"
-            )
-            if cecho_result == 0:
-                cecho_response = True
-
-        return JSONResponse(json.dumps({"ping": ping_response, "c-echo": cecho_response}))
-
-    elif isinstance(target, SftpTarget):
-        ping_result, *_ = await async_run(f"ping -w 1 -c 1 {target.host}")
-        ping_response = True if ping_result == 0 else False
-        response = False
-        stderr = b""
-
-        command = "sftp -o StrictHostKeyChecking=no " + f""" "{target.user}@{target.host}:{target.folder}" <<< "" """
-        if target.password:
-            command = f"sshpass -p {target.password} " + command
-        logger.debug(command)
-        result, stdout, stderr = await async_run(command, shell=True, executable="/bin/bash")
-        response = True if result == 0 else False
-        return JSONResponse(
-            json.dumps(dict(ping=ping_response, loggedin=response, err=stderr.decode("utf-8") if not response else ""))
-        )
-
-    return JSONResponse("")
+    # return PlainTextResponse(f"Testing {testtarget}")
+    return JSONResponse(await target_types.get_handler(target).test_connection(target, testtarget))

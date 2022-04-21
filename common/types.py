@@ -5,11 +5,11 @@ Definitions for using TypedDicts throughout mercure.
 """
 
 # Standard python includes
-from typing import Any, Dict, List, Optional, Union, cast
+from typing import Any, Dict, List, Optional, Type, Union, cast
 from typing_extensions import Literal, TypedDict
 from pydantic import BaseModel, create_model_from_typeddict
 import daiquiri
-
+import typing
 
 # TODO: Add description for the individual classes
 
@@ -26,6 +26,31 @@ class EmptyDict(TypedDict):
 class Target(BaseModel, Compat):
     contact: Optional[str] = ""
     comment: str = ""
+
+    @classmethod
+    def __get_validators__(cls):
+        # one or more validators may be yielded which will be called in the
+        # order to validate the input, each validator will receive as an input
+        # the value returned from the previous validator
+        yield cls.validate
+
+    @classmethod
+    def validate(cls, v):
+        """Parse the target as any of the known target types."""
+
+        subclass_dict: typing.Dict[str, Type[Target]] = {sbc.__name__: sbc for sbc in cls.__subclasses__()}
+
+        for k in subclass_dict:
+            try:
+                return subclass_dict[k](**v)
+            except:
+                pass
+
+        raise ValueError("Couldn't validate target as any of", list(subclass_dict.keys()))
+
+    @classmethod
+    def get_name(cls) -> str:
+        return cls.construct().target_type  # type: ignore
 
 
 class DicomTarget(Target):
@@ -108,7 +133,7 @@ class Config(BaseModel, Compat):
     bookkeeper: str
     offpeak_start: str
     offpeak_end: str
-    targets: Dict[str, Union[DicomTarget, SftpTarget]]
+    targets: Dict[str, Target]
     rules: Dict[str, Rule]
     modules: Dict[str, Module]
     process_runner: Literal["docker", "nomad", ""] = ""

@@ -634,6 +634,9 @@
                     keys.push(propertyName);
                 }
                 keys.sort();
+                for(var t of tagsToGet){
+                    output[t] = ""
+                }
                 for(var k=0; k < keys.length; k++) {
                     var propertyName = keys[k];
                     var element = dataSet.elements[propertyName];
@@ -676,7 +679,7 @@
                     output = {}
                     dumpDataSet(dataSet,output)
                     // Inform user if the DICOM uses an unsupported character set (the JS library is not doing a transformation)
-                    if (output["SpecificCharacterSet"] != undefined && output["SpecificCharacterSet"] != "ISO_IR 100" && output["SpecificCharacterSet"] != "ISO_IR 192") {
+                    if (output["SpecificCharacterSet"] != undefined && output["SpecificCharacterSet"] != "" && output["SpecificCharacterSet"] != "ISO_IR 100" && output["SpecificCharacterSet"] != "ISO_IR 192") {
                         $("#characterSetWarning").removeClass("is-hidden")
                     } else {
                         $("#characterSetWarning").addClass("is-hidden")
