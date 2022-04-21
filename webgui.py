@@ -5,6 +5,12 @@ The web-based graphical user interface of mercure.
 """
 
 # Standard python includes
+import random
+from re import L
+import string
+import subprocess
+from common.generate_test_series import generate_series
+from common.types import DicomTarget, Rule
 import uvicorn
 import base64
 import sys
@@ -376,6 +382,57 @@ async def login(request) -> Response:
         "appliance_name": config.mercure.get("appliance_name", "master"),
     }
     return templates.TemplateResponse(template, context)
+
+
+@app.route("/self_test_notification", methods=["POST"])
+async def self_test_notification(request) -> Response:
+    logger.info("SELF TEST NOTIFICATION RECEIVED")
+    json = await request.json()
+    logger.info(json["event"] + " " + json["test_id"])
+    return PlainTextResponse("OK")
+
+
+@app.route("/self_test", methods=["GET"])
+@requires(["authenticated", "admin"], redirect="homepage")
+async def self_test(request) -> Response:
+    """generate a test rule"""
+    # generate random string for testing
+    test_id = "".join(random.choices(string.ascii_letters + string.digits, k=10))
+
+    for t in list(config.mercure.targets.keys()):
+        if t.endswith("self_test_target"):
+            del config.mercure.targets[t]
+    for t in list(config.mercure.rules.keys()):
+        for p in ("begin", "end"):
+            if t.endswith(f"self_test_rule_{p}"):
+                del config.mercure.rules[t]
+
+    test_rule = f"{test_id}_self_test_rule"
+    test_target = f"{test_id}_self_test_target"
+    config.mercure.targets[test_target] = DicomTarget(
+        ip="receiver", port="11112", aet_source="mercure", aet_target=f"{test_id}_end"
+    )
+    config.mercure.rules[test_rule + "_begin"] = Rule(
+        rule=f'@ReceiverAET@ == "{test_id}_begin"', target=test_target, action="route"
+    )
+    config.mercure.rules[test_rule + "_end"] = Rule(
+        rule=f'@ReceiverAET@ == "{test_id}_end"',
+        action="notification",
+        notification_webhook="http://ui:8000/self_test_notification",
+        notification_payload=f'"rule":"@rule@", "event":"@event@", "test_id":"{test_id}"',
+    )
+
+    config.save_config()
+
+    tmpdir = Path("/tmp/mercure/self_test_" + test_id)
+    Path("/tmp/mercure").mkdir(exist_ok=True)
+    generate_series(tmpdir, 10, series_description="self_test_series " + test_id)
+
+    # shutil.copytree("./test_series", tmpdir)
+    command = f"""dcmsend receiver 11112 +sd {tmpdir} -aet "mercure" -aec "{test_id}_begin" -nuc +sp '*.dcm' -to 60"""
+    output = subprocess.check_output(command, shell=True)
+    logger.info(f"self_test: {output.decode('utf-8')}")
+    return JSONResponse(config.mercure.dict())
 
 
 @app.route("/login", methods=["POST"])

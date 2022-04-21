@@ -43,6 +43,8 @@ def route_series(task_id: str, series_UID: str) -> None:
     Processes the series with the given series UID from the incoming folder.
     """
     logger.setTask(task_id)
+    monitor.send_register_task(None, task_id)
+
     lock_file = Path(config.mercure.incoming_folder + "/" + str(series_UID) + mercure_names.LOCK)
     if lock_file.exists():
         # Series is locked, so another instance might be working on it
@@ -95,6 +97,10 @@ def route_series(task_id: str, series_UID: str) -> None:
     # rules enforces discarding, discard_series will be True.
     discard_series = ""
     triggered_rules, discard_series = get_triggered_rules(task_id, tagsList)
+
+    monitor.send_task_event(
+        monitor.task_event.REGISTERED, task_id, len(fileList), "", "Triggered rules: " + ", ".join(triggered_rules)
+    )
 
     if (len(triggered_rules) == 0) or (discard_series):
         # If no routing rule has triggered or discarding has been enforced, discard the series
@@ -195,9 +201,12 @@ def push_series_complete(
         logger.error(f"Unable to create lock file {destination_path}/{mercure_names.LOCK}", task_id)  # handle_error
         return
 
-    if discard_rule:
-        info_text = "Discard by rule " + discard_rule
-        monitor.send_task_event(monitor.task_event.DISCARD, task_id, len(file_list), "", info_text)
+    if destination == "DISCARD":
+        if discard_rule:
+            info_text = "Discard by rule " + discard_rule
+        else:
+            info_text = "Discard by default."
+        monitor.send_task_event(monitor.task_event.DISCARD, task_id, len(file_list), discard_rule or "", info_text)
 
     if not push_files(task_id, file_list, destination_path, copy_files):
         logger.error(f"Problem while moving completed files", task_id)  # handle_error

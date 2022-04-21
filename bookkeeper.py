@@ -11,6 +11,7 @@ import sys
 from typing import Any
 import asyncpg
 from sqlalchemy.engine.base import Connection
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.dialects.postgresql import JSONB
 import uvicorn
 import datetime
@@ -209,8 +210,8 @@ tasks_table = sqlalchemy.Table(
     metadata,
     sqlalchemy.Column("id", sqlalchemy.String, primary_key=True),
     sqlalchemy.Column("time", sqlalchemy.DateTime),
-    sqlalchemy.Column("series_uid", sqlalchemy.String),
-    sqlalchemy.Column("study_uid", sqlalchemy.String),
+    sqlalchemy.Column("series_uid", sqlalchemy.String, nullable=True),
+    sqlalchemy.Column("study_uid", sqlalchemy.String, nullable=True),
     sqlalchemy.Column("data", JSONB),
 )
 
@@ -402,14 +403,26 @@ async def register_task(request) -> JSONResponse:
     study_uid = None
     logger.debug(payload)
     id = payload["id"]
-    if payload["info"]["uid_type"] == "series":
-        series_uid = payload["info"]["uid"]
-    if payload["info"]["uid_type"] == "study":
-        study_uid = payload["info"]["uid"]
+    series_uid = None
+    study_uid = None
+    if "info" in payload:
+        if payload["info"]["uid_type"] == "series":
+            series_uid = payload["info"]["uid"]
+        if payload["info"]["uid_type"] == "study":
+            study_uid = payload["info"]["uid"]
     data = await request.json()
 
-    query = tasks_table.insert().values(
-        id=id, series_uid=series_uid, study_uid=study_uid, time=datetime.datetime.now(), data=data
+    query = (
+        insert(tasks_table)
+        .values(id=id, series_uid=series_uid, study_uid=study_uid, time=datetime.datetime.now(), data=data)
+        .on_conflict_do_update(
+            index_elements=["id"],
+            set_={
+                "series_uid": series_uid,
+                "study_uid": study_uid,
+                "data": data,
+            },
+        )
     )
     await database.execute(query)
     return JSONResponse({"ok": ""})
@@ -478,6 +491,7 @@ async def get_tasks(request) -> JSONResponse:
             (dicom_series.c.study_uid == tasks_table.c.study_uid),
             (dicom_series.c.series_uid == tasks_table.c.series_uid),
         ),
+        isouter=True,
     )
     # query = sqlalchemy.text(
     #     """ select tasks.id as task_id, tasks.time, tasks.series_uid, tasks.study_uid, "tag_seriesdescription", "tag_modality" from tasks

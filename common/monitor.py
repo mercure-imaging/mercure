@@ -61,7 +61,9 @@ def post(endpoint: str, **kwargs) -> None:
                 async with session.post(bookkeeper_address + "/" + endpoint, **kwargs) as resp:
                     logger.debug(f"Response from {endpoint}: {resp.status}")
                     if resp.status != 200:
-                        logger.warning(f"Failed POST request to bookkeeper endpoint {endpoint}: status: {resp.status}")
+                        logger.warning(
+                            f"Failed POST request {kwargs} to bookkeeper endpoint {endpoint}: status: {resp.status}"
+                        )
         except aiohttp.client_exceptions.ClientConnectorError as e:
             logger.error(f"Failed POST request to bookkeeper endpoint {endpoint}: {e}")
 
@@ -142,12 +144,15 @@ def send_register_series(tags: Dict[str, str]) -> None:
     post("register-series", data=tags)
 
 
-def send_register_task(task: Task) -> None:
+def send_register_task(task: Optional[Task], task_id: str = None) -> None:
     """Registers a new task on the bookkeeper. This should be called whenever a new task has been created."""
     if not bookkeeper_address:
         return
-    logger.debug(f"Monitor (register-task): task.id={task.id} ")
-    post("register-task", json=task.dict())
+    logger.debug(f"Monitor (register-task): task.id={task_id or task.id} ")
+    if task:
+        post("register-task", json=task.dict())
+    else:
+        post("register-task", json={"id": task_id})
     # requests.post(bookkeeper_address + "/register-task", data=json.dumps(task.dict()), timeout=1)
 
 

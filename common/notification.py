@@ -28,10 +28,14 @@ logger = config.get_logger()
 def post(url: str, payload: Any) -> None:
     async def do_post(url, payload) -> None:
         async with aiohttp.ClientSession() as session:
-            async with session.post(url, json=payload) as resp:
-                if resp.status not in (200, 204):
-                    logger.warning(f"Webhook notification failed {url}, status: {resp.status}")
+            try:
+                async with session.post(url, json=payload) as resp:
+                    if resp.status not in (200, 204):
+                        logger.warning(f"Webhook notification failed {url}, status: {resp.status}")
                     # logger.warning(f"{await resp.text()}")
+            except Exception as e:
+                logger.warning(f"Webhook notification failed {url}, exception: {e}")
+                logger.warning(traceback.format_exc())
 
     asyncio.ensure_future(do_post(url, payload), loop=loop)
 
