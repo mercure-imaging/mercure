@@ -248,6 +248,7 @@ def _trigger_notification(task: Task, event) -> None:
                     config.mercure.rules[current_rule].get("notification_payload", ""),
                     mercure_events.RECEPTION,
                     current_rule,
+                    task.id,
                 )
         if event == mercure_events.COMPLETION:
             if config.mercure.rules[current_rule].notification_trigger_completion == "True":
@@ -256,6 +257,7 @@ def _trigger_notification(task: Task, event) -> None:
                     config.mercure.rules[current_rule].get("notification_payload", ""),
                     mercure_events.COMPLETION,
                     current_rule,
+                    task.id,
                 )
         if event == mercure_events.ERROR:
             if config.mercure.rules[current_rule].notification_trigger_error == "True":
@@ -264,4 +266,5 @@ def _trigger_notification(task: Task, event) -> None:
                     config.mercure.rules[current_rule].get("notification_payload", ""),
                     mercure_events.ERROR,
                     current_rule,
+                    task.id,
                 )

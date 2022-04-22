@@ -40,7 +40,7 @@ def post(url: str, payload: Any) -> None:
     asyncio.ensure_future(do_post(url, payload), loop=loop)
 
 
-def send_webhook(url, payload, event, rule_name) -> None:
+def send_webhook(url, payload, event, rule_name, task_id="") -> None:
     if (not url) or (not payload):
         return
 
@@ -48,6 +48,8 @@ def send_webhook(url, payload, event, rule_name) -> None:
     payload_parsed = payload
 
     payload_parsed = payload_parsed.replace("@rule@", rule_name)
+    payload_parsed = payload_parsed.replace("@task_id@", task_id)
+
     if event == mercure_events.RECEPTION:
         payload_parsed = payload_parsed.replace("@event@", "RECEIVED")
     if event == mercure_events.COMPLETION:

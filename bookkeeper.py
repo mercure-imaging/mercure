@@ -215,6 +215,18 @@ tasks_table = sqlalchemy.Table(
     sqlalchemy.Column("data", JSONB),
 )
 
+tests_table = sqlalchemy.Table(
+    "tests",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.String, primary_key=True),
+    sqlalchemy.Column("type", sqlalchemy.String, nullable=True),
+    sqlalchemy.Column("time_begin", sqlalchemy.DateTime, nullable=True),
+    sqlalchemy.Column("time_end", sqlalchemy.DateTime, nullable=True),
+    sqlalchemy.Column("status", sqlalchemy.String, nullable=True),
+    sqlalchemy.Column("task_id", sqlalchemy.String, nullable=True),
+    sqlalchemy.Column("data", JSONB, nullable=True),
+)
+
 
 class CustomJSONEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -424,6 +436,39 @@ async def register_task(request) -> JSONResponse:
             },
         )
     )
+    await database.execute(query)
+    return JSONResponse({"ok": ""})
+
+
+@app.route("/test-begin", methods=["POST"])
+@requires("authenticated")
+async def test_begin(request) -> JSONResponse:
+    payload = dict(await request.json())
+    id = payload["id"]
+    type = payload.get("type", "route")
+    task_id = payload.get("task_id", None)
+    query_a = insert(tests_table).values(
+        id=id, time_begin=datetime.datetime.now(), type=type, status="begin", task_id=task_id
+    )
+
+    query = query_a.on_conflict_do_update(
+        index_elements=["id"],
+        set_={
+            "task_id": task_id or query_a.excluded.task_id,
+        },
+    )
+    await database.execute(query)
+    return JSONResponse({"ok": ""})
+
+
+@app.route("/test-end", methods=["POST"])
+@requires("authenticated")
+async def test_end(request) -> JSONResponse:
+    payload = dict(await request.json())
+    id = payload["id"]
+    status = payload.get("status", "")
+
+    query = tests_table.update(tests_table.c.id == id).values(time_end=datetime.datetime.now(), status=status)
     await database.execute(query)
     return JSONResponse({"ok": ""})
 

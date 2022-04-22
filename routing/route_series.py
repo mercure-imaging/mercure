@@ -308,7 +308,7 @@ def push_serieslevel_routing(
                     selected_targets[target] = [current_rule]
                 else:
                     selected_targets[target].append(current_rule)
-            trigger_serieslevel_notification(current_rule, tags_list, mercure_events.RECEPTION)
+            trigger_serieslevel_notification(current_rule, tags_list, mercure_events.RECEPTION, task_id)
 
     push_serieslevel_outgoing(task_id, triggered_rules, file_list, series_UID, tags_list, selected_targets)
 
@@ -375,7 +375,7 @@ def push_serieslevel_processing(
                     logger.error(f"Unable to remove lock file {lock_file}", task_id)  # handle_error
                     return False
 
-                trigger_serieslevel_notification(current_rule, tags_list, mercure_events.RECEPTION)
+                trigger_serieslevel_notification(current_rule, tags_list, mercure_events.RECEPTION, task_id)
     return True
 
 
@@ -391,8 +391,8 @@ def push_serieslevel_notification(
     for current_rule in triggered_rules:
         if config.mercure.rules[current_rule].get("action_trigger", mercure_options.SERIES) == mercure_options.SERIES:
             if config.mercure.rules[current_rule].get("action", "") == mercure_actions.NOTIFICATION:
-                trigger_serieslevel_notification(current_rule, tags_list, mercure_events.RECEPTION)
-                trigger_serieslevel_notification(current_rule, tags_list, mercure_events.COMPLETION)
+                trigger_serieslevel_notification(current_rule, tags_list, mercure_events.RECEPTION, task_id)
+                trigger_serieslevel_notification(current_rule, tags_list, mercure_events.COMPLETION, task_id)
                 notification_rules_count += 1
 
     # If the current rule is "notification-only" and this is the only rule that has been
@@ -579,7 +579,7 @@ def route_error_files() -> None:
     return
 
 
-def trigger_serieslevel_notification(current_rule: str, tags_list: Dict[str, str], event) -> None:
+def trigger_serieslevel_notification(current_rule: str, tags_list: Dict[str, str], event, task_id: str) -> None:
     if event == mercure_events.RECEPTION:
         if config.mercure.rules[current_rule].notification_trigger_reception == "True":
             notification.send_webhook(
@@ -587,6 +587,7 @@ def trigger_serieslevel_notification(current_rule: str, tags_list: Dict[str, str
                 config.mercure.rules[current_rule].get("notification_payload", ""),
                 mercure_events.RECEPTION,
                 current_rule,
+                task_id,
             )
     if event == mercure_events.COMPLETION:
         if config.mercure.rules[current_rule].notification_trigger_completion == "True":
@@ -595,6 +596,7 @@ def trigger_serieslevel_notification(current_rule: str, tags_list: Dict[str, str
                 config.mercure.rules[current_rule].get("notification_payload", ""),
                 mercure_events.COMPLETION,
                 current_rule,
+                task_id,
             )
     if event == mercure_events.ERROR:
         if config.mercure.rules[current_rule].notification_trigger_error == "True":
@@ -603,4 +605,5 @@ def trigger_serieslevel_notification(current_rule: str, tags_list: Dict[str, str
                 config.mercure.rules[current_rule].get("notification_payload", ""),
                 mercure_events.ERROR,
                 current_rule,
+                task_id,
             )

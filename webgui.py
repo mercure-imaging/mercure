@@ -5,6 +5,7 @@ The web-based graphical user interface of mercure.
 """
 
 # Standard python includes
+import pprint
 import random
 from re import L
 import string
@@ -395,9 +396,17 @@ async def login(request) -> Response:
 
 @app.route("/self_test_notification", methods=["POST"])
 async def self_test_notification(request) -> Response:
-    logger.info("SELF TEST NOTIFICATION RECEIVED")
     json = await request.json()
-    logger.info(json["event"] + " " + json["test_id"])
+    logger.info(pprint.pprint(json))
+
+    if json["rule"].endswith("self_test_rule_begin"):
+        if json["event"] == "RECEIVED":
+            monitor.post("test-begin", json=dict(id=json["test_id"], task_id=json["task_id"]))
+
+    elif json["rule"].endswith("self_test_rule_end"):
+        if json["event"] == "COMPLETED":
+            monitor.post("test-end", json=dict(id=json["test_id"], status="success"))
+
     return PlainTextResponse("OK")
 
 
@@ -405,7 +414,7 @@ async def self_test_notification(request) -> Response:
 @requires(["authenticated", "admin"], redirect="homepage")
 async def self_test(request) -> Response:
     """generate a test rule"""
-    # generate random string for testing
+
     test_id = "".join(random.choices(string.ascii_letters + string.digits, k=10))
 
     for t in list(config.mercure.targets.keys()):
@@ -419,19 +428,30 @@ async def self_test(request) -> Response:
     test_rule = f"{test_id}_self_test_rule"
     test_target = f"{test_id}_self_test_target"
     config.mercure.targets[test_target] = DicomTarget(
-        ip="receiver", port="11112", aet_source="mercure", aet_target=f"{test_id}_end"
+        ip="receiver", port="11113", aet_source="mercure", aet_target=f"{test_id}_end"
     )
+
+    # "begin" rule is used to trigger the test. It routes to a test_target, which is the mercure receiver.
     config.mercure.rules[test_rule + "_begin"] = Rule(
-        rule=f'@ReceiverAET@ == "{test_id}_begin"', target=test_target, action="route"
+        rule=f'@ReceiverAET@ == "{test_id}_begin"',
+        target=test_target,
+        action="route",
+        notification_trigger_completion="False",
+        notification_webhook="http://ui:8000/self_test_notification",
+        notification_payload=f'"rule":"@rule@", "event":"@event@", "test_id":"{test_id}", "task_id":"@task_id@"',
     )
+    # "end" rule is triggered when the test is completed. It just performs a notification to register the test success.
     config.mercure.rules[test_rule + "_end"] = Rule(
         rule=f'@ReceiverAET@ == "{test_id}_end"',
         action="notification",
         notification_webhook="http://ui:8000/self_test_notification",
+        notification_trigger_reception="False",
         notification_payload=f'"rule":"@rule@", "event":"@event@", "test_id":"{test_id}"',
     )
 
     config.save_config()
+    logger.info("Posting test-begin...")
+    monitor.post("test-begin", json=dict(id=test_id))
 
     tmpdir = Path("/tmp/mercure/self_test_" + test_id)
     Path("/tmp/mercure").mkdir(exist_ok=True)
