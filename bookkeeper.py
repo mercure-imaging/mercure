@@ -546,6 +546,32 @@ async def get_tasks(request) -> JSONResponse:
     return CustomJSONResponse(results)
 
 
+@app.route("/tests", methods=["GET"])
+@requires("authenticated")
+async def get_test_task(request) -> JSONResponse:
+    query = tests_table.select().order_by(tests_table.c.time_begin.desc())
+    # query = (
+    #     sqlalchemy.select(
+    #         tasks_table.c.id, tasks_table.c.time, dicom_series.c.tag_seriesdescription, dicom_series.c.tag_modality
+    #     )
+    #     .join(
+    #         dicom_series,
+    #         sqlalchemy.or_(
+    #             (dicom_series.c.study_uid == tasks_table.c.study_uid),
+    #             (dicom_series.c.series_uid == tasks_table.c.series_uid),
+    #         ),
+    #     )
+    #     .where(dicom_series.c.tag_seriesdescription == "self_test_series " + request.query_params.get("id", ""))
+    # )
+    results = await database.fetch_all(query)
+    results = [dict(row) for row in results]
+    for k in results:
+        if not k["time_end"]:
+            if k["time_begin"] < datetime.datetime.now() - datetime.timedelta(minutes=10):
+                k["status"] = "failed"
+    return CustomJSONResponse(results)
+
+
 @app.route("/task-events", methods=["GET"])
 @requires("authenticated")
 async def get_task_events(request) -> JSONResponse:

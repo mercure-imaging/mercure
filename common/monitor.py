@@ -187,3 +187,7 @@ async def get_series(series_uid="") -> Any:
 
 async def get_tasks() -> Any:
     return await get("tasks")
+
+
+async def get_tests() -> Any:
+    return await get("tests")

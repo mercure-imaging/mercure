@@ -28,10 +28,23 @@ config = config.get_logger()
 test_app = Starlette()
 
 
-@test_app.route("/", methods=["GET"])
+@test_app.route("/tasks", methods=["GET"])
 @requires("authenticated", redirect="login")
 async def index(request):
-    template = "test.html"
+    template = "dashboards/tasks.html"
+    context = {
+        "request": request,
+        "mercure_version": mercure_defs.VERSION,
+        "page": "test",
+    }
+    context.update(get_user_information(request))
+    return templates.TemplateResponse(template, context)
+
+
+@test_app.route("/tests", methods=["GET"])
+@requires("authenticated", redirect="login")
+async def index(request):
+    template = "dashboards/tests.html"
     context = {
         "request": request,
         "mercure_version": mercure_defs.VERSION,

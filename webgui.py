@@ -142,7 +142,7 @@ app.mount("/modules", modules.modules_app)
 app.mount("/users", users.users_app)
 app.mount("/queue", queue.queue_app)
 app.mount("/api", api.api_app)
-app.mount("/test", test.test_app)
+app.mount("/dashboards", test.test_app)
 
 
 ###################################################################################
@@ -428,7 +428,7 @@ async def self_test(request) -> Response:
     test_rule = f"{test_id}_self_test_rule"
     test_target = f"{test_id}_self_test_target"
     config.mercure.targets[test_target] = DicomTarget(
-        ip="receiver", port="11113", aet_source="mercure", aet_target=f"{test_id}_end"
+        ip="receiver", port="11112", aet_source="mercure", aet_target=f"{test_id}_end"
     )
 
     # "begin" rule is used to trigger the test. It routes to a test_target, which is the mercure receiver.

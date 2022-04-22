@@ -56,3 +56,11 @@ async def get_tasks(request):
     except monitor.MonitorHTTPError as e:
         return JSONResponse({"error": e.status_code}, status_code=e.status_code)
 
+
+@api_app.route("/get-tests", methods=["GET"])
+@requires(["authenticated"])
+async def get_tasks(request):
+    try:
+        return JSONResponse(await monitor.get_tests())
+    except monitor.MonitorHTTPError as e:
+        return JSONResponse({"error": e.status_code}, status_code=e.status_code)
