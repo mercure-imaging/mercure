@@ -16,7 +16,6 @@ import daiquiri
 
 # App-specific includes
 from common.types import Task
-from common.helper import loop
 from common.event_types import *
 
 
@@ -26,6 +25,7 @@ api_key: Optional[str] = None
 
 sender_name = ""
 bookkeeper_address = ""
+loop = None
 
 
 class MonitorHTTPError(Exception):
@@ -102,6 +102,8 @@ def configure(module, instance, address) -> None:
     bookkeeper_address = "http://" + address
     global api_key
     set_api_key()
+    global loop
+    loop = asyncio.get_event_loop()
 
 
 def send_event(event: m_events, severity: severity = severity.INFO, description: str = "") -> None:

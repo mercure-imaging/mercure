@@ -120,7 +120,16 @@ WEBGUI_HOST = webgui_config("HOST", default="0.0.0.0")
 DEBUG_MODE = webgui_config("DEBUG", cast=bool, default=True)
 
 
-app = Starlette(debug=DEBUG_MODE)
+def startup():
+    monitor.configure("webgui", "main", config.mercure.bookkeeper)
+    monitor.send_event(monitor.m_events.BOOT, monitor.severity.INFO, f"PID = {os.getpid()}")
+
+
+def shutdown():
+    monitor.send_event(monitor.m_events.SHUTDOWN, monitor.severity.INFO, "")
+
+
+app = Starlette(debug=DEBUG_MODE, on_startup=[startup], on_shutdown=[shutdown])
 # Don't check the existence of the static folder because the wrong parent folder is used if the
 # source code is parsed by sphinx. This would raise an exception and lead to failure of sphinx.
 app.mount("/static", StaticFiles(directory="webinterface/statics", check_dir=False), name="static")
@@ -734,9 +743,6 @@ def main(args=sys.argv[1:]) -> None:
         logger.info("Going down.")
         sys.exit(1)
 
-    monitor.configure("webgui", "main", config.mercure.bookkeeper)
-    monitor.send_event(monitor.m_events.BOOT, monitor.severity.INFO, f"PID = {os.getpid()}")
-
     try:
         tagslist.read_tagslist()
     except Exception as e:
@@ -744,9 +750,6 @@ def main(args=sys.argv[1:]) -> None:
         logger.info("Unable to parse tag list. Rule evaluation will not be available.")
 
     uvicorn.run(app, host=WEBGUI_HOST, port=WEBGUI_PORT)
-
-    # Process will exit here
-    monitor.send_event(monitor.m_events.SHUTDOWN, monitor.severity.INFO, "")
 
 
 if __name__ == "__main__":
