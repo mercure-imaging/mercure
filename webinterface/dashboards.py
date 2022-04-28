@@ -42,7 +42,7 @@ async def index(request):
 
 
 @test_app.route("/tests", methods=["GET"])
-@requires("authenticated", redirect="login")
+@requires("authenticated", "admin", redirect="login")
 async def index(request):
     template = "dashboards/tests.html"
     context = {

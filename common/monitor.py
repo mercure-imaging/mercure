@@ -50,24 +50,28 @@ def set_api_key() -> None:
             return
 
 
+async def do_post(endpoint, kwargs, catch_errors=False) -> None:
+    if api_key is None:
+        return
+    logger.debug(f"Posting to {endpoint}: {kwargs}")
+    try:
+        async with aiohttp.ClientSession(headers={"Authorization": f"Token {api_key}"}) as session:
+            async with session.post(bookkeeper_address + "/" + endpoint, **kwargs) as resp:
+                logger.debug(f"Response from {endpoint}: {resp.status}")
+                if resp.status != 200:
+                    logger.warning(
+                        f"Failed POST request {kwargs} to bookkeeper endpoint {endpoint}: status: {resp.status}"
+                    )
+    except aiohttp.client_exceptions.ClientConnectorError as e:
+        logger.error(f"Failed POST request to bookkeeper endpoint {endpoint}: {e}")
+        if not catch_errors:
+            raise
+
+
 def post(endpoint: str, **kwargs) -> None:
     if api_key is None:
         return
-
-    async def do_post(endpoint, kwargs) -> None:
-        logger.debug(f"Posting to {endpoint}: {kwargs}")
-        try:
-            async with aiohttp.ClientSession(headers={"Authorization": f"Token {api_key}"}) as session:
-                async with session.post(bookkeeper_address + "/" + endpoint, **kwargs) as resp:
-                    logger.debug(f"Response from {endpoint}: {resp.status}")
-                    if resp.status != 200:
-                        logger.warning(
-                            f"Failed POST request {kwargs} to bookkeeper endpoint {endpoint}: status: {resp.status}"
-                        )
-        except aiohttp.client_exceptions.ClientConnectorError as e:
-            logger.error(f"Failed POST request to bookkeeper endpoint {endpoint}: {e}")
-
-    asyncio.ensure_future(do_post(endpoint, kwargs), loop=loop)
+    asyncio.ensure_future(do_post(endpoint, kwargs, True), loop=loop)
 
 
 async def get(endpoint: str, payload: Any = {}) -> Any:

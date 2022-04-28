@@ -10,8 +10,9 @@ import random
 from re import L
 import string
 import subprocess
+import traceback
 from common.generate_test_series import generate_series
-from common.types import DicomTarget, Rule
+from common.types import DicomTarget, Rule, Module
 import uvicorn
 import base64
 import sys
@@ -62,7 +63,7 @@ import webinterface.targets as targets
 import webinterface.modules as modules
 import webinterface.queue as queue
 import webinterface.api as api
-import webinterface.test as test
+import webinterface.dashboards as dashboards
 from webinterface.common import *
 
 
@@ -142,7 +143,7 @@ app.mount("/modules", modules.modules_app)
 app.mount("/users", users.users_app)
 app.mount("/queue", queue.queue_app)
 app.mount("/api", api.api_app)
-app.mount("/dashboards", test.test_app)
+app.mount("/dashboards", dashboards.test_app)
 
 
 ###################################################################################
@@ -394,74 +395,141 @@ async def login(request) -> Response:
     return templates.TemplateResponse(template, context)
 
 
+async def self_test_cleanup(test_id: str, delay: int = 60) -> None:
+    """Delete the rules and targets for this test after a delay"""
+    await asyncio.sleep(delay)
+    config.read_config()
+    # for k in list(config.mercure.targets.keys()):
+    #     if k.endswith("_self_test_target"):
+    #         del config.mercure.targets[k]
+    # for k in list(config.mercure.modules.keys()):
+    #     if k.endswith("_module"):
+    #         del config.mercure.modules[k]
+    # for k in list(config.mercure.rules.keys()):
+    #     del config.mercure.rules[k]
+
+    if f"{test_id}_self_test_target" in config.mercure.targets:
+        del config.mercure.targets[f"{test_id}_self_test_target"]
+    if f"{test_id}_module" in config.mercure.modules:
+        del config.mercure.modules[f"{test_id}_module"]
+
+    for p in ("begin", "end"):
+        if f"{test_id}_self_test_rule_{p}" in config.mercure.rules:
+            del config.mercure.rules[f"{test_id}_self_test_rule_{p}"]
+    config.save_config()
+
+
 @app.route("/self_test_notification", methods=["POST"])
 async def self_test_notification(request) -> Response:
     json = await request.json()
     logger.info(pprint.pprint(json))
+    test_id = json.get("test_id", "")
 
     if json["rule"].endswith("self_test_rule_begin"):
         if json["event"] == "RECEIVED":
-            monitor.post("test-begin", json=dict(id=json["test_id"], task_id=json["task_id"]))
+            await monitor.do_post("test-begin", dict(json=dict(id=test_id, task_id=json["task_id"])))
 
     elif json["rule"].endswith("self_test_rule_end"):
         if json["event"] == "COMPLETED":
-            monitor.post("test-end", json=dict(id=json["test_id"], status="success"))
+            await monitor.do_post("test-end", dict(json=dict(id=test_id, status="success")))
+            for p in ("begin", "end"):
+                if f"{test_id}_self_test_rule_{p}" in config.mercure.rules:
+                    config.mercure.rules[f"{test_id}_self_test_rule_{p}"].disabled = "True"
+            try:
+                config.save_config()
+            except ResourceWarning:
+                pass
+
+            asyncio.ensure_future(self_test_cleanup(test_id), loop=monitor.loop)
 
     return PlainTextResponse("OK")
 
 
-@app.route("/self_test", methods=["GET"])
+@app.route("/self_test", methods=["POST"])
 @requires(["authenticated", "admin"], redirect="homepage")
 async def self_test(request) -> Response:
     """generate a test rule"""
+    form_data = await request.form()
 
-    test_id = "".join(random.choices(string.ascii_letters + string.digits, k=10))
+    runner = helper.get_runner()
+    receiver_port = "11112"
+    gui_port = "8000"
+    test_type = form_data.get("type", "route")
+    if runner == "docker":
+        receiver_host = "receiver"
+        gui_host = "ui"
+    elif runner == "nomad":
+        receiver_host = "localhost"
+        gui_host = "localhost"
+    elif runner == "systemd":
+        receiver_host = "localhost"
+        gui_host = "localhost"
 
-    for t in list(config.mercure.targets.keys()):
-        if t.endswith("self_test_target"):
-            del config.mercure.targets[t]
-    for t in list(config.mercure.rules.keys()):
-        for p in ("begin", "end"):
-            if t.endswith(f"self_test_rule_{p}"):
-                del config.mercure.rules[t]
+    if form_data.get("receiver_port", "") != "":
+        receiver_port = form_data["receiver_port"]
+    if form_data.get("gui_port", "") != "":
+        gui_port = form_data["gui_port"]
+    if form_data.get("receiver_host", "") != "":
+        receiver_host = form_data["receiver_host"]
+    if form_data.get("gui_host", "") != "":
+        gui_host = form_data["gui_host"]
 
-    test_rule = f"{test_id}_self_test_rule"
-    test_target = f"{test_id}_self_test_target"
-    config.mercure.targets[test_target] = DicomTarget(
-        ip="receiver", port="11112", aet_source="mercure", aet_target=f"{test_id}_end"
-    )
+    try:
+        test_id = "".join(random.choices(string.ascii_letters + string.digits, k=10))
+        test_rule = f"{test_id}_self_test_rule"
+        test_target = f"{test_id}_self_test_target"
+        config.mercure.targets[test_target] = DicomTarget(
+            ip=receiver_host, port=receiver_port, aet_source="mercure", aet_target=f"{test_id}_end"
+        )
 
-    # "begin" rule is used to trigger the test. It routes to a test_target, which is the mercure receiver.
-    config.mercure.rules[test_rule + "_begin"] = Rule(
-        rule=f'@ReceiverAET@ == "{test_id}_begin"',
-        target=test_target,
-        action="route",
-        notification_trigger_completion="False",
-        notification_webhook="http://ui:8000/self_test_notification",
-        notification_payload=f'"rule":"@rule@", "event":"@event@", "test_id":"{test_id}", "task_id":"@task_id@"',
-    )
-    # "end" rule is triggered when the test is completed. It just performs a notification to register the test success.
-    config.mercure.rules[test_rule + "_end"] = Rule(
-        rule=f'@ReceiverAET@ == "{test_id}_end"',
-        action="notification",
-        notification_webhook="http://ui:8000/self_test_notification",
-        notification_trigger_reception="False",
-        notification_payload=f'"rule":"@rule@", "event":"@event@", "test_id":"{test_id}"',
-    )
+        config.read_config()
+        # "begin" rule is used to trigger the test. It routes to a test_target, which is the mercure receiver.
+        config.mercure.rules[test_rule + "_begin"] = Rule(
+            rule=f'@ReceiverAET@ == "{test_id}_begin"',
+            target=test_target,
+            action="route",
+            notification_trigger_completion="False",
+            notification_webhook=f"http://{gui_host}:{gui_port}/self_test_notification",
+            notification_payload=f'"rule":"@rule@", "event":"@event@", "test_id":"{test_id}", "task_id":"@task_id@"',
+        )
+        if test_type == "process":
+            config.mercure.modules[test_rule + "_module"] = Module(
+                docker_tag="mercureimaging/mercure-dummy-processor:0.2.0-beta.7",
+            )
 
-    config.save_config()
-    logger.info("Posting test-begin...")
-    monitor.post("test-begin", json=dict(id=test_id))
+            config.mercure.rules[test_rule + "_begin"].action = "both"
+            config.mercure.rules[test_rule + "_begin"].processing_module = test_rule + "_module"
 
-    tmpdir = Path("/tmp/mercure/self_test_" + test_id)
-    Path("/tmp/mercure").mkdir(exist_ok=True)
-    generate_series(tmpdir, 10, series_description="self_test_series " + test_id)
+        # "end" rule is triggered when the test is completed. It just performs a notification to register the test success.
+        config.mercure.rules[test_rule + "_end"] = Rule(
+            rule=f'@ReceiverAET@ == "{test_id}_end"',
+            action="notification",
+            notification_webhook=f"http://{gui_host}:{gui_port}/self_test_notification",
+            notification_trigger_reception="False",
+            notification_payload=f'"rule":"@rule@", "event":"@event@", "test_id":"{test_id}"',
+        )
 
-    # shutil.copytree("./test_series", tmpdir)
-    command = f"""dcmsend receiver 11112 +sd {tmpdir} -aet "mercure" -aec "{test_id}_begin" -nuc +sp '*.dcm' -to 60"""
-    output = subprocess.check_output(command, shell=True)
-    logger.info(f"self_test: {output.decode('utf-8')}")
-    return JSONResponse(config.mercure.dict())
+        config.save_config()
+
+        asyncio.ensure_future(self_test_cleanup(test_id, 60 * 60.0), loop=monitor.loop)
+        logger.info("Posting test-begin...")
+        tmpdir = Path("/tmp/mercure/self_test_" + test_id)
+        Path("/tmp/mercure").mkdir(exist_ok=True)
+        generate_series(tmpdir, 10, series_description="self_test_series " + test_id)
+    except Exception as e:
+        return PlainTextResponse(f"Error initializing test: {traceback.format_exc()}")
+
+        # shutil.copytree("./test_series", tmpdir)
+    command = f"""dcmsend {receiver_host} {receiver_port} +sd {tmpdir} -aet "mercure" -aec "{test_id}_begin" -nuc +sp '*.dcm' -to 60"""
+    try:
+        output = subprocess.check_output(command, shell=True, stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Error sending dicoms: {command}")
+        return PlainTextResponse("Could not submit dicoms for test:\n" + e.output.decode("utf-8"))
+
+    await monitor.do_post("test-begin", dict(json=dict(id=test_id, type=test_type)))
+    # logger.info(f"self_test: {output.decode('utf-8')}")
+    return PlainTextResponse("Test submitted.")
 
 
 @app.route("/login", methods=["POST"])

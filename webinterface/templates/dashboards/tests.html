@@ -5,18 +5,125 @@
 {% block extra_head %}
     <script type="text/javascript" src="{{ url_for('static', path='DataTables/datatables.min.js') }}"></script>
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', path='DataTables/datatables.min.css') }}"/>  
+    <!-- <script src="https://unpkg.com/hyperscript.org@0.9.5"></script> -->
 {% endblock %}
 
 {% block content %}
 <main role="main">
-    <h1 class="title">Test</h1>
+    <h1 class="title">Self-test</h1>
     <div class="container">
         <div class="columns">
+            <div class="column is-one-third">
+                <p class="block">The self-test is designed to check whether Mercure is configured properly and can process a simple case. Each test creates some routing rules and targets, 
+                                 submits a synthetic dicom series to the receiver, and checks to see if it is successfully routed. Because it loops back to
+                                 Mercure itself, it doesn't rely on any other services.
+                </p>
+                <p class="block">You may need to manually set the receiver and ui host or port. Any field left blank will be assumed to be the default for this mercure installation type. </p>
+                <p class="block">Setting type to "process" will additionally run a dummy processing step on the dicom series.</p>
+                <p class="block">Below is the list of submitted tests and the task events they produced.</p>
+            </div>
+            <div class="column is-one-third">
+                <!-- action="/self_test" -->
+              <form class="box" id="test-form" hx-post="/self_test" hx-target="#test_submit_result" hx-swap="innerHTML">
+              <div class="field is-horizontal">
+                <div class="field-label is-normal">
+                  <label class="label">Type</label>
+                </div>
+                <div class="field-body">
+                  <div class="field">
+                    <div class="control is-expanded">
+                      <div class="select is-fullwidth">
+                        <select name="type">
+                          <option>route</option>
+                          <option>process</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+                            
+              <div class="field is-horizontal">
+                <div class="field-label is-normal">
+                  <label class="label">Receiver location</label>
+                </div>
+                <div class="field-body  has-addons">
+                  <div class="field has-addons">
+                    <div class="control">
+                      <input name="receiver_host" class="input" type="text" placeholder="host" value="">
+                    </div>
+                    <p class="control">
+                        <a class="button is-static">
+                          :
+                        </a>
+                    </p>
+                    <div class="control">
+                      <input name="receiver_port" onkeyup="this.value=this.value.replace(/[^\d]/,'')" class="input" type="text" placeholder="port" value="">
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+              <div class="field is-horizontal">
+                <div class="field-label is-normal">
+                  <label class="label">webui location</label>
+                </div>
+                <div class="field-body">
+                  <div class="field has-addons">
+                    <div class="control">
+                      <input name="webui_host" class="input" type="text" placeholder="host" value="">
+                    </div>
+                    <p class="control">
+                        <a class="button is-static">
+                          :
+                        </a>
+                      </p>
+                    <div class="control">
+                      <input name="webui_port" onkeyup="this.value=this.value.replace(/[^\d]/,'')" class="input" type="text" placeholder="port" value="">
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+              
+             
+              <div class="field is-horizontal">
+                <div class="field-label">
+                  <!-- Left empty for spacing -->
+                </div>
+                <div class="field-body">
+                  <div class="field">
+                    <div class="control">
+                      <button type="submit" class="button is-primary">
+                        Begin test
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div> 
+            </form>
+
+
         <div class="column is-one-third">
-            <table class="table is-narrow is-hoverable is-fullwidth jobtable" id="series-table">
+
+            <article class="message is-link is-hidden" id="test_submit_result_box">
+                <div class="message-header ">
+                  <p>Submission info</p>
+                </div>
+                <pre id="test_submit_result" class="message-body"></pre>
+              </article>
+
+        </div>
+        </div>
+        <div class="columns">
+        <div class="column is-one-third">
+            <table class="table is-narrow is-hoverable is-fullwidth jobtable" id="task-events-table">
                 <thead>
                     <tr>
                         <th>id</th>
+                        <th>task_id</th>
                         <th>time_begin</th>
                         <th>status</th>
                         <th>type</th>
@@ -27,7 +134,7 @@
             </table>
         </div>
         <div class="column">
-            <table class="table is-narrow is-hoverable is-fullwidth jobtable" id="events-table">
+            <table class="table is-narrow is-hoverable is-fullwidth jobtable" id="tests-table">
                 <thead>
                     <tr>
                         <th>task_id</th>
@@ -47,12 +154,19 @@
 <script>
 $(document).ready(function () {      
 
-$('#events-table').DataTable( {
+$("#test-form").on('htmx:afterOnLoad', (event) => {
+    $("#test_submit_result_box").removeClass("is-hidden")
+    load_tests()
+    for (var n=1; n<15;n++){
+        setTimeout(load_tests, 10000*n)
+    }
+});
+$('#tests-table').DataTable( {
     "paging": false,
     "ordering": false,
     "searching": false,
     "language": {
-       "emptyTable": "Select a task."
+       "emptyTable": "Select a test."
     },
     dom: 'Bfrtip',
    "scrollY": "740px",
@@ -62,58 +176,42 @@ $('#events-table').DataTable( {
             { "visible": false, "targets": 0 }
     ],
 })
-$('#series-table').DataTable( {
-   "paging":   false,
+$('#task-events-table').DataTable( {
+//   "paging":   false,
    "ordering": false,
    "info": false,
    "searching": false,
+   "columns": [
+            { data: 'id' },
+            { data: 'task_id' },
+            { data: 'time_begin' },
+            { data: 'status' },
+            { data: 'type' },
+        ],
+   "rowId": "id",
    "language": {
        "emptyTable": "No task data available."
    },
    "columnDefs": [
-            { "visible": false, "targets": 0 }
+            { "visible": false, "targets": 0 },
+            { "visible": false, "targets": 1 }
+
     ],
    select: {
             style: 'single'
-   },//    buttons: [
-//        {   
-//            extend: 'selectAll', 
-//            text: '<i class="far fa-check-square"></i>',
-//            titleAttr: 'Select all',
-//        },
-//        {   
-//            extend: 'selectNone', 
-//            text: '<i class="far fa-square"></i>',
-//            titleAttr: 'Deselect all',
-//        },
-//        {
-//            text: '<i class="far fa-question-circle"></i>',
-//            titleAttr: 'Job information',
-//            action: function ( e, dt, node, config ) {
-//             //    var jid = $('#report').DataTable().rows( { selected: true } ).data()[0][0];
-//             //    showJobInformation(jid,"processing");
-//            }
-//        },
-//        {
-//            text: '<i class="far fa-trash-alt"></i>',
-//            titleAttr: 'Cancel job',
-//            action: function ( e, dt, node, config ) {
-//                alert("Coming soon!");                    
-//            }
-//        }
-//    ],
+   },
    dom: 'Bfrtip',
    "scrollY": "740px",
    "scrollX": false,
    "scrollCollapse": true,   
 } ).on( 'select deselect', function () {
-    var selectedRows = $('#series-table').DataTable().rows( { selected: true } )
+    var selectedRows = $('#task-events-table').DataTable().rows( { selected: true } )
     if (selectedRows.count()>0){
-        console.log( selectedRows.data()[0][0])
+        console.log( selectedRows.data()[0].id)
         $.ajax({
             type: 'GET',
             url: '/api/get-task-events',
-            data: {'task_id': selectedRows.data()[0][0]},
+            data: {'task_id': selectedRows.data()[0].task_id},
             dataType: 'json',
             error: function () {
                 // $('#erroralert').show();
@@ -121,9 +219,9 @@ $('#series-table').DataTable( {
             success: function (data) {
                 console.log(data);
                 // $('#erroralert').hide();
-                var eventstable = $('#events-table').DataTable().clear();
+                var eventstable = $('#tests-table').DataTable().clear();
                 Object.keys(data).forEach(function (key) {
-                    console.log(data[key])
+                    // console.log(data[key])
                     eventstable.row.add([data[key]["task_id"] || "", data[key]["event"], data[key]["sender"],  data[key]["target"], data[key]["info"]])
                     // jobtable.row.add( [ key, data[key]["ACC"], data[key]["MRN"], data[key]["Scope"], data[key]["FailStage"] ] );
                 })
@@ -139,6 +237,10 @@ $('#series-table').DataTable( {
     }
 } );
 
+    load_tests()
+});
+
+function load_tests() {
 $.ajax({
     type: 'GET',
     url: '/api/get-tests',
@@ -152,21 +254,29 @@ $.ajax({
     },
     success: function (data) {
         // $('#erroralert').hide();
-        var jobtable = $('#series-table').DataTable();
+        var jobtable = $('#task-events-table').DataTable()
+        var selected = jobtable.rows( { selected: true } )
+        var selected_id = null
+        if ( selected.count() > 0 ){
+            selected_id = selected.data()[0].id;
+        }
+        console.log("SELECTED ID: " + selected_id);
+        jobtable.clear();
         Object.keys(data).forEach(function (key) {
-            console.log(data[key])
-            jobtable.row.add([data[key]["task_id"], data[key]["time_begin"], data[key]["status"], data[key]["type"]])
+            // console.log(data[key])
+            jobtable.row.add({"id": data[key]["id"], "task_id": data[key]["task_id"], "time_begin":data[key]["time_begin"], "status": data[key]["status"],"type": data[key]["type"]})
             // jobtable.row.add( [ key, data[key]["ACC"], data[key]["MRN"], data[key]["Scope"], data[key]["FailStage"] ] );
         })
         jobtable.draw();
+        if (selected_id ) {
+            jobtable.row( "#"+selected_id ).select()
+        }
     },
     // complete: function (data) {
     //     $('#loadingspinner').hide();
     // },
     timeout: 3000
 });
-
-
-});
+}
 </script>
 {% endblock %}

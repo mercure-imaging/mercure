@@ -84,9 +84,11 @@
             $('.target-form').addClass('is-hidden')
             $('.target-form input[required=true]').attr("was-required", true);
             $('.target-form input').attr("required", false);
+            $('.target-form input').attr("disabled", true);
 
             $('#form-'+value).removeClass('is-hidden');
             $('#form-'+value+' input[was-required=true]').attr("required", true);
+            $('#form-'+value+' input').attr("disabled", false);
         }
         $('#target_type').on('change', function (e) {
             update_form(e.target.value)

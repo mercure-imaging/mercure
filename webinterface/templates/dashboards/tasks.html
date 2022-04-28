@@ -63,8 +63,8 @@ $('#events-table').DataTable( {
     ],
 })
 $('#series-table').DataTable( {
-   "paging":   false,
-   "ordering": false,
+   "ordering": true,
+   "order": [[ 1, "desc"]],
    "info": false,
    "searching": false,
    "language": {
@@ -75,33 +75,7 @@ $('#series-table').DataTable( {
     ],
    select: {
             style: 'single'
-   },//    buttons: [
-//        {   
-//            extend: 'selectAll', 
-//            text: '<i class="far fa-check-square"></i>',
-//            titleAttr: 'Select all',
-//        },
-//        {   
-//            extend: 'selectNone', 
-//            text: '<i class="far fa-square"></i>',
-//            titleAttr: 'Deselect all',
-//        },
-//        {
-//            text: '<i class="far fa-question-circle"></i>',
-//            titleAttr: 'Job information',
-//            action: function ( e, dt, node, config ) {
-//             //    var jid = $('#report').DataTable().rows( { selected: true } ).data()[0][0];
-//             //    showJobInformation(jid,"processing");
-//            }
-//        },
-//        {
-//            text: '<i class="far fa-trash-alt"></i>',
-//            titleAttr: 'Cancel job',
-//            action: function ( e, dt, node, config ) {
-//                alert("Coming soon!");                    
-//            }
-//        }
-//    ],
+   },
    dom: 'Bfrtip',
    "scrollY": "740px",
    "scrollX": false,
