@@ -181,5 +181,6 @@ async def targets_test_post(request) -> Response:
     testtarget = request.path_params["target"]
     target = config.mercure.targets[testtarget]
 
-    # return PlainTextResponse(f"Testing {testtarget}")
-    return JSONResponse(await target_types.get_handler(target).test_connection(target, testtarget))
+    handler = target_types.get_handler(target)
+    result = await handler.test_connection(target, testtarget)
+    return templates.TemplateResponse(handler.test_template, {"request": request, "result": result})

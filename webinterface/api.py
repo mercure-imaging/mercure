@@ -59,7 +59,7 @@ async def get_tasks(request):
 
 @api_app.route("/get-tests", methods=["GET"])
 @requires(["authenticated"])
-async def get_tasks(request):
+async def get_tests(request):
     try:
         return JSONResponse(await monitor.get_tests())
     except monitor.MonitorHTTPError as e:

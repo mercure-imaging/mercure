@@ -136,3 +136,4 @@ index.html.*
 
 # ignoring subfolders with vagrant VM information
 .vagrant
+.venv38

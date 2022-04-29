@@ -30,7 +30,7 @@ test_app = Starlette()
 
 @test_app.route("/tasks", methods=["GET"])
 @requires("authenticated", redirect="login")
-async def index(request):
+async def tasks(request):
     template = "dashboards/tasks.html"
     context = {
         "request": request,
@@ -42,8 +42,8 @@ async def index(request):
 
 
 @test_app.route("/tests", methods=["GET"])
-@requires("authenticated", "admin", redirect="login")
-async def index(request):
+@requires(["authenticated", "admin"], redirect="login")
+async def tests(request):
     template = "dashboards/tests.html"
     context = {
         "request": request,

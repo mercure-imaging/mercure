@@ -422,7 +422,6 @@ async def self_test_cleanup(test_id: str, delay: int = 60) -> None:
 @app.route("/self_test_notification", methods=["POST"])
 async def self_test_notification(request) -> Response:
     json = await request.json()
-    logger.info(pprint.pprint(json))
     test_id = json.get("test_id", "")
 
     if json["rule"].endswith("self_test_rule_begin"):
@@ -511,7 +510,7 @@ async def self_test(request) -> Response:
 
         config.save_config()
 
-        asyncio.ensure_future(self_test_cleanup(test_id, 60 * 60.0), loop=monitor.loop)
+        asyncio.ensure_future(self_test_cleanup(test_id, 60 * 60), loop=monitor.loop)
         logger.info("Posting test-begin...")
         tmpdir = Path("/tmp/mercure/self_test_" + test_id)
         Path("/tmp/mercure").mkdir(exist_ok=True)

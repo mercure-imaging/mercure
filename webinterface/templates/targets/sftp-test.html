@@ -1,0 +1,22 @@
+<div style="margin-bottom: 8px;">
+    {% if result.ping %}
+    <div id="testmode-pingtrue"><i
+            class="fas fa-check-circle fa-lg has-text-success"></i>&nbsp;&nbsp;Responded to Ping
+    </div>
+    {% else %}
+    <div id="testmode-pingfalse"><i
+            class="fas fa-times-circle fa-lg has-text-danger"></i>&nbsp;&nbsp;No Ping Response
+    </div>
+    {% endif %}
+</div>
+<div style="margin-bottom: 8px;">
+    {% if result.loggedin %}
+    <div id="testmode-login-true"><i
+    class="fas fa-check-circle fa-lg has-text-success"></i>&nbsp;&nbsp;Logged in</div>
+    {% else %}
+    <div id="testmode-login-false"><i
+    class="fas fa-times-circle fa-lg has-text-danger"></i>&nbsp;&nbsp;Connection failed</div>
+    {% endif %}
+
+    <div id="testmode-errtext" style="margin-top: 10px;"><pre>{{result.err}}</pre></div>
+</div>

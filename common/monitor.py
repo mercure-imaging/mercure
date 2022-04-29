@@ -154,11 +154,15 @@ def send_register_task(task: Optional[Task], task_id: str = None) -> None:
     """Registers a new task on the bookkeeper. This should be called whenever a new task has been created."""
     if not bookkeeper_address:
         return
-    logger.debug(f"Monitor (register-task): task.id={task_id or task.id} ")
-    if task:
-        post("register-task", json=task.dict())
+
+    if task is None:
+        task_dict = {"id": task_id}
     else:
-        post("register-task", json={"id": task_id})
+        task_dict = task.dict()
+
+    logger.debug(f"Monitor (register-task): task.id={task_dict['id']} ")
+
+    post("register-task", json={"id": task_dict})
     # requests.post(bookkeeper_address + "/register-task", data=json.dumps(task.dict()), timeout=1)
 
 

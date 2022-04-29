@@ -563,8 +563,8 @@ async def get_test_task(request) -> JSONResponse:
     #     )
     #     .where(dicom_series.c.tag_seriesdescription == "self_test_series " + request.query_params.get("id", ""))
     # )
-    results = await database.fetch_all(query)
-    results = [dict(row) for row in results]
+    result_rows = await database.fetch_all(query)
+    results = [dict(row) for row in result_rows]
     for k in results:
         if not k["time_end"]:
             if k["time_begin"] < datetime.datetime.now() - datetime.timedelta(minutes=10):

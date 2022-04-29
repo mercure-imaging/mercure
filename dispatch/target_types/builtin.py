@@ -30,6 +30,7 @@ logger = config.get_logger()
 class DicomTargetHandler(SubprocessTargetHandler[DicomTarget]):
     view_template = "targets/dicom.html"
     edit_template = "targets/dicom-edit.html"
+    test_template = "targets/dicom-test.html"
     icon = "fa-hdd"
 
     def _create_command(self, target: DicomTarget, source_folder: Path):
@@ -69,13 +70,15 @@ class DicomTargetHandler(SubprocessTargetHandler[DicomTarget]):
             if cecho_result == 0:
                 cecho_response = True
 
-        return json.dumps({"ping": ping_response, "c-echo": cecho_response})
+        return {"ping": ping_response, "c-echo": cecho_response}
 
 
 @handler_for(SftpTarget)
 class SftpTargetHandler(SubprocessTargetHandler[SftpTarget]):
     view_template = "targets/sftp.html"
     edit_template = "targets/sftp-edit.html"
+    test_template = "targets/sftp-test.html"
+
     icon = "fa-download"
 
     def _create_command(self, target: SftpTarget, source_folder: Path):
@@ -106,6 +109,4 @@ EOF"""
         logger.debug(command)
         result, stdout, stderr = await async_run(command, shell=True, executable="/bin/bash")
         response = True if result == 0 else False
-        return json.dumps(
-            dict(ping=ping_response, loggedin=response, err=stderr.decode("utf-8") if not response else "")
-        )
+        return dict(ping=ping_response, loggedin=response, err=stderr.decode("utf-8") if not response else "")

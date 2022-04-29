@@ -13,6 +13,8 @@ TargetTypeVar = TypeVar("TargetTypeVar")
 
 
 class TargetHandler(Generic[TargetTypeVar]):
+    test_template = "targets/base-test.html"
+
     def __init__(self):
         pass
 
@@ -24,8 +26,8 @@ class TargetHandler(Generic[TargetTypeVar]):
     def handle_error(self, e, command) -> None:
         pass
 
-    async def test_connection(self, target: TargetTypeVar, target_name: str) -> str:
-        return ""
+    async def test_connection(self, target: TargetTypeVar, target_name: str) -> dict:
+        return {}
 
 
 class SubprocessTargetHandler(TargetHandler[TargetTypeVar]):
