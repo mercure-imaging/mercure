@@ -91,7 +91,6 @@ def route_series(task_id: str, series_UID: str) -> None:
         return
 
     monitor.send_register_series(tagsList)
-    monitor.send_task_event(monitor.task_event.REGISTERED, task_id, len(fileList), "", "Registered series.")
 
     # Now test the routing rules and evaluate which rules have been triggered. If one of the triggered
     # rules enforces discarding, discard_series will be True.
@@ -99,7 +98,7 @@ def route_series(task_id: str, series_UID: str) -> None:
     triggered_rules, discard_series = get_triggered_rules(task_id, tagsList)
 
     monitor.send_task_event(
-        monitor.task_event.REGISTERED, task_id, len(fileList), "", "Triggered rules: " + ", ".join(triggered_rules)
+        monitor.task_event.REGISTERED, task_id, len(fileList), ", ".join(triggered_rules), "Registered series."
     )
 
     if (len(triggered_rules) == 0) or (discard_series):

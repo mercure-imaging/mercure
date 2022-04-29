@@ -206,7 +206,7 @@ def test_route_study(fs: FakeFilesystem, mercure_config, mocked, fake_process):
     assert task.study.complete_trigger == "timeout"
     assert task.study.received_series == [tags["SeriesDescription"]]
 
-    common.monitor.send_register_task.assert_called_once_with(task)  # type: ignore
+    common.monitor.send_register_task.assert_called_with(task)  # type: ignore
 
     task_will_dispatch_to(task, config, fake_process)
     # common.monitor.send_task_event.assert_any_call(  # type: ignore
@@ -233,16 +233,16 @@ def test_route_series(fs: FakeFilesystem, mercure_config, mocked, fake_process):
     router.run_router()
 
     common.monitor.send_register_series.assert_called_once_with({"SeriesInstanceUID": "foo"})  # type: ignore
-    common.monitor.send_register_task.assert_called_once()  # type: ignore
+    common.monitor.send_register_task.assert_any_call(None, task_id)  # type: ignore
     router.route_series.assert_called_once_with(task_id, series_uid)  # type: ignore
     routing.route_series.push_series_serieslevel.assert_called_once_with(task_id, {"route_series": True}, [f"{series_uid}#bar"], series_uid, tags)  # type: ignore
     routing.route_series.push_serieslevel_outgoing.assert_called_once_with(task_id, {"route_series": True}, [f"{series_uid}#bar"], series_uid, tags, {"test_target": ["route_series"]})  # type: ignore
 
     common.monitor.send_task_event.assert_has_calls(  # type: ignore
         [
-            call(task_event.REGISTERED, task_id, 1, "", "Registered series."),
             call(task_event.ERROR, task_id, 0, "", 'Invalid rule encountered: @StudyDescription@ == "foo" '),
             call(task_event.ERROR, task_id, 0, "", "Invalid rule encountered:  1/0 "),
+            call(task_event.REGISTERED, task_id, 1, "route_series", "Registered series."),
             call(task_event.ROUTE, task_id, 1, "test_target", "route_series"),
             call(task_event.MOVE, task_id, 1, f"/var/outgoing/{task_id}", ""),
         ]
@@ -266,7 +266,7 @@ def test_route_series(fs: FakeFilesystem, mercure_config, mocked, fake_process):
     assert task.info.triggered_rules["route_series"] == True  # type: ignore
     assert task.process == {}
     assert task.study == {}
-    common.monitor.send_register_task.assert_called_once_with(task)  # type: ignore
+    common.monitor.send_register_task.assert_called_with(task)  # type: ignore
 
     task_will_dispatch_to(task, config, fake_process)
     # print(common.monitor.send_event.call_args_list)

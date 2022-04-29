@@ -151,7 +151,7 @@ def test_process_series_nomad(fs, mercure_config: Callable[[Dict], Config], mock
 
     common.monitor.send_task_event.assert_has_calls(  # type: ignore
         [
-            call(task_event.REGISTERED, task_id, 1, "", "Registered series."),
+            call(task_event.REGISTERED, task_id, 1, "catchall", "Registered series."),
             call(task_event.PROCESS_BEGIN, task_id, 0, "", "Processing job dispatched."),
             call(task_event.PROCESS_COMPLETE, task_id, 0, "", "Processing complete"),
             call(task_event.COMPLETE, task_id, 0, "", "Task complete"),
@@ -188,7 +188,7 @@ def test_process_series_nomad(fs, mercure_config: Callable[[Dict], Config], mock
 
     common.monitor.send_task_event.assert_has_calls(  # type: ignore
         [
-            call(task_event.REGISTERED, task_id, 1, "", "Registered series."),
+            call(task_event.REGISTERED, task_id, 1, "catchall", "Registered series."),
             call(task_event.PROCESS_BEGIN, task_id, 0, "", "Processing job dispatched."),
             call(task_event.ERROR, task_id, 0, "", "Processing failed."),
         ]
@@ -256,7 +256,7 @@ def test_process_series(fs, mercure_config: Callable[[Dict], Config], mocked: Mo
 
     common.monitor.send_task_event.assert_has_calls(  # type: ignore
         [
-            call(task_event.REGISTERED, task_id, 1, "", "Registered series."),
+            call(task_event.REGISTERED, task_id, 1, "catchall", "Registered series."),
             call(task_event.PROCESS_BEGIN, task_id, 0, "test_module", "Processing job running."),
             call(task_event.PROCESS_COMPLETE, task_id, 0, "", "Processing job complete."),
             call(task_event.COMPLETE, task_id, 0, "", "Task complete."),
