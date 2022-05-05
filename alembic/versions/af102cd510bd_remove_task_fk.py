@@ -1,4 +1,4 @@
-"""empty message
+"""remove task_fk
 
 Revision ID: af102cd510bd
 Revises: ee4575e2cf40
@@ -21,4 +21,4 @@ def upgrade():
 
 
 def downgrade():
-    pass
+    pass  # can't actually add the constraint back in if it's been violated since it was dropped...

@@ -1,4 +1,4 @@
-"""empty message
+"""self-tests
 
 Revision ID: 6041e3878f32
 Revises: af102cd510bd
