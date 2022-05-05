@@ -22,7 +22,7 @@ inspector = Inspector.from_engine(conn)
 tables = inspector.get_table_names()
 
 
-def create_table(table_name, *params):
+def create_table(table_name, *params) -> None:
     if table_name in tables:
         return
     op.create_table(table_name, *params)
