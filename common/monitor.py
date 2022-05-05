@@ -162,8 +162,7 @@ def send_register_task(task: Optional[Task], task_id: str = None) -> None:
 
     logger.debug(f"Monitor (register-task): task.id={task_dict['id']} ")
 
-    post("register-task", json={"id": task_dict})
-    # requests.post(bookkeeper_address + "/register-task", data=json.dumps(task.dict()), timeout=1)
+    post("register-task", json=task_dict)
 
 
 def send_task_event(event: task_event, task_id, file_count, target, info) -> None:
