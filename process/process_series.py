@@ -94,16 +94,13 @@ def docker_runtime(task: Task, folder: str) -> bool:
 
     module: Module = cast(Module, task.process.module_config)
 
-    def decode_task(option: str) -> Any:
-        option_dict: Any
+    def decode_task_json(json_string: Optional[str]) -> Any:
+        if not json_string:
+            return {}
         try:
-            val = cast(str, module.get(option, "{}"))
-            option_dict = json.loads(val)
+            return json.loads(json_string)
         except json.decoder.JSONDecodeError:
-            # The decoder bails if the JSON is an empty string
-            option_dict = {}
-
-        return option_dict
+            return {}
 
     real_folder = Path(folder)
 
@@ -129,10 +126,10 @@ def docker_runtime(task: Task, folder: str) -> bool:
     else:
         logger.error("No docker tag supplied")
         return False
-    additional_volumes: Dict[str, Dict[str, str]] = decode_task("additional_volumes")
-    environment = decode_task("environment")
+    additional_volumes: Dict[str, Dict[str, str]] = decode_task_json(module.additional_volumes)
+    environment = decode_task_json(module.environment)
     environment = {**environment, **dict(MERCURE_IN_DIR="/data", MERCURE_OUT_DIR="/output")}
-    arguments = decode_task("arguments")
+    arguments = decode_task_json(module.docker_arguments)
 
     # Merge the two dictionaries
     merged_volumes = {**default_volumes, **additional_volumes}
@@ -435,7 +432,8 @@ def trigger_notification(task: Task, event) -> None:
                 config.mercure.rules[current_rule].get("notification_webhook", ""),
                 config.mercure.rules[current_rule].get("notification_payload", ""),
                 mercure_events.RECEPTION,
-                current_rule, task.id
+                current_rule,
+                task.id,
             )
     if event == mercure_events.COMPLETION:
         if config.mercure.rules[current_rule].notification_trigger_completion == "True":
@@ -443,7 +441,8 @@ def trigger_notification(task: Task, event) -> None:
                 config.mercure.rules[current_rule].get("notification_webhook", ""),
                 config.mercure.rules[current_rule].get("notification_payload", ""),
                 mercure_events.COMPLETION,
-                current_rule, task.id
+                current_rule,
+                task.id,
             )
     if event == mercure_events.ERROR:
         if config.mercure.rules[current_rule].notification_trigger_error == "True":
@@ -451,5 +450,6 @@ def trigger_notification(task: Task, event) -> None:
                 config.mercure.rules[current_rule].get("notification_webhook", ""),
                 config.mercure.rules[current_rule].get("notification_payload", ""),
                 mercure_events.ERROR,
-                current_rule, task.id
+                current_rule,
+                task.id,
             )
