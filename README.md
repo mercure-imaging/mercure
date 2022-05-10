@@ -1,10 +1,8 @@
 
-![Python application](https://github.com/mercure-imaging/mercure/workflows/Python%20application/badge.svg) ![GitHub](https://img.shields.io/github/license/mercure-imaging/mercure) [![Join the chat at https://gitter.im/mercure-imaging/Support](https://badges.gitter.im/mercure-imaging/Support.svg)](https://gitter.im/mercure-imaging/Support?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
-
 ![mercure](mercure.png)
 
-| **Note:** mercure (formerly called Hermes) is still undergoing development work. While now feature-complete for the release of version 0.2.0, we are still testing and improving the code. Use at your own risk.  |
-| :--- |
+![Python application](https://github.com/mercure-imaging/mercure/workflows/Python%20application/badge.svg)&nbsp; ![GitHub](https://img.shields.io/github/license/mercure-imaging/mercure?color=%233273dc)&nbsp; [![Join the chat at https://gitter.im/mercure-imaging/Support](https://badges.gitter.im/mercure-imaging/Support.svg)](https://gitter.im/mercure-imaging/Support?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 
 # mercure DICOM Orchestrator
 
