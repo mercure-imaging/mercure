@@ -228,3 +228,7 @@ html.writer-html5 .rst-content table.docutils td>p {
 .wy-side-nav-search>div.version {
     color: hsla(0,0%,100%,.5);
 }
+
+.wy-menu-vertical {
+    margin-bottom: 20px;
+}
