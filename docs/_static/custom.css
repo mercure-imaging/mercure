@@ -187,7 +187,7 @@ img.logo {
 }
 
 .gitter-open-chat-button, .gitter-open-chat-button:visited, .gitter-open-chat-button:hover {
-    background-color: hsl(141, 71%, 42%);
+    background-color: hsl(141, 71%, 48%);
 }
 
 html.writer-html5 .rst-content table.docutils td>p {
@@ -221,3 +221,14 @@ html.writer-html5 .rst-content table.docutils td>p {
     }
 }
 
+.rst-versions .rst-current-version {
+    background-color: hsl(141, 71%, 48%);
+}
+
+.wy-side-nav-search>div.version {
+    color: hsla(0,0%,100%,.5);
+}
+
+.wy-menu-vertical {
+    margin-bottom: 20px;
+}
