@@ -69,6 +69,20 @@ class SftpTarget(Target):
     password: Optional[str]
 
 
+# class HTTPAuthInfo(BaseModel):
+#     username: str
+#     password: str
+class DicomWebTarget(Target):
+    target_type: Literal["dicomweb"] = "dicomweb"
+    url: str
+    qido_url_prefix: Optional[str]
+    wado_url_prefix: Optional[str]
+    stow_url_prefix: Optional[str]
+    access_token: Optional[str]
+    http_user: Optional[str]
+    http_password: Optional[str]
+
+
 class Module(BaseModel, Compat):
     docker_tag: Optional[str] = ""
     additional_volumes: Optional[str] = ""

@@ -29,6 +29,9 @@ class TargetHandler(Generic[TargetTypeVar]):
     async def test_connection(self, target: TargetTypeVar, target_name: str) -> dict:
         return {}
 
+    def from_form(self, form: dict, factory: TargetTypeVar) -> TargetTypeVar:
+        return factory(**form)
+
 
 class SubprocessTargetHandler(TargetHandler[TargetTypeVar]):
     def _create_command(self, target: TargetTypeVar, source_folder: Path):

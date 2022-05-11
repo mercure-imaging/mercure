@@ -50,3 +50,4 @@ python-nomad
 # other
 pydicom
 pydantic
+dicomweb-client

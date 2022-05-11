@@ -1,0 +1,22 @@
+<div style="margin-bottom: 8px;">
+    {% if result.ping %}
+    <div id="testmode-pingtrue"><i
+            class="fas fa-check-circle fa-lg has-text-success"></i>&nbsp;&nbsp;Responded to Ping
+    </div>
+    {% else %}
+    <div id="testmode-pingfalse"><i
+            class="fas fa-times-circle fa-lg has-text-danger"></i>&nbsp;&nbsp;No Ping Response
+    </div>
+    {% endif %}
+</div>
+<div style="margin-bottom: 8px;">
+    {%if result['c-echo'] %}
+    <div id="testmode-cechotrue"><i
+        class="fas fa-check-circle fa-lg has-text-success"></i>&nbsp;&nbsp;Responded to C-Echo
+    </div>
+    {% else %}
+    <div id="testmode-cechofalse"><i
+        class="fas fa-times-circle fa-lg has-text-danger"></i>&nbsp;&nbsp;No C-Echo Response
+    </div>
+    {% endif %}
+</div>

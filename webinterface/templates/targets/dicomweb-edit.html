@@ -1,0 +1,57 @@
+<div class="notification is-info" style="margin-top: 30px;">
+    <i class="fas fa-snowplow"></i>&nbsp;&nbsp;Support for dicomweb is experimental at this time.
+</div>                        
+
+<div class="field" style="margin-top: 30px;">
+    <label class="label">URL</label>
+    <div class="control">
+        <input name="url" class="input" required='true' autocomplete='off' type="text"
+            placeholder="URL" value="{{targets[edittarget].url}}"
+            size="15">
+    </div>
+</div>
+ <div class="field">
+    <label class="label">HTTP Username</label>
+    <div class="control">
+        <input name="http_user" class="input" required='false' autocomplete='off' placeholder="username"
+           value="{{targets[edittarget].http_user if targets[edittarget].http_user else ''}}">
+    </div>
+</div>
+<div class="field">
+    <label class="label">HTTP Password</label>
+    <div class="control">
+        <input name="http_password" class="input" required='false' autocomplete='off' placeholder="password"
+           value="{{targets[edittarget].http_password if targets[edittarget].http_password else ''}}">
+    </div>
+</div>
+<div class="field">
+    <label class="label">Access Token</label>
+    <div class="control">
+        <input name="access_token" class="input" required='false' autocomplete='off' placeholder="access token"
+           value="{{targets[edittarget].access_token if targets[edittarget].access_token else ''}}">
+    </div>
+</div>
+
+<h1 class="title is-4">Custom url prefixes</h1>
+
+<div class="field">
+    <label class="label">QIDO-RS</label>
+    <div class="control">
+        <input name="qido_url_prefix" class="input" required='false' autocomplete='off' placeholder=""
+           value="{{targets[edittarget].qido_url_prefix if targets[edittarget].qido_url_prefix else ''}}">
+    </div>
+</div>
+<div class="field">
+    <label class="label">WADO-RS</label>
+    <div class="control">
+        <input name="wado_url_prefix" class="input" required='false' autocomplete='off' placeholder=""
+           value="{{targets[edittarget].wado_url_prefix if targets[edittarget].wado_url_prefix else ''}}">
+    </div>
+</div>
+<div class="field">
+    <label class="label">STOW</label>
+    <div class="control">
+        <input name="stow_url_prefix" class="input" required='false' autocomplete='off' placeholder=""
+           value="{{targets[edittarget].wado_url_prefix if targets[edittarget].wado_url_prefix else ''}}">
+    </div>
+</div>
