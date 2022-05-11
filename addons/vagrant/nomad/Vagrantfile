@@ -3,13 +3,18 @@
 require 'getoptlong'
 
 orthanc=''
+branch='--branch latest-stable'
+
 opts = GetoptLong.new(
-  [ '--orthanc', GetoptLong::OPTIONAL_ARGUMENT ]
+  [ '--orthanc', GetoptLong::OPTIONAL_ARGUMENT ],
+  [ '--dev', GetoptLong::OPTIONAL_ARGUMENT ]
 )
 opts.each do |opt, arg|
   case opt
     when '--orthanc'
       orthanc='yes'
+    when '--dev'
+      branch=''
   end
 end
 
@@ -17,7 +22,7 @@ $script = <<-SCRIPT
 echo "#### mercure installation in Nomad mode"
 echo Cloning mercure and calling install script...
 cd ~
-git clone --depth 1 --branch latest-stable https://github.com/mercure-imaging/mercure.git
+git clone --depth 1 #{branch} https://github.com/mercure-imaging/mercure.git
 cd mercure
 ./install.sh -y nomad
 SCRIPT
@@ -26,7 +31,7 @@ $script_orthanc = <<-SCRIPT
 echo "#### mercure installation in Nomad mode with Orthanc"
 echo Cloning mercure and calling install script...
 cd ~
-git clone --depth 1 --branch latest-stable https://github.com/mercure-imaging/mercure.git
+git clone --depth 1 #{branch} https://github.com/mercure-imaging/mercure.git
 cd mercure
 ./install.sh -y nomad
 cd addons/orthanc
