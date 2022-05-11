@@ -17,18 +17,29 @@ Install and start mercure by calling (will take some time and create lots of out
 
     vagrant up
 
-.. tip:: If you encounter problems during the setup of the virtual machine (e.g., error messages related to the SSH keys), try opening the VirtualBox UI, select the newly created VM, and click on "Show". In our experience, this resolves occasional problems during the boot process.
+.. tip:: If you encounter problems during the setup of the virtual machine (e.g., error messages related to the SSH keys), try opening the VirtualBox UI, select the newly created VM, and click on "Show". In our experience, this resolves occasional problems during the VM boot process.
 
 mercure should now be running inside a virtual machine and be accessible from your host computer. Open a web browser (Chrome or Firefox) and open the address 127.0.0.1:8000. You should now see the mercure login screen.
 
 .. note:: The login credentials for the first login are: Username = admin, Password = router
 
-The DICOM receiver of mercure is listening at port 11112. If you want to send DICOM images to mercure from a folder on your host computer, you can do this with the "dcmsend" tool of the Offis DCMTK tookit by calling
+The DICOM receiver of mercure is listening at port 11112. If you want to send DICOM images to mercure from a folder on your host computer, you can do this with the "dcmsend" tool of the `Offis DCMTK tookit <https://dicom.offis.de/dcmtk.php.en>`_ by calling
 ::
 
     dcmsend 127.0.0.1 11112 *.dcm
 
 If you want to shutdown or destroy this installation of mercure, call "vagrant halt" or "vagrant destroy".
+
+.. tip:: If running the Vagrant installation without additional parameters ("vagrant up"), the latest stable version of mercure will be installed. To install the newest development version, add the argument |subst1| to the Vagrant command ("|subst2|"). This mercure version has the newest features but may be incomplete and still unstable. Use the dev version with caution. 
+
+.. |subst1| raw:: html
+
+   <strong>--dev</strong>
+
+.. |subst2| raw:: html
+
+   vagrant --dev up
+
 
 Including Orthanc and OHIF
 --------------------------

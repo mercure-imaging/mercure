@@ -26,7 +26,7 @@ mercure can automate all these tasks. While other commercial DICOM routing solut
 * Extensive monitoring capabilities
 * Completely free and customizable
 
-.. note:: mercure has been released as open-source package under the `GPL-3.0 license <https://www.gnu.org/licenses/gpl-3.0.en.html>`_. This means that it can be installed and used without paying any charges to the authors. Moreover, the source code can be downloaded and modified if specific functionality is required. However, when utilizing the source code to develop customized software, the source code of such extensions or modifications must be released under the GPL license as well. mercure has been written mostly in the Python language and is easily customizable.
+.. note:: mercure has been released as open-source package under the permissive `MIT license <https://choosealicense.com/licenses/mit>`_. This means that it can be installed and used without paying any charges to the authors. Moreover, the source code can be downloaded and modified if specific functionality is required. mercure has been written mostly in the Python language and is easily customizable.
 
 
 Architecture
