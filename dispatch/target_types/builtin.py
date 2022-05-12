@@ -32,6 +32,7 @@ class DicomTargetHandler(SubprocessTargetHandler[DicomTarget]):
     edit_template = "targets/dicom-edit.html"
     test_template = "targets/dicom-test.html"
     icon = "fa-hdd"
+    display_name = "DICOM"
 
     def _create_command(self, target: DicomTarget, source_folder: Path):
         target_ip = target.ip
@@ -78,8 +79,8 @@ class SftpTargetHandler(SubprocessTargetHandler[SftpTarget]):
     view_template = "targets/sftp.html"
     edit_template = "targets/sftp-edit.html"
     test_template = "targets/sftp-test.html"
-
     icon = "fa-download"
+    display_name = "SFTP"
 
     def _create_command(self, target: SftpTarget, source_folder: Path):
         command = (

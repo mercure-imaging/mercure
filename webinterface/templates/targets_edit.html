@@ -33,8 +33,8 @@
                         <div class="select">
                             <div class="control">
                                 <select name="target_type" id="target_type" value="{{targets[edittarget].target_type}}">
-                                    {% for t in target_names %}
-                                    <option value="{{ t }}" {% if targets[edittarget].target_type==t %}selected=true {%endif%}>{{t}}</option>
+                                    {% for t in target_names|sort %}
+                                    <option value="{{ t }}" {% if targets[edittarget].target_type==t %}selected=true {%endif%}>{{get_target_handler(t).display_name}}</option>
                                     {% endfor %}
                                 </select>
                             </div>
