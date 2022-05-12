@@ -26,7 +26,7 @@ class DicomWebTargetHandler(TargetHandler[DicomWebTarget]):
     def create_client(self, target: DicomWebTarget):
         session = None
         headers = None
-        if target.http_user:
+        if target.http_user and target.http_password:
             session = create_session_from_user_pass(username=target.http_user, password=target.http_password)
         elif target.access_token:
             headers = {"Authorization": "Bearer {}".format(target.access_token)}

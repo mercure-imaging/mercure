@@ -2,7 +2,7 @@ from common.types import TaskDispatch, TaskInfo, Rule, Target
 import common.config as config
 from subprocess import CalledProcessError, check_output
 from starlette.responses import JSONResponse
-from typing import TypeVar, Generic
+from typing import Any, TypeVar, Generic, cast
 
 from pathlib import Path
 import subprocess
@@ -29,7 +29,7 @@ class TargetHandler(Generic[TargetTypeVar]):
     async def test_connection(self, target: TargetTypeVar, target_name: str) -> dict:
         return {}
 
-    def from_form(self, form: dict, factory: TargetTypeVar) -> TargetTypeVar:
+    def from_form(self, form: dict, factory: Any) -> Any:
         return factory(**form)
 
 
