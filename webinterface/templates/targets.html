@@ -53,7 +53,7 @@
         {% endif %}
     </div>
 
-
+    
     <div class="modal" id="deletemodal">
         <div class="modal-background">
         </div>
@@ -145,7 +145,17 @@
     $("#targets").on('htmx:beforeSend', (evt) => {
         $(evt.target).addClass("is-loading");
     })
+    $("#targets").on('htmx:sendError', (evt) => {
+        $(evt.target).removeClass("is-loading");
+        $("#target_test_result").html("<pre>Network error; cannot test connectivity.</pre>")
+        $("#testmodal").addClass("is-active");
+    })
 
+    $("#targets").on('htmx:responseError', (evt) => {
+        $(evt.target).removeClass("is-loading");
+        $("#target_test_result").html("<pre>Error encountered while testing connectivity.</pre>")
+        $("#testmodal").addClass("is-active");
+    })
     $("#testmodal").on('htmx:afterSwap', (evt) => {
         $("#targets button").removeClass("is-loading");
         $("#testmodal").addClass("is-active");
