@@ -1,0 +1,45 @@
+<div class="notification is-info" style="margin-top: 30px;">
+    <i class="fas fa-snowplow"></i>&nbsp;&nbsp;Support for S3 is experimental at this time.
+</div>
+<div class="field" style="margin-top: 30px;">
+    <label class="label">Bucket</label>
+    <div class="control">
+        <input name="bucket" class="input" required='true' autocomplete='off' type="text"
+            placeholder="Host name or IP" value="{{targets[edittarget]['bucket']}}"
+            size="15">
+    </div>
+</div>
+<div class="field" style="margin-top: 30px;">
+    <label class="label">Region</label>
+    <div class="control">
+        <input name="region" class="input" required='true' autocomplete='off' type="text"
+            placeholder="S3 region" value="{{targets[edittarget]['region']}}"
+            size="15">
+    </div>
+</div>
+<div class="field" style="margin-top: 30px;">
+    <label class="label">Prefix</label>
+    <div class="control">
+        <input name="prefix" class="input" required='true' autocomplete='off' type="text"
+            placeholder="Prefix" value="{{targets[edittarget]['prefix']}}"
+            size="15">
+    </div>
+</div>
+<div class="field" style="margin-top: 30px;">
+    <label class="label">Access key id</label>
+    <div class="control">
+        <input name="access_key_id" class="input" required='true' autocomplete='off' type="text"
+            placeholder="Access key id" value="{{targets[edittarget]['access_key_id']}}"
+            pattern="AKIA.*"
+            size="15">
+    </div>
+</div>
+<div class="field" style="margin-top: 30px;">
+    <label class="label">Secret access key</label>
+    <div class="control">
+        <input name="secret_access_key" class="input" required='true' autocomplete="new-password" type="password"
+            placeholder="Secret access key" value="{{ 'secretsecretsecretsecretsecretsecretsecr' if targets[edittarget]['access_key_id'] else '' }}"
+            minlength="40" maxlength="40"
+            >
+    </div>
+</div>

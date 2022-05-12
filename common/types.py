@@ -69,9 +69,6 @@ class SftpTarget(Target):
     password: Optional[str]
 
 
-# class HTTPAuthInfo(BaseModel):
-#     username: str
-#     password: str
 class DicomWebTarget(Target):
     target_type: Literal["dicomweb"] = "dicomweb"
     url: str
@@ -81,6 +78,15 @@ class DicomWebTarget(Target):
     access_token: Optional[str]
     http_user: Optional[str]
     http_password: Optional[str]
+
+
+class S3Target(Target):
+    target_type: Literal["s3"] = "s3"
+    region: str
+    bucket: str
+    prefix: str
+    access_key_id: str
+    secret_access_key: str
 
 
 class Module(BaseModel, Compat):

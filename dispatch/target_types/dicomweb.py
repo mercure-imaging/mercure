@@ -52,7 +52,7 @@ class DicomWebTargetHandler(TargetHandler[DicomWebTarget]):
 
         return ""
 
-    def from_form(self, form: dict, factory) -> DicomWebTarget:
+    def from_form(self, form: dict, factory, current_target) -> DicomWebTarget:
         url = form["url"]
 
         for x in [

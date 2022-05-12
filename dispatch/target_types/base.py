@@ -29,7 +29,7 @@ class TargetHandler(Generic[TargetTypeVar]):
     async def test_connection(self, target: TargetTypeVar, target_name: str) -> dict:
         return {}
 
-    def from_form(self, form: dict, factory: Any) -> Any:
+    def from_form(self, form: dict, factory: Any, current_target: TargetTypeVar) -> Any:
         return factory(**form)
 
 

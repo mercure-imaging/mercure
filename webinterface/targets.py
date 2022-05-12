@@ -134,7 +134,9 @@ async def targets_edit_post(request) -> Union[RedirectResponse, PlainTextRespons
 
     TargetType = target_types.type_from_name(form["target_type"])
 
-    config.mercure.targets[edittarget] = target_types.get_handler(form["target_type"]).from_form(form, TargetType)
+    config.mercure.targets[edittarget] = target_types.get_handler(form["target_type"]).from_form(
+        form, TargetType, config.mercure.targets[edittarget]
+    )
 
     try:
         config.save_config()

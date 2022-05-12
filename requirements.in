@@ -51,3 +51,4 @@ python-nomad
 pydicom
 pydantic
 dicomweb-client
+boto3
