@@ -59,6 +59,33 @@ While Orthanc already comes with a built-in DICOM viewer, we also included the o
 
 .. important:: The Orthanc and OHIF installation described here is only intended for local testing and development purpose. Do not expose these ports to the general network, as the installation might not be fully secured.
 
+
+First steps
+-----------
+
+After installing mercure and Orthanc using Vagrant, you can go through the following exercise to familiarize yourself with mercure. These instructions assume a systemd-type installation. In this example, a prostate segmentation is performed as processing step. Afterwards, the input images and segmentation masks are sent to the Orthanc instance. This example is also demonstrated in the `mercure overview video <https://youtu.be/LyJ4iQE1yLk?t=567>`_.
+
+.. note:: The prostate segmentation model used here has been developed for demonstration purpose only. It does not provide state-of-the-art segmentation performance.
+
+* Log into the mercure web interface running at 127.0.0.1:8000 (username = admin, initial password = router).
+* Go to the Targets page and click "Add New". Enter "Orthanc" as name for the target. Select DICOM as target type and enter the following connection parameters: Host/IP = 127.0.0.1, IP = 4242, AET Target = orthanc, AET Source = mercure. Click "Save".
+* Test that mercure can talk to Orthanc by clicking on the entry "Orthanc" in the target list and clicking "Test". Both the Ping and C-Echo test should show a green check mark.
+* Go to the Modules page and click "Install Module". Enter "ProstateSegmentation" as name. For the Docker tag, enter "mercureimaging/mercure-exampleinference", which is the name under which the demo prostate segmentation model has been published on  `Docker Hub <https://hub.docker.com/r/mercureimaging/mercure-exampleinference>`_. 
+* Go to the Rules page and click "Add New". Enter "ProstateSegmentation" as name and click "Create" to get to the Edit Rule page. For the Selection Rule, enter "True" (thus, any received DICOM series will activate this rule). Under Action, select "Processing & Routing". Go to the Processing tab and select the Module "ProstateSegmentation". Check "Retain Input Images" under Data Flow. Go to the Routing page and select the Target "Orthanc". Then click "Save".
+* You are now ready to test the configured processing rule by sending cases to the mercure server. The segmentation model expects T1-weighted post-contrast MRI images with square size. If you don't have such images, visit the `GitHub page of the mercure-exampleinference module <https://github.com/mercure-imaging/mercure-exampleinference>`_ and go through the steps under "Sample Data", which will download a few publicly available datasets.
+* You can send cases to mercure using the "dcmsend" utility from the Offis DCMTK open-source package. If you don't have it installed, you can download it  `here <https://dicom.offis.de/download/dcmtk/dcmtk366/bin/>`_.
+* On your host computer, open a command shell and go to a folder with a test case. Send the images to mercure with the command |subst3|.
+* After receiving the images, mercure will start processing the case. Note that, by default, there is a 60 sec reception timeout before mercure considers the case as complete (this can be changed in the configuration).
+* You can monitor the progress by going to the Queue page of the web interface. During the first run, mercure will download the module container from Docker Hub. Therefore, the processing time is longer for the first case. Note that the Queue page does not update automatically (unless you toggle the Auto Update switch on the top-right). Click the "Refresh Now" button to update the information. The processing is complete when the Processing and Routing services return to the "Idle" state.
+* The segmentation results can now be reviewed in Orthanc. To this end, open the address 127.0.0.1:8042 (user = orthanc, password = orthanc). Click on "All Patients", which should show the case that has been processed. Click on the patient, then on the study, then click the yellow button "Stone Web Viewer" on the left side. You should now see two image series: one with the original input images, and one with the generated segmentation mask in yellow color blended with the images.
+
+If you are interested how this segmentation module has been implemented, take a look at the source code `available in GitHub <https://github.com/mercure-imaging/mercure-exampleinference>`_ (the relevant file here is inference.py). This repository can be used as starting point for implementing own DL-based processing modules. More information on module development can be found :doc:`here <../modules>`.
+
+.. |subst3| raw:: html
+
+   "dcmsend 127.0.0.1 11112 *.dcm"
+
+
 Other installation modes
 ------------------------
 
