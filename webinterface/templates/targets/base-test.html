@@ -1,5 +1,5 @@
 {% for r in result %}
 <div style="margin-bottom: 8px;">
-    <i class="fas fa-check-circle fa-lg has-text-{% if result[r] %}success{% else %}danger{% endif %} "></i>&nbsp;&nbsp;{{r}}  {{ result[r] if (result[r] not in (True, False)) else ''}}
+    <i class="fas {% if result[r] %}fa-check-circle{% else %}fa-times-circle{% endif %} fa-lg has-text-{% if result[r] %}success{% else %}danger{% endif %} "></i>&nbsp;&nbsp;{{r}}  {{ result[r] if (result[r] not in (True, False)) else ''}}
 </div>
 {% endfor %}
