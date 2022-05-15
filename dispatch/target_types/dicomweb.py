@@ -20,7 +20,7 @@ class DicomWebTargetHandler(TargetHandler[DicomWebTarget]):
     view_template = "targets/dicomweb.html"
     edit_template = "targets/dicomweb-edit.html"
     # test_template = "targets/dicomweb-test.html"
-    icon = "fa-network-wired"
+    icon = "fa-satellite-dish"
     display_name = "DICOMweb"
 
     def create_client(self, target: DicomWebTarget):

@@ -31,7 +31,7 @@ class DicomTargetHandler(SubprocessTargetHandler[DicomTarget]):
     view_template = "targets/dicom.html"
     edit_template = "targets/dicom-edit.html"
     test_template = "targets/dicom-test.html"
-    icon = "fa-hdd"
+    icon = "fa-database"
     display_name = "DICOM"
 
     def _create_command(self, target: DicomTarget, source_folder: Path):
@@ -79,7 +79,7 @@ class SftpTargetHandler(SubprocessTargetHandler[SftpTarget]):
     view_template = "targets/sftp.html"
     edit_template = "targets/sftp-edit.html"
     test_template = "targets/sftp-test.html"
-    icon = "fa-download"
+    icon = "fa-server"
     display_name = "SFTP"
 
     def _create_command(self, target: SftpTarget, source_folder: Path):

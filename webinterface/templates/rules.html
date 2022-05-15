@@ -12,17 +12,27 @@
         <h1 class="title">DICOM Rules</h1>
         {% for x in rules %}
         <div class="card rulecard">
-            <header class="card-header has-background-light">
+            <header class="card-header has-background-light ">
                 <p class="card-header-title card-toggle {% if rules[x]['disabled']=='True' %}has-text-grey-light{% endif %}">
-                    <span
-                        class="icon {% if rules[x]['disabled']!='True' %}has-text-success{% else %}has-text-grey-light{% endif %} has-tooltip-left has-tooltip-success"
-                        data-tooltip={% if rules[x]['action']=='route' %}"Routing Only"><i class="fas fa-directions
-                    {% elif rules[x]['action']=='both' %}"Processing & Routing"><i class="fas fa-layer-group
-                    {% elif rules[x]['action']=='process' %}"Processing Only"><i class="fas fa-microchip
-                    {% elif rules[x]['action']=='notification' %}"Notification Only"><i class="fas fa-bullhorn
-                    {% elif rules[x]['action']=='discard' %}"Force Discard"><i class="fas fa-ban                   
-                    {% else %}""><i class=" fas fa-robot{% endif %}fa-lg"></i>
-                    </span>&nbsp;&nbsp;{{ x }}<span style="margin-left: auto;"></span>
+                    <span class="icon {% if rules[x]['disabled']!='True' %}{% else %}has-text-grey-light{% endif %} has-tooltip-left {% if rules[x]['disabled']!='True' %}has-tooltip-success{% endif %}" data-tooltip=
+                    {% if rules[x]['disabled']=='True' %}
+                    "Disabled"
+                    {% else %}
+                    {% if rules[x]['action']=='route' %}"Routing Only"
+                    {% elif rules[x]['action']=='both' %}"Processing & Routing"
+                    {% elif rules[x]['action']=='process' %}"Processing Only"
+                    {% elif rules[x]['action']=='notification' %}"Notification Only"
+                    {% elif rules[x]['action']=='discard' %}"Force Discard"
+                    {% else %}""
+                    {% endif %}
+                    {% endif %}>
+                    {% if rules[x]['action']=='route' %}<i class="fas fa-directions fa-lg"></i>
+                    {% elif rules[x]['action']=='both' %}<i class="fas fa-layer-group fa-lg"></i>
+                    {% elif rules[x]['action']=='process' %}<i class="fas fa-microchip fa-lg"></i>
+                    {% elif rules[x]['action']=='notification' %}<i class="fas fa-bullhorn fa-lg"></i>
+                    {% elif rules[x]['action']=='discard' %}<i class="fas fa-ban fa-lg"></i>
+                    {% else %}<i class=" fas fa-robot fa-lg"></i>
+                    {% endif %}</span>&nbsp;&nbsp;{{ x }}<span style="margin-left: auto;"></span>
                     {% if rules[x]['fallback']=='True' %}
                     <span class="has-tooltip-right has-tooltip-success" data-tooltip="Fallback Rule"><i class="fas fa-magnet ruleicon"></i></span>
                     {% endif %}

@@ -55,18 +55,18 @@ class S3TargetHandler(TargetHandler[S3Target]):
         result = {}
         try:
             bucket = s3_client.head_bucket(Bucket=target.bucket)
-            result["s3 connection"] = True
-            result["bucket exists"] = True
+            result["S3 connection"] = True
+            result["Bucket exists"] = True
         except botocore.exceptions.ClientError as e:
             # If a client error is thrown, then check that it was a 404 error.
             # If it was a 404 error, then the bucket does not exist.
-            result["s3 connection"] = True
+            result["S3 connection"] = True
             error_code = int(e.response["Error"]["Code"])
             if error_code == 404:
-                result["bucket exists"] = False
+                result["Bucket exists"] = False
             else:
-                result["bucket exists"] = True
+                result["Bucket exists"] = True
         except:
-            result["s3 connection"] = False
-            result["bucket exists"] = False
+            result["S3 connection"] = False
+            result["Bucket exists"] = False
         return result

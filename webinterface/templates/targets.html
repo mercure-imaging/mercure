@@ -11,7 +11,7 @@
         <div class="card rulecard">
             <header class="card-header has-background-light">
                 <p class="card-header-title card-toggle">
-                    <span class="icon"><i class="fas {{get_target_handler(targets[x]).icon}} fa-lg"></i></span>&nbsp;&nbsp;{{ x }}
+                    <span class="icon has-tooltip-left has-tooltip-success" data-tooltip="{{get_target_handler(targets[x]).display_name}} Target"><i class="fas {{get_target_handler(targets[x]).icon}} fa-lg"></i></span>&nbsp;&nbsp;{{ x }}
                 </p>
                 <a class="card-header-icon card-toggle">
                     <i class="fa fa-angle-down"></i>
