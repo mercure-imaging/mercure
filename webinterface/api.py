@@ -64,3 +64,13 @@ async def get_tests(request):
         return JSONResponse(await monitor.get_tests())
     except monitor.MonitorHTTPError as e:
         return JSONResponse({"error": e.status_code}, status_code=e.status_code)
+
+
+@api_app.route("/find-tasks", methods=["GET"])
+@requires(["authenticated"])
+async def find_tasks(request):
+    search_term = request.query_params.get("search_term", "")
+    try:
+        return JSONResponse(await monitor.find_tasks(search_term))
+    except monitor.MonitorHTTPError as e:
+        return JSONResponse({"error": e.status_code}, status_code=e.status_code)

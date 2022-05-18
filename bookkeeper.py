@@ -4,34 +4,23 @@ bookkeeper.py
 The bookkeeper service of mercure, which receives notifications from all mercure services
 and stores the information in a Postgres database.
 """
+
 # Standard python includes
 import os
 import subprocess
 import sys
-from typing import Any
 import asyncpg
-from sqlalchemy.engine.base import Connection
 from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.dialects.postgresql import JSONB
 import uvicorn
 import datetime
 import daiquiri
-import databases
-import sqlalchemy
 import hupper
-import json
 
 # Starlette-related includes
 from starlette.applications import Starlette
-from starlette.responses import Response, JSONResponse
-
-
-from starlette.background import BackgroundTasks
-from starlette.config import Config
-from starlette.datastructures import URL
-from starlette.middleware.authentication import AuthenticationMiddleware
+from starlette.responses import Response
 from starlette.responses import JSONResponse, PlainTextResponse
-
+from starlette.middleware.authentication import AuthenticationMiddleware
 from starlette_auth_toolkit.base.backends import BaseTokenAuth
 from starlette.authentication import requires
 from starlette.authentication import SimpleUser
@@ -40,213 +29,37 @@ from starlette.authentication import SimpleUser
 from common import config
 import common.monitor as monitor
 from common.constants import mercure_defs
+from bookkeeping.database import *
+import bookkeeping.query as query
+import bookkeeping.config as bk_config
 
 
 ###################################################################################
 ## Configuration and initialization
 ###################################################################################
 
+
 logger = config.get_logger()
-
-
-bookkeeper_config = Config((os.getenv("MERCURE_CONFIG_FOLDER") or "/opt/mercure/config") + "/bookkeeper.env")
-
-BOOKKEEPER_PORT = bookkeeper_config("PORT", cast=int, default=8080)
-BOOKKEEPER_HOST = bookkeeper_config("HOST", default="0.0.0.0")
-DATABASE_URL = bookkeeper_config("DATABASE_URL", default="postgresql://mercure@localhost")
-DATABASE_SCHEMA: Any = bookkeeper_config("DATABASE_SCHEMA", default=None)
-DEBUG_MODE = bookkeeper_config("DEBUG", cast=bool, default=False)
-API_KEY = None
-
-
-def set_api_key() -> None:
-    global API_KEY
-    if API_KEY is None:
-        from common.config import read_config
-
-        try:
-            c = read_config()
-            API_KEY = c.bookkeeper_api_key
-            if not API_KEY or API_KEY == "BOOKKEEPER_TOKEN_PLACEHOLDER":
-                raise Exception("No API key set in config.json. Bookkeeper cannot function.")
-        except (ResourceWarning, FileNotFoundError) as e:
-            raise e
 
 
 class TokenAuth(BaseTokenAuth):
     async def verify(self, token: str):
-        if API_KEY is None:
+        global API_KEY
+        if bk_config.API_KEY is None:
             logger.error("API key not set")
             return None
-        if token != API_KEY:
+        if token != bk_config.API_KEY:
             return None
         return SimpleUser("user")
 
 
-database = databases.Database(DATABASE_URL)
-
-app = Starlette(debug=DEBUG_MODE)
-
+app = Starlette(debug=bk_config.DEBUG_MODE)
 app.add_middleware(
     AuthenticationMiddleware,
     backend=TokenAuth(),
     on_error=lambda _, exc: PlainTextResponse(str(exc), status_code=401),
 )
-
-###################################################################################
-## Definition of database tables
-###################################################################################
-
-metadata = sqlalchemy.MetaData(schema=DATABASE_SCHEMA)
-
-mercure_events = sqlalchemy.Table(
-    "mercure_events",
-    metadata,
-    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
-    sqlalchemy.Column("time", sqlalchemy.DateTime),
-    sqlalchemy.Column("sender", sqlalchemy.String, default="Unknown"),
-    sqlalchemy.Column("event", sqlalchemy.String, default=monitor.m_events.UNKNOWN),
-    sqlalchemy.Column("severity", sqlalchemy.Integer, default=monitor.severity.INFO),
-    sqlalchemy.Column("description", sqlalchemy.String, default=""),
-)
-
-webgui_events = sqlalchemy.Table(
-    "webgui_events",
-    metadata,
-    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
-    sqlalchemy.Column("time", sqlalchemy.DateTime),
-    sqlalchemy.Column("sender", sqlalchemy.String, default="Unknown"),
-    sqlalchemy.Column("event", sqlalchemy.String, default=monitor.w_events.UNKNOWN),
-    sqlalchemy.Column("user", sqlalchemy.String, default=""),
-    sqlalchemy.Column("description", sqlalchemy.String, default=""),
-)
-
-dicom_files = sqlalchemy.Table(
-    "dicom_files",
-    metadata,
-    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
-    sqlalchemy.Column("time", sqlalchemy.DateTime),
-    sqlalchemy.Column("filename", sqlalchemy.String),
-    sqlalchemy.Column("file_uid", sqlalchemy.String),
-    sqlalchemy.Column("series_uid", sqlalchemy.String),
-)
-
-dicom_series = sqlalchemy.Table(
-    "dicom_series",
-    metadata,
-    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
-    sqlalchemy.Column("time", sqlalchemy.DateTime),
-    sqlalchemy.Column("series_uid", sqlalchemy.String, unique=True),
-    sqlalchemy.Column("study_uid", sqlalchemy.String),
-    sqlalchemy.Column("tag_patientname", sqlalchemy.String),
-    sqlalchemy.Column("tag_patientid", sqlalchemy.String),
-    sqlalchemy.Column("tag_accessionnumber", sqlalchemy.String),
-    sqlalchemy.Column("tag_seriesnumber", sqlalchemy.String),
-    sqlalchemy.Column("tag_studyid", sqlalchemy.String),
-    sqlalchemy.Column("tag_patientbirthdate", sqlalchemy.String),
-    sqlalchemy.Column("tag_patientsex", sqlalchemy.String),
-    sqlalchemy.Column("tag_acquisitiondate", sqlalchemy.String),
-    sqlalchemy.Column("tag_acquisitiontime", sqlalchemy.String),
-    sqlalchemy.Column("tag_modality", sqlalchemy.String),
-    sqlalchemy.Column("tag_bodypartexamined", sqlalchemy.String),
-    sqlalchemy.Column("tag_studydescription", sqlalchemy.String),
-    sqlalchemy.Column("tag_seriesdescription", sqlalchemy.String),
-    sqlalchemy.Column("tag_protocolname", sqlalchemy.String),
-    sqlalchemy.Column("tag_codevalue", sqlalchemy.String),
-    sqlalchemy.Column("tag_codemeaning", sqlalchemy.String),
-    sqlalchemy.Column("tag_sequencename", sqlalchemy.String),
-    sqlalchemy.Column("tag_scanningsequence", sqlalchemy.String),
-    sqlalchemy.Column("tag_sequencevariant", sqlalchemy.String),
-    sqlalchemy.Column("tag_slicethickness", sqlalchemy.String),
-    sqlalchemy.Column("tag_contrastbolusagent", sqlalchemy.String),
-    sqlalchemy.Column("tag_referringphysicianname", sqlalchemy.String),
-    sqlalchemy.Column("tag_manufacturer", sqlalchemy.String),
-    sqlalchemy.Column("tag_manufacturermodelname", sqlalchemy.String),
-    sqlalchemy.Column("tag_magneticfieldstrength", sqlalchemy.String),
-    sqlalchemy.Column("tag_deviceserialnumber", sqlalchemy.String),
-    sqlalchemy.Column("tag_softwareversions", sqlalchemy.String),
-    sqlalchemy.Column("tag_stationname", sqlalchemy.String),
-)
-
-task_events = sqlalchemy.Table(
-    "task_events",
-    metadata,
-    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
-    sqlalchemy.Column("task_id", sqlalchemy.String, sqlalchemy.ForeignKey("tasks.id"), nullable=True),
-    sqlalchemy.Column("time", sqlalchemy.DateTime),
-    sqlalchemy.Column("sender", sqlalchemy.String, default="Unknown"),
-    sqlalchemy.Column("event", sqlalchemy.String),
-    # sqlalchemy.Column("series_uid", sqlalchemy.String),
-    sqlalchemy.Column("file_count", sqlalchemy.Integer),
-    sqlalchemy.Column("target", sqlalchemy.String),
-    sqlalchemy.Column("info", sqlalchemy.String),
-)
-
-file_events = sqlalchemy.Table(
-    "file_events",
-    metadata,
-    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
-    sqlalchemy.Column("time", sqlalchemy.DateTime),
-    sqlalchemy.Column("dicom_file", sqlalchemy.Integer),
-    sqlalchemy.Column("event", sqlalchemy.Integer),
-)
-
-dicom_series_map = sqlalchemy.Table(
-    "dicom_series_map",
-    metadata,
-    sqlalchemy.Column("id_file", sqlalchemy.Integer, primary_key=True),
-    sqlalchemy.Column("id_series", sqlalchemy.Integer),
-)
-
-series_sequence_data = sqlalchemy.Table(
-    "series_sequence_data",
-    metadata,
-    sqlalchemy.Column("uid", sqlalchemy.String, primary_key=True),
-    sqlalchemy.Column("data", sqlalchemy.JSON),
-)
-
-tasks_table = sqlalchemy.Table(
-    "tasks",
-    metadata,
-    sqlalchemy.Column("id", sqlalchemy.String, primary_key=True),
-    sqlalchemy.Column("time", sqlalchemy.DateTime),
-    sqlalchemy.Column("series_uid", sqlalchemy.String, nullable=True),
-    sqlalchemy.Column("study_uid", sqlalchemy.String, nullable=True),
-    sqlalchemy.Column("data", JSONB),
-)
-
-tests_table = sqlalchemy.Table(
-    "tests",
-    metadata,
-    sqlalchemy.Column("id", sqlalchemy.String, primary_key=True),
-    sqlalchemy.Column("type", sqlalchemy.String, nullable=True),
-    sqlalchemy.Column("time_begin", sqlalchemy.DateTime, nullable=True),
-    sqlalchemy.Column("time_end", sqlalchemy.DateTime, nullable=True),
-    sqlalchemy.Column("status", sqlalchemy.String, nullable=True),
-    sqlalchemy.Column("task_id", sqlalchemy.String, nullable=True),
-    sqlalchemy.Column("data", JSONB, nullable=True),
-)
-
-
-class CustomJSONEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, datetime.datetime):
-            return obj.strftime("%Y-%m-%d %H:%M:%S")
-        elif isinstance(obj, datetime.date):
-            return obj.strftime("%Y-%m-%d")
-        else:
-            try:
-                dict_ = dict(obj)
-            except TypeError:
-                pass
-            else:
-                return dict_
-            return super(CustomJSONEncoder, self).default(obj)
-
-
-class CustomJSONResponse(JSONResponse):
-    def render(self, content: Any) -> bytes:
-        return json.dumps(content, cls=CustomJSONEncoder).encode("utf-8")
+app.mount("/query", query.query_app)
 
 
 ###################################################################################
@@ -259,7 +72,7 @@ def create_database() -> None:
     subprocess.run(
         ["alembic", "upgrade", "head"],
         check=True,
-        env={**os.environ, "PATH": "/opt/mercure/env/bin:" + os.environ["PATH"], "DATABASE_URL": DATABASE_URL},
+        env={**os.environ, "PATH": "/opt/mercure/env/bin:" + os.environ["PATH"], "DATABASE_URL": bk_config.DATABASE_URL},
     )
 
 
@@ -269,7 +82,7 @@ async def startup() -> None:
     be created."""
     await database.connect()
     create_database()
-    set_api_key()
+    bk_config.set_api_key()
 
 
 @app.on_event("shutdown")
@@ -279,9 +92,8 @@ async def shutdown() -> None:
 
 
 ###################################################################################
-## Endpoints
+## Endpoints for event submission
 ###################################################################################
-
 
 # async def execute_db_operation(operation) -> None:
 #     global connection
@@ -505,105 +317,11 @@ async def post_task_event(request) -> JSONResponse:
     return JSONResponse({"ok": ""})
 
 
-@app.route("/series", methods=["GET"])
-@requires("authenticated")
-async def get_series(request) -> JSONResponse:
-    """Endpoint for retrieving series in the database."""
-    series_uid = request.query_params.get("series_uid", "")
-    query = dicom_series.select()
-    if series_uid:
-        query = query.where(dicom_series.c.series_uid == series_uid)
-
-    result = await database.fetch_all(query)
-    series = [dict(row) for row in result]
-
-    for i, line in enumerate(series):
-        series[i] = {
-            k: line[k] for k in line if k in ("id", "time", "series_uid", "tag_seriesdescription", "tag_modality")
-        }
-    return CustomJSONResponse(series)
-
-
-@app.route("/tasks", methods=["GET"])
-@requires("authenticated")
-async def get_tasks(request) -> JSONResponse:
-    """Endpoint for retrieving tasks in the database."""
-    query = sqlalchemy.select(
-        tasks_table.c.id, tasks_table.c.time, dicom_series.c.tag_seriesdescription, dicom_series.c.tag_modality
-    ).join(
-        dicom_series,
-        sqlalchemy.or_(
-            (dicom_series.c.study_uid == tasks_table.c.study_uid),
-            (dicom_series.c.series_uid == tasks_table.c.series_uid),
-        ),
-        isouter=True,
-    )
-    # query = sqlalchemy.text(
-    #     """ select tasks.id as task_id, tasks.time, tasks.series_uid, tasks.study_uid, "tag_seriesdescription", "tag_modality" from tasks
-    #         join dicom_series on tasks.study_uid = dicom_series.study_uid or tasks.series_uid = dicom_series.series_uid """
-    # )
-    results = await database.fetch_all(query)
-    return CustomJSONResponse(results)
-
-
-@app.route("/tests", methods=["GET"])
-@requires("authenticated")
-async def get_test_task(request) -> JSONResponse:
-    query = tests_table.select().order_by(tests_table.c.time_begin.desc())
-    # query = (
-    #     sqlalchemy.select(
-    #         tasks_table.c.id, tasks_table.c.time, dicom_series.c.tag_seriesdescription, dicom_series.c.tag_modality
-    #     )
-    #     .join(
-    #         dicom_series,
-    #         sqlalchemy.or_(
-    #             (dicom_series.c.study_uid == tasks_table.c.study_uid),
-    #             (dicom_series.c.series_uid == tasks_table.c.series_uid),
-    #         ),
-    #     )
-    #     .where(dicom_series.c.tag_seriesdescription == "self_test_series " + request.query_params.get("id", ""))
-    # )
-    result_rows = await database.fetch_all(query)
-    results = [dict(row) for row in result_rows]
-    for k in results:
-        if not k["time_end"]:
-            if k["time_begin"] < datetime.datetime.now() - datetime.timedelta(minutes=10):
-                k["status"] = "failed"
-    return CustomJSONResponse(results)
-
-
-@app.route("/task-events", methods=["GET"])
-@requires("authenticated")
-async def get_task_events(request) -> JSONResponse:
-    """Endpoint for getting all events related to one series."""
-
-    # series_uid = request.query_params.get("series_uid", "")
-    task_id = request.query_params.get("task_id", "")
-
-    query = task_events.select().order_by(task_events.c.time)
-    # if series_uid:
-    #     query = query.where(series_events.c.series_uid == series_uid)
-    # elif task_id:
-    query = query.where(task_events.c.task_id == task_id)
-    results = await database.fetch_all(query)
-    return CustomJSONResponse(results)
-
-
-@app.route("/dicom-files", methods=["GET"])
-@requires("authenticated")
-async def get_dicom_files(request) -> JSONResponse:
-    """Endpoint for getting all events related to one series."""
-    series_uid = request.query_params.get("series_uid", "")
-    query = dicom_files.select().order_by(dicom_files.c.time)
-    if series_uid:
-        query = query.where(dicom_files.c.series_uid == series_uid)
-    results = await database.fetch_all(query)
-    return CustomJSONResponse(results)
-
-
 ###################################################################################
 ## Main entry function
 ###################################################################################
+
+
 @app.exception_handler(500)
 async def server_error(request, exc) -> Response:
     """
@@ -625,7 +343,7 @@ def main(args=sys.argv[1:]) -> None:
     logger.info("--------------------------------------------")
     logger.info("")
 
-    uvicorn.run(app, host=BOOKKEEPER_HOST, port=BOOKKEEPER_PORT)
+    uvicorn.run(app, host=bk_config.BOOKKEEPER_HOST, port=bk_config.BOOKKEEPER_PORT)
 
 
 if __name__ == "__main__":

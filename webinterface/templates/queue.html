@@ -699,7 +699,7 @@
             "searching": false,
             "select": true,
             "language": {
-                "emptyTable": "Search function coming soon!"
+                "emptyTable": "No jobs found"
             },
             select: true,
             buttons: [
@@ -743,8 +743,38 @@
 
     function archiveSearch()
     {
-        $('#jobs_archive_wrapper').show();
-        $('#jobs_archive').DataTable().clear().draw();
+        if ($("#tab_archive").hasClass("is-active")) {
+            $('#jobs_archive').DataTable().clear().draw();
+            $('#jobs_archive_wrapper').show();
+            $('#loadingspinner').show();
+            $.ajax({
+                type: 'GET',
+                url: '/api/find-tasks',
+                data: {},
+                dataType: 'json',
+                error: function () {
+                    $('#erroralert').show();
+                },
+                success: function (data) {
+                    $('#erroralert').hide();
+                    var jobtable = $('#jobs_archive').DataTable();
+                    if (Object.keys(data).length) {
+                        Object.keys(data).forEach(function (key) {
+                            jobtable.row.add( [ key, data[key]["ACC"], data[key]["MRN"], data[key]["Scope"], data[key]["Status"] ] );
+                        })
+                    }
+                    jobtable.draw();
+                },
+                complete: function (data) {
+                    $('#loadingspinner').hide();
+                },
+                timeout: 3000
+            });
+            // $('#jobs_routing').DataTable().button( 2 ).enable(false);
+            // $('#jobs_routing').DataTable().button( 3 ).enable(false);
+            return;
+        }
+
     }
 
     function showJobInformation(jobId,category)

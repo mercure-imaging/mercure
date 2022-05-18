@@ -185,16 +185,20 @@ def send_task_event(event: task_event, task_id, file_count, target, info) -> Non
 
 
 async def get_task_events(task_id="") -> Any:
-    return await get("task-events", {"task_id": task_id})
+    return await get("query/task-events", {"task_id": task_id})
 
 
 async def get_series(series_uid="") -> Any:
-    return await get("series", {"series_uid": series_uid})
+    return await get("query/series", {"series_uid": series_uid})
 
 
 async def get_tasks() -> Any:
-    return await get("tasks")
+    return await get("query/tasks")
 
 
 async def get_tests() -> Any:
-    return await get("tests")
+    return await get("query/tests")
+
+
+async def find_tasks(search_term="") -> Any:
+    return await get("query/find_task", {"search_term": search_term})
