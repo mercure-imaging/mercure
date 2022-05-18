@@ -116,8 +116,8 @@ def docker_runtime(task: Task, folder: str) -> bool:
         real_folder = base_path / "processing" / real_folder.stem
 
     default_volumes = {
-        str(real_folder / "in"): {"bind": "/data", "mode": "rw"},
-        str(real_folder / "out"): {"bind": "/output", "mode": "rw"},
+        str(real_folder / "in"): {"bind": "/tmp/data", "mode": "rw"},
+        str(real_folder / "out"): {"bind": "/tmp/output", "mode": "rw"},
     }
     logger.debug(default_volumes)
 
@@ -128,7 +128,7 @@ def docker_runtime(task: Task, folder: str) -> bool:
         return False
     additional_volumes: Dict[str, Dict[str, str]] = decode_task_json(module.additional_volumes)
     environment = decode_task_json(module.environment)
-    environment = {**environment, **dict(MERCURE_IN_DIR="/data", MERCURE_OUT_DIR="/output")}
+    environment = {**environment, **dict(MERCURE_IN_DIR="/tmp/data", MERCURE_OUT_DIR="/tmp/output")}
     arguments = decode_task_json(module.docker_arguments)
 
     # Merge the two dictionaries
