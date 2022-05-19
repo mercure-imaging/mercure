@@ -221,8 +221,8 @@ def test_process_series(fs, mercure_config: Callable[[Dict], Config], mocked: Mo
 
     def fake_processor(tag, environment, volumes: Dict, **kwargs):
         global processor_path
-        in_ = Path(next((k for k in volumes.keys() if volumes[k]["bind"] == "/data")))
-        out_ = Path(next((k for k in volumes.keys() if volumes[k]["bind"] == "/output")))
+        in_ = Path(next((k for k in volumes.keys() if volumes[k]["bind"] == "/tmp/data")))
+        out_ = Path(next((k for k in volumes.keys() if volumes[k]["bind"] == "/tmp/output")))
 
         processor_path = in_.parent
         for child in in_.iterdir():
@@ -241,12 +241,12 @@ def test_process_series(fs, mercure_config: Callable[[Dict], Config], mocked: Mo
     uid_string = f"{os.getuid()}:{os.getegid()}"
     fake_run.assert_called_once_with(
         config.modules["test_module"].docker_tag,
-        environment={"MERCURE_IN_DIR": "/data", "MERCURE_OUT_DIR": "/output"},
+        environment={"MERCURE_IN_DIR": "/tmp/data", "MERCURE_OUT_DIR": "/tmp/output"},
         user=uid_string,
         group_add=[os.getegid()],
         volumes={
-            str(processor_path / "in"): {"bind": "/data", "mode": "rw"},
-            str(processor_path / "out"): {"bind": "/output", "mode": "rw"},
+            str(processor_path / "in"): {"bind": "/tmp/data", "mode": "rw"},
+            str(processor_path / "out"): {"bind": "/tmp/output", "mode": "rw"},
         },
         detach=True,
     )
