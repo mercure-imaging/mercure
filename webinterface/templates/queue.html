@@ -243,6 +243,25 @@
             </footer>
         </div>
     </div>    
+
+    <div class="modal" id="jobaudittrail">
+        <div class="modal-background"></div>
+        <div class="modal-card" style="width: 960px;">
+            <header class="modal-card-head">
+                <p class="modal-card-title">Job Audit Trail</p>
+            </header>
+            <section class="modal-card-body">
+                <div class="container">
+                    <div class="field">
+                    </div>                    
+                </div>
+            </section>
+            <footer class="modal-card-foot buttons is-centered">
+                <button class="button" type="button" id="closejobaudittrail" onclick="closeJobAuditTrail()">Close</button>
+            </footer>
+        </div>
+    </div> 
+
 </main>
 
 <script>
@@ -703,23 +722,24 @@
             },
             select: true,
             buttons: [
-                {   
-                    extend: 'selectAll', 
-                    text: '<i class="far fa-check-square"></i>',
-                    titleAttr: 'Select all',
-                },
-                {   
-                    extend: 'selectNone', 
-                    text: '<i class="far fa-square"></i>',
-                    titleAttr: 'Deselect all',
-                }
+                {
+                    text: '<i class="fas fa-list"></i>',
+                    titleAttr: 'Show audit trail',
+                    action: function ( e, dt, node, config ) {
+                        var jid = $('#jobs_archive').DataTable().rows( { selected: true } ).data()[0][0];
+                        showAuditTrail(jid);
+                    }
+                }                
             ],
             dom: 'Bfrtip',
             "scrollY": "740px",
             "scrollX": false,
             "scrollCollapse": true,            
         } );
-
+        $('#jobs_archive').DataTable().on( 'select deselect', function () {
+            var selectedRows = $('#jobs_archive').DataTable().rows( { selected: true } ).count();
+            $('#jobs_archive').DataTable().button( 0 ).enable( selectedRows > 0 );
+        } );
         $("#job_archive_search").on('keyup', function (event) {
             if (event.keyCode === 13) {
                 archiveSearch();
@@ -763,6 +783,7 @@
                             jobtable.row.add( [ key, data[key]["ACC"], data[key]["MRN"], data[key]["Scope"], data[key]["Status"] ] );
                         })
                     }
+                    $('#jobs_archive').DataTable().button(0).enable(false);
                     jobtable.draw();
                 },
                 complete: function (data) {
@@ -775,6 +796,21 @@
             return;
         }
 
+    }
+
+    function showAuditTrail(jobId)
+    {
+        if (jobId === "") {
+            return;
+        }
+
+        $("#jobaudittrail").addClass("is-active");
+        $("#jobaudittrail").addClass("is-loading");        
+    }
+
+    function closeJobAuditTrail()
+    {
+        $("#jobaudittrail").removeClass("is-active");
     }
 
     function showJobInformation(jobId,category)
