@@ -149,21 +149,32 @@ async def find_task(request) -> JSONResponse:
     response : Dict = {}
 
     query = sqlalchemy.text(
-        """ select tasks.id as task_id from tasks order by tasks.time desc """
+        """ select tasks.id as task_id, 
+        tag_accessionnumber as acc, 
+        tag_patientid as mrn,
+        data->'info'->'uid_type' as scope
+        from tasks
+        left join dicom_series on dicom_series.series_uid = tasks.series_uid 
+        order by tasks.time desc 
+        limit 256 """
     )
 
     result_rows = await database.fetch_all(query)
     results = [dict(row) for row in result_rows]    
 
-    # response = results
-    # print(results)
+    print(results)
    
-    for i in range(5):
-        task_id = str(uuid.uuid1())
-        acc = '12345678'
-        mrn = '87654321'
-        job_scope = 'Study'
-        status = 'Success'
+    for item in results:
+        task_id = item["task_id"]
+        acc = item["acc"]
+        mrn = item["mrn"]
+
+        if (item["scope"]=='"study"'):            
+            job_scope = 'STUDY'
+        else:
+            job_scope = 'SERIES'
+
+        status = 'Complete'
 
         response[task_id] = {
             "ACC": acc,
