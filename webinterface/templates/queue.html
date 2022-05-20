@@ -311,8 +311,8 @@
                 },
                 timeout: 3000
             });
-            $('#jobs_processing').DataTable().button( 2 ).enable(false);
-            $('#jobs_processing').DataTable().button( 3 ).enable(false);            
+            $('#jobs_processing').DataTable().button(2).enable(false);
+            $('#jobs_processing').DataTable().button(3).enable(false);            
             return;
         }
 
@@ -342,8 +342,8 @@
                 },
                 timeout: 3000
             });
-            $('#jobs_routing').DataTable().button( 2 ).enable(false);
-            $('#jobs_routing').DataTable().button( 3 ).enable(false);
+            $('#jobs_routing').DataTable().button(2).enable(false);
+            $('#jobs_routing').DataTable().button(3).enable(false);
             return;
         }
 
@@ -371,9 +371,9 @@
                 },
                 timeout: 3000
             });
-            $('#jobs_studies').DataTable().button( 2 ).enable(false);
-            $('#jobs_studies').DataTable().button( 3 ).enable(false);
-            $('#jobs_studies').DataTable().button( 4 ).enable(false);
+            $('#jobs_studies').DataTable().button(2).enable(false);
+            $('#jobs_studies').DataTable().button(3).enable(false);
+            $('#jobs_studies').DataTable().button(4).enable(false);
             return;
         }
 
@@ -401,8 +401,8 @@
                 },
                 timeout: 3000
             });
-            $('#jobs_fail').DataTable().button( 2 ).enable(false);
-            $('#jobs_fail').DataTable().button( 3 ).enable(false);
+            $('#jobs_fail').DataTable().button(2).enable(false);
+            $('#jobs_fail').DataTable().button(3).enable(false);
             return;
         }        
 
@@ -563,10 +563,9 @@
         } );        
         $('#jobs_processing').DataTable().on( 'select deselect', function () {
             var selectedRows = $('#jobs_processing').DataTable().rows( { selected: true } ).count();
-            $('#jobs_processing').DataTable().button( 2 ).enable( selectedRows > 0 );
-            $('#jobs_processing').DataTable().button( 3 ).enable( selectedRows > 0 );
+            $('#jobs_processing').DataTable().button(2).enable( selectedRows > 0 );
+            $('#jobs_processing').DataTable().button(3).enable( selectedRows > 0 );
         } );
-
 
         $('#jobs_routing').DataTable( {
             "paging":   false,
@@ -611,10 +610,9 @@
         } );
         $('#jobs_routing').DataTable().on( 'select deselect', function () {
             var selectedRows = $('#jobs_routing').DataTable().rows( { selected: true } ).count();
-            $('#jobs_routing').DataTable().button( 2 ).enable( selectedRows > 0 );
-            $('#jobs_routing').DataTable().button( 3 ).enable( selectedRows > 0 );
+            $('#jobs_routing').DataTable().button(2).enable( selectedRows > 0 );
+            $('#jobs_routing').DataTable().button(3).enable( selectedRows > 0 );
         } );
-
 
         $('#jobs_studies').DataTable( {
             "paging":   false,
@@ -666,11 +664,10 @@
         } );
         $('#jobs_studies').DataTable().on( 'select deselect', function () {
             var selectedRows = $('#jobs_studies').DataTable().rows( { selected: true } ).count();
-            $('#jobs_studies').DataTable().button( 2 ).enable( selectedRows > 0 );
-            $('#jobs_studies').DataTable().button( 3 ).enable( selectedRows > 0 );
-            $('#jobs_studies').DataTable().button( 4 ).enable( selectedRows > 0 );            
+            $('#jobs_studies').DataTable().button(2).enable( selectedRows > 0 );
+            $('#jobs_studies').DataTable().button(3).enable( selectedRows > 0 );
+            $('#jobs_studies').DataTable().button(4).enable( selectedRows > 0 );            
         } );
-
 
         $('#jobs_fail').DataTable( {
             "paging":   false,
@@ -716,8 +713,8 @@
         } );
         $('#jobs_fail').DataTable().on( 'select deselect', function () {
             var selectedRows = $('#jobs_fail').DataTable().rows( { selected: true } ).count();
-            $('#jobs_fail').DataTable().button( 2 ).enable( selectedRows > 0 );
-            $('#jobs_fail').DataTable().button( 3 ).enable( selectedRows > 0 );
+            $('#jobs_fail').DataTable().button(2).enable( selectedRows > 0 );
+            $('#jobs_fail').DataTable().button(3).enable( selectedRows > 0 );
         } );
 
         $('#jobs_archive').DataTable( {
@@ -732,8 +729,16 @@
             select: true,
             buttons: [
                 {
+                    text: '<i class="far fa-question-circle"></i>',
+                    titleAttr: 'Job information',
+                    action: function ( e, dt, node, config ) {
+                        var jid = $('#jobs_archive').DataTable().rows( { selected: true } ).data()[0][0];
+                        showArchiveJobInformation(jid);
+                    }
+                },
+                {
                     text: '<i class="fas fa-list"></i>',
-                    titleAttr: 'Show audit trail',
+                    titleAttr: 'Audit trail',
                     action: function ( e, dt, node, config ) {
                         var jid = $('#jobs_archive').DataTable().rows( { selected: true } ).data()[0][0];
                         showAuditTrail(jid);
@@ -747,14 +752,15 @@
         } );
         $('#jobs_archive').DataTable().on( 'select deselect', function () {
             var selectedRows = $('#jobs_archive').DataTable().rows( { selected: true } ).count();
-            $('#jobs_archive').DataTable().button( 0 ).enable( selectedRows > 0 );
+            $('#jobs_archive').DataTable().button(0).enable( selectedRows > 0 );
+            $('#jobs_archive').DataTable().button(1).enable( selectedRows > 0 );
         } );
         $("#job_archive_search").on('keyup', function (event) {
             if (event.keyCode === 13) {
                 archiveSearch();
             }
         });
-        
+
         $('#job-events-table').DataTable( {
             "paging": false,
             "ordering": false,
@@ -778,7 +784,7 @@
             $('div.panel[data-content="' + tab + '"]').addClass('is-active');
 
             update_jobs();
-        });
+        });       
        
         update();
     });
@@ -806,6 +812,7 @@
                         })
                     }
                     $('#jobs_archive').DataTable().button(0).enable(false);
+                    $('#jobs_archive').DataTable().button(1).enable(false);
                     jobtable.draw();
                 },
                 complete: function (data) {
@@ -813,11 +820,8 @@
                 },
                 timeout: 3000
             });
-            // $('#jobs_routing').DataTable().button( 2 ).enable(false);
-            // $('#jobs_routing').DataTable().button( 3 ).enable(false);
             return;
         }
-
     }
 
     function showAuditTrail(jobId)
@@ -840,7 +844,6 @@
             success: function (data) {
                 var eventstable = $('#job-events-table').DataTable().clear();
                 Object.keys(data).forEach(function (key) {
-                    console.log(data[key])
                     eventstable.row.add([data[key]["time"], data[key]["event"], data[key]["sender"], data[key]["target"], data[key]["file_count"], data[key]["info"]])
                 })
                 eventstable.draw();
@@ -892,6 +895,44 @@
         });
     }
 
+    function showArchiveJobInformation(jobId)
+    {
+        if (jobId === "") {
+            return;
+        }
+
+        $("#jobinformationcontent").val("");
+        $("#jobinformation").addClass("is-active");
+        $("#jobinfocontrol").addClass("is-loading");        
+
+        // $.ajax({
+        //     type: 'GET',
+        //     url: '/queue/jobinfo/' + category + '/' + jobId,
+        //     data: {},
+        //     dataType: 'json',
+        //     success: function (data) {
+        //         textContent = ""
+        //         try {
+        //             var jsondata = JSON.parse(data);
+        //             textContent = JSON.stringify(jsondata, null, 4);
+        //         } catch(e) {
+        //             textContent = data;
+        //         }                
+        //         $("#jobinformationcontent").val(textContent);
+        //     },
+        //     error: function (data, status) {
+        //         if (status === "parsererror") {                    
+        //             $("#jobinformationcontent").val(data.responseText);
+        //         } else {
+        //             $("#jobinformationcontent").val("ERROR: Unable to retrieve job information");
+        //         }
+        //     },
+        //     complete: function (data) {
+        //         $("#jobinfocontrol").removeClass("is-loading");  
+        //     }
+        // });
+    }
+
     function closeJobInformation()
     {
         $("#jobinformation").removeClass("is-active");
@@ -909,7 +950,6 @@
         } else {
             clearInterval(updateTimer);
         }
-
     }
 
 </script>
