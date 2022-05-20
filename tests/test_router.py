@@ -206,7 +206,7 @@ def test_route_study(fs: FakeFilesystem, mercure_config, mocked, fake_process):
     assert task.study.complete_trigger == "timeout"
     assert task.study.received_series == [tags["SeriesDescription"]]
 
-    common.monitor.send_register_task.assert_called_with(task)  # type: ignore
+    common.monitor.send_update_task.assert_called_with(task)  # type: ignore
 
     task_will_dispatch_to(task, config, fake_process)
     # common.monitor.send_task_event.assert_any_call(  # type: ignore
@@ -233,7 +233,7 @@ def test_route_series(fs: FakeFilesystem, mercure_config, mocked, fake_process):
     router.run_router()
 
     common.monitor.send_register_series.assert_called_once_with({"SeriesInstanceUID": "foo"})  # type: ignore
-    common.monitor.send_register_task.assert_any_call(None, task_id)  # type: ignore
+    common.monitor.send_register_task.assert_any_call(task_id, series_uid)  # type: ignore
     router.route_series.assert_called_once_with(task_id, series_uid)  # type: ignore
     routing.route_series.push_series_serieslevel.assert_called_once_with(task_id, {"route_series": True}, [f"{series_uid}#bar"], series_uid, tags)  # type: ignore
     routing.route_series.push_serieslevel_outgoing.assert_called_once_with(task_id, {"route_series": True}, [f"{series_uid}#bar"], series_uid, tags, {"test_target": ["route_series"]})  # type: ignore
@@ -266,7 +266,7 @@ def test_route_series(fs: FakeFilesystem, mercure_config, mocked, fake_process):
     assert task.info.triggered_rules["route_series"] == True  # type: ignore
     assert task.process == {}
     assert task.study == {}
-    common.monitor.send_register_task.assert_called_with(task)  # type: ignore
+    common.monitor.send_register_task.assert_called_with(task_id, series_uid)  # type: ignore
 
     task_will_dispatch_to(task, config, fake_process)
     # print(common.monitor.send_event.call_args_list)
