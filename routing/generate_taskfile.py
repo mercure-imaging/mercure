@@ -225,7 +225,7 @@ def create_series_task(
     """
     # Compose the JSON content for the file
     task = compose_task(task_id, series_UID, "series", triggered_rules, applied_rule, tags_list, target)
-    monitor.send_register_task(task)
+    monitor.send_update_task(task)
 
     task_filename = folder_name + mercure_names.TASKFILE
     try:
@@ -252,7 +252,7 @@ def create_study_task(
     """
     # Compose the JSON content for the file
     task = compose_task(task_id, study_UID, "study", triggered_rules, applied_rule, tags_list, "")
-    monitor.send_register_task(task)
+    monitor.send_update_task(task)
 
     task_filename = folder_name + mercure_names.TASKFILE
     logger.debug(f"Writing study task file {task_filename}")

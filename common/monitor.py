@@ -150,19 +150,24 @@ def send_register_series(tags: Dict[str, str]) -> None:
     post("register-series", data=tags)
 
 
-def send_register_task(task: Optional[Task], task_id: str = None) -> None:
+def send_register_task(task_id: str, series_uid: str) -> None:
     """Registers a new task on the bookkeeper. This should be called whenever a new task has been created."""
     if not bookkeeper_address:
         return
 
-    if task is None:
-        task_dict = {"id": task_id}
-    else:
-        task_dict = task.dict()
+    post("register-task", json={"id": task_id, "series_uid": series_uid})
 
-    logger.debug(f"Monitor (register-task): task.id={task_dict['id']} ")
 
-    post("register-task", json=task_dict)
+def send_update_task(task: Task) -> None:
+    """Registers a new task on the bookkeeper. This should be called whenever a new task has been created."""
+    if not bookkeeper_address:
+        return
+
+    task_dict = task.dict()
+
+    logger.debug(f"Monitor (update-task): task.id={task_dict['id']} ")
+
+    post("update-task", json=task_dict)
 
 
 def send_task_event(event: task_event, task_id, file_count, target, info) -> None:

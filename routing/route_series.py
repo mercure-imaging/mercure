@@ -43,7 +43,7 @@ def route_series(task_id: str, series_UID: str) -> None:
     Processes the series with the given series UID from the incoming folder.
     """
     logger.setTask(task_id)
-    monitor.send_register_task(None, task_id)
+    monitor.send_register_task(task_id, series_UID)
 
     lock_file = Path(config.mercure.incoming_folder + "/" + str(series_UID) + mercure_names.LOCK)
     if lock_file.exists():

@@ -72,7 +72,11 @@ def create_database() -> None:
     subprocess.run(
         ["alembic", "upgrade", "head"],
         check=True,
-        env={**os.environ, "PATH": "/opt/mercure/env/bin:" + os.environ["PATH"], "DATABASE_URL": bk_config.DATABASE_URL},
+        env={
+            **os.environ,
+            "PATH": "/opt/mercure/env/bin:" + os.environ["PATH"],
+            "DATABASE_URL": bk_config.DATABASE_URL,
+        },
     )
 
 
@@ -221,33 +225,41 @@ async def register_series(request) -> JSONResponse:
 @app.route("/register-task", methods=["POST"])
 @requires("authenticated")
 async def register_task(request) -> JSONResponse:
-    """Endpoint that is called by the router whenever a new series arrives."""
     payload = dict(await request.json())
-    series_uid = None
-    study_uid = None
+    query = insert(tasks_table).values(id=payload["id"], series_uid=payload["series_uid"], time=datetime.datetime.now())
+    await database.execute(query)
+    return JSONResponse({"ok": ""})
+
+
+@app.route("/update-task", methods=["POST"])
+@requires("authenticated")
+async def update_task(request) -> JSONResponse:
+    """Endpoint that is called by the router whenever a new series arrives."""
+    data = await request.json()
+    payload = dict(data)
     logger.debug(payload)
     id = payload["id"]
-    series_uid = None
     study_uid = None
+    update_values = dict(data=data)
+
     if "info" in payload:
-        if payload["info"]["uid_type"] == "series":
-            series_uid = payload["info"]["uid"]
         if payload["info"]["uid_type"] == "study":
             study_uid = payload["info"]["uid"]
-    data = await request.json()
+            update_values["study_uid"] = study_uid
+    query = tasks_table.update(tasks_table.c.id == id).values(**update_values)
 
-    query = (
-        insert(tasks_table)
-        .values(id=id, series_uid=series_uid, study_uid=study_uid, time=datetime.datetime.now(), data=data)
-        .on_conflict_do_update(
-            index_elements=["id"],
-            set_={
-                "series_uid": series_uid,
-                "study_uid": study_uid,
-                "data": data,
-            },
-        )
-    )
+    # query = (
+    #     insert(tasks_table)
+    #     .values(id=id, series_uid=series_uid, study_uid=study_uid, time=datetime.datetime.now(), data=data)
+    #     .on_conflict_do_update(
+    #         index_elements=["id"],
+    #         set_={
+    #             "series_uid": series_uid,
+    #             "study_uid": study_uid,
+    #             "data": data,
+    #         },
+    #     )
+    # )
     await database.execute(query)
     return JSONResponse({"ok": ""})
 
@@ -258,9 +270,10 @@ async def test_begin(request) -> JSONResponse:
     payload = dict(await request.json())
     id = payload["id"]
     type = payload.get("type", "route")
+    rule_type = payload.get("rule_type", "series")
     task_id = payload.get("task_id", None)
     query_a = insert(tests_table).values(
-        id=id, time_begin=datetime.datetime.now(), type=type, status="begin", task_id=task_id
+        id=id, time_begin=datetime.datetime.now(), type=type, status="begin", task_id=task_id, rule_type=rule_type
     )
 
     query = query_a.on_conflict_do_update(
