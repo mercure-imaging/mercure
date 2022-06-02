@@ -520,7 +520,7 @@ async def self_test(request) -> Response:
         tmpdir = Path("/tmp/mercure/self_test_" + test_id)
         Path("/tmp/mercure").mkdir(exist_ok=True)
         if rule_type == "study":
-            generate_several_protocols(tmpdir)
+            generate_several_protocols(tmpdir, ["PROT1", "PROT2"])
         else:
             generate_series(tmpdir, 10, series_description="self_test_series " + test_id)
 

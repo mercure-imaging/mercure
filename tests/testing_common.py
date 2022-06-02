@@ -3,7 +3,7 @@ testing_common.py
 =================
 """
 import os
-from typing import Callable, Dict, Any
+from typing import Callable, Dict, Any, Iterator
 
 import pytest
 import process
@@ -91,3 +91,11 @@ def mercure_config(fs) -> Callable[[Dict], Config]:
 
     set_config()
     return set_config
+
+
+def mock_task_ids(mocker, task_id, next_task_id) -> None:
+    def generate_uuids() -> Iterator[str]:
+        yield from [task_id, next_task_id]
+
+    generator = generate_uuids()
+    mocker.patch("uuid.uuid1", new=lambda: next(generator))

@@ -8,6 +8,7 @@ Helper functions and definitions for monitoring mercure's operations via the boo
 import asyncio
 
 from json import JSONDecodeError
+import time
 
 from typing import Any, Dict, Optional
 from urllib.error import HTTPError
@@ -150,12 +151,12 @@ def send_register_series(tags: Dict[str, str]) -> None:
     post("register-series", data=tags)
 
 
-def send_register_task(task_id: str, series_uid: str) -> None:
+def send_register_task(task_id: str, series_uid: str, parent_id: Optional[str] = None) -> None:
     """Registers a new task on the bookkeeper. This should be called whenever a new task has been created."""
     if not bookkeeper_address:
         return
 
-    post("register-task", json={"id": task_id, "series_uid": series_uid})
+    post("register-task", json={"id": task_id, "series_uid": series_uid, "parent_id": parent_id})
 
 
 def send_update_task(task: Task) -> None:
@@ -184,6 +185,7 @@ def send_task_event(event: task_event, task_id, file_count, target, info) -> Non
         "target": target,
         "info": info,
         "task_id": task_id,
+        "timestamp": time.monotonic(),
     }
     post("task-event", data=payload)
     # requests.post(bookkeeper_address + "/series-event", data=payload, timeout=1)

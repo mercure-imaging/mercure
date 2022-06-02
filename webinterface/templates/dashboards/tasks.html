@@ -61,6 +61,24 @@ $('#events-table').DataTable( {
    "columnDefs": [
             { "visible": false, "targets": 0 }
     ],
+    "drawCallback": function (settings) {
+            var api = this.api();
+            var rows = api.rows({ page: 'current' }).nodes();
+            var last = null;
+ 
+            api
+                .column(0, { page: 'current' })
+                .data()
+                .each(function (group, i) {
+                    if (last !== group) {
+                        $(rows)
+                            .eq(i)
+                            .before('<tr class="group"><td colspan="5" class="has-text-white has-background-black">Task ' + group + '</td></tr>');
+ 
+                        last = group;
+                    }
+                });
+        },
 })
 $('#series-table').DataTable( {
    "ordering": true,
@@ -98,7 +116,7 @@ $('#series-table').DataTable( {
                 var eventstable = $('#events-table').DataTable().clear();
                 Object.keys(data).forEach(function (key) {
                     console.log(data[key])
-                    eventstable.row.add([data[key]["task_id"] || "", data[key]["event"], data[key]["sender"],  data[key]["target"], data[key]["info"]])
+                    eventstable.row.add([data[key]["task_id"].slice(0,8) || "", data[key]["event"], data[key]["sender"],  data[key]["target"], data[key]["info"]])
                     // jobtable.row.add( [ key, data[key]["ACC"], data[key]["MRN"], data[key]["Scope"], data[key]["FailStage"] ] );
                 })
                 eventstable.draw();

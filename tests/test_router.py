@@ -224,7 +224,10 @@ def test_route_series(fs: FakeFilesystem, mercure_config, mocked, fake_process):
     # mocker.patch("routing.route_series.parse_ascconv", new=lambda x: {})
     task_id = "test_task_" + str(uuid.uuid1())
     series_uid = str(uuid.uuid4())
-    mocked.patch("uuid.uuid1", new=lambda: task_id)
+
+    new_task_id = "new-task-" + str(uuid.uuid1())
+    mock_task_ids(mocked, task_id, new_task_id)
+    # mocked.patch("uuid.uuid1", new=lambda: task_id)
     tags = {"SeriesInstanceUID": "foo"}
     fs.create_file(f"/var/incoming/{series_uid}#bar.dcm", contents="asdfasdfafd")
     fs.create_file(f"/var/incoming/{series_uid}#bar.tags", contents=json.dumps(tags))
@@ -244,7 +247,7 @@ def test_route_series(fs: FakeFilesystem, mercure_config, mocked, fake_process):
             call(task_event.ERROR, task_id, 0, "", "Invalid rule encountered:  1/0 "),
             call(task_event.REGISTERED, task_id, 1, "route_series", "Registered series."),
             call(task_event.ROUTE, task_id, 1, "test_target", "route_series"),
-            call(task_event.MOVE, task_id, 1, f"/var/outgoing/{task_id}", ""),
+            call(task_event.MOVE, task_id, 1, f"/var/outgoing/{new_task_id}", ""),
         ]
     )
     out_path = next(Path("/var/outgoing").iterdir())
@@ -259,14 +262,15 @@ def test_route_series(fs: FakeFilesystem, mercure_config, mocked, fake_process):
 
     with open(out_path / "task.json") as e:
         task: Task = Task(**json.load(e))
-    assert task.id == task_id
+    assert task.id == new_task_id
     assert task.dispatch.target_name == "test_target"  # type: ignore
     assert task.info.uid == series_uid
     assert task.info.uid_type == "series"
     assert task.info.triggered_rules["route_series"] == True  # type: ignore
     assert task.process == {}
     assert task.study == {}
-    common.monitor.send_register_task.assert_called_with(task_id, series_uid)  # type: ignore
+    common.monitor.send_register_task.assert_any_call(task_id, series_uid)  # type: ignore
+    common.monitor.send_register_task.assert_any_call(new_task_id, series_uid, task_id)  # type: ignore
 
     task_will_dispatch_to(task, config, fake_process)
     # print(common.monitor.send_event.call_args_list)

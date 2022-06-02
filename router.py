@@ -22,7 +22,7 @@ import common.config as config
 import common.monitor as monitor
 from routing.route_series import route_series, route_error_files
 from routing.route_studies import route_studies
-
+from routing.common import generate_task_id
 
 # Create local logger instance
 logger = config.get_logger()
@@ -100,7 +100,7 @@ def run_router(args=None) -> None:
 
     # Process all complete series
     for series_uid in sorted(complete_series):
-        task_id = str(uuid.uuid1())
+        task_id = generate_task_id()
         try:
             route_series(task_id, series_uid)
         except Exception:
@@ -187,11 +187,12 @@ def main(args=sys.argv[1:]) -> None:
     monitor.send_event(monitor.m_events.SHUTDOWN, monitor.severity.INFO)
 
     # Finish all asyncio tasks that might be still pending
-    remaining_tasks = helper.asyncio.all_tasks(helper.loop) # type: ignore[attr-defined]
+    remaining_tasks = helper.asyncio.all_tasks(helper.loop)  # type: ignore[attr-defined]
     if remaining_tasks:
         helper.loop.run_until_complete(helper.asyncio.gather(*remaining_tasks))
 
     logger.info("Going down now")
+
 
 if __name__ == "__main__":
     main()

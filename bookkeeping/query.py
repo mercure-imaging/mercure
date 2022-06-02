@@ -1,4 +1,3 @@
-
 """
 query.py
 ========
@@ -56,15 +55,19 @@ async def get_series(request) -> JSONResponse:
 @requires("authenticated")
 async def get_tasks(request) -> JSONResponse:
     """Endpoint for retrieving tasks in the database."""
-    query = sqlalchemy.select(
-        tasks_table.c.id, tasks_table.c.time, dicom_series.c.tag_seriesdescription, dicom_series.c.tag_modality
-    ).join(
-        dicom_series,
-        sqlalchemy.or_(
-            (dicom_series.c.study_uid == tasks_table.c.study_uid),
+    query = (
+        sqlalchemy.select(
+            tasks_table.c.id, tasks_table.c.time, dicom_series.c.tag_seriesdescription, dicom_series.c.tag_modality
+        )
+        .where(tasks_table.c.parent_id.is_(None))  # only show tasks without parents
+        .join(
+            dicom_series,
+            # sqlalchemy.or_(
+            # (dicom_series.c.study_uid == tasks_table.c.study_uid),
             (dicom_series.c.series_uid == tasks_table.c.series_uid),
-        ),
-        isouter=True,
+            # ),
+            isouter=True,
+        )
     )
     # query = sqlalchemy.text(
     #     """ select tasks.id as task_id, tasks.time, tasks.series_uid, tasks.study_uid, "tag_seriesdescription", "tag_modality" from tasks
@@ -103,16 +106,21 @@ async def get_test_task(request) -> JSONResponse:
 @query_app.route("/task-events", methods=["GET"])
 @requires("authenticated")
 async def get_task_events(request) -> JSONResponse:
-    """Endpoint for getting all events related to one series."""
+    """Endpoint for getting all events related to one task."""
 
     # series_uid = request.query_params.get("series_uid", "")
     task_id = request.query_params.get("task_id", "")
 
-    query = task_events.select().order_by(task_events.c.time)
-    # if series_uid:
-    #     query = query.where(series_events.c.series_uid == series_uid)
-    # elif task_id:
-    query = query.where(task_events.c.task_id == task_id)
+    subtask_query = sqlalchemy.select(tasks_table.c.id).where(tasks_table.c.parent_id == task_id)
+    subtask_ids = [row[0] for row in await database.fetch_all(subtask_query)]
+
+    # Get all the task_events from task `task_id` or any of its subtasks
+    query = (
+        task_events.select()
+        .order_by(task_events.c.task_id, task_events.c.client_timestamp)
+        .where(sqlalchemy.or_(task_events.c.task_id == task_id, task_events.c.task_id.in_(subtask_ids)))
+    )
+
     results = await database.fetch_all(query)
     return CustomJSONResponse(results)
 
@@ -133,7 +141,7 @@ async def get_dicom_files(request) -> JSONResponse:
 @requires("authenticated")
 async def find_task(request) -> JSONResponse:
     search_term = request.query_params.get("search_term", "")
-    
+
     # query = dicom_series.select()
     # if series_uid:
     #     query = query.where(dicom_series.c.series_uid == series_uid)
@@ -146,7 +154,7 @@ async def find_task(request) -> JSONResponse:
     #         k: line[k] for k in line if k in ("id", "time", "series_uid", "tag_seriesdescription", "tag_modality")
     #     }
 
-    response : Dict = {}
+    response: Dict = {}
 
     query = sqlalchemy.text(
         """ select tasks.id as task_id, 
@@ -160,27 +168,27 @@ async def find_task(request) -> JSONResponse:
     )
 
     result_rows = await database.fetch_all(query)
-    results = [dict(row) for row in result_rows]    
+    results = [dict(row) for row in result_rows]
 
     print(results)
-   
+
     for item in results:
         task_id = item["task_id"]
         acc = item["acc"]
         mrn = item["mrn"]
 
-        if (item["scope"]=='"study"'):            
-            job_scope = 'STUDY'
+        if item["scope"] == '"study"':
+            job_scope = "STUDY"
         else:
-            job_scope = 'SERIES'
+            job_scope = "SERIES"
 
-        status = 'Complete'
+        status = "Complete"
 
         response[task_id] = {
             "ACC": acc,
             "MRN": mrn,
             "Scope": job_scope,
             "Status": status,
-        }    
+        }
 
     return CustomJSONResponse(response)

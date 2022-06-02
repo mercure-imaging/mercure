@@ -226,7 +226,26 @@ async def register_series(request) -> JSONResponse:
 @requires("authenticated")
 async def register_task(request) -> JSONResponse:
     payload = dict(await request.json())
-    query = insert(tasks_table).values(id=payload["id"], series_uid=payload["series_uid"], time=datetime.datetime.now())
+
+    # Registering the task ordinarily happens first, but if "update-task"
+    # came in first, we need to update the task instead. So we do an upsert.
+    query = (
+        insert(tasks_table)
+        .values(
+            id=payload["id"],
+            series_uid=payload["series_uid"],
+            parent_id=payload.get("parent_id"),
+            time=datetime.datetime.now(),
+        )
+        .on_conflict_do_update(
+            index_elements=["id"],
+            set_={
+                "series_uid": payload["series_uid"],
+                "parent_id": payload.get("parent_id"),
+            },
+        )
+    )
+
     await database.execute(query)
     return JSONResponse({"ok": ""})
 
@@ -238,28 +257,28 @@ async def update_task(request) -> JSONResponse:
     data = await request.json()
     payload = dict(data)
     logger.debug(payload)
-    id = payload["id"]
+
     study_uid = None
-    update_values = dict(data=data)
+    update_values = dict(id=payload["id"], time=datetime.datetime.now(), data=data)
 
     if "info" in payload:
         if payload["info"]["uid_type"] == "study":
             study_uid = payload["info"]["uid"]
             update_values["study_uid"] = study_uid
-    query = tasks_table.update(tasks_table.c.id == id).values(**update_values)
+        if payload["info"]["uid_type"] == "series":
+            series_uid = payload["info"]["uid"]
+            update_values["series_uid"] = series_uid
 
-    # query = (
-    #     insert(tasks_table)
-    #     .values(id=id, series_uid=series_uid, study_uid=study_uid, time=datetime.datetime.now(), data=data)
-    #     .on_conflict_do_update(
-    #         index_elements=["id"],
-    #         set_={
-    #             "series_uid": series_uid,
-    #             "study_uid": study_uid,
-    #             "data": data,
-    #         },
-    #     )
-    # )
+    # Ordinarily, update-task is called on an existing task. But if the task is
+    # not yet registered, we need to create it. So we use an upsert here.
+    query = (
+        insert(tasks_table)
+        .values(**update_values)
+        .on_conflict_do_update(  # update if exists
+            index_elements=["id"],
+            set_=update_values,
+        )
+    )
     await database.execute(query)
     return JSONResponse({"ok": ""})
 
@@ -305,6 +324,14 @@ async def post_task_event(request) -> JSONResponse:
     payload = dict(await request.form())
     sender = payload.get("sender", "Unknown")
     event = payload.get("event", monitor.task_event.UNKNOWN)
+    client_timestamp = None
+
+    if "timestamp" in payload:
+        try:
+            client_timestamp = float(payload.get("timestamp"))  # type: ignore
+        except:
+            pass
+
     # series_uid = payload.get("series_uid", "")
     try:
         file_count = int(payload.get("file_count", 0))
@@ -325,6 +352,7 @@ async def post_task_event(request) -> JSONResponse:
         target=target,
         info=info,
         time=datetime.datetime.now(),
+        client_timestamp=client_timestamp,
     )
     await database.execute(query)
     return JSONResponse({"ok": ""})

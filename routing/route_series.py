@@ -31,7 +31,7 @@ from common.constants import (
     mercure_events,
 )
 from routing.generate_taskfile import create_series_task, create_study_task, update_study_task
-
+from routing.common import generate_task_id
 
 # Create local logger instance
 logger = config.get_logger()
@@ -258,10 +258,13 @@ def push_series_studylevel(
 
             if first_series:
                 # Create task file with information on complete criteria
-                create_study_task(task_id, target_folder, triggered_rules, current_rule, study_UID, tags_list)
+                new_task_id = generate_task_id()
+                create_study_task(new_task_id, target_folder, triggered_rules, current_rule, study_UID, tags_list)
+                monitor.send_task_event(monitor.task_event.UNKNOWN, task_id, 0, current_rule, "Created study task")
             else:
                 # Add data from latest series to task file
                 update_study_task(task_id, target_folder, triggered_rules, current_rule, study_UID, tags_list)
+                monitor.send_task_event(monitor.task_event.UNKNOWN, task_id, 0, current_rule, "Added to study task")
 
             # Copy (or move) the files into the study folder
             push_files(task_id, file_list, folder_name, (len(triggered_rules) > 1))
@@ -331,8 +334,9 @@ def push_serieslevel_processing(
                 copy_files = True
                 if len(triggered_rules) == 1:
                     copy_files = False
+                new_task_id = generate_task_id()
 
-                folder_name = config.mercure.processing_folder + "/" + task_id
+                folder_name = config.mercure.processing_folder + "/" + new_task_id
                 target_folder = folder_name + "/"
 
                 # Create processing folder
@@ -355,10 +359,12 @@ def push_serieslevel_processing(
                     logger.error(f"Unable to create lock file {lock_file}", task_id)  # handle_error
                     return False
 
-                # Generate task file with processing information
-                if not create_series_task(
-                    task_id, target_folder, triggered_rules, current_rule, series_UID, tags_list, ""
+                    # Generate task file with processing information
+                if create_series_task(
+                    new_task_id, target_folder, triggered_rules, current_rule, series_UID, tags_list, ""
                 ):
+                    monitor.send_register_task(new_task_id, series_UID, task_id)
+                else:
                     return False
 
                 if not push_files(task_id, file_list, target_folder, copy_files):
@@ -430,7 +436,9 @@ def push_serieslevel_outgoing(
             logger.error(f"Invalid target selected {target}", task_id)  # handle_error
             continue
 
-        folder_name = config.mercure.outgoing_folder + "/" + task_id
+        new_task_id = generate_task_id()
+
+        folder_name = config.mercure.outgoing_folder + "/" + new_task_id
         target_folder = folder_name + "/"
 
         try:
@@ -455,7 +463,9 @@ def push_serieslevel_outgoing(
             target_rules[rule] = True
 
         # Generate task file with dispatch information
-        if not create_series_task(task_id, target_folder, target_rules, "", series_UID, tags_list, target):
+        if create_series_task(new_task_id, target_folder, target_rules, "", series_UID, tags_list, target):
+            monitor.send_register_task(new_task_id, series_UID, task_id)
+        else:
             continue
 
         monitor.send_task_event(

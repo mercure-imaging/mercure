@@ -187,10 +187,9 @@ def generate_series(
     return files
 
 
-def generate_several_protocols(base_path: Union[str, Path]) -> List[Path]:
+def generate_several_protocols(base_path: Union[str, Path], protocols=["PROT1", "PROT2", "PROT1_DL", "PROT2_DL"]) -> List[Path]:
     f: Path = Path(base_path)
     f.mkdir(parents=True, exist_ok=True)
-    protocols = ["PROT1", "PROT2", "PROT1_DL", "PROT2_DL"]
     acc = nums(7)
     study = nums(8)
     patient_name = "Patient 1"

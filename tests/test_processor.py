@@ -2,6 +2,7 @@
 test_processor.py
 ==============
 """
+from typing import Tuple
 import os
 import shutil
 import unittest
@@ -51,8 +52,12 @@ config_partial: Dict[str, Dict] = {
 }
 
 
-def create_and_route(fs, mocked, task_id, uid="TESTFAKEUID") -> List[str]:
-    mocked.patch("uuid.uuid1", new=lambda: task_id)
+def create_and_route(fs, mocked, task_id, uid="TESTFAKEUID") -> Tuple[List[str], str]:
+    print("Mocked task_id is", task_id)
+
+    new_task_id = "new-task-" + str(uuid.uuid1())
+
+    mock_task_ids(mocked, task_id, new_task_id)
     # mocked.patch("routing.route_series.parse_ascconv", new=lambda x: {})
 
     fs.create_file(f"/var/incoming/{uid}#bar.dcm", contents="asdfasdfafd")
@@ -69,7 +74,7 @@ def create_and_route(fs, mocked, task_id, uid="TESTFAKEUID") -> List[str]:
     ]
 
     mocked.patch("processor.process_series", new=mocked.spy(processor, "process_series"))
-    return ["task.json", f"{uid}#bar.dcm", f"{uid}#bar.tags"]
+    return ["task.json", f"{uid}#bar.dcm", f"{uid}#bar.tags"], new_task_id
 
 
 def test_process_series_nomad(fs, mercure_config: Callable[[Dict], Config], mocked: MockerFixture):
@@ -80,7 +85,7 @@ def test_process_series_nomad(fs, mercure_config: Callable[[Dict], Config], mock
     mocked.patch.object(Jobs, "parse", new=lambda x, y: {})
 
     task_id = str(uuid.uuid1())
-    files = create_and_route(fs, mocked, task_id)
+    files, new_task_id = create_and_route(fs, mocked, task_id)
 
     processor_path = next(Path("/var/processing").iterdir())
 
@@ -125,7 +130,7 @@ def test_process_series_nomad(fs, mercure_config: Callable[[Dict], Config], mock
     with open(Path("/var/success") / processor_path.name / "task.json") as t:
         task = json.load(t)
     assert task == {
-        "id": task_id,
+        "id": new_task_id,
         "info": {
             "uid": "TESTFAKEUID",
             "action": "process",
@@ -152,9 +157,9 @@ def test_process_series_nomad(fs, mercure_config: Callable[[Dict], Config], mock
     common.monitor.send_task_event.assert_has_calls(  # type: ignore
         [
             call(task_event.REGISTERED, task_id, 1, "catchall", "Registered series."),
-            call(task_event.PROCESS_BEGIN, task_id, 0, "", "Processing job dispatched."),
-            call(task_event.PROCESS_COMPLETE, task_id, 0, "", "Processing complete"),
-            call(task_event.COMPLETE, task_id, 0, "", "Task complete"),
+            call(task_event.PROCESS_BEGIN, new_task_id, 0, "", "Processing job dispatched."),
+            call(task_event.PROCESS_COMPLETE, new_task_id, 0, "", "Processing complete"),
+            call(task_event.COMPLETE, new_task_id, 0, "", "Task complete"),
         ]
     )
     common.monitor.send_task_event.reset_mock()  # type: ignore
@@ -173,6 +178,8 @@ def test_process_series_nomad(fs, mercure_config: Callable[[Dict], Config], mock
 
     mocked.patch.object(Job, "dispatch_job", new=process_failed)
 
+    mock_task_ids(mocked, task_id, new_task_id)
+
     router.run_router()
     processor_path = next(Path("/var/processing").iterdir())
     processor.run_processor()
@@ -189,8 +196,8 @@ def test_process_series_nomad(fs, mercure_config: Callable[[Dict], Config], mock
     common.monitor.send_task_event.assert_has_calls(  # type: ignore
         [
             call(task_event.REGISTERED, task_id, 1, "catchall", "Registered series."),
-            call(task_event.PROCESS_BEGIN, task_id, 0, "", "Processing job dispatched."),
-            call(task_event.ERROR, task_id, 0, "", "Processing failed."),
+            call(task_event.PROCESS_BEGIN, new_task_id, 0, "", "Processing job dispatched."),
+            call(task_event.ERROR, new_task_id, 0, "", "Processing failed."),
         ]
     )
 
@@ -216,7 +223,7 @@ def test_process_series(fs, mercure_config: Callable[[Dict], Config], mocked: Mo
         {"process_runner": "docker", **config_partial},
     )
     task_id = str(uuid.uuid1())
-    files = create_and_route(fs, mocked, task_id)
+    files, new_task_id = create_and_route(fs, mocked, task_id)
     processor_path = Path()
 
     def fake_processor(tag, environment, volumes: Dict, **kwargs):
@@ -257,8 +264,8 @@ def test_process_series(fs, mercure_config: Callable[[Dict], Config], mocked: Mo
     common.monitor.send_task_event.assert_has_calls(  # type: ignore
         [
             call(task_event.REGISTERED, task_id, 1, "catchall", "Registered series."),
-            call(task_event.PROCESS_BEGIN, task_id, 0, "test_module", "Processing job running."),
-            call(task_event.PROCESS_COMPLETE, task_id, 0, "", "Processing job complete."),
-            call(task_event.COMPLETE, task_id, 0, "", "Task complete."),
+            call(task_event.PROCESS_BEGIN, new_task_id, 0, "test_module", "Processing job running."),
+            call(task_event.PROCESS_COMPLETE, new_task_id, 0, "", "Processing job complete."),
+            call(task_event.COMPLETE, new_task_id, 0, "", "Task complete."),
         ]
     )

@@ -106,6 +106,7 @@ task_events = sqlalchemy.Table(
     sqlalchemy.Column("file_count", sqlalchemy.Integer),
     sqlalchemy.Column("target", sqlalchemy.String),
     sqlalchemy.Column("info", sqlalchemy.String),
+    sqlalchemy.Column("client_timestamp", sqlalchemy.Integer),
 )
 
 file_events = sqlalchemy.Table(
@@ -135,6 +136,7 @@ tasks_table = sqlalchemy.Table(
     "tasks",
     metadata,
     sqlalchemy.Column("id", sqlalchemy.String, primary_key=True),
+    sqlalchemy.Column("parent_id", sqlalchemy.String, nullable=True),
     sqlalchemy.Column("time", sqlalchemy.DateTime),
     sqlalchemy.Column("series_uid", sqlalchemy.String, nullable=True),
     sqlalchemy.Column("study_uid", sqlalchemy.String, nullable=True),
