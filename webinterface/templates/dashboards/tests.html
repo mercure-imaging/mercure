@@ -42,7 +42,24 @@
                   </div>
                 </div>
               </div>
-                            
+              <div class="field is-horizontal">
+                <div class="field-label is-normal">
+                  <label class="label">Rule type</label>
+                </div>
+                <div class="field-body">
+                  <div class="field">
+                    <div class="control is-expanded">
+                      <div class="select is-fullwidth">
+                        <select name="rule_type">
+                          <option>series</option>
+                          <option>study</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div class="field is-horizontal">
                 <div class="field-label is-normal">
                   <label class="label">Receiver location</label>
@@ -127,6 +144,7 @@
                         <th>time_begin</th>
                         <th>status</th>
                         <th>type</th>
+                        <th>rule_type</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -187,6 +205,7 @@ $('#task-events-table').DataTable( {
             { data: 'time_begin' },
             { data: 'status' },
             { data: 'type' },
+            { data: 'rule_type' },
         ],
    "rowId": "id",
    "language": {
@@ -260,11 +279,18 @@ $.ajax({
         if ( selected.count() > 0 ){
             selected_id = selected.data()[0].id;
         }
-        console.log("SELECTED ID: " + selected_id);
+        console.log(data);
         jobtable.clear();
         Object.keys(data).forEach(function (key) {
             // console.log(data[key])
-            jobtable.row.add({"id": data[key]["id"], "task_id": data[key]["task_id"], "time_begin":data[key]["time_begin"], "status": data[key]["status"],"type": data[key]["type"]})
+            jobtable.row.add({
+                            "id": data[key]["id"], 
+                            "task_id": data[key]["task_id"], 
+                            "time_begin":data[key]["time_begin"], 
+                            "status": data[key]["status"],
+                            "type": data[key]["type"], 
+                            "rule_type": data[key]["rule_type"]
+                          })
             // jobtable.row.add( [ key, data[key]["ACC"], data[key]["MRN"], data[key]["Scope"], data[key]["FailStage"] ] );
         })
         jobtable.draw();

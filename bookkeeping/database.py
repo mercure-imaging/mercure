@@ -146,6 +146,7 @@ tests_table = sqlalchemy.Table(
     metadata,
     sqlalchemy.Column("id", sqlalchemy.String, primary_key=True),
     sqlalchemy.Column("type", sqlalchemy.String, nullable=True),
+    sqlalchemy.Column("rule_type", sqlalchemy.String, nullable=True),
     sqlalchemy.Column("time_begin", sqlalchemy.DateTime, nullable=True),
     sqlalchemy.Column("time_end", sqlalchemy.DateTime, nullable=True),
     sqlalchemy.Column("status", sqlalchemy.String, nullable=True),

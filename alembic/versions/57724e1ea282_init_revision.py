@@ -5,8 +5,10 @@ Revises: faec5c0c55d3
 Create Date: 2022-02-24 20:09:16.862098
 
 """
+from typing import Any, List
 from alembic import op
 import sqlalchemy as sa
+
 from sqlalchemy.engine.reflection import Inspector
 
 
@@ -16,13 +18,16 @@ down_revision = None
 branch_labels = None
 depends_on = None
 
-
-conn = op.get_bind()
-inspector = Inspector.from_engine(conn)
-tables = inspector.get_table_names()
+tables: List[Any] = []
 
 
 def create_table(table_name, *params) -> None:
+    global tables
+    if not tables:
+        conn = op.get_bind()
+        inspector = Inspector.from_engine(conn)
+        tables = inspector.get_table_names()
+
     if table_name in tables:
         return
     op.create_table(table_name, *params)

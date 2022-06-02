@@ -5,9 +5,11 @@ Revises: 57724e1ea282
 Create Date: 2022-02-24 20:11:56.419148
 
 """
+from typing import Any, List
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
+
 from sqlalchemy.engine.reflection import Inspector
 
 # revision identifiers, used by Alembic.
@@ -17,12 +19,15 @@ branch_labels = None
 depends_on = None
 
 
-conn = op.get_bind()
-inspector = Inspector.from_engine(conn)
-tables = inspector.get_table_names()
+tables: List[Any] = []
 
 
 def create_table(table_name, *params) -> None:
+    global tables
+    if not tables:
+        conn = op.get_bind()
+        inspector = Inspector.from_engine(conn)
+        tables = inspector.get_table_names()
     if table_name in tables:
         return
     op.create_table(table_name, *params)

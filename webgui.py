@@ -10,8 +10,9 @@ import random
 from re import L
 import string
 import subprocess
+from tempfile import tempdir
 import traceback
-from common.generate_test_series import generate_series
+from common.generate_test_series import generate_series, generate_several_protocols
 from common.types import DicomTarget, Rule, Module
 import uvicorn
 import base64
@@ -454,6 +455,8 @@ async def self_test(request) -> Response:
     receiver_port = "11112"
     gui_port = "8000"
     test_type = form_data.get("type", "route")
+    rule_type = form_data.get("rule_type", "series")
+
     if runner == "docker":
         receiver_host = "receiver"
         gui_host = "ui"
@@ -488,6 +491,7 @@ async def self_test(request) -> Response:
             target=test_target,
             action="route",
             notification_trigger_completion="False",
+            action_trigger=rule_type,
             notification_webhook=f"http://{gui_host}:{gui_port}/self_test_notification",
             notification_payload=f'"rule":"@rule@", "event":"@event@", "test_id":"{test_id}", "task_id":"@task_id@"',
         )
@@ -503,6 +507,7 @@ async def self_test(request) -> Response:
         config.mercure.rules[test_rule + "_end"] = Rule(
             rule=f'@ReceiverAET@ == "{test_id}_end"',
             action="notification",
+            action_trigger=rule_type,
             notification_webhook=f"http://{gui_host}:{gui_port}/self_test_notification",
             notification_trigger_reception="False",
             notification_payload=f'"rule":"@rule@", "event":"@event@", "test_id":"{test_id}"',
@@ -514,19 +519,23 @@ async def self_test(request) -> Response:
         logger.info("Posting test-begin...")
         tmpdir = Path("/tmp/mercure/self_test_" + test_id)
         Path("/tmp/mercure").mkdir(exist_ok=True)
-        generate_series(tmpdir, 10, series_description="self_test_series " + test_id)
+        if rule_type == "study":
+            generate_several_protocols(tmpdir)
+        else:
+            generate_series(tmpdir, 10, series_description="self_test_series " + test_id)
+
     except Exception as e:
         return PlainTextResponse(f"Error initializing test: {traceback.format_exc()}")
 
-        # shutil.copytree("./test_series", tmpdir)
-    command = f"""dcmsend {receiver_host} {receiver_port} +sd {tmpdir} -aet "mercure" -aec "{test_id}_begin" -nuc +sp '*.dcm' -to 60"""
+    # shutil.copytree("./test_series", tmpdir)
+    command = f"""dcmsend {receiver_host} {receiver_port} +r +sd {tmpdir} -aet "mercure" -aec "{test_id}_begin" -nuc +sp '*.dcm' -to 60"""
     try:
         output = subprocess.check_output(command, shell=True, stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as e:
         logger.error(f"Error sending dicoms: {command}")
         return PlainTextResponse("Could not submit dicoms for test:\n" + e.output.decode("utf-8"))
 
-    await monitor.do_post("test-begin", dict(json=dict(id=test_id, type=test_type)))
+    await monitor.do_post("test-begin", dict(json=dict(id=test_id, type=test_type, rule_type=rule_type)))
     # logger.info(f"self_test: {output.decode('utf-8')}")
     return PlainTextResponse("Test submitted.")
 
