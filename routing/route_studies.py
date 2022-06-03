@@ -7,7 +7,7 @@ Provides functions for routing and processing of studies (consisting of multiple
 # Standard python includes
 import os
 from pathlib import Path
-from typing import Optional, Union
+from typing import Dict, Optional, Union
 import uuid
 import json
 import shutil
@@ -41,7 +41,7 @@ from common.constants import (
 logger = config.get_logger()
 
 
-def route_studies() -> None:
+def route_studies(pending_series: Dict[str, float]) -> None:
     """
     Searches for completed studies and initiates the routing of the completed studies
     """
@@ -49,10 +49,10 @@ def route_studies() -> None:
     studies_ready = {}
     with os.scandir(config.mercure.studies_folder) as it:
         for entry in it:
-            if entry.is_dir() and not is_study_locked(entry.path) and is_study_complete(entry.path):
+            if entry.is_dir() and not is_study_locked(entry.path) and is_study_complete(entry.path, pending_series):
                 modificationTime = entry.stat().st_mtime
                 studies_ready[entry.name] = modificationTime
-
+    logger.debug(f"Studies ready for processing: {studies_ready}")
     # Process all complete studies
     for dir_entry in sorted(studies_ready):
         study_success = False
@@ -90,11 +90,12 @@ def is_study_locked(folder: str) -> bool:
     return folder_status
 
 
-def is_study_complete(folder: str) -> bool:
+def is_study_complete(folder: str, pending_series: Dict[str, float]) -> bool:
     """
     Returns true if the study in the given folder is ready for processing, i.e. if the completeness criteria of the triggered rule has been met
     """
     try:
+        logger.debug(f"Checking completeness of study {folder}, with pending series: {pending_series}")
         # Read stored task file to determine completeness criteria
         with open(Path(folder) / mercure_names.TASKFILE, "r") as json_file:
             task: TaskHasStudy = TaskHasStudy(**json.load(json_file))
@@ -124,29 +125,37 @@ def is_study_complete(folder: str) -> bool:
 
         # Check for trigger condition
         if complete_trigger == mercure_rule.STUDY_TRIGGER_CONDITION_TIMEOUT:
-            return check_study_timeout(task)
+            return check_study_timeout(task, pending_series)
         elif complete_trigger == mercure_rule.STUDY_TRIGGER_CONDITION_RECEIVED_SERIES:
             return check_study_series(task, complete_required_series)
         else:
             logger.error(f"Invalid trigger condition in task file in study folder {folder}", task.id)  # handle_error
             return False
-
     except Exception:
         logger.error(f"Invalid task file in study folder {folder}", task.id)  # handle_error
         return False
 
 
-def check_study_timeout(task: TaskHasStudy) -> bool:
+def check_study_timeout(task: TaskHasStudy, pending_series: Dict[str, float]) -> bool:
     """
     Checks if the duration since the last series of the study was received exceeds the study completion timeout
     """
+    logger.debug("Checking study timeout")
     study = task.study
     last_received_string = study.last_receive_time
+    logger.debug(f"Last received time: {last_received_string}, {datetime.now()}")
     if not last_received_string:
         return False
 
     last_receive_time = datetime.strptime(last_received_string, "%Y-%m-%d %H:%M:%S")
     if datetime.now() > last_receive_time + timedelta(seconds=config.mercure.study_complete_trigger):
+        # Check if there is a pending series on this study. If so, we need to wait for it to timeout before we can complete the study
+        for series_uid in pending_series.keys():
+            example_file = next(Path(config.mercure.incoming_folder).glob(f"{series_uid}*.tags"))
+            tags_list = json.loads(example_file.read_text())
+            if tags_list["StudyInstanceUID"] == study.study_uid:
+                logger.debug(f"Timeout met, but found a pending series ({series_uid}) in study {study.study_uid}")
+                return False
         return True
     else:
         return False
@@ -171,6 +180,7 @@ def route_study(study) -> bool:
     """
     Processses the study in the folder 'study'. Loads the task file and delegates the action to helper functions
     """
+    logger.debug(f"Route_study {study}")
     study_folder = config.mercure.studies_folder + "/" + study
     if is_study_locked(study_folder):
         # If the study folder has been locked in the meantime, then skip and proceed with the next one
@@ -293,6 +303,7 @@ def move_study_folder(task_id: Union[str, None], study: str, destination: str) -
     """
     Moves the study subfolder to the specified destination with proper locking of the folders
     """
+    logger.debug(f"Move_study_folder {study} to {destination}")
     source_folder = config.mercure.studies_folder + "/" + study
     destination_folder = config.mercure.discard_folder
     if destination == "PROCESSING":

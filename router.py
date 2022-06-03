@@ -65,8 +65,8 @@ def run_router(args=None) -> None:
 
     filecount = 0
     series: Dict[str, float] = {}
-    complete_series = {}
-
+    complete_series: Dict[str, float] = {}
+    pending_series: Dict[str, float] = {}  # Every series that hasn't timed out yet
     error_files_found = False
 
     # Check the incoming folder for completed series. To this end, generate a map of all
@@ -91,7 +91,8 @@ def run_router(args=None) -> None:
     for series_entry in series:
         if (time.time() - series[series_entry]) > config.mercure.series_complete_trigger:
             complete_series[series_entry] = series[series_entry]
-
+        else:
+            pending_series[series_entry] = series[series_entry]
     # logger.info(f'Files found     = {filecount}')
     # logger.info(f'Series found    = {len(series)}')
     # logger.info(f'Complete series = {len(complete_series)}')
@@ -113,7 +114,7 @@ def run_router(args=None) -> None:
         route_error_files()
 
     # Now, check if studies in the studies folder are ready for routing/processing
-    route_studies()
+    route_studies(pending_series)
 
 
 def exit_router(args) -> None:
