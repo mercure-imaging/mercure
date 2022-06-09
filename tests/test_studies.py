@@ -33,6 +33,7 @@ def create_series(mocked, fs, config, study_uid, series_uid, series_description)
     tags = {"SeriesInstanceUID": series_uid, "StudyInstanceUID": study_uid, "SeriesDescription": series_description}
     image_f = fs.create_file(f"{config.incoming_folder}/{series_uid}#{image_uid}.dcm", contents="asdfasdfafd")
     tags_f = fs.create_file(f"{config.incoming_folder}/{series_uid}#{image_uid}.tags", contents=json.dumps(tags))
+    return image_f, tags_f
 
 
 def test_route_study_pending(fs: FakeFilesystem, mercure_config, mocked):
