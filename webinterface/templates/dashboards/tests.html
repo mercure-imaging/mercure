@@ -1,6 +1,6 @@
-{% extends "base.html" %}
+{% extends "dashboards/dashboards.html" %}
 
-{% block title %}Test{% endblock %}
+{% block title %}Self tests{% endblock %}
 
 {% block extra_head %}
     <script type="text/javascript" src="{{ url_for('static', path='DataTables/datatables.min.js') }}"></script>
@@ -8,7 +8,7 @@
     <!-- <script src="https://unpkg.com/hyperscript.org@0.9.5"></script> -->
 {% endblock %}
 
-{% block content %}
+{% block dashboard_content %}
 <main role="main">
     <h1 class="title">Self-test</h1>
     <div class="container">
@@ -136,7 +136,7 @@
         </div>
         <div class="columns">
         <div class="column is-one-third">
-            <table class="table is-narrow is-hoverable is-fullwidth jobtable" id="task-events-table">
+            <table class="table is-narrow is-hoverable is-fullwidth jobtable" id="test-table">
                 <thead>
                     <tr>
                         <th>id</th>
@@ -152,7 +152,7 @@
             </table>
         </div>
         <div class="column">
-            <table class="table is-narrow is-hoverable is-fullwidth jobtable" id="tests-table">
+            <table class="table is-narrow is-hoverable is-fullwidth jobtable" id="task-events-table">
                 <thead>
                     <tr>
                         <th>task_id</th>
@@ -179,7 +179,7 @@ $("#test-form").on('htmx:afterOnLoad', (event) => {
         setTimeout(load_tests, 10000*n)
     }
 });
-$('#tests-table').DataTable( {
+$('#task-events-table').DataTable( {
     "paging": false,
     "ordering": false,
     "searching": false,
@@ -193,8 +193,26 @@ $('#tests-table').DataTable( {
    "columnDefs": [
             { "visible": false, "targets": 0 }
     ],
+    "drawCallback": function (settings) {
+            var api = this.api();
+            var rows = api.rows({ page: 'current' }).nodes();
+            var last = null;
+ 
+            api
+                .column(0, { page: 'current' })
+                .data()
+                .each(function (group, i) {
+                    if (last !== group) {
+                        $(rows)
+                            .eq(i)
+                            .before('<tr class="group"><td colspan="5" class="has-text-white has-background-black">Task ' + group + '</td></tr>');
+ 
+                        last = group;
+                    }
+                });
+        },
 })
-$('#task-events-table').DataTable( {
+$('#test-table').DataTable( {
 //   "paging":   false,
    "ordering": false,
    "info": false,
@@ -224,7 +242,7 @@ $('#task-events-table').DataTable( {
    "scrollX": false,
    "scrollCollapse": true,   
 } ).on( 'select deselect', function () {
-    var selectedRows = $('#task-events-table').DataTable().rows( { selected: true } )
+    var selectedRows = $('#test-table').DataTable().rows( { selected: true } )
     if (selectedRows.count()>0){
         console.log( selectedRows.data()[0].id)
         $.ajax({
@@ -238,10 +256,10 @@ $('#task-events-table').DataTable( {
             success: function (data) {
                 console.log(data);
                 // $('#erroralert').hide();
-                var eventstable = $('#tests-table').DataTable().clear();
+                var eventstable = $('#task-events-table').DataTable().clear();
                 Object.keys(data).forEach(function (key) {
                     // console.log(data[key])
-                    eventstable.row.add([data[key]["task_id"] || "", data[key]["event"], data[key]["sender"],  data[key]["target"], data[key]["info"]])
+                    eventstable.row.add([data[key]["task_id"].slice(0,8) || "", data[key]["event"], data[key]["sender"],  data[key]["target"], data[key]["info"]])
                     // jobtable.row.add( [ key, data[key]["ACC"], data[key]["MRN"], data[key]["Scope"], data[key]["FailStage"] ] );
                 })
                 eventstable.draw();
@@ -273,7 +291,7 @@ $.ajax({
     },
     success: function (data) {
         // $('#erroralert').hide();
-        var jobtable = $('#task-events-table').DataTable()
+        var jobtable = $('#test-table').DataTable()
         var selected = jobtable.rows( { selected: true } )
         var selected_id = null
         if ( selected.count() > 0 ){

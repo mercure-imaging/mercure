@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block extra_nav %} 
+<section>
+<div class="container">
+<div class="tabs">
+    <ul>
+      <li class="{% if page == 'tests' %}is-active{% endif %}"><a href="tests">Self-test</a></li>
+      <li class="{% if page == 'tasks' %}is-active{% endif %}"><a href="tasks">Tasks</a></li>
+    </ul>
+  </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block content %}
+{% block dashboard_content %} 
+{% endblock %}
+
+{% endblock %}

@@ -144,7 +144,7 @@ app.mount("/modules", modules.modules_app)
 app.mount("/users", users.users_app)
 app.mount("/queue", queue.queue_app)
 app.mount("/api", api.api_app)
-app.mount("/dashboards", dashboards.test_app)
+app.mount("/dashboards", dashboards.dashboards_app)
 
 
 ###################################################################################

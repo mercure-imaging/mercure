@@ -16,6 +16,7 @@ from common.constants import mercure_defs
 from webinterface.common import get_user_information
 from webinterface.common import templates
 import common.config as config
+from starlette.responses import RedirectResponse
 
 config = config.get_logger()
 
@@ -25,30 +26,35 @@ config = config.get_logger()
 ###################################################################################
 
 
-test_app = Starlette()
+dashboards_app = Starlette()
 
 
-@test_app.route("/tasks", methods=["GET"])
+@dashboards_app.route("/", methods=["GET"])
+async def index(request):
+    return RedirectResponse(url="tests")
+
+
+@dashboards_app.route("/tasks", methods=["GET"])
 @requires("authenticated", redirect="login")
 async def tasks(request):
     template = "dashboards/tasks.html"
     context = {
         "request": request,
         "mercure_version": mercure_defs.VERSION,
-        "page": "test",
+        "page": "tasks",
     }
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
 
 
-@test_app.route("/tests", methods=["GET"])
+@dashboards_app.route("/tests", methods=["GET"])
 @requires(["authenticated", "admin"], redirect="login")
 async def tests(request):
     template = "dashboards/tests.html"
     context = {
         "request": request,
         "mercure_version": mercure_defs.VERSION,
-        "page": "test",
+        "page": "tests",
     }
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
