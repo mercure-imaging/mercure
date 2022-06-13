@@ -60,6 +60,7 @@ mercure_defaults = {
     "targets": {},
     "rules": {},
     "modules": {},
+    "features": {"dummy_target": False},
 }
 
 mercure: Config

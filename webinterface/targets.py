@@ -111,7 +111,11 @@ async def targets_edit(request) -> Response:
         "edittarget": edittarget,
         "get_target_handler": target_types.get_handler,
         "target_types": target_types.target_types(),
-        "target_names": [k.get_name() for k in target_types.target_types()],
+        "target_names": [
+            k.get_name()
+            for k in target_types.target_types()
+            if k.get_name() != "dummy" or config.mercure.features.get("dummy_target")
+        ],
     }
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)

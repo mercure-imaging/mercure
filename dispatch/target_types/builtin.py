@@ -1,4 +1,4 @@
-from common.types import DicomTarget, SftpTarget
+from common.types import DicomTarget, SftpTarget, DummyTarget
 import common.config as config
 from common.constants import mercure_names
 from webinterface.common import async_run
@@ -10,7 +10,7 @@ from shlex import split
 from starlette.responses import JSONResponse
 
 from .registry import handler_for
-from .base import SubprocessTargetHandler
+from .base import SubprocessTargetHandler, TargetHandler
 
 DCMSEND_ERROR_CODES = {
     1: "EXITCODE_COMMANDLINE_SYNTAX_ERROR",
@@ -111,3 +111,12 @@ EOF"""
         result, stdout, stderr = await async_run(command, shell=True, executable="/bin/bash")
         response = True if result == 0 else False
         return dict(ping=ping_response, loggedin=response, err=stderr.decode("utf-8") if not response else "")
+
+
+@handler_for(DummyTarget)
+class DummyTargetHandler(TargetHandler):
+    icon = "fa-server"
+    view_template = "targets/dummy.html"
+    edit_template = "targets/dummy-edit.html"
+
+    display_name = "Dummy"

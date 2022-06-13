@@ -89,6 +89,10 @@ class S3Target(Target):
     secret_access_key: str
 
 
+class DummyTarget(Target):
+    target_type: Literal["dummy"] = "dummy"
+
+
 class Module(BaseModel, Compat):
     docker_tag: Optional[str] = ""
     additional_volumes: Optional[str] = ""
@@ -158,6 +162,7 @@ class Config(BaseModel, Compat):
     modules: Dict[str, Module]
     process_runner: Literal["docker", "nomad", ""] = ""
     bookkeeper_api_key: Optional[str]
+    features: Dict[str, bool]
 
 
 class TaskInfo(BaseModel, Compat):
@@ -186,7 +191,7 @@ class TaskStudy(BaseModel, Compat):
     complete_required_series: str
     creation_time: str
     last_receive_time: str
-    received_series: Optional[List]
+    received_series: Optional[List[str]]
     complete_force: Literal["True", "False"]
 
 
