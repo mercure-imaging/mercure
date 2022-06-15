@@ -124,6 +124,7 @@ def add_study(
         creation_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         last_receive_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         received_series=[tags_list.get("SeriesDescription", mercure_options.INVALID)],
+        received_series_uid=[tags_list.get("SeriesInstanceUID", mercure_options.INVALID)],
         complete_force="False",
     )
 
@@ -278,6 +279,7 @@ def update_study_task(
     Update the study task file with information from the latest received series
     """
     series_description = tags_list.get("SeriesDescription", mercure_options.INVALID)
+    series_uid = tags_list.get("SeriesInstanceUID", mercure_options.INVALID)
     task_filename = folder_name + mercure_names.TASKFILE
 
     # Load existing task file. Raise error if it does not exist
@@ -301,8 +303,10 @@ def update_study_task(
     # Remember all received series descriptions, as needed to determine completion on received series
     if study.received_series and (isinstance(study.received_series, list)):
         study.received_series.append(series_description)
+        study.received_series.append(series_uid)
     else:
         study.received_series = [series_description]
+        study.received_series = [series_uid]
 
     # Safe the updated file back to disk
     try:

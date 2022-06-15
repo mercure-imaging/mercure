@@ -206,7 +206,7 @@
                                 <th>ACC</th>
                                 <th>MRN</th>
                                 <th>Scope</th>
-                                <th>Status</th>
+                                <th>Time</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -808,7 +808,7 @@
                     var jobtable = $('#jobs_archive').DataTable();
                     if (Object.keys(data).length) {
                         Object.keys(data).forEach(function (key) {
-                            jobtable.row.add( [ key, data[key]["ACC"], data[key]["MRN"], data[key]["Scope"], data[key]["Status"] ] );
+                            jobtable.row.add( [ key, data[key]["ACC"], data[key]["MRN"], data[key]["Scope"], data[key]["Time"] ] );
                         })
                     }
                     $('#jobs_archive').DataTable().button(0).enable(false);

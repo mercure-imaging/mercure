@@ -160,9 +160,11 @@ async def find_task(request) -> JSONResponse:
         """ select tasks.id as task_id, 
         tag_accessionnumber as acc, 
         tag_patientid as mrn,
-        data->'info'->'uid_type' as scope
+        data->'info'->'uid_type' as scope,
+        tasks.time as time
         from tasks
         left join dicom_series on dicom_series.series_uid = tasks.series_uid 
+        where parent_id is null
         order by tasks.time desc 
         limit 256 """
     )
@@ -182,13 +184,13 @@ async def find_task(request) -> JSONResponse:
         else:
             job_scope = "SERIES"
 
-        status = "Complete"
+        time = item["time"]
 
         response[task_id] = {
             "ACC": acc,
             "MRN": mrn,
             "Scope": job_scope,
-            "Status": status,
+            "Time": time,
         }
 
     return CustomJSONResponse(response)

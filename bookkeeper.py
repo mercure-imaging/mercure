@@ -264,7 +264,9 @@ async def update_task(request) -> JSONResponse:
     if "info" in payload:
         if payload["info"]["uid_type"] == "study":
             study_uid = payload["info"]["uid"]
+            series_uid = payload["study"]["received_series_uid"][0]            
             update_values["study_uid"] = study_uid
+            update_values["series_uid"] = series_uid
         if payload["info"]["uid_type"] == "series":
             series_uid = payload["info"]["uid"]
             update_values["series_uid"] = series_uid

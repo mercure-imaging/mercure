@@ -115,7 +115,7 @@ EOF"""
 
 @handler_for(DummyTarget)
 class DummyTargetHandler(TargetHandler):
-    icon = "fa-server"
+    icon = "fa-flask"
     view_template = "targets/dummy.html"
     edit_template = "targets/dummy-edit.html"
 
