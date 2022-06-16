@@ -62,6 +62,7 @@ class task_event(StringEnum):
     MOVE = auto()
     SUSPEND = auto()
     COMPLETE = auto()
+    ASSIGNED = auto()
 
 
 class severity(Enum):

@@ -254,6 +254,7 @@
                 <table class="table is-narrow is-hoverable is-fullwidth" id="job-events-table">
                     <thead>
                         <tr>
+                            <th>ID</th>
                             <th>Time</th>
                             <th>Event</th>
                             <th>Sender</th>
@@ -771,7 +772,26 @@
             dom: 'Bfrtp',
             "scrollY": "740px",
             "scrollX": false,
-            "scrollCollapse": true   
+            "scrollCollapse": true,   
+            "drawCallback": function (settings) {
+                var api = this.api();
+                var rows = api.rows({ page: 'current' }).nodes();
+                var last = null;
+                api
+                    .column(0, { page: 'current' })
+                    .data()
+                    .each(function (group, i) {
+                        if (last !== group) {
+                            $(rows)
+                                .eq(i)
+                                .before('<tr class="group"><td colspan="7" class="has-text-white has-background-black">Task ' + group + '</td></tr>');
+                            last = group;
+                        }
+                    });
+            },
+            "columnDefs": [
+              { "visible": false, "targets": 0 }
+            ]
         });
 
         $('#tabs li').on('click', function () {
@@ -842,9 +862,10 @@
                 // $('#erroralert').show();
             },
             success: function (data) {
+                console.log(data)
                 var eventstable = $('#job-events-table').DataTable().clear();
                 Object.keys(data).forEach(function (key) {
-                    eventstable.row.add([data[key]["time"], data[key]["event"], data[key]["sender"], data[key]["target"], data[key]["file_count"], data[key]["info"]])
+                    eventstable.row.add([ data[key]["task_id"].slice(0,8) || "", data[key]["time"], data[key]["event"], data[key]["sender"], data[key]["target"], data[key]["file_count"], data[key]["info"] ])
                 })
                 eventstable.draw();
             },

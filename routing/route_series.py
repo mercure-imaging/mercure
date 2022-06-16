@@ -260,11 +260,11 @@ def push_series_studylevel(
                 # Create task file with information on complete criteria
                 new_task_id = generate_task_id()
                 create_study_task(new_task_id, target_folder, triggered_rules, current_rule, study_UID, tags_list)
-                monitor.send_task_event(monitor.task_event.UNKNOWN, task_id, 0, current_rule, "Created study task")
+                monitor.send_task_event(monitor.task_event.ASSIGNED, task_id, 0, current_rule, "Created study task")
             else:
                 # Add data from latest series to task file
                 update_study_task(task_id, target_folder, triggered_rules, current_rule, study_UID, tags_list)
-                monitor.send_task_event(monitor.task_event.UNKNOWN, task_id, 0, current_rule, "Added to study task")
+                monitor.send_task_event(monitor.task_event.ASSIGNED, task_id, 0, current_rule, "Added to study task")
 
             # Copy (or move) the files into the study folder
             push_files(task_id, file_list, folder_name, (len(triggered_rules) > 1))
