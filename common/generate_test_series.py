@@ -68,6 +68,7 @@ def generate_file(
     orientation: List[List[float]] = [[1, 0, 0], [0, 1, 0]],
     patient_name: Optional[str] = "Julia^Set",
     patient_id: Optional[str] = "JULIATEST",
+    series_number: int = 1,
 ) -> Dataset:
     # normal_vec = np.cross(orientation[0], orientation[1])
 
@@ -100,7 +101,7 @@ def generate_file(
     ds.SeriesInstanceUID = series
     ds.FrameOfReferenceUID = series
     ds.SeriesDescription = desc
-    # ds.SeriesNumber = 1
+    ds.SeriesNumber = series_number
     ds.InstanceNumber = str(slice_number + 1)
     ds.StudyID = study
     ds.ImageComments = "NOT FOR DIAGNOSTIC USE"
@@ -137,6 +138,7 @@ def generate_test_series(
     patient_name: Optional[str] = None,
     patient_id: Optional[str] = None,
     series_description: Optional[str] = None,
+    series_number: int = 1,
 ) -> List[Dataset]:
     acc = accession or nums(7)
     study = study_id or nums(8)
@@ -165,6 +167,7 @@ def generate_test_series(
                 orientation,
                 patient_name,
                 patient_id,
+                series_number,
             )
         )
     return datasets
@@ -175,10 +178,13 @@ def generate_series(
     n: int,
     orientation: List[List[float]] = [[1, 0, 0], [0, 1, 0]],
     series_description: Optional[str] = "Julia set",
+    series_number=1,
 ) -> List[Path]:
     f: Path = Path(k)
     f.mkdir(parents=True, exist_ok=True)
-    datasets = generate_test_series(0.3 - 0.0j, n, orientation, series_description=series_description)
+    datasets = generate_test_series(
+        0.3 - 0.0j, n, orientation, series_description=series_description, series_number=series_number
+    )
     files = []
     for i, d in enumerate(datasets):
         filename = f / f"slice.{i}.dcm"
@@ -187,24 +193,17 @@ def generate_series(
     return files
 
 
-def generate_several_protocols(base_path: Union[str, Path], protocols=["PROT1", "PROT2", "PROT1_DL", "PROT2_DL"]) -> List[Path]:
+def generate_several_protocols(
+    base_path: Union[str, Path], protocols=["PROT1", "PROT2", "PROT1_DL", "PROT2_DL"]
+) -> List[Path]:
     f: Path = Path(base_path)
     f.mkdir(parents=True, exist_ok=True)
     acc = nums(7)
     study = nums(8)
     patient_name = "Patient 1"
     files = []
-    for p in protocols:
-        datasets = generate_test_series(
-            0.3 - 0.0j,
-            5,
-            [[1, 0, 0], [0, 1, 0]],
-            acc,
-            study,
-            patient_name,
-            None,
-            p,
-        )
+    for n, p in enumerate(protocols):
+        datasets = generate_test_series(0.3 - 0.0j, 5, [[1, 0, 0], [0, 1, 0]], acc, study, patient_name, None, p, n)
         for i, d in enumerate(datasets):
             (f / p).mkdir(exist_ok=True)
             filename = f / p / f"slice.{i}.dcm"
@@ -215,6 +214,7 @@ def generate_several_protocols(base_path: Union[str, Path], protocols=["PROT1", 
 
 if __name__ == "__main__":
     generate_series(sys.argv[1], int(sys.argv[2]))
+
     # print(generate_test("/vagrant/blinding_test"))
 
 # result.save_as(f'/vagrant/test_series/slice.{i}.dcm')
