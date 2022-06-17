@@ -294,14 +294,14 @@ table.dataTable tbody tr.selected th, table.dataTable tbody tr.selected td {
 
 .dataTables_scrollBody
 {
- overflow-x:hidden !important;
+ overflow-x:auto !important;
  overflow-y:auto !important;
 }
 
 
 .dataTables_scrollBody::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 14px;
+  height: 14px;
 }
 
 .dataTables_scrollBody::-webkit-scrollbar-track,
@@ -312,12 +312,16 @@ table.dataTable tbody tr.selected th, table.dataTable tbody tr.selected td {
 .dataTables_scrollBody::-webkit-scrollbar-thumb {
   background: rgb(219,219,219);
   border-radius: 10px;
+  border: 4px solid transparent;
+  background-clip: content-box;
 }
 
 .dataTables_scrollBody::-webkit-scrollbar-thumb:hover {
-  background: hsl(141, 71%, 48%);
+  background: #2f2f2f;
+  background: rgb(219,219,219);
+  border: 3px solid transparent;
+  background-clip: content-box;
 }
-
 
 .taskinfotextarea::-webkit-scrollbar {
   width: 6px;
@@ -341,3 +345,8 @@ table.dataTable tbody tr.selected th, table.dataTable tbody tr.selected td {
 .ruletesterdashed {
   border: 2px dashed #dbdbdb;
 }
+
+#job-events-table_wrapper .table th {
+  padding: 3px 11px !important;
+}
+

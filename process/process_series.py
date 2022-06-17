@@ -466,5 +466,5 @@ def trigger_notification(task: Task, event) -> None:
         monitor.send_task_event(
             monitor.task_event.NOTIFICATION, task.id, 0, 
             config.mercure.rules[current_rule].get("notification_webhook", ""), 
-            notification_type
+            "Announced " + notification_type
         )

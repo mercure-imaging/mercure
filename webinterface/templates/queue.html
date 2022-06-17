@@ -127,12 +127,12 @@
                     <table class="table is-narrow is-hoverable is-fullwidth jobtable" id="jobs_processing">
                         <thead>
                             <tr>
-                                <th>ID</th>
                                 <th>ACC</th>
                                 <th>MRN</th>
                                 <th>Scope</th>
                                 <th>Module</th>
                                 <th>Status</th>
+                                <th>ID</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -143,12 +143,12 @@
                     <table class="table is-narrow is-hoverable is-fullwidth jobtable" id="jobs_routing">
                         <thead>
                             <tr>
-                                <th>ID</th>
                                 <th>ACC</th>
                                 <th>MRN</th>
                                 <th>Scope</th>
                                 <th>Target</th>
                                 <th>Status</th>
+                                <th>ID</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -159,10 +159,10 @@
                     <table class="table is-narrow is-hoverable is-fullwidth jobtable" style="word-wrap: break-word;" id="jobs_studies">
                         <thead>
                             <tr>
-                                <th>Study UID</th>
-                                <th>Rule</th>
                                 <th>ACC</th>
                                 <th>MRN</th>
+                                <th>Study UID</th>
+                                <th>Rule</th>
                                 <th>Completion</th>
                                 <th>Created</th>
                                 <th># Series</th>
@@ -176,11 +176,11 @@
                     <table class="table is-narrow is-hoverable is-fullwidth jobtable" id="jobs_fail">
                         <thead>
                             <tr>
-                                <th>ID</th>
                                 <th>ACC</th>
                                 <th>MRN</th>
                                 <th>Scope</th>
                                 <th>Fail Stage</th>
+                                <th>ID</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -202,11 +202,11 @@
                     <table class="table is-narrow is-hoverable is-fullwidth jobtable" id="jobs_archive">
                         <thead>
                             <tr>
-                                <th>ID</th>
                                 <th>ACC</th>
                                 <th>MRN</th>
                                 <th>Scope</th>
                                 <th>Time</th>
+                                <th>ID</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -251,7 +251,7 @@
                 <p class="modal-card-title">Audit Trail</p>
             </header>
             <section class="modal-card-body">
-                <table class="table is-narrow is-hoverable is-fullwidth" id="job-events-table">
+                <table class="table is-narrow is-hoverable is-fullwidth display nowrap" id="job-events-table" width="100%">
                     <thead>
                         <tr>
                             <th>ID</th>
@@ -302,7 +302,7 @@
                     else {
                         var jobtable = $('#jobs_processing').DataTable();
                         Object.keys(data).forEach(function (key) {
-                                jobtable.row.add( [ key, data[key]["ACC"], data[key]["MRN"], data[key]["Scope"], data[key]["Module"], data[key]["Status"] ] );
+                                jobtable.row.add( [ data[key]["ACC"], data[key]["MRN"], data[key]["Scope"], data[key]["Module"], data[key]["Status"], key ] );
                         })
                         jobtable.draw();
                     }
@@ -333,7 +333,7 @@
                     var jobtable = $('#jobs_routing').DataTable();
                     if (Object.keys(data).length) {
                         Object.keys(data).forEach(function (key) {
-                            jobtable.row.add( [ key, data[key]["ACC"], data[key]["MRN"], data[key]["Scope"], data[key]["Target"], data[key]["Status"] ] );
+                            jobtable.row.add( [ data[key]["ACC"], data[key]["MRN"], data[key]["Scope"], data[key]["Target"], data[key]["Status"], key ] );
                         })
                     }
                     jobtable.draw();
@@ -363,7 +363,7 @@
                     $('#erroralert').hide();
                     var jobtable = $('#jobs_studies').DataTable();
                     Object.keys(data).forEach(function (key) {
-                        jobtable.row.add( [ data[key]["UID"], data[key]["Rule"], data[key]["ACC"], data[key]["MRN"], data[key]["Completion"], data[key]["Created"], data[key]["Series"] ] );
+                        jobtable.row.add( [ data[key]["ACC"], data[key]["MRN"], data[key]["UID"], data[key]["Rule"], data[key]["Completion"], data[key]["Created"], data[key]["Series"] ] );
                     })
                     jobtable.draw();
                 },
@@ -393,7 +393,7 @@
                     $('#erroralert').hide();
                     var jobtable = $('#jobs_fail').DataTable();
                     Object.keys(data).forEach(function (key) {
-                        jobtable.row.add( [ key, data[key]["ACC"], data[key]["MRN"], data[key]["Scope"], data[key]["FailStage"] ] );
+                        jobtable.row.add( [ data[key]["ACC"], data[key]["MRN"], data[key]["Scope"], data[key]["FailStage"], key ] );
                     })
                     jobtable.draw();
                 },
@@ -545,7 +545,7 @@
                     text: '<i class="far fa-question-circle"></i>',
                     titleAttr: 'Job information',
                     action: function ( e, dt, node, config ) {
-                        var jid = $('#jobs_processing').DataTable().rows( { selected: true } ).data()[0][0];
+                        var jid = $('#jobs_processing').DataTable().rows( { selected: true } ).data()[0][5];
                         showJobInformation(jid,"processing");
                     }
                 },
@@ -592,7 +592,7 @@
                     text: '<i class="far fa-question-circle"></i>',
                     titleAttr: 'Job information',
                     action: function ( e, dt, node, config ) {
-                        var jid = $('#jobs_routing').DataTable().rows( { selected: true } ).data()[0][0];
+                        var jid = $('#jobs_routing').DataTable().rows( { selected: true } ).data()[0][5];
                         showJobInformation(jid,"routing");
                     }
                 },
@@ -695,7 +695,7 @@
                     text: '<i class="far fa-question-circle"></i>',
                     titleAttr: 'Job information',
                     action: function ( e, dt, node, config ) {
-                        var jid = $('#jobs_fail').DataTable().rows( { selected: true } ).data()[0][0];
+                        var jid = $('#jobs_fail').DataTable().rows( { selected: true } ).data()[0][4];
                         showJobInformation(jid,"failure");
                     }
                 },
@@ -733,7 +733,7 @@
                     text: '<i class="far fa-question-circle"></i>',
                     titleAttr: 'Job information',
                     action: function ( e, dt, node, config ) {
-                        var jid = $('#jobs_archive').DataTable().rows( { selected: true } ).data()[0][0];
+                        var jid = $('#jobs_archive').DataTable().rows( { selected: true } ).data()[0][4];
                         showArchiveJobInformation(jid);
                     }
                 },
@@ -741,7 +741,7 @@
                     text: '<i class="fas fa-list"></i>',
                     titleAttr: 'Audit trail',
                     action: function ( e, dt, node, config ) {
-                        var jid = $('#jobs_archive').DataTable().rows( { selected: true } ).data()[0][0];
+                        var jid = $('#jobs_archive').DataTable().rows( { selected: true } ).data()[0][4];
                         showAuditTrail(jid);
                     }
                 }                
@@ -771,7 +771,7 @@
             },
             dom: 'Bfrtp',
             "scrollY": "740px",
-            "scrollX": false,
+            "scrollX": true,
             "scrollCollapse": true,   
             "drawCallback": function (settings) {
                 var api = this.api();
@@ -784,7 +784,7 @@
                         if (last !== group) {
                             $(rows)
                                 .eq(i)
-                                .before('<tr class="group"><td colspan="7" class="has-text-white has-background-black">	&ndash; Task ' + group + ' 	&ndash;</td></tr>');
+                                .before('<tr class="group"><td colspan="7" class="has-text-white has-background-dark"><i class="fas fa-angle-double-right" style="color: hsl(141, 71%, 48%);"></i> Task ' + group + '</td></tr>');
                             last = group;
                         }
                     });
@@ -828,7 +828,7 @@
                     var jobtable = $('#jobs_archive').DataTable();
                     if (Object.keys(data).length) {
                         Object.keys(data).forEach(function (key) {
-                            jobtable.row.add( [ key, data[key]["ACC"], data[key]["MRN"], data[key]["Scope"], data[key]["Time"] ] );
+                            jobtable.row.add( [ data[key]["ACC"], data[key]["MRN"], data[key]["Scope"], data[key]["Time"], key ] );
                         })
                     }
                     $('#jobs_archive').DataTable().button(0).enable(false);

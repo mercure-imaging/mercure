@@ -644,5 +644,5 @@ def trigger_serieslevel_notification(current_rule: str, tags_list: Dict[str, str
         monitor.send_task_event(
             monitor.task_event.NOTIFICATION, task_id, 0, 
             config.mercure.rules[current_rule].get("notification_webhook", ""), 
-            notification_type
+            "Announced " + notification_type
         )

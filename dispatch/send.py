@@ -292,5 +292,5 @@ def _trigger_notification(task: Task, event) -> None:
                 task.id,
                 0,
                 config.mercure.rules[current_rule].get("notification_webhook", ""),
-                notification_type,
+                "Announced " + notification_type,
             )                
