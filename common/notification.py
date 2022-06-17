@@ -41,7 +41,7 @@ def post(url: str, payload: Any) -> None:
 
 
 def send_webhook(url, payload, event, rule_name, task_id="") -> None:
-    if (not url) or (not payload):
+    if (not url):
         return
 
     # Replace macros in payload

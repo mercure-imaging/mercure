@@ -158,18 +158,28 @@ def execute(
         handler = target_types.get_handler(target)
 
         try:
-            result = handler.send_to_target(task_content.id, target, dispatch_info, source_folder)
             file_count = len(list(Path(source_folder).glob(mercure_names.DCMFILTER)))
             monitor.send_task_event(
-                task_event.DISPATCH,
+                task_event.DISPATCH_BEGIN,
                 task_content.id,
                 file_count,
                 target_name,
                 "",
             )
-            _move_sent_directory(task_content.id, source_folder, success_folder)
+            result = handler.send_to_target(task_content.id, target, dispatch_info, source_folder)
+            monitor.send_task_event(
+                task_event.DISPATCH_COMPLETE,
+                task_content.id,
+                file_count,
+                "",
+                "",
+            )
+            
             monitor.send_task_event(task_event.MOVE, task_content.id, 0, str(success_folder), "")
+            _move_sent_directory(task_content.id, source_folder, success_folder)
+
             _trigger_notification(task_content, mercure_events.COMPLETION)
+            monitor.send_task_event(monitor.task_event.COMPLETE, task_content.id, 0, "", "Task complete")
 
         except Exception as e:
             logger.error(  # handle_error
@@ -240,6 +250,8 @@ def _trigger_notification(task: Task, event) -> None:
             )  # handle_error
             continue
 
+        notification_type = ''
+
         # Now fire the webhook if configured
         if event == mercure_events.RECEPTION:
             if config.mercure.rules[current_rule].notification_trigger_reception == "True":
@@ -250,6 +262,8 @@ def _trigger_notification(task: Task, event) -> None:
                     current_rule,
                     task.id,
                 )
+                notification_type = 'RECEPTION'
+
         if event == mercure_events.COMPLETION:
             if config.mercure.rules[current_rule].notification_trigger_completion == "True":
                 notification.send_webhook(
@@ -259,6 +273,8 @@ def _trigger_notification(task: Task, event) -> None:
                     current_rule,
                     task.id,
                 )
+                notification_type = 'COMPLETION'            
+
         if event == mercure_events.ERROR:
             if config.mercure.rules[current_rule].notification_trigger_error == "True":
                 notification.send_webhook(
@@ -268,3 +284,13 @@ def _trigger_notification(task: Task, event) -> None:
                     current_rule,
                     task.id,
                 )
+                notification_type = 'ERROR'
+
+        if notification_type and config.mercure.rules[current_rule].get("notification_webhook", ""):
+            monitor.send_task_event(
+                task_event.NOTIFICATION,
+                task.id,
+                0,
+                config.mercure.rules[current_rule].get("notification_webhook", ""),
+                notification_type,
+            )                

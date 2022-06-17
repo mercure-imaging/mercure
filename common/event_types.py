@@ -51,19 +51,22 @@ class task_event(StringEnum):
     """Event types for monitoring everything related to one specific series."""
 
     UNKNOWN = auto()
-    REGISTERED = auto()
+    REGISTER = auto()
     PROCESS_BEGIN = auto()
     PROCESS_COMPLETE = auto()
-    ROUTE = auto()
     DISCARD = auto()
-    DISPATCH = auto()
+    DISPATCH_BEGIN = auto()
+    DISPATCH_COMPLETE = auto()
     CLEAN = auto()
     ERROR = auto()
-    MOVE = auto()
     SUSPEND = auto()
     COMPLETE = auto()
-    ASSIGNED = auto()
-
+    ASSIGN = auto()
+    NOTIFICATION = auto()
+    DELEGATE = auto()
+    MOVE = auto()
+    COPY = auto()
+    REMOVE = auto()
 
 class severity(Enum):
     """Severity level associated to the mercure events."""

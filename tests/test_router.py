@@ -156,7 +156,8 @@ def task_will_dispatch_to(task, config, fake_process) -> None:
 
     common.monitor.send_task_event.assert_has_calls(  # type: ignore
         [
-            call(task_event.DISPATCH, task.id, 1, task.dispatch.target_name, ""),
+            call(task_event.DISPATCH_BEGIN, task.id, 1, task.dispatch.target_name, ""),
+            call(task_event.DISPATCH_COMPLETE, task.id, 1, "", ""),
             call(task_event.MOVE, task.id, 0, "/var/success", ""),
         ],
     )
@@ -245,9 +246,9 @@ def test_route_series(fs: FakeFilesystem, mercure_config, mocked, fake_process):
         [
             call(task_event.ERROR, task_id, 0, "", 'Invalid rule encountered: @StudyDescription@ == "foo" '),
             call(task_event.ERROR, task_id, 0, "", "Invalid rule encountered:  1/0 "),
-            call(task_event.REGISTERED, task_id, 1, "route_series", "Registered series."),
-            call(task_event.ROUTE, task_id, 1, "test_target", "route_series"),
-            call(task_event.MOVE, task_id, 1, f"/var/outgoing/{new_task_id}", ""),
+            call(task_event.REGISTER, task_id, 1, "route_series", "Registered series"),
+            call(task_event.DELEGATE, task_id, 1, new_task_id, "route_series"),
+            call(task_event.MOVE, task_id, 1, f"/var/outgoing/{new_task_id}/", "Moved files"),
         ]
     )
     out_path = next(Path("/var/outgoing").iterdir())

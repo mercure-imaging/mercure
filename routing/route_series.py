@@ -80,7 +80,6 @@ def route_series(task_id: str, series_UID: str) -> None:
     tagsMasterFile = Path(config.mercure.incoming_folder + "/" + fileList[0] + mercure_names.TAGS)
     if not tagsMasterFile.exists():
         logger.error(f"Missing file! {tagsMasterFile.name}", task_id)  # handle_error
-
         return
 
     try:
@@ -98,7 +97,7 @@ def route_series(task_id: str, series_UID: str) -> None:
     triggered_rules, discard_series = get_triggered_rules(task_id, tagsList)
 
     monitor.send_task_event(
-        monitor.task_event.REGISTERED, task_id, len(fileList), ", ".join(triggered_rules), "Registered series."
+        monitor.task_event.REGISTER, task_id, len(fileList), ", ".join(triggered_rules), "Registered series"
     )
 
     if (len(triggered_rules) == 0) or (discard_series):
@@ -210,7 +209,10 @@ def push_series_complete(
     if not push_files(task_id, file_list, destination_path, copy_files):
         logger.error(f"Problem while moving completed files", task_id)  # handle_error
 
-    monitor.send_task_event(monitor.task_event.MOVE, task_id, len(file_list), destination_path, "")
+    operation_name = "MOVE"
+    if copy_files:
+        operation_name = "COPY"        
+    monitor.send_task_event(monitor.task_event.MOVE, task_id, len(file_list), destination_path, operation_name)
 
     try:
         lock.free()
@@ -259,12 +261,19 @@ def push_series_studylevel(
             if first_series:
                 # Create task file with information on complete criteria
                 new_task_id = generate_task_id()
-                create_study_task(new_task_id, target_folder, triggered_rules, current_rule, study_UID, tags_list)
-                monitor.send_task_event(monitor.task_event.ASSIGNED, task_id, 0, current_rule, "Created study task")
+                result = create_study_task(new_task_id, target_folder, triggered_rules, current_rule, study_UID, tags_list)
+                monitor.send_task_event(monitor.task_event.ASSIGN, task_id, 0, current_rule, "Created study task")
+                monitor.send_task_event(monitor.task_event.DELEGATE, task_id, 0, new_task_id, current_rule)
+                monitor.send_task_event(monitor.task_event.ASSIGN, new_task_id, 0, task_id, "Added series to study")
             else:
                 # Add data from latest series to task file
-                update_study_task(task_id, target_folder, triggered_rules, current_rule, study_UID, tags_list)
-                monitor.send_task_event(monitor.task_event.ASSIGNED, task_id, 0, current_rule, "Added to study task")
+                result, new_task_id = update_study_task(task_id, target_folder, triggered_rules, current_rule, study_UID, tags_list)
+                monitor.send_task_event(monitor.task_event.ASSIGN, task_id, 0, current_rule, "Added to study task")
+                monitor.send_task_event(monitor.task_event.DELEGATE, task_id, 0, new_task_id, current_rule)
+                monitor.send_task_event(monitor.task_event.ASSIGN, new_task_id, 0, task_id, "Added series to study")
+
+            if not result:
+                logger.error(f"Problem assigning series to study ", task_id)
 
             # Copy (or move) the files into the study folder
             push_files(task_id, file_list, folder_name, (len(triggered_rules) > 1))
@@ -358,6 +367,8 @@ def push_serieslevel_processing(
                     # Can't create lock file, so something must be seriously wrong
                     logger.error(f"Unable to create lock file {lock_file}", task_id)  # handle_error
                     return False
+
+                monitor.send_task_event(monitor.task_event.DELEGATE, task_id, len(file_list), new_task_id, current_rule)
 
                     # Generate task file with processing information
                 if create_series_task(
@@ -468,13 +479,7 @@ def push_serieslevel_outgoing(
         else:
             continue
 
-        monitor.send_task_event(
-            monitor.task_event.ROUTE,
-            task_id,
-            len(file_list),
-            target,
-            ", ".join(selected_targets[target]),
-        )
+        monitor.send_task_event(monitor.task_event.DELEGATE, task_id, len(file_list), new_task_id, ", ".join(selected_targets[target]))
 
         operation: Callable
         if move_operation:
@@ -492,7 +497,10 @@ def push_serieslevel_outgoing(
                     task_id,
                 )
 
-        monitor.send_task_event(monitor.task_event.MOVE, task_id, len(file_list), folder_name, "")
+        if move_operation:
+            monitor.send_task_event(monitor.task_event.MOVE, task_id, len(file_list), target_folder, "Moved files")
+        else:
+            monitor.send_task_event(monitor.task_event.COPY, task_id, len(file_list), target_folder, "Copied files")
 
         try:
             lock.free()
@@ -527,6 +535,11 @@ def push_files(task_id: str, file_list: List[str], target_path: str, copy_files:
             )
             return False
 
+    if copy_files == False:
+        monitor.send_task_event(monitor.task_event.MOVE, task_id, len(file_list), target_path, "Moved files")
+    else:
+        monitor.send_task_event(monitor.task_event.COPY, task_id, len(file_list), target_path, "Copied files")
+
     return True
 
 
@@ -542,6 +555,9 @@ def remove_series(task_id: str, file_list: List[str]) -> bool:
         except Exception:
             logger.error(f"Error while removing file {entry}", task_id)  # handle_error
             return False
+ 
+    monitor.send_task_event(monitor.task_event.REMOVE, task_id, len(file_list), "", "Removed duplicate files")
+
     return True
 
 
@@ -589,6 +605,8 @@ def route_error_files() -> None:
 
 
 def trigger_serieslevel_notification(current_rule: str, tags_list: Dict[str, str], event, task_id: str) -> None:
+    notification_type = ''
+
     if event == mercure_events.RECEPTION:
         if config.mercure.rules[current_rule].notification_trigger_reception == "True":
             notification.send_webhook(
@@ -598,6 +616,8 @@ def trigger_serieslevel_notification(current_rule: str, tags_list: Dict[str, str
                 current_rule,
                 task_id,
             )
+            notification_type = 'RECEPTION'
+
     if event == mercure_events.COMPLETION:
         if config.mercure.rules[current_rule].notification_trigger_completion == "True":
             notification.send_webhook(
@@ -607,6 +627,8 @@ def trigger_serieslevel_notification(current_rule: str, tags_list: Dict[str, str
                 current_rule,
                 task_id,
             )
+            notification_type = 'COMPLETION'            
+
     if event == mercure_events.ERROR:
         if config.mercure.rules[current_rule].notification_trigger_error == "True":
             notification.send_webhook(
@@ -616,3 +638,11 @@ def trigger_serieslevel_notification(current_rule: str, tags_list: Dict[str, str
                 current_rule,
                 task_id,
             )
+            notification_type = 'ERROR'
+
+    if notification_type and config.mercure.rules[current_rule].get("notification_webhook", ""):
+        monitor.send_task_event(
+            monitor.task_event.NOTIFICATION, task_id, 0, 
+            config.mercure.rules[current_rule].get("notification_webhook", ""), 
+            notification_type
+        )

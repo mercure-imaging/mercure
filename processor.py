@@ -110,7 +110,7 @@ def search_folder(counter) -> bool:
 
         # If the only file is task.json, the processing failed
         if [p.name for p in out_folder.rglob("*")] == ["task.json"]:
-            logger.error("Processing failed.", task_typed.id)
+            logger.error("Processing failed", task_typed.id)
             move_results(task_typed.id, str(p_folder), None, False, False)
             trigger_notification(task_typed, mercure_events.ERROR)
             continue
