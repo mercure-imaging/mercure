@@ -104,8 +104,8 @@ body {
 }
 
 .logviewer::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 13px;
+  height: 13px;
 }
 
 .logviewer::-webkit-scrollbar-track,
@@ -116,10 +116,14 @@ body {
 .logviewer::-webkit-scrollbar-thumb {
   background: hsl(141, 71%, 48%);
   border-radius: 10px;
+  border: 4px solid transparent;
+  background-clip: content-box;  
 }
 
 .logviewer::-webkit-scrollbar-thumb:hover {
   background: #22c65b;
+  border: 3px solid transparent;
+  background-clip: content-box;
 }
 
 .logview {

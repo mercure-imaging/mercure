@@ -156,15 +156,19 @@ async def find_task(request) -> JSONResponse:
 
     response: Dict = {}
 
+    filter_term = ""
+    if search_term:
+        filter_term = f"and ((tag_accessionnumber ilike '{search_term}%') or (tag_patientid ilike '{search_term}%'))"
+
     query = sqlalchemy.text(
-        """ select tasks.id as task_id, 
+        f""" select tasks.id as task_id, 
         tag_accessionnumber as acc, 
         tag_patientid as mrn,
         data->'info'->'uid_type' as scope,
         tasks.time as time
         from tasks
         left join dicom_series on dicom_series.series_uid = tasks.series_uid 
-        where parent_id is null
+        where parent_id is null {filter_term}
         order by tasks.time desc 
         limit 256 """
     )
@@ -172,10 +176,9 @@ async def find_task(request) -> JSONResponse:
     result_rows = await database.fetch_all(query)
     results = [dict(row) for row in result_rows]
 
-    print(results)
-
     for item in results:
         task_id = item["task_id"]
+        time = item["time"]
         acc = item["acc"]
         mrn = item["mrn"]
 
@@ -183,8 +186,6 @@ async def find_task(request) -> JSONResponse:
             job_scope = "STUDY"
         else:
             job_scope = "SERIES"
-
-        time = item["time"]
 
         response[task_id] = {
             "ACC": acc,

@@ -13,7 +13,6 @@ import json
 from starlette.responses import JSONResponse
 
 
-
 class CustomJSONEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, datetime.datetime):

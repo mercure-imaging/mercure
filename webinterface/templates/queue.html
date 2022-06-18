@@ -411,6 +411,7 @@
             $('#jobs_archive').DataTable().clear().draw();
             $('#jobs_archive_wrapper').hide();
             $('#job_archive_search').val('');
+            archiveSearch();
             $('#job_archive_search').focus();                
             return;
         }        
@@ -803,7 +804,7 @@
             $('#tab-content div.panel').removeClass('is-active');
             $('div.panel[data-content="' + tab + '"]').addClass('is-active');
 
-            update_jobs();
+            update();
         });       
        
         update();
@@ -815,10 +816,11 @@
             $('#jobs_archive').DataTable().clear().draw();
             $('#jobs_archive_wrapper').show();
             $('#loadingspinner').show();
+            searchTerm = $('#job_archive_search').val();
             $.ajax({
                 type: 'GET',
                 url: '/api/find-tasks',
-                data: {},
+                data: {'search_term': searchTerm },
                 dataType: 'json',
                 error: function () {
                     $('#erroralert').show();
