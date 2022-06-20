@@ -78,7 +78,7 @@ async def find_tasks(request):
 
 @api_app.route("/get-task-info", methods=["GET"])
 @requires(["authenticated"])
-async def find_tasks(request):
+async def get_task_info(request):
     task_id = request.query_params.get("task_id", "")
     try:
         return JSONResponse(await monitor.get_task_info(task_id))
