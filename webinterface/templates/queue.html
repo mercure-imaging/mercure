@@ -5,6 +5,8 @@
 {% block extra_head %}
     <script type="text/javascript" src="{{ url_for('static', path='DataTables/datatables.min.js') }}"></script>
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', path='DataTables/datatables.min.css') }}"/>  
+    <script type="text/javascript" src="{{ url_for('static', path='js/jquery.json-viewer.js') }}"></script>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', path='css/jquery.json-viewer.css') }}"/>  
 {% endblock %}
 
 {% block content %}
@@ -191,7 +193,7 @@
                     <div class="field has-addons" style="margin-top: 30px; margin-bottom: 30px;">
                         <div class="control is-expanded">
                             <input name="job_archive_search" id="job_archive_search" pattern="[-_A-Za-z0-9]+" onkeyup="this.value = this.value.replace(/[{}\x22\n]/g, '')"
-                            class="input series_completion_fix" autocomplete='off' type="text" placeholder="Find job by ACC or MRN">
+                            class="input series_completion_fix" autocomplete='off' type="text" placeholder="Find job by ACC, MRN, or patient name">
                         </div>
                         <div class="control">
                             <button class="button" onclick="archiveSearch()">
@@ -243,6 +245,29 @@
             </footer>
         </div>
     </div>    
+
+    <div class="modal" id="jobarchiveinformation">
+        <div class="modal-background"></div>
+        <div class="modal-card" style="width: 960px; min-height: 75%; max-height: 75%;">
+            <header class="modal-card-head">
+                <p class="modal-card-title">Job Information</p>
+            </header>
+            <section class="modal-card-body jsonsection">
+                <div class="container">
+                    <div class="field">
+                        <div class="control" id="jobarchiveinfocontrol" >
+                            <section class="column">
+                                <pre id="json-renderer"></pre>
+                            </section>
+                        </div>
+                    </div>                    
+                </div>
+            </section>
+            <footer class="modal-card-foot buttons is-centered">
+                <button class="button" type="button" id="closejobarchiveinformation" onclick="closeJobArchiveInformation()">Close</button>
+            </footer>
+        </div>
+    </div>        
 
     <div class="modal" id="jobaudittrail">
         <div class="modal-background"></div>
@@ -721,7 +746,7 @@
 
         $('#jobs_archive').DataTable( {
             "paging":   false,
-            "ordering": false,
+            "ordering": true,
             "info": false,
             "searching": false,
             "select": true,
@@ -750,7 +775,8 @@
             dom: 'Bfrtip',
             "scrollY": "740px",
             "scrollX": false,
-            "scrollCollapse": true,            
+            "scrollCollapse": true,        
+            "order": [[3, 'desc']]
         } );
         $('#jobs_archive').DataTable().on( 'select deselect', function () {
             var selectedRows = $('#jobs_archive').DataTable().rows( { selected: true } ).count();
@@ -864,7 +890,6 @@
                 // $('#erroralert').show();
             },
             success: function (data) {
-                console.log(data)
                 var eventstable = $('#job-events-table').DataTable().clear();
                 Object.keys(data).forEach(function (key) {
                     eventstable.row.add([ data[key]["task_id"].slice(0,8) || "", data[key]["time"], data[key]["event"], data[key]["sender"], data[key]["target"], data[key]["file_count"], data[key]["info"] ])
@@ -918,47 +943,42 @@
         });
     }
 
+    function closeJobInformation()
+    {
+        $("#jobinformation").removeClass("is-active");
+    }
+
     function showArchiveJobInformation(jobId)
     {
         if (jobId === "") {
             return;
         }
 
-        $("#jobinformationcontent").val("");
-        $("#jobinformation").addClass("is-active");
-        $("#jobinfocontrol").addClass("is-loading");        
+        $("#jobarchiveinformation").addClass("is-active");
+        $("#jobarchiveinfocontrol").addClass("is-loading");        
 
-        // $.ajax({
-        //     type: 'GET',
-        //     url: '/queue/jobinfo/' + category + '/' + jobId,
-        //     data: {},
-        //     dataType: 'json',
-        //     success: function (data) {
-        //         textContent = ""
-        //         try {
-        //             var jsondata = JSON.parse(data);
-        //             textContent = JSON.stringify(jsondata, null, 4);
-        //         } catch(e) {
-        //             textContent = data;
-        //         }                
-        //         $("#jobinformationcontent").val(textContent);
-        //     },
-        //     error: function (data, status) {
-        //         if (status === "parsererror") {                    
-        //             $("#jobinformationcontent").val(data.responseText);
-        //         } else {
-        //             $("#jobinformationcontent").val("ERROR: Unable to retrieve job information");
-        //         }
-        //     },
-        //     complete: function (data) {
-        //         $("#jobinfocontrol").removeClass("is-loading");  
-        //     }
-        // });
+        $.ajax({
+            type: 'GET',
+            url: '/api/get-task-info',
+            data: {'task_id': jobId},
+            dataType: 'json',
+            error: function () {
+                // $('#erroralert').show();
+            },
+            success: function (data) {
+                $('#json-renderer').jsonViewer(data, {rootCollapsable: false, collapsed: true});
+            },
+            complete: function (data) {
+                $("#jobarchiveinfocontrol").removeClass("is-loading");  
+            },
+            timeout: 3000
+        });
     }
 
-    function closeJobInformation()
+    function closeJobArchiveInformation()
     {
-        $("#jobinformation").removeClass("is-active");
+        $("#jobarchiveinformation").removeClass("is-active");
+        $('#json-renderer').jsonViewer({});
     }
 
     var updateTimer;

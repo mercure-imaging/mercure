@@ -209,3 +209,7 @@ async def get_tests() -> Any:
 
 async def find_tasks(search_term="") -> Any:
     return await get("query/find_task", {"search_term": search_term})
+
+
+async def get_task_info(task_id="") -> Any:
+    return await get("query/get_task_info", {"task_id": task_id})

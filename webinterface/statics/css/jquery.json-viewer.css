@@ -1,0 +1,102 @@
+/* Root element */
+.json-document {
+  padding: 0em 0.5em;
+  background-color: #FFF;
+  font-family: monospace;
+  color: rgb(54, 54, 54);
+  font-size: 1em;
+}
+
+/* Syntax highlighting for JSON objects */
+ul.json-dict, ol.json-array {
+  list-style-type: none;
+  margin: 0 0 0 1px;
+  border-left: 1px dotted #ccc;
+  padding-left: 2em;
+}
+
+.json-string {
+  color: hsl(141, 71%, 38%);
+  font-weight: normal;
+}
+
+.json-literal {
+  color: rgb(50, 115, 220);
+  font-weight: normal;
+}
+
+/* Toggle button */
+a.json-toggle {
+  position: relative;
+  color: inherit;
+  text-decoration: none;
+}
+
+a.json-toggle:focus {
+  outline: none;
+}
+
+a.json-toggle:before {
+  font-size: 1.2em;  
+  color:  #c0c0c0;
+  content: "\2BC6"; 
+  position: absolute;
+  display: inline-block;
+  width: 1em;
+  text-align: center;
+  line-height: 1em;
+  left: -1.2em;
+  margin-top: 0.15em;
+}
+
+a.json-toggle:hover:before, a.json-toggle.collapsed:hover:before {
+  color: rgb(50, 115, 220);
+}
+
+a.json-toggle.collapsed:before {
+  transform: rotate(-90deg);
+  color:  #c0c0c0;
+}
+
+/* Collapsable placeholder links */
+a.json-placeholder {
+  color: #aaa;
+  padding: 0 1em;
+  text-decoration: none;
+}
+
+a.json-placeholder:hover {
+  text-decoration: underline;
+}
+
+.jsonsection {
+  overflow-x: scroll;
+  padding-bottom: 10px;
+}
+
+.jsonsection::-webkit-scrollbar, .json-document::-webkit-scrollbar {
+  width: 14px;
+  height: 14px;
+}
+
+.jsonsection::-webkit-scrollbar-track,
+.jsonsection::-webkit-scrollbar-corner,
+.json-document::-webkit-scrollbar-track,
+.json-document::-webkit-scrollbar-corner {
+  background-color: #FFF;
+}
+
+.jsonsection::-webkit-scrollbar-thumb,
+.json-document::-webkit-scrollbar-thumb {
+  background: rgb(219,219,219);
+  border-radius: 10px;
+  border: 4px solid transparent;
+  background-clip: content-box;
+}
+
+.jsonsection::-webkit-scrollbar-thumb:hover,
+.json-document::-webkit-scrollbar-thumb:hover {
+  background: rgb(219,219,219);
+  border: 3px solid transparent;
+  background-clip: content-box;
+}

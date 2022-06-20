@@ -22,6 +22,7 @@ from starlette.authentication import requires
 import bookkeeping.config as bk_config
 from bookkeeping.database import *
 from bookkeeping.helper import *
+from common import config
 
 
 ###################################################################################
@@ -158,7 +159,7 @@ async def find_task(request) -> JSONResponse:
 
     filter_term = ""
     if search_term:
-        filter_term = f"and ((tag_accessionnumber ilike '{search_term}%') or (tag_patientid ilike '{search_term}%'))"
+        filter_term = f"""and ((tag_accessionnumber ilike '{search_term}%') or (tag_patientid ilike '{search_term}%') or (tag_patientname ilike '%{search_term}%'))"""
 
     query = sqlalchemy.text(
         f""" select tasks.id as task_id, 
@@ -194,4 +195,12 @@ async def find_task(request) -> JSONResponse:
             "Time": time,
         }
 
+    return CustomJSONResponse(response)
+
+
+@query_app.route("/get_task_info", methods=["GET"])
+@requires("authenticated")
+async def get_task_info(request) -> JSONResponse:
+    response: Dict = {}
+    response = { "Feature coming": "soon", "Patient Information": { "Will be": "in here"} }
     return CustomJSONResponse(response)
