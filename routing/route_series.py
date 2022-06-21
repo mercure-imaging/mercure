@@ -262,15 +262,15 @@ def push_series_studylevel(
                 # Create task file with information on complete criteria
                 new_task_id = generate_task_id()
                 result = create_study_task(new_task_id, target_folder, triggered_rules, current_rule, study_UID, tags_list)
-                monitor.send_task_event(monitor.task_event.ASSIGN, task_id, 0, current_rule, "Created study task")
-                monitor.send_task_event(monitor.task_event.DELEGATE, task_id, 0, new_task_id, current_rule)
-                monitor.send_task_event(monitor.task_event.ASSIGN, new_task_id, 0, task_id, "Added series to study")
+                monitor.send_task_event(monitor.task_event.ASSIGN, task_id, len(file_list), current_rule, "Created study task")
+                monitor.send_task_event(monitor.task_event.DELEGATE, task_id, len(file_list), new_task_id, current_rule)
+                monitor.send_task_event(monitor.task_event.ASSIGN, new_task_id, len(file_list), task_id, "Added series to study")
             else:
                 # Add data from latest series to task file
                 result, new_task_id = update_study_task(task_id, target_folder, triggered_rules, current_rule, study_UID, tags_list)
-                monitor.send_task_event(monitor.task_event.ASSIGN, task_id, 0, current_rule, "Added to study task")
-                monitor.send_task_event(monitor.task_event.DELEGATE, task_id, 0, new_task_id, current_rule)
-                monitor.send_task_event(monitor.task_event.ASSIGN, new_task_id, 0, task_id, "Added series to study")
+                monitor.send_task_event(monitor.task_event.ASSIGN, task_id, len(file_list), current_rule, "Added to study task")
+                monitor.send_task_event(monitor.task_event.DELEGATE, task_id, len(file_list), new_task_id, current_rule)
+                monitor.send_task_event(monitor.task_event.ASSIGN, new_task_id, len(file_list), task_id, "Added series to study")
 
             if not result:
                 logger.error(f"Problem assigning series to study ", task_id)

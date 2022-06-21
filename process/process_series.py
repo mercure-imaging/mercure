@@ -37,7 +37,7 @@ from common.constants import (
 logger = config.get_logger()
 
 
-def nomad_runtime(task: Task, folder: str) -> bool:
+def nomad_runtime(task: Task, folder: str, file_count_begin: int) -> bool:
     nomad_connection = nomad.Nomad(host="172.17.0.1", timeout=5)
 
     if not task.process:
@@ -79,14 +79,14 @@ def nomad_runtime(task: Task, folder: str) -> bool:
     with open(f_path / "nomad_job.json", "w") as json_file:
         json.dump(job_info, json_file, indent=4)
 
-    monitor.send_task_event(monitor.task_event.PROCESS_BEGIN, task.id, 0, "", "Processing job dispatched")
+    monitor.send_task_event(monitor.task_event.PROCESS_BEGIN, task.id, file_count_begin, task.process.module_name, "Processing job dispatched")
     return True
 
 
 docker_pull_throttle: Dict[str, datetime] = {}
 
 
-def docker_runtime(task: Task, folder: str) -> bool:
+def docker_runtime(task: Task, folder: str, file_count_begin: int) -> bool:
     docker_client = docker.from_env()
 
     if not task.process:
@@ -174,6 +174,10 @@ def docker_runtime(task: Task, folder: str) -> bool:
         # nomad job dispatch -meta IMAGE_ID=alpine:3.11 -meta PATH=test  mercure-processor
         # nomad_connection.job.dispatch_job('mercure-processor', meta={"IMAGE_ID":"alpine:3.11", "PATH": "test"})
 
+        monitor.send_task_event(
+            monitor.task_event.PROCESS_BEGIN, task.id, file_count_begin, task.process.module_name, f"Processing job running"
+        )
+
         # Run the container -- need to do in detached mode to be able to print the log output if container exits
         # with non-zero code while allowing the container to be removed after execution (with autoremoval and
         # non-detached mode, the log output is gone before it can be printed from the exception)
@@ -186,9 +190,6 @@ def docker_runtime(task: Task, folder: str) -> bool:
             user=uid_string,
             group_add=[os.getegid()],
             detach=True,
-        )
-        monitor.send_task_event(
-            monitor.task_event.PROCESS_BEGIN, task.id, 0, task.process.module_name, f"Processing job running"
         )
         # Wait for end of container execution
         docker_result = container.wait()
@@ -258,6 +259,9 @@ def process_series(folder) -> None:
         if task.dispatch:
             needs_dispatching = True
 
+        # Remember the number of incoming DCM files (for logging purpose)
+        file_count_begin = len(list(Path(folder).glob(mercure_names.DCMFILTER)))
+
         f_path = Path(folder)
         (f_path / "in").mkdir()
         for child in f_path.iterdir():
@@ -268,11 +272,11 @@ def process_series(folder) -> None:
         if helper.get_runner() == "nomad" or config.mercure.process_runner == "nomad":
             logger.debug("Processing with Nomad.")
             # Use nomad if we're being run inside nomad, or we're configured to use nomad regardless
-            processing_success = nomad_runtime(task, folder)
+            processing_success = nomad_runtime(task, folder, file_count_begin)
         elif helper.get_runner() in ("docker", "systemd"):
             logger.debug("Processing with Docker")
             # Use docker if we're being run inside docker or just by systemd
-            processing_success = docker_runtime(task, folder)
+            processing_success = docker_runtime(task, folder, file_count_begin)
         else:
             processing_success = False
             raise Exception("Unable to determine valid runtime for processing")
@@ -298,18 +302,19 @@ def process_series(folder) -> None:
             # If configured in the rule, copy the input images to the output folder
             if task is not None and task.process and task.process.retain_input_images == "True":
                 push_input_images(task_id, f_path / "in", f_path / "out")
+            # Remember the number of DCM files in the output folder (for logging purpose)
+            file_count_complete = len(list(Path(f_path / "out").glob(mercure_names.DCMFILTER)))
             # Push the results either to the success or error folder
             move_results(task_id, folder, lock, processing_success, needs_dispatching)
             shutil.rmtree(folder, ignore_errors=True)
 
             if processing_success:
-                monitor.send_task_event(monitor.task_event.PROCESS_COMPLETE, task_id, 0, "", "Processing job complete")
+                monitor.send_task_event(monitor.task_event.PROCESS_COMPLETE, task_id, file_count_complete, "", "Processing job complete")
                 # If dispatching not needed, then trigger the completion notification (for docker/systemd)
                 if not needs_dispatching:
                     monitor.send_task_event(monitor.task_event.COMPLETE, task_id, 0, "", "Task complete")
                     # TODO: task really is never none if processing_success is true
                     trigger_notification(task, mercure_events.COMPLETION)  # type: ignore
-
             else:
                 monitor.send_task_event(monitor.task_event.ERROR, task_id, 0, "", "Processing failed")
                 if task is not None:  # TODO: handle if task is none?

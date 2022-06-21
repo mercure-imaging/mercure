@@ -159,8 +159,8 @@ def test_process_series_nomad(fs, mercure_config: Callable[[Dict], Config], mock
             call(task_event.REGISTER, task_id, 1, "catchall", "Registered series"),
             call(task_event.DELEGATE, task_id, 1, new_task_id, "catchall"),
             call(task_event.MOVE, task_id, 1, f"/var/processing/{new_task_id}/", "Moved files"),
-            call(task_event.PROCESS_BEGIN, new_task_id, 0, "", "Processing job dispatched"),
-            call(task_event.PROCESS_COMPLETE, new_task_id, 0, "", "Processing complete"),
+            call(task_event.PROCESS_BEGIN, new_task_id, 1, "test_module", "Processing job dispatched"),
+            call(task_event.PROCESS_COMPLETE, new_task_id, 1, "", "Processing complete"),
             call(task_event.COMPLETE, new_task_id, 0, "", "Task complete"),
         ]
     )
@@ -200,7 +200,7 @@ def test_process_series_nomad(fs, mercure_config: Callable[[Dict], Config], mock
             call(task_event.REGISTER, task_id, 1, "catchall", "Registered series"),
             call(task_event.DELEGATE, task_id, 1, new_task_id, "catchall"),
             call(task_event.MOVE, task_id, 1, f"/var/processing/{new_task_id}/", "Moved files"),
-            call(task_event.PROCESS_BEGIN, new_task_id, 0, "", "Processing job dispatched"),
+            call(task_event.PROCESS_BEGIN, new_task_id, 1, "test_module", "Processing job dispatched"),
             call(task_event.ERROR, new_task_id, 0, "", "Processing failed"),
         ]
     )
@@ -270,8 +270,8 @@ def test_process_series(fs, mercure_config: Callable[[Dict], Config], mocked: Mo
             call(task_event.REGISTER, task_id, 1, "catchall", "Registered series"),
             call(task_event.DELEGATE, task_id, 1, new_task_id, "catchall"),        
             call(task_event.MOVE, task_id, 1, f"/var/processing/{new_task_id}/", "Moved files"),
-            call(task_event.PROCESS_BEGIN, new_task_id, 0, "test_module", "Processing job running"),
-            call(task_event.PROCESS_COMPLETE, new_task_id, 0, "", "Processing job complete"),
+            call(task_event.PROCESS_BEGIN, new_task_id, 1, "test_module", "Processing job running"),
+            call(task_event.PROCESS_COMPLETE, new_task_id, 1, "", "Processing job complete"),
             call(task_event.COMPLETE, new_task_id, 0, "", "Task complete"),
         ]
     )

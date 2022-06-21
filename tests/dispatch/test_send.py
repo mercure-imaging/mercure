@@ -88,7 +88,7 @@ def test_execute_error_case(fs, mocked):
     common.monitor.send_task_event.assert_has_calls(  # type: ignore
         [
             call(task_event.UNKNOWN, "task_id", 0, "", "Missing information for folder /var/data/source/a"),
-            call(task_event.DISPATCH_BEGIN, "task_id", 1, "test_target", ""),
+            call(task_event.DISPATCH_BEGIN, "task_id", 1, "test_target", "Routing job running"),
             call(
                 task_event.ERROR,
                 "task_id",

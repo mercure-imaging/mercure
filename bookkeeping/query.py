@@ -155,7 +155,7 @@ async def find_task(request) -> JSONResponse:
         from tasks
         left join dicom_series on dicom_series.series_uid = tasks.series_uid 
         where parent_id is null {filter_term}
-        order by tasks.time desc 
+        order by date_trunc('second', tasks.time) desc, tasks.id desc
         limit 256 """
     )
 

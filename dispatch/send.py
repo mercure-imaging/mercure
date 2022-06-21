@@ -164,7 +164,7 @@ def execute(
                 task_content.id,
                 file_count,
                 target_name,
-                "",
+                "Routing job running",
             )
             result = handler.send_to_target(task_content.id, target, dispatch_info, source_folder)
             monitor.send_task_event(
@@ -172,10 +172,10 @@ def execute(
                 task_content.id,
                 file_count,
                 "",
-                "",
+                "Routing job complete",
             )
             
-            monitor.send_task_event(task_event.MOVE, task_content.id, 0, str(success_folder), "")
+            monitor.send_task_event(task_event.MOVE, task_content.id, 0, str(success_folder), "Moved to success folder")
             _move_sent_directory(task_content.id, source_folder, success_folder)
 
             _trigger_notification(task_content, mercure_events.COMPLETION)
@@ -195,7 +195,7 @@ def execute(
                 logger.info(f"Max retries reached, moving to {error_folder}")
                 monitor.send_task_event(task_event.SUSPEND, task_content.id, 0, target_name, "Max retries reached")
                 _move_sent_directory(task_content.id, source_folder, error_folder)
-                monitor.send_task_event(task_event.MOVE, task_content.id, 0, error_folder, "")
+                monitor.send_task_event(task_event.MOVE, task_content.id, 0, error_folder, "Moved to error folder")
                 monitor.send_event(m_events.PROCESSING, severity.ERROR, f"Series suspended after reaching max retries")
                 _trigger_notification(task_content, mercure_events.ERROR)
 

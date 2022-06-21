@@ -108,6 +108,9 @@ def search_folder(counter) -> bool:
         if task_typed.process and task_typed.process.retain_input_images == "True":
             push_input_images(task_typed.id, in_folder, out_folder)
 
+        # Remember the number of DCM files in the output folder (for logging purpose)
+        file_count_complete = len(list(Path(out_folder).glob(mercure_names.DCMFILTER)))
+
         # If the only file is task.json, the processing failed
         if [p.name for p in out_folder.rglob("*")] == ["task.json"]:
             logger.error("Processing failed", task_typed.id)
@@ -121,7 +124,7 @@ def search_folder(counter) -> bool:
         (p_folder / "nomad_job.json").unlink()
         (p_folder / ".processing").unlink()
         p_folder.rmdir()
-        monitor.send_task_event(monitor.task_event.PROCESS_COMPLETE, task_typed.id, 0, "", "Processing complete")
+        monitor.send_task_event(monitor.task_event.PROCESS_COMPLETE, task_typed.id, file_count_complete, "", "Processing complete")
         # If dispatching not needed, then trigger the completion notification (for Nomad)
         if not needs_dispatching:
             trigger_notification(task_typed, mercure_events.COMPLETION)

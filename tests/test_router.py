@@ -156,9 +156,9 @@ def task_will_dispatch_to(task, config, fake_process) -> None:
 
     common.monitor.send_task_event.assert_has_calls(  # type: ignore
         [
-            call(task_event.DISPATCH_BEGIN, task.id, 1, task.dispatch.target_name, ""),
-            call(task_event.DISPATCH_COMPLETE, task.id, 1, "", ""),
-            call(task_event.MOVE, task.id, 0, "/var/success", ""),
+            call(task_event.DISPATCH_BEGIN, task.id, 1, task.dispatch.target_name, "Routing job running"),
+            call(task_event.DISPATCH_COMPLETE, task.id, 1, "", "Routing job complete"),
+            call(task_event.MOVE, task.id, 0, "/var/success", "Moved to success folder"),
         ],
     )
 
