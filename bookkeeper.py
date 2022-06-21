@@ -327,12 +327,19 @@ async def post_task_event(request) -> JSONResponse:
     sender = payload.get("sender", "Unknown")
     event = payload.get("event", monitor.task_event.UNKNOWN)
     client_timestamp = None
+    event_time = datetime.datetime.now()
 
     if "timestamp" in payload:
         try:
             client_timestamp = float(payload.get("timestamp"))  # type: ignore
         except:
             pass
+
+    if "time" in payload:
+        try:
+            event_time = datetime.datetime.fromisoformat(payload.get("time"))  # type: ignore
+        except:
+            pass        
 
     # series_uid = payload.get("series_uid", "")
     try:
@@ -353,7 +360,7 @@ async def post_task_event(request) -> JSONResponse:
         file_count=file_count,
         target=target,
         info=info,
-        time=datetime.datetime.now(),
+        time=event_time,
         client_timestamp=client_timestamp,
     )
     await database.execute(query)

@@ -6,14 +6,13 @@ Helper functions and definitions for monitoring mercure's operations via the boo
 
 # Standard python includes
 import asyncio
-
 from json import JSONDecodeError
 import time
-
 from typing import Any, Dict, Optional
 from urllib.error import HTTPError
 import aiohttp
 import daiquiri
+import datetime
 
 # App-specific includes
 from common.types import Task
@@ -186,6 +185,7 @@ def send_task_event(event: task_event, task_id, file_count, target, info) -> Non
         "info": info,
         "task_id": task_id,
         "timestamp": time.monotonic(),
+        "time": datetime.datetime.now()
     }
     post("task-event", data=payload)
     # requests.post(bookkeeper_address + "/series-event", data=payload, timeout=1)
