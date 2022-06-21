@@ -967,6 +967,7 @@
             },
             success: function (data) {
                 $('#json-renderer').jsonViewer(data, {rootCollapsable: false, collapsed: true});
+                $("#json-renderer > ul > li:nth-child(1) > a").click();
             },
             complete: function (data) {
                 $("#jobarchiveinfocontrol").removeClass("is-loading");  

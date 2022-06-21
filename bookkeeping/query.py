@@ -195,20 +195,44 @@ async def get_task_info(request) -> JSONResponse:
 
     # First, get general information about the series/study
     info_query = sqlalchemy.text(
-        f"""select dicom_series.tag_patientname as patient_name 
+        f"""select 
+        dicom_series.tag_patientname as patientname,
+        dicom_series.tag_patientbirthdate as birthdate,
+        dicom_series.tag_patientsex as gender,
+        dicom_series.tag_modality as modality,
+        dicom_series.tag_acquisitiondate as acquisitiondate,
+        dicom_series.tag_acquisitiontime as acquisitiontime,
+        dicom_series.tag_bodypartexamined as bodypartexamined,
+        dicom_series.tag_studydescription as studydescription,
+        dicom_series.tag_protocolname as protocolname,
+        dicom_series.tag_manufacturer as manufacturer,
+        dicom_series.tag_manufacturermodelname as manufacturermodelname,
+        dicom_series.tag_deviceserialnumber as deviceserialnumber,
+        dicom_series.tag_magneticfieldstrength as magneticfieldstrength
         from tasks
         left join dicom_series on dicom_series.series_uid = tasks.series_uid 
         where (tasks.id = '{task_id}') and (tasks.parent_id is null)
         limit 1"""
     )
-    print(info_query)
 
     info_rows = await database.fetch_all(info_query)
     info_results = [dict(row) for row in info_rows]
 
     if info_results:
         response["information"] = {
-            "patient name": info_results[0]["patient_name"]
+            "patient_name": info_results[0]["patientname"],
+            "patient_birthdate": info_results[0]["birthdate"],
+            "patient_sex": info_results[0]["gender"],
+            "acquisition_date": info_results[0]["acquisitiondate"],
+            "acquisition_time": info_results[0]["acquisitiontime"],
+            "modality": info_results[0]["modality"],
+            "bodypart_examined": info_results[0]["bodypartexamined"],
+            "study_description": info_results[0]["studydescription"],
+            "protocol_name": info_results[0]["protocolname"],
+            "manufacturer": info_results[0]["manufacturer"],
+            "manufacturer_modelname": info_results[0]["manufacturermodelname"],
+            "device_serialnumber": info_results[0]["deviceserialnumber"],
+            "magnetic_fieldstrength": info_results[0]["magneticfieldstrength"],
         }
 
     # Now, get the task files embedded into the task or its subtasks
