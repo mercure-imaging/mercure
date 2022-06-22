@@ -118,7 +118,7 @@ async def get_task_events(request) -> JSONResponse:
     # Get all the task_events from task `task_id` or any of its subtasks
     query = (
         task_events.select()
-        .order_by(task_events.c.task_id, task_events.c.client_timestamp)
+        .order_by(task_events.c.task_id, task_events.c.time)
         .where(sqlalchemy.or_(task_events.c.task_id == task_id, task_events.c.task_id.in_(subtask_ids)))
     )
 
