@@ -128,8 +128,9 @@ def startup():
     monitor.send_event(monitor.m_events.BOOT, monitor.severity.INFO, f"PID = {os.getpid()}")
 
 
-def shutdown():
+async def shutdown():
     monitor.send_event(monitor.m_events.SHUTDOWN, monitor.severity.INFO, "")
+    await delete_old_tests()
 
 
 app = Starlette(debug=DEBUG_MODE, on_startup=[startup], on_shutdown=[shutdown])
@@ -145,6 +146,31 @@ app.mount("/users", users.users_app)
 app.mount("/queue", queue.queue_app)
 app.mount("/api", api.api_app)
 app.mount("/dashboards", dashboards.dashboards_app)
+
+
+async def delete_old_tests() -> Response:
+    tests = await monitor.get_tests()
+    old_tests = [
+        t["id"]
+        for t in tests
+        # if t["time_end"] is None
+        if datetime.datetime.strptime(t["time_begin"], "%Y-%m-%d %H:%M:%S")
+        < datetime.datetime.now() - datetime.timedelta(hours=1)
+    ]
+    config.read_config()
+    for i in old_tests:
+        if (t := f"{i}_self_test_target") in config.mercure.targets:
+            del config.mercure.targets[t]
+        if (t := f"{i}_self_test_module") in config.mercure.modules:
+            del config.mercure.modules[t]
+        if (t := f"{i}_self_test_rule_begin") in config.mercure.rules:
+            del config.mercure.rules[t]
+        if (t := f"{i}_self_test_rule_end") in config.mercure.rules:
+            del config.mercure.rules[t]
+
+    config.save_config()
+
+    return PlainTextResponse("OK")
 
 
 ###################################################################################
@@ -396,23 +422,18 @@ async def login(request) -> Response:
     return templates.TemplateResponse(template, context)
 
 
+# @app.route("/old_tests", methods=["GET"])
+
+
 async def self_test_cleanup(test_id: str, delay: int = 60) -> None:
     """Delete the rules and targets for this test after a delay"""
     await asyncio.sleep(delay)
     config.read_config()
-    # for k in list(config.mercure.targets.keys()):
-    #     if k.endswith("_self_test_target"):
-    #         del config.mercure.targets[k]
-    # for k in list(config.mercure.modules.keys()):
-    #     if k.endswith("_module"):
-    #         del config.mercure.modules[k]
-    # for k in list(config.mercure.rules.keys()):
-    #     del config.mercure.rules[k]
 
     if f"{test_id}_self_test_target" in config.mercure.targets:
         del config.mercure.targets[f"{test_id}_self_test_target"]
-    if f"{test_id}_module" in config.mercure.modules:
-        del config.mercure.modules[f"{test_id}_module"]
+    if f"{test_id}_self_test_module" in config.mercure.modules:
+        del config.mercure.modules[f"{test_id}_self_test_module"]
 
     for p in ("begin", "end"):
         if f"{test_id}_self_test_rule_{p}" in config.mercure.rules:
@@ -496,12 +517,12 @@ async def self_test(request) -> Response:
             notification_payload=f'"rule":"@rule@", "event":"@event@", "test_id":"{test_id}", "task_id":"@task_id@"',
         )
         if test_type == "process":
-            config.mercure.modules[test_rule + "_module"] = Module(
+            config.mercure.modules[test_rule + "_self_test_module"] = Module(
                 docker_tag="mercureimaging/mercure-dummy-processor:0.2.0-beta.7",
             )
 
             config.mercure.rules[test_rule + "_begin"].action = "both"
-            config.mercure.rules[test_rule + "_begin"].processing_module = test_rule + "_module"
+            config.mercure.rules[test_rule + "_begin"].processing_module = test_rule + "_self_test_module"
 
         # "end" rule is triggered when the test is completed. It just performs a notification to register the test success.
         config.mercure.rules[test_rule + "_end"] = Rule(
