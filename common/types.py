@@ -131,6 +131,10 @@ class Rule(BaseModel, Compat):
     notification_trigger_error: Literal["True", "False"] = "True"
 
 
+class ProcessingLogsConfig(BaseModel):
+    discard_logs: bool = False
+
+
 class Config(BaseModel, Compat):
     appliance_name: str
     port: int
@@ -162,6 +166,7 @@ class Config(BaseModel, Compat):
     process_runner: Literal["docker", "nomad", ""] = ""
     bookkeeper_api_key: Optional[str]
     features: Dict[str, bool]
+    processing_logs: ProcessingLogsConfig = ProcessingLogsConfig()
 
 
 class TaskInfo(BaseModel, Compat):
