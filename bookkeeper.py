@@ -7,6 +7,7 @@ and stores the information in a Postgres database.
 
 # Standard python includes
 import os
+from pathlib import Path
 import subprocess
 import sys
 import asyncpg
@@ -140,11 +141,21 @@ async def processor_logs(request) -> JSONResponse:
 
     task_id = payload.get("task_id")
     module_name = payload.get("module_name")
-    time = payload.get("time")
+    time = datetime.datetime.now()
     logs = payload.get("logs")
 
-    query = processor_logs_table.insert().values(task_id=task_id, module_name=module_name, time=None, logs=logs)
-    result = await database.execute(query)
+    if (logs_folder := config.mercure.processing_logs.logs_file_store) and (logs_folder := Path(logs_folder)).exists():
+        query = processor_logs_table.insert().values(task_id=task_id, module_name=module_name, time=time, logs=None)
+        result = await database.execute(query)
+
+        logs_folder = logs_folder / task_id
+        logs_folder.mkdir(exist_ok=True)
+        logs_file = logs_folder / f"{module_name}.{str(result)}.txt"
+        logs_file.write_text(logs, encoding="utf-8")
+    else:
+        query = processor_logs_table.insert().values(task_id=task_id, module_name=module_name, time=time, logs=logs)
+        result = await database.execute(query)
+
     logger.debug(result)
     return JSONResponse({"ok": ""})
 

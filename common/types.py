@@ -133,6 +133,7 @@ class Rule(BaseModel, Compat):
 
 class ProcessingLogsConfig(BaseModel):
     discard_logs: bool = False
+    logs_file_store: Optional[str] = None
 
 
 class Config(BaseModel, Compat):

@@ -209,7 +209,8 @@ def docker_runtime(task: Task, folder: str, file_count_begin: int) -> bool:
         logger.info("=== MODULE OUTPUT - BEGIN ========================================")
         if container.logs() is not None:
             logs = container.logs().decode("utf-8")
-            monitor.send_process_logs(task.id, task.process.module_name, logs)
+            if not config.mercure.processing_logs.discard_logs:
+                monitor.send_process_logs(task.id, task.process.module_name, logs)
             logger.info(logs)
         logger.info("=== MODULE OUTPUT - END ==========================================")
 

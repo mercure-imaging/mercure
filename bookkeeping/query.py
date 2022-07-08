@@ -5,13 +5,10 @@ Entry functions of the bookkeeper for querying processing information.
 """
 
 # Standard python includes
-from typing import Any, Dict
-from sqlalchemy.engine.base import Connection
-from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.dialects.postgresql import JSONB
+from typing import Dict
+from pathlib import Path
 import datetime
 import sqlalchemy
-import uuid
 
 # Starlette-related includes
 from starlette.applications import Starlette
@@ -154,7 +151,13 @@ async def get_task_process_logs(request) -> JSONResponse:
     subtask_ids = [row[0] for row in subtasks]
 
     query = processor_logs_table.select(processor_logs_table.c.task_id.in_(subtask_ids))
-    results = await database.fetch_all(query)
+    results = [dict(r) for r in await database.fetch_all(query)]
+    for result in results:
+        if result["logs"] == None:
+            if logs_folder := config.mercure.processing_logs.logs_file_store:
+                result["logs"] = (
+                    Path(logs_folder) / result["task_id"] / f"{result['module_name']}.{result['id']}.txt"
+                ).read_text(encoding="utf-8")
     return CustomJSONResponse(results)
 
 
@@ -170,7 +173,7 @@ async def find_task(request) -> JSONResponse:
         f""" select tasks.id as task_id, 
         tag_accessionnumber as acc, 
         tag_patientid as mrn,
-        data->'info'->'uid_type' as scope,
+        data->'info'->>'uid_type' as scope,
         tasks.time as time
         from tasks
         left join dicom_series on dicom_series.series_uid = tasks.series_uid 
@@ -189,7 +192,7 @@ async def find_task(request) -> JSONResponse:
         acc = item["acc"]
         mrn = item["mrn"]
 
-        if item["scope"] == '"study"':
+        if item["scope"] == "study":
             job_scope = "STUDY"
         else:
             job_scope = "SERIES"

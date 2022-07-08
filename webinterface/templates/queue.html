@@ -812,7 +812,7 @@
                     text: '<i class="far fa-question-circle"></i>',
                     titleAttr: 'Job information',
                     action: function ( e, dt, node, config ) {
-                        var jid = $('#jobs_archive').DataTable().rows( { selected: true } ).data()[0][4];
+                        var jid = $('#jobs_archive').DataTable().rows( { selected: true } ).data()[0].slice(-1)[0];
                         showArchiveJobInformation(jid);
                     }
                 },
@@ -820,7 +820,7 @@
                     text: '<i class="fas fa-list"></i>',
                     titleAttr: 'Audit trail',
                     action: function ( e, dt, node, config ) {
-                        var jid = $('#jobs_archive').DataTable().rows( { selected: true } ).data()[0][4];
+                        var jid = $('#jobs_archive').DataTable().rows( { selected: true } ).data()[0].slice(-1)[0];
                         showAuditTrail(jid);
                     }
                 },
@@ -828,7 +828,7 @@
                     text: '<i class="fas fa-file"></i>',
                     titleAttr: 'Logs',
                     action: function ( e, dt, node, config ) {
-                        var jid = $('#jobs_archive').DataTable().rows( { selected: true } ).data()[0][4];
+                        var jid = $('#jobs_archive').DataTable().rows( { selected: true } ).data()[0].slice(-1)[0];
                         showLogs(jid);
                     }
                 }   
