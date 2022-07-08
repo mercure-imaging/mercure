@@ -161,6 +161,7 @@
                     <table class="table is-narrow is-hoverable is-fullwidth jobtable" style="word-wrap: break-word;" id="jobs_studies">
                         <thead>
                             <tr>
+                                <th>Study ID</th>
                                 <th>ACC</th>
                                 <th>MRN</th>
                                 <th>Study UID</th>
@@ -388,7 +389,7 @@
                     $('#erroralert').hide();
                     var jobtable = $('#jobs_studies').DataTable();
                     Object.keys(data).forEach(function (key) {
-                        jobtable.row.add( [ data[key]["ACC"], data[key]["MRN"], data[key]["UID"], data[key]["Rule"], data[key]["Completion"], data[key]["Created"], data[key]["Series"] ] );
+                        jobtable.row.add( [ key, data[key]["ACC"], data[key]["MRN"], data[key]["UID"], data[key]["Rule"], data[key]["Completion"], data[key]["Created"], data[key]["Series"] ] );
                     })
                     jobtable.draw();
                 },
@@ -650,6 +651,9 @@
             "language": {
                 "emptyTable": "No studies in reception"
             },
+            "columnDefs": [
+                { "visible": false, "targets": 0 }
+            ],
             select: true,
             buttons: [
                 {   
@@ -680,7 +684,41 @@
                     text: '<i class="far fa-share-square"></i>',
                     titleAttr: 'Force study completion',
                     action: function ( e, dt, node, config ) {
-                        alert("Coming soon!");
+
+                        var selectedRows = $('#jobs_studies').DataTable().rows( { selected: true } )
+                        
+                        selectedRows.every(function() {
+                            row = this
+                            var id = row.data()[0]
+                            if (row.data()[5] == "Force") {
+                                return
+                            }
+                            $.ajax({
+                                type: 'POST',
+                                url: '/queue/jobs/studies/force-complete',
+                                data: {'id': id },
+                                dataType: 'json',
+                                error: function () {
+                                    alert("Operation failed. Try refreshing the page.")
+                                },
+                                success: function (data) {
+                                    $('#erroralert').hide();
+                                    var d = row.data();
+                                    d[5] = "Force";
+                                    row.data(d);
+                                    row.deselect();
+                                    row.invalidate();
+                                },
+                                complete: function (data) {
+                                    $('#loadingspinner').hide();
+                                },
+                                timeout: 3000
+                            });
+                        })
+
+
+
+
                     }
                 }
             ],
