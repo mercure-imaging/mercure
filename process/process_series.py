@@ -79,7 +79,13 @@ def nomad_runtime(task: Task, folder: str, file_count_begin: int) -> bool:
     with open(f_path / "nomad_job.json", "w") as json_file:
         json.dump(job_info, json_file, indent=4)
 
-    monitor.send_task_event(monitor.task_event.PROCESS_BEGIN, task.id, file_count_begin, task.process.module_name, "Processing job dispatched")
+    monitor.send_task_event(
+        monitor.task_event.PROCESS_BEGIN,
+        task.id,
+        file_count_begin,
+        task.process.module_name,
+        "Processing job dispatched",
+    )
     return True
 
 
@@ -175,7 +181,11 @@ def docker_runtime(task: Task, folder: str, file_count_begin: int) -> bool:
         # nomad_connection.job.dispatch_job('mercure-processor', meta={"IMAGE_ID":"alpine:3.11", "PATH": "test"})
 
         monitor.send_task_event(
-            monitor.task_event.PROCESS_BEGIN, task.id, file_count_begin, task.process.module_name, f"Processing job running"
+            monitor.task_event.PROCESS_BEGIN,
+            task.id,
+            file_count_begin,
+            task.process.module_name,
+            f"Processing job running",
         )
 
         # Run the container -- need to do in detached mode to be able to print the log output if container exits
@@ -198,7 +208,9 @@ def docker_runtime(task: Task, folder: str, file_count_begin: int) -> bool:
         # Print the log out of the module
         logger.info("=== MODULE OUTPUT - BEGIN ========================================")
         if container.logs() is not None:
-            logger.info(container.logs().decode("utf-8"))
+            logs = container.logs().decode("utf-8")
+            monitor.send_process_logs(task.id, task.process.module_name, logs)
+            logger.info(logs)
         logger.info("=== MODULE OUTPUT - END ==========================================")
 
         # Check if the processing was successful (i.e., container returned exit code 0)
@@ -309,7 +321,9 @@ def process_series(folder) -> None:
             shutil.rmtree(folder, ignore_errors=True)
 
             if processing_success:
-                monitor.send_task_event(monitor.task_event.PROCESS_COMPLETE, task_id, file_count_complete, "", "Processing job complete")
+                monitor.send_task_event(
+                    monitor.task_event.PROCESS_COMPLETE, task_id, file_count_complete, "", "Processing job complete"
+                )
                 # If dispatching not needed, then trigger the completion notification (for docker/systemd)
                 if not needs_dispatching:
                     monitor.send_task_event(monitor.task_event.COMPLETE, task_id, 0, "", "Task complete")
@@ -430,7 +444,7 @@ def trigger_notification(task: Task, event) -> None:
         )  # handle_error
         return
 
-    notification_type = ''
+    notification_type = ""
 
     # Now fire the webhook if configured
     if event == mercure_events.RECEPTION:
@@ -442,8 +456,7 @@ def trigger_notification(task: Task, event) -> None:
                 current_rule,
                 task.id,
             )
-            notification_type = 'RECEPTION'
-
+            notification_type = "RECEPTION"
 
     if event == mercure_events.COMPLETION:
         if config.mercure.rules[current_rule].notification_trigger_completion == "True":
@@ -454,7 +467,7 @@ def trigger_notification(task: Task, event) -> None:
                 current_rule,
                 task.id,
             )
-            notification_type = 'COMPLETION'            
+            notification_type = "COMPLETION"
 
     if event == mercure_events.ERROR:
         if config.mercure.rules[current_rule].notification_trigger_error == "True":
@@ -465,11 +478,13 @@ def trigger_notification(task: Task, event) -> None:
                 current_rule,
                 task.id,
             )
-            notification_type = 'ERROR'
+            notification_type = "ERROR"
 
     if notification_type and config.mercure.rules[current_rule].get("notification_webhook", ""):
         monitor.send_task_event(
-            monitor.task_event.NOTIFICATION, task.id, 0, 
-            config.mercure.rules[current_rule].get("notification_webhook", ""), 
-            "Announced " + notification_type
+            monitor.task_event.NOTIFICATION,
+            task.id,
+            0,
+            config.mercure.rules[current_rule].get("notification_webhook", ""),
+            "Announced " + notification_type,
         )

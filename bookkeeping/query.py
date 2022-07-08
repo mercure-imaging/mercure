@@ -138,6 +138,26 @@ async def get_dicom_files(request) -> JSONResponse:
     return CustomJSONResponse(results)
 
 
+@query_app.route("/task_process_logs", methods=["GET"])
+@requires("authenticated")
+async def get_task_process_logs(request) -> JSONResponse:
+    """Endpoint for getting all events related to one series."""
+    task_id = request.query_params.get("task_id", "")
+
+    subtask_query = (
+        tasks_table.select()
+        .order_by(tasks_table.c.id)
+        .where(sqlalchemy.or_(tasks_table.c.id == task_id, tasks_table.c.parent_id == task_id))
+    )
+
+    subtasks = await database.fetch_all(subtask_query)
+    subtask_ids = [row[0] for row in subtasks]
+
+    query = processor_logs_table.select(processor_logs_table.c.task_id.in_(subtask_ids))
+    results = await database.fetch_all(query)
+    return CustomJSONResponse(results)
+
+
 @query_app.route("/find_task", methods=["GET"])
 @requires("authenticated")
 async def find_task(request) -> JSONResponse:
@@ -248,5 +268,5 @@ async def get_task_info(request) -> JSONResponse:
         if item["data"]:
             task_id = "task " + item["id"]
             response[task_id] = item["data"]
-       
+
     return CustomJSONResponse(response)

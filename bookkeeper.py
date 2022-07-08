@@ -132,6 +132,23 @@ async def post_mercure_event(request) -> JSONResponse:
     return JSONResponse({"ok": ""})
 
 
+@app.route("/processor-logs", methods=["POST"])
+@requires("authenticated")
+async def processor_logs(request) -> JSONResponse:
+    """Endpoint for receiving mercure system events."""
+    payload = dict(await request.form())
+
+    task_id = payload.get("task_id")
+    module_name = payload.get("module_name")
+    time = payload.get("time")
+    logs = payload.get("logs")
+
+    query = processor_logs_table.insert().values(task_id=task_id, module_name=module_name, time=None, logs=logs)
+    result = await database.execute(query)
+    logger.debug(result)
+    return JSONResponse({"ok": ""})
+
+
 @app.route("/webgui-event", methods=["POST"])
 @requires("authenticated")
 async def post_webgui_event(request) -> JSONResponse:
@@ -217,7 +234,7 @@ async def register_series(request) -> JSONResponse:
     try:
         await parse_and_submit_tags(payload)
     except asyncpg.exceptions.UniqueViolationError:
-        logger.debug("Series already registered.")
+        logger.debug("Series already registered.", exc_info=None)
 
     return JSONResponse({"ok": ""})
 
@@ -264,7 +281,7 @@ async def update_task(request) -> JSONResponse:
     if "info" in payload:
         if payload["info"]["uid_type"] == "study":
             study_uid = payload["info"]["uid"]
-            series_uid = payload["study"]["received_series_uid"][0]            
+            series_uid = payload["study"]["received_series_uid"][0]
             update_values["study_uid"] = study_uid
             update_values["series_uid"] = series_uid
         if payload["info"]["uid_type"] == "series":
@@ -339,7 +356,7 @@ async def post_task_event(request) -> JSONResponse:
         try:
             event_time = datetime.datetime.fromisoformat(payload.get("time"))  # type: ignore
         except:
-            pass        
+            pass
 
     # series_uid = payload.get("series_uid", "")
     try:
