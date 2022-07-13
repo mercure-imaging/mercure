@@ -303,10 +303,14 @@ def update_study_task(
     # Remember all received series descriptions, as needed to determine completion on received series
     if study.received_series and (isinstance(study.received_series, list)):
         study.received_series.append(series_description)
-        study.received_series.append(series_uid)
     else:
         study.received_series = [series_description]
-        study.received_series = [series_uid]
+
+    # Also remember the received SeriesUIDs for information purpose
+    if study.received_series_uid and (isinstance(study.received_series_uid, list)):
+        study.received_series_uid.append(series_uid)
+    else:
+        study.received_series_uid = [series_uid]
 
     # Safe the updated file back to disk
     try:
