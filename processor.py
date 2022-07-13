@@ -5,6 +5,7 @@ mercure' processor that executes processing modules on DICOM series filtered for
 """
 
 # Standard python includes
+import base64
 import shutil
 import signal
 import os
@@ -76,7 +77,28 @@ def search_folder(counter) -> bool:
                 status = job_info.get("Status")
                 if status == "dead":
                     logger.debug(f"{entry.name} is complete")
-                    # logger.debug(job_allocations)
+
+                    logs = []
+                    try:
+                        allocations = nomad_connection.job.get_allocations(id)
+                        alloc = allocations[-1]["ID"]
+
+                        logger.debug("========== logs ==========")
+                        for s in ("stdout", "stderr"):
+                            result = nomad_connection.client.stream_logs.stream(alloc, "process", s)
+                            if len(result):
+                                data = json.loads(result).get("Data")
+                                result = base64.b64decode(data).decode(encoding="utf-8")
+                                result = f"{s}:\n" + result
+                                logs.append(result)
+                                logger.info(result)
+                    except:
+                        logger.exception("Failed to retrieve process logs.")
+
+                    if not config.mercure.processing_logs.discard_logs:
+                        task_path = Path(entry.path) / "in" / "task.json"
+                        task = Task(**json.loads(task_path.read_text()))
+                        monitor.send_process_logs(task.id, task.process.module_name, "\n".join(logs))
                     complete.append(dict(path=Path(entry.path)))  # , info=job_info, allocations=job_allocations))
                 else:
                     logger.debug(f"Status: {status}")
@@ -124,7 +146,9 @@ def search_folder(counter) -> bool:
         (p_folder / "nomad_job.json").unlink()
         (p_folder / ".processing").unlink()
         p_folder.rmdir()
-        monitor.send_task_event(monitor.task_event.PROCESS_COMPLETE, task_typed.id, file_count_complete, "", "Processing complete")
+        monitor.send_task_event(
+            monitor.task_event.PROCESS_COMPLETE, task_typed.id, file_count_complete, "", "Processing complete"
+        )
         # If dispatching not needed, then trigger the completion notification (for Nomad)
         if not needs_dispatching:
             trigger_notification(task_typed, mercure_events.COMPLETION)
@@ -274,11 +298,12 @@ def main(args=sys.argv[1:]) -> None:
     monitor.send_event(monitor.m_events.SHUTDOWN, monitor.severity.INFO)
 
     # Finish all asyncio tasks that might be still pending
-    remaining_tasks = helper.asyncio.all_tasks(helper.loop) # type: ignore[attr-defined]
+    remaining_tasks = helper.asyncio.all_tasks(helper.loop)  # type: ignore[attr-defined]
     if remaining_tasks:
         helper.loop.run_until_complete(helper.asyncio.gather(*remaining_tasks))
 
     logger.info("Going down now")
+
 
 if __name__ == "__main__":
     main()
