@@ -78,7 +78,7 @@ async def find_tasks(request):
 
 @api_app.route("/task-process-logs", methods=["GET"])
 @requires(["authenticated"])
-async def find_tasks(request):
+async def task_process_logs(request):
     task_id = request.query_params.get("task_id", "")
     try:
         return JSONResponse(await monitor.task_process_logs(task_id))

@@ -236,7 +236,7 @@ def docker_runtime(task: Task, folder: str, file_count_begin: int) -> bool:
 
 
 @log_helpers.clear_task_decorator
-def process_series(folder) -> None:
+def process_series(folder: str) -> None:
     logger.info("----------------------------------------------------------------------------------")
     logger.info(f"Now processing {folder}")
     processing_success = False

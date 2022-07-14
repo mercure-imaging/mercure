@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+from typing import Union
 import asyncpg
 from sqlalchemy.dialects.postgresql import insert
 import uvicorn
@@ -139,18 +140,30 @@ async def processor_logs(request) -> JSONResponse:
     """Endpoint for receiving mercure system events."""
     payload = dict(await request.form())
 
-    task_id = payload.get("task_id")
-    module_name = payload.get("module_name")
-    time = datetime.datetime.now()
-    logs = payload.get("logs")
+    try:
+        task_id = payload["task_id"]
+    except IndexError:
+        return JSONResponse({"error": "no task_id supplied"}, 400)
+    try:
+        module_name = payload["module_name"]
+    except IndexError:
+        return JSONResponse({"error": "no module_name supplied"}, 400)
 
-    if (logs_folder := config.mercure.processing_logs.logs_file_store) and (logs_folder := Path(logs_folder)).exists():
+    time = datetime.datetime.now()
+    try:
+        logs = str(payload.get("logs", ""))
+    except:
+        return JSONResponse({"error": "unable to read logs"}, 400)
+
+    if (logs_folder_str := config.mercure.processing_logs.logs_file_store) and (
+        logs_path := Path(logs_folder_str)
+    ).exists():
         query = processor_logs_table.insert().values(task_id=task_id, module_name=module_name, time=time, logs=None)
         result = await database.execute(query)
 
-        logs_folder = logs_folder / task_id
-        logs_folder.mkdir(exist_ok=True)
-        logs_file = logs_folder / f"{module_name}.{str(result)}.txt"
+        logs_path = logs_path / task_id
+        logs_path.mkdir(exist_ok=True)
+        logs_file = logs_path / f"{module_name}.{str(result)}.txt"
         logs_file.write_text(logs, encoding="utf-8")
     else:
         query = processor_logs_table.insert().values(task_id=task_id, module_name=module_name, time=time, logs=logs)
