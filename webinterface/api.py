@@ -76,6 +76,16 @@ async def find_tasks(request):
         return JSONResponse({"error": e.status_code}, status_code=e.status_code)
 
 
+@api_app.route("/task-process-logs", methods=["GET"])
+@requires(["authenticated"])
+async def task_process_logs(request):
+    task_id = request.query_params.get("task_id", "")
+    try:
+        return JSONResponse(await monitor.task_process_logs(task_id))
+    except monitor.MonitorHTTPError as e:
+        return JSONResponse({"error": e.status_code}, status_code=e.status_code)
+
+
 @api_app.route("/get-task-info", methods=["GET"])
 @requires(["authenticated"])
 async def get_task_info(request):

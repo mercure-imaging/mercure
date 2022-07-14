@@ -299,6 +299,21 @@
         </div>
     </div> 
 
+    <div class="modal" id="process_logs">
+        <div class="modal-background"></div>
+        <div class="modal-card" style="width: 90%;">
+            <header class="modal-card-head">
+                <p class="modal-card-title">Processing logs</p>
+            </header>
+            <section class="modal-card-body">
+                <pre id="process_logs_display"></pre>
+            </section>
+            <footer class="modal-card-foot buttons is-centered">
+                <button class="button" type="button" id="closeprocesslogs" onclick="closeProcessLogs()">Close</button>
+            </footer>
+        </div>
+    </div> 
+
 </main>
 
 <script>
@@ -797,7 +812,7 @@
                     text: '<i class="far fa-question-circle"></i>',
                     titleAttr: 'Job information',
                     action: function ( e, dt, node, config ) {
-                        var jid = $('#jobs_archive').DataTable().rows( { selected: true } ).data()[0][4];
+                        var jid = $('#jobs_archive').DataTable().rows( { selected: true } ).data()[0].slice(-1)[0];
                         showArchiveJobInformation(jid);
                     }
                 },
@@ -805,10 +820,18 @@
                     text: '<i class="fas fa-list"></i>',
                     titleAttr: 'Audit trail',
                     action: function ( e, dt, node, config ) {
-                        var jid = $('#jobs_archive').DataTable().rows( { selected: true } ).data()[0][4];
+                        var jid = $('#jobs_archive').DataTable().rows( { selected: true } ).data()[0].slice(-1)[0];
                         showAuditTrail(jid);
                     }
-                }                
+                },
+                {
+                    text: '<i class="fas fa-file"></i>',
+                    titleAttr: 'Logs',
+                    action: function ( e, dt, node, config ) {
+                        var jid = $('#jobs_archive').DataTable().rows( { selected: true } ).data()[0].slice(-1)[0];
+                        showLogs(jid);
+                    }
+                }   
             ],
             dom: 'Bfrtip',
             "scrollY": "740px",
@@ -910,6 +933,38 @@
         }
     }
 
+
+    function showLogs(jobId)
+    {
+        if (jobId === "") {
+            return;
+        }
+        $("#process_logs").addClass("is-loading");   
+
+        $.ajax({
+            type: 'GET',
+            url: '/api/task-process-logs',
+            data: {'task_id': jobId},
+            dataType: 'json',
+            error: function () {
+                // $('#erroralert').show();
+            },
+            success: function (data) {
+                // alert(data[0].logs)
+                if (data && data.length > 0) {
+                    $("#process_logs").addClass("is-active");
+                    $("#process_logs_display").text(data[0].logs)
+                }
+                // var eventstable = $('#job-events-table').DataTable().clear();
+                // Object.keys(data).forEach(function (key) {
+                //     eventstable.row.add([ data[key]["task_id"].slice(0,8) || "", data[key]["time"], data[key]["event"], data[key]["sender"], data[key]["target"], data[key]["file_count"], data[key]["info"] ])
+                // })
+                // eventstable.draw();
+            },
+            timeout: 3000
+        });
+    }
+
     function showAuditTrail(jobId)
     {
         if (jobId === "") {
@@ -943,6 +998,10 @@
         $("#jobaudittrail").removeClass("is-active");
     }
 
+    function closeProcessLogs()
+    {
+        $("#process_logs").removeClass("is-active");
+    }
     function showJobInformation(jobId,category)
     {
         if ((jobId === "") || (category === "")) {

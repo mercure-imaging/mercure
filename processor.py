@@ -5,11 +5,13 @@ mercure' processor that executes processing modules on DICOM series filtered for
 """
 
 # Standard python includes
+import base64
 import shutil
 import signal
 import os
 import sys
 import json
+from typing import Dict
 import graphyte
 import daiquiri
 import nomad
@@ -29,7 +31,7 @@ from process.process_series import (
     push_input_task,
     push_input_images,
 )
-from common.types import Task
+from common.types import Task, TaskProcessing
 
 
 # Create local logger instance
@@ -53,7 +55,7 @@ def search_folder(counter) -> bool:
     global nomad_connection
     helper.g_log("events.run", 1)
 
-    tasks = {}
+    tasks: Dict[str, float] = {}
 
     complete = []
     for entry in os.scandir(config.mercure.processing_folder):
@@ -76,7 +78,29 @@ def search_folder(counter) -> bool:
                 status = job_info.get("Status")
                 if status == "dead":
                     logger.debug(f"{entry.name} is complete")
-                    # logger.debug(job_allocations)
+
+                    logs = []
+                    try:
+                        allocations = nomad_connection.job.get_allocations(id)
+                        alloc = allocations[-1]["ID"]
+
+                        logger.debug("========== logs ==========")
+                        for s in ("stdout", "stderr"):
+                            result = nomad_connection.client.stream_logs.stream(alloc, "process", s)
+                            if len(result):
+                                data = json.loads(result).get("Data")
+                                result = base64.b64decode(data).decode(encoding="utf-8")
+                                result = f"{s}:\n" + result
+                                logs.append(result)
+                                logger.info(result)
+                    except:
+                        logger.exception("Failed to retrieve process logs.")
+
+                    if not config.mercure.processing_logs.discard_logs:
+                        task_path = Path(entry.path) / "in" / "task.json"
+                        task = Task(**json.loads(task_path.read_text()))
+                        assert isinstance(task.process, TaskProcessing)
+                        monitor.send_process_logs(task.id, task.process.module_name, "\n".join(logs))
                     complete.append(dict(path=Path(entry.path)))  # , info=job_info, allocations=job_allocations))
                 else:
                     logger.debug(f"Status: {status}")
@@ -89,46 +113,46 @@ def search_folder(counter) -> bool:
 
         logger.debug(f"Complete task: {p_folder.name}")
 
-        with open(p_folder / "nomad_job.json", "r") as f:
-            job_info = json.load(f)
+        job_info = json.loads((p_folder / "nomad_job.json").read_text())
 
         # Move task.json over to the output directory if it wasn't moved by the processing module
         push_input_task(in_folder, out_folder)
 
         # Patch the nomad info into the task file.
-        task_json = out_folder / "task.json"
-        with task_json.open("r") as f:
-            task = json.load(f)
-            task_typed: Task = Task(**task)
-        with task_json.open("w") as f:
-            task = {**task, "nomad_info": job_info}
-            json.dump(task, f)
+        task_path = out_folder / "task.json"
+        task = Task(**json.loads(task_path.read_text()))
+
+        with task_path.open("w") as f:
+            task.nomad_info = job_info
+            json.dump(task.dict(), f)
 
         # Copy input images if configured in rule
-        if task_typed.process and task_typed.process.retain_input_images == "True":
-            push_input_images(task_typed.id, in_folder, out_folder)
+        if task.process and task.process.retain_input_images == "True":
+            push_input_images(task.id, in_folder, out_folder)
 
         # Remember the number of DCM files in the output folder (for logging purpose)
         file_count_complete = len(list(Path(out_folder).glob(mercure_names.DCMFILTER)))
 
         # If the only file is task.json, the processing failed
         if [p.name for p in out_folder.rglob("*")] == ["task.json"]:
-            logger.error("Processing failed", task_typed.id)
-            move_results(task_typed.id, str(p_folder), None, False, False)
-            trigger_notification(task_typed, mercure_events.ERROR)
+            logger.error("Processing failed", task.id)
+            move_results(task.id, str(p_folder), None, False, False)
+            trigger_notification(task, mercure_events.ERROR)
             continue
 
         needs_dispatching = True if task.get("dispatch") else False
-        move_results(task_typed.id, str(p_folder), None, True, needs_dispatching)
+        move_results(task.id, str(p_folder), None, True, needs_dispatching)
         shutil.rmtree(in_folder)
         (p_folder / "nomad_job.json").unlink()
         (p_folder / ".processing").unlink()
         p_folder.rmdir()
-        monitor.send_task_event(monitor.task_event.PROCESS_COMPLETE, task_typed.id, file_count_complete, "", "Processing complete")
+        monitor.send_task_event(
+            monitor.task_event.PROCESS_COMPLETE, task.id, file_count_complete, "", "Processing complete"
+        )
         # If dispatching not needed, then trigger the completion notification (for Nomad)
         if not needs_dispatching:
-            trigger_notification(task_typed, mercure_events.COMPLETION)
-            monitor.send_task_event(monitor.task_event.COMPLETE, task_typed.id, 0, "", "Task complete")
+            trigger_notification(task, mercure_events.COMPLETION)
+            monitor.send_task_event(monitor.task_event.COMPLETE, task.id, 0, "", "Task complete")
 
     # Check if processing has been suspended via the UI
     if processor_lockfile and processor_lockfile.exists():
@@ -153,14 +177,14 @@ def search_folder(counter) -> bool:
     # Only process one case at a time because the processing might take a while and
     # another instance might have processed the other entries already. So the folder
     # needs to be refreshed each time
-    task = sorted_tasks[0]
+    task_folder = sorted_tasks[0]
 
     try:
-        process_series(task)
+        process_series(task_folder)
         # Return true, so that the parent function will trigger another search of the folder
         return True
     except Exception:
-        for p in (Path(task) / "out" / "task.json", Path(task) / "in" / "task.json"):
+        for p in (Path(task_folder) / "out" / "task.json", Path(task_folder) / "in" / "task.json"):
             try:
                 task_id = json.load(open(p))["id"]
                 logger.error("Exception while processing", task_id)  # handle_error
@@ -274,11 +298,12 @@ def main(args=sys.argv[1:]) -> None:
     monitor.send_event(monitor.m_events.SHUTDOWN, monitor.severity.INFO)
 
     # Finish all asyncio tasks that might be still pending
-    remaining_tasks = helper.asyncio.all_tasks(helper.loop) # type: ignore[attr-defined]
+    remaining_tasks = helper.asyncio.all_tasks(helper.loop)  # type: ignore[attr-defined]
     if remaining_tasks:
         helper.loop.run_until_complete(helper.asyncio.gather(*remaining_tasks))
 
     logger.info("Going down now")
+
 
 if __name__ == "__main__":
     main()

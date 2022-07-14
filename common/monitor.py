@@ -185,10 +185,25 @@ def send_task_event(event: task_event, task_id, file_count, target, info) -> Non
         "info": info,
         "task_id": task_id,
         "timestamp": time.monotonic(),
-        "time": datetime.datetime.now()
+        "time": datetime.datetime.now(),
     }
     post("task-event", data=payload)
     # requests.post(bookkeeper_address + "/series-event", data=payload, timeout=1)
+
+
+def send_process_logs(task_id, module_name: str, logs: str) -> None:
+    logger.debug(f"Monitor (processor-logs): task_id={task_id}")
+    if not bookkeeper_address:
+        return
+
+    payload = {
+        "sender": sender_name,
+        "task_id": task_id,
+        "module_name": module_name,
+        "time": datetime.datetime.now(),
+        "logs": logs,
+    }
+    post("processor-logs", data=payload)
 
 
 async def get_task_events(task_id="") -> Any:
@@ -209,6 +224,10 @@ async def get_tests() -> Any:
 
 async def find_tasks(search_term="") -> Any:
     return await get("query/find_task", {"search_term": search_term})
+
+
+async def task_process_logs(task_id="") -> Any:
+    return await get("query/task_process_logs", {"task_id": task_id})
 
 
 async def get_task_info(task_id="") -> Any:

@@ -155,3 +155,13 @@ tests_table = sqlalchemy.Table(
     sqlalchemy.Column("task_id", sqlalchemy.String, nullable=True),
     sqlalchemy.Column("data", JSONB, nullable=True),
 )
+
+processor_logs_table = sqlalchemy.Table(
+    "processor_logs",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("task_id", sqlalchemy.String, sqlalchemy.ForeignKey("tasks.id"), nullable=True),
+    sqlalchemy.Column("module_name", sqlalchemy.String, nullable=True),
+    sqlalchemy.Column("logs", sqlalchemy.String, nullable=True),
+    sqlalchemy.Column("time", sqlalchemy.DateTime, nullable=True),
+)
