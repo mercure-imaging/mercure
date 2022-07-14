@@ -7,6 +7,7 @@ Helper functions and definitions for monitoring mercure's operations via the boo
 # Standard python includes
 import asyncio
 from json import JSONDecodeError
+import os
 import time
 from typing import Any, Dict, Optional
 from urllib.error import HTTPError
@@ -103,7 +104,10 @@ def configure(module, instance, address) -> None:
     global sender_name
     sender_name = module + "." + instance
     global bookkeeper_address
-    bookkeeper_address = "http://" + address
+    if addr := os.getenv("MERCURE_BOOKKEEPER_PATH"):
+        bookkeeper_address = "http://" + addr
+    else:
+        bookkeeper_address = "http://" + address
     global api_key
     set_api_key()
     global loop
