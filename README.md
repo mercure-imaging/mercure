@@ -42,7 +42,7 @@ are moved to either the `success` or `error` folder.
 The cleaner module runs periodically and checks
 * if new series arrived in the `discard` or `success` folder
 * if the move operation into these folder has finished
-* if the predefined clean-up delay has elapsed (typically 5 days)
+* if the predefined clean-up delay has elapsed (by default, 3 days)
 
 If these conditions are true, series in the `success` and `discard` folders are deleted.
 
