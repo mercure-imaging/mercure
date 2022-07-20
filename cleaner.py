@@ -16,7 +16,7 @@ import time
 from datetime import timedelta, datetime
 from datetime import time as _time
 from pathlib import Path
-from shutil import rmtree
+from shutil import rmtree, disk_usage
 import traceback
 import daiquiri
 import graphyte
@@ -66,18 +66,33 @@ def clean(args) -> None:
         )
         return
 
-    # TODO: Adaptively reduce the retention time if the disk space is running low
+    # need to adjust retention based on remaining disk space
+    usage_level = 0.9
+    (total, used, free) = disk_usage("/")
+
+    success_folder = config.mercure.success_folder
+    discard_folder = config.mercure.discard_folder
+    # could not get shutil.disk_usage(data_folder) to work, using another way:
+    data_folder_size = _dir_size(success_folder) + _dir_size(discard_folder)
+
+    bytes_to_clear = int(max(used - total * usage_level, 0))
+
+    if data_folder_size > bytes_to_clear:
+        clean_dirs(success_folder, discard_folder, bytes_to_clear)
 
     if _is_offpeak(
-        config.mercure.offpeak_start,
+        config.mercure.offpeak_start, 
         config.mercure.offpeak_end,
         datetime.now().time(),
     ):
-        success_folder = config.mercure.success_folder
-        discard_folder = config.mercure.discard_folder
         retention = timedelta(seconds=config.mercure.retention)
         clean_dir(success_folder, retention)
         clean_dir(discard_folder, retention)
+
+
+def _dir_size(path: str) -> int:
+    """Calculate dir and subdirs sizes"""
+    return sum(p.stat().st_size for p in Path(path).rglob('*'))
 
 
 def _is_offpeak(offpeak_start: str, offpeak_end: str, current_time: _time) -> bool:
@@ -93,6 +108,28 @@ def _is_offpeak(offpeak_start: str, offpeak_end: str, current_time: _time) -> bo
     # End time is after midnight
     return current_time >= start_time or current_time <= end_time
 
+def clean_dirs(success_folder, discard_folder, extra_bytes) -> None:
+    """
+    Cleans the oldest directories in success and discard folders if disk usage goes above particular level
+    """
+    candidates = [
+        (f, f.stat().st_mtime)
+        for f in Path(discard_folder).iterdir()
+        if f.is_dir()
+    ] + [
+        (f, f.stat().st_mtime)
+        for f in Path(success_folder).iterdir()
+        if f.is_dir()
+    ]
+    
+    oldest_first = sorted(candidates, key=lambda x: x[1])
+   
+    bytes_cleared = 0
+    for entry in oldest_first:
+        if bytes_cleared < extra_bytes:
+            bytes_cleared += _dir_size(str(entry[0]))
+            delete_folder(entry)
+
 
 def clean_dir(discard_folder, retention) -> None:
     """
@@ -104,8 +141,8 @@ def clean_dir(discard_folder, retention) -> None:
         for f in Path(discard_folder).iterdir()
         if f.is_dir() and retention < timedelta(seconds=(time.time() - f.stat().st_mtime))
     ]
-    oldest_first = sorted(candidates, key=lambda x: x[1], reverse=True)
-    for entry in oldest_first:
+    # oldest_first = sorted(candidates, key=lambda x: x[1], reverse=True)
+    for entry in candidates:
         delete_folder(entry)
 
 

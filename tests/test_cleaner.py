@@ -73,3 +73,43 @@ def test_cleaning_simple(fs: FakeFilesystem, mercure_config, mocked):
         frozen_time.tick(delta=timedelta(hours=24))
         cleaner.clean({})
         assert len(list(success_folder.glob("*"))) == 1
+
+
+def test_cleaning_disk(fs: FakeFilesystem, mercure_config):
+    """ """
+    config = mercure_config() 
+    free_disk_space_requested = 10_000
+    # need to set_disk_usage to get number of bytes that are currently used.
+    fs.set_disk_usage(100_000)
+    (total, used, free) = fs.get_disk_usage()
+    fs.set_disk_usage(free_disk_space_requested + used)
+    (total, used, free) = fs.get_disk_usage()
+    
+    success_folder = Path(config.success_folder)
+    discard_folder = Path(config.discard_folder)
+
+    assert free == free_disk_space_requested
+
+    with freeze_time("2020-01-01 00:00:00") as frozen_time:  # Pretend it's January 1st
+        
+        bytes_to_add = 200
+        counter = bytes_to_add
+        added_bytes = 0
+        folders = [success_folder, discard_folder]
+        while added_bytes + bytes_to_add * len(folders) < free:
+            for folder in folders:
+                dir_name = "series_" + str(counter)
+                fs.create_dir(folder / dir_name)
+                file_name = "file_" + str(counter)
+                frozen_time.tick(delta=timedelta(hours=1)) 
+                fs.create_file(folder / dir_name / file_name, st_size = bytes_to_add)
+                counter += bytes_to_add
+                added_bytes += bytes_to_add
+    
+        (total, used, free) = fs.get_disk_usage()
+        assert used >= total*0.9
+        cleaner.clean({})
+        (total, used, free) = fs.get_disk_usage()
+        assert used < total*0.9
+
+
