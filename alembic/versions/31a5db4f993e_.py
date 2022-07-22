@@ -1,4 +1,4 @@
-"""empty message
+"""tasks can be subtasks
 
 Revision ID: 31a5db4f993e
 Revises: 1c51b42f13d5

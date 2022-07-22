@@ -7,8 +7,7 @@ Definitions for using TypedDicts throughout mercure.
 # Standard python includes
 from typing import Any, Dict, List, Optional, Type, Union, cast
 from typing_extensions import Literal, TypedDict
-from pydantic import BaseModel, create_model_from_typeddict
-import daiquiri
+from pydantic import BaseModel
 import typing
 
 # TODO: Add description for the individual classes
@@ -132,6 +131,11 @@ class Rule(BaseModel, Compat):
     notification_trigger_error: Literal["True", "False"] = "True"
 
 
+class ProcessingLogsConfig(BaseModel):
+    discard_logs: bool = False
+    logs_file_store: Optional[str] = None
+
+
 class Config(BaseModel, Compat):
     appliance_name: str
     port: int
@@ -163,6 +167,7 @@ class Config(BaseModel, Compat):
     process_runner: Literal["docker", "nomad", ""] = ""
     bookkeeper_api_key: Optional[str]
     features: Dict[str, bool]
+    processing_logs: ProcessingLogsConfig = ProcessingLogsConfig()
 
 
 class TaskInfo(BaseModel, Compat):
@@ -203,6 +208,32 @@ class TaskProcessing(BaseModel, Compat):
     retain_input_images: Literal["False", "True"]
 
 
+# class PydanticFile(object):
+#     def __init__(self, klass, file_name):
+#         self.Klass = klass
+#         self.file_name = file_name
+
+#     def __enter__(self):
+#         self.file = open(self.file_name, "r+")
+#         self.dict_orig = json.load(self.file)
+#         self.file.seek(0)
+#         self.obj = self.Klass(**self.dict_orig)
+#         return self.obj
+
+#     def __exit__(self, type, value, traceback):
+#         new_dict = self.obj.dict()
+#         if new_dict != self.dict_orig:
+#             json.dump(new_dict, self.file)
+#         self.file.truncate()
+#         self.file.close()
+
+
+# class ModelHasFile(object):
+#     @classmethod
+#     def file_editor(cls, file_name):
+#         return PydanticFile(cls, file_name)
+
+
 class Task(BaseModel, Compat):
     info: TaskInfo
     id: str
@@ -215,9 +246,5 @@ class Task(BaseModel, Compat):
         extra = "forbid"
 
 
-class TaskHasStudy(BaseModel, Compat):
-    info: TaskInfo
-    id: str
-    dispatch: Union[TaskDispatch, EmptyDict] = cast(EmptyDict, {})
-    process: Union[Module, EmptyDict] = cast(EmptyDict, {})
+class TaskHasStudy(Task):
     study: TaskStudy

@@ -61,6 +61,7 @@ mercure_defaults = {
     "rules": {},
     "modules": {},
     "features": {"dummy_target": False},
+    "processing_logs": {"discard_logs": False},
 }
 
 mercure: Config

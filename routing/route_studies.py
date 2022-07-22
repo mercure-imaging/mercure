@@ -97,15 +97,21 @@ def is_study_complete(folder: str, pending_series: Dict[str, float]) -> bool:
     try:
         logger.debug(f"Checking completeness of study {folder}, with pending series: {pending_series}")
         # Read stored task file to determine completeness criteria
+
         with open(Path(folder) / mercure_names.TASKFILE, "r") as json_file:
             task: TaskHasStudy = TaskHasStudy(**json.load(json_file))
+
+        if task.study.get("complete_force", "False") == "True":
+            return True
+        if (Path(folder) / mercure_names.FORCE_COMPLETE).exists():
+            task.study.complete_force = "True"
+            with open(Path(folder) / mercure_names.TASKFILE, "w") as json_file:
+                json.dump(task.dict(), json_file)
+            return True
 
         study = task.study
 
         # Check if processing of the study has been enforced (e.g., via UI selection)
-        if study.get("complete_force", "False") == "True":
-            return True
-
         complete_trigger = study.complete_trigger
 
         if not complete_trigger:

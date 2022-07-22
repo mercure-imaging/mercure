@@ -15,6 +15,20 @@ job "mercure" {
         sidecar_service {}
       }
     }
+    service {
+      name = "bookkeeper"
+      port = "bookkeeper"
+      connect {
+        sidecar_service {}
+      }
+    }
+    service {
+      name = "receiver"
+      port = "dicom-receive"
+      connect {
+        sidecar_service {}
+      }
+    }
     volume "code" {
       type      = "host"
       source    = "mercure-code"
@@ -237,6 +251,10 @@ job "mercure" {
       volume_mount {
         volume      = "config"
         destination = "/opt/mercure/config"
+      }
+      volume_mount {
+        volume      = "code"
+        destination = "/opt/mercure/app"
       }
       volume_mount {
         volume      = "data"

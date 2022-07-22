@@ -187,6 +187,19 @@ async def show_jobs_routing(request):
     return JSONResponse(sorted_jobs)
 
 
+@queue_app.route("/jobs/studies/force-complete", methods=["POST"])
+@requires("authenticated", redirect="login")
+async def force_study_complete(request):
+    params = dict(await request.form())
+    job_id = params["id"]
+    job_path: Path = Path(config.mercure.studies_folder) / job_id
+    if not (job_path / mercure_names.TASKFILE).exists():
+        return JSONResponse({"error": "no such study"}, 404)
+
+    (job_path / mercure_names.FORCE_COMPLETE).touch()
+    return JSONResponse({"success": True})
+
+
 @queue_app.route("/jobs/studies", methods=["GET"])
 @requires("authenticated", redirect="login")
 async def show_jobs_studies(request):

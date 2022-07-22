@@ -8,6 +8,24 @@ job "mercure-ui" {
   }
 
   group "core" {
+    service {
+      name = "ui"
+      connect {
+        sidecar_service {
+          proxy {
+            upstreams {
+              destination_name = "bookkeeper"
+              local_bind_port  = 8080
+            }
+            upstreams {
+              destination_name = "receiver"
+              local_bind_port  = 11112
+            }
+          }
+        }
+      }
+    }
+
     network {
       mode = "bridge"
       port "http" {
@@ -33,6 +51,7 @@ job "mercure-ui" {
         MERCURE_ENV = "${NOMAD_META_environment}"
         MERCURE_RUNNER = "${NOMAD_META_runner}"
         MERCURE_CONFIG_FOLDER = "/opt/mercure/config"
+        MERCURE_BOOKKEEPER_PATH = "${NOMAD_UPSTREAM_ADDR_bookkeeper}"
       }
       volume_mount {
         volume      = "code"

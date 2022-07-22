@@ -262,6 +262,10 @@ body {
   background-color: #0a0a0a;
 }
 
+.navbar.is-black .navbar-brand>a.navbar-item:focus {
+  background-color: #0a0a0a;
+}
+
 .greenlink {
   color: hsl(141, 71%, 48%);
 }
@@ -353,4 +357,3 @@ table.dataTable tbody tr.selected th, table.dataTable tbody tr.selected td {
 #job-events-table_wrapper .table th {
   padding: 3px 11px !important;
 }
-

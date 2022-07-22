@@ -24,6 +24,7 @@ class mercure_names:
     SENDLOG = "sent.txt"
     DCM = ".dcm"
     DCMFILTER = "*.dcm"
+    FORCE_COMPLETE = ".force-complete"
 
 
 class mercure_sections:
