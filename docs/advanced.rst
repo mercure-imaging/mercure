@@ -55,6 +55,7 @@ retry_delay                 Delay before retrying to dispatch series after failu
 retry_max                   Maximum number of retries when dispatching
 cleaner_scan_interval       Interval how often the cleaner checks for files to be deleted (sec)
 retention                   Duration how long files will be kept before deletion (sec)
+emergency_clearing_level    The ratio of used to total disk space. When above emergency clearing starts.
 offpeak_start               Start of the off-peak work hours (24h format)
 offpeak_end                 End of the off-peak work hours (24h format)  
 targets                     Configured targets - should be edited via web interface

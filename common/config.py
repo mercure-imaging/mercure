@@ -46,6 +46,7 @@ mercure_defaults = {
     "dispatcher_scan_interval": 1,  # in seconds
     "cleaner_scan_interval": 60,  # in seconds
     "retention": 259200,  # in seconds (3 days)
+    "emergency_clearing_level": 0.9, # ratio of used disk space to the total disk space
     "retry_delay": 900,  # in seconds (15 min)
     "retry_max": 5,
     "series_complete_trigger": 60,  # in seconds

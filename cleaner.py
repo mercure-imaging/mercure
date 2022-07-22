@@ -67,18 +67,31 @@ def clean(args) -> None:
         return
 
     # need to adjust retention based on remaining disk space
-    usage_level = 0.9
-    (total, used, free) = disk_usage("/")
-
+    emergency_clearing_level = config.mercure.emergency_clearing_level
+    
     success_folder = config.mercure.success_folder
     discard_folder = config.mercure.discard_folder
-    # could not get shutil.disk_usage(data_folder) to work, using another way:
-    data_folder_size = _dir_size(success_folder) + _dir_size(discard_folder)
 
-    bytes_to_clear = int(max(used - total * usage_level, 0))
-
-    if data_folder_size > bytes_to_clear:
-        clean_dirs(success_folder, discard_folder, bytes_to_clear)
+    # check to see if both folders an the same disk and partition:
+    success_folder_partition = os.stat(success_folder).st_dev
+    discard_folder_partition = os.stat(discard_folder).st_dev
+    
+    if success_folder_partition == discard_folder_partition:
+        folders_to_clear = [success_folder, discard_folder]
+        (total, used, free) = disk_usage(success_folder)
+        bytes_to_clear = int(max(used - total * emergency_clearing_level, 0))
+        if bytes_to_clear > 0:
+            clean_dirs(folders_to_clear, bytes_to_clear)
+    else:
+        folders = [success_folder, discard_folder]
+        bytes_to_clear = 0
+        for folder in folders:
+            (total, used, free) = disk_usage(folder)
+            if int(max(used - total * emergency_clearing_level, 0)) > 0:
+                bytes_to_clear = int(max(used - total * emergency_clearing_level, 0))
+                if bytes_to_clear > 0:
+                    clean_dirs([folder], bytes_to_clear)
+    
 
     if _is_offpeak(
         config.mercure.offpeak_start, 
@@ -108,27 +121,29 @@ def _is_offpeak(offpeak_start: str, offpeak_end: str, current_time: _time) -> bo
     # End time is after midnight
     return current_time >= start_time or current_time <= end_time
 
-def clean_dirs(success_folder, discard_folder, extra_bytes) -> None:
+
+def clean_dirs(folders, bytes_to_clear) -> None:
     """
     Cleans the oldest directories in success and discard folders if disk usage goes above particular level
     """
-    candidates = [
+    candidates = []
+
+    for folder in folders:
+        candidates += [
         (f, f.stat().st_mtime)
-        for f in Path(discard_folder).iterdir()
+        for f in Path(folder).iterdir()
         if f.is_dir()
-    ] + [
-        (f, f.stat().st_mtime)
-        for f in Path(success_folder).iterdir()
-        if f.is_dir()
-    ]
-    
+    ] 
+
     oldest_first = sorted(candidates, key=lambda x: x[1])
-   
+
     bytes_cleared = 0
-    for entry in oldest_first:
-        if bytes_cleared < extra_bytes:
-            bytes_cleared += _dir_size(str(entry[0]))
-            delete_folder(entry)
+    counter = 0
+    while bytes_cleared < bytes_to_clear:
+        entry = oldest_first[counter]
+        bytes_cleared += _dir_size(str(entry[0]))
+        delete_folder(entry)
+        counter += 1
 
 
 def clean_dir(discard_folder, retention) -> None:
