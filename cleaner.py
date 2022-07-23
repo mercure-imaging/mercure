@@ -87,10 +87,9 @@ def clean(args) -> None:
         bytes_to_clear = 0
         for folder in folders:
             (total, used, free) = disk_usage(folder)
-            if int(max(used - total * emergency_clearing_level, 0)) > 0:
-                bytes_to_clear = int(max(used - total * emergency_clearing_level, 0))
-                if bytes_to_clear > 0:
-                    clean_dirs([folder], bytes_to_clear)
+            bytes_to_clear = int(max(used - total * emergency_clearing_level, 0))
+            if bytes_to_clear > 0:
+                clean_dirs([folder], bytes_to_clear)
     
 
     if _is_offpeak(
