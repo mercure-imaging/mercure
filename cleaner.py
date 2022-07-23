@@ -75,7 +75,7 @@ def clean(args) -> None:
     # check to see if both folders an the same disk and partition:
     success_folder_partition = os.stat(success_folder).st_dev
     discard_folder_partition = os.stat(discard_folder).st_dev
-    
+
     if success_folder_partition == discard_folder_partition:
         folders_to_clear = [success_folder, discard_folder]
         (total, used, free) = disk_usage(success_folder)
@@ -156,7 +156,7 @@ def clean_dir(discard_folder, retention) -> None:
         for f in Path(discard_folder).iterdir()
         if f.is_dir() and retention < timedelta(seconds=(time.time() - f.stat().st_mtime))
     ]
-    # oldest_first = sorted(candidates, key=lambda x: x[1], reverse=True)
+   
     for entry in candidates:
         delete_folder(entry)
 
