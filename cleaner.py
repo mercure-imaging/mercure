@@ -156,7 +156,9 @@ def clean_dir(folder, retention) -> None:
         if f.is_dir() and retention < timedelta(seconds=(time.time() - f.stat().st_mtime))
     ]
    
-    for entry in candidates:
+    oldest_first = sorted(candidates, key=lambda x: x[1])
+
+    for entry in oldest_first:
         delete_folder(entry)
 
 
