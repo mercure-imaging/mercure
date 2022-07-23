@@ -88,10 +88,9 @@ def clean(args) -> None:
         bytes_to_clear = 0
         for folder in folders:
             (total, used, free) = disk_usage(folder)
-            if int(max(used - total * emergency_clean_trigger, 0)) > 0:
-                bytes_to_clear = int(max(used - total * emergency_clean_trigger, 0))
-                if bytes_to_clear > 0:
-                    clean_dirs([folder], bytes_to_clear)
+            bytes_to_clear = int(max(used - total * emergency_clean_trigger, 0))
+            if bytes_to_clear > 0:
+                clean_dirs([folder], bytes_to_clear)
     
     # Regular cleaning procedure
     if _is_offpeak(
@@ -156,7 +155,7 @@ def clean_dir(folder, retention) -> None:
         for f in Path(folder).iterdir()
         if f.is_dir() and retention < timedelta(seconds=(time.time() - f.stat().st_mtime))
     ]
-    # oldest_first = sorted(candidates, key=lambda x: x[1], reverse=True)
+   
     for entry in candidates:
         delete_folder(entry)
 
