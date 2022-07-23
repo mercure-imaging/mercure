@@ -66,20 +66,21 @@ def clean(args) -> None:
         )
         return
 
-    # need to adjust retention based on remaining disk space
-    emergency_clearing_level = config.mercure.emergency_clearing_level
+    # Emergency cleaning: Check if server is running out of disk space. If so, clean images right away
     
+    # Get the percentage of disk usage that should trigger the emergency cleaning
+    emergency_clean_trigger: float = config.mercure.emergency_clean_percentage / 100.
+
+    # Check if the success and discard folder are stored on the same volume
     success_folder = config.mercure.success_folder
     discard_folder = config.mercure.discard_folder
-
-    # check to see if both folders an the same disk and partition:
     success_folder_partition = os.stat(success_folder).st_dev
     discard_folder_partition = os.stat(discard_folder).st_dev
-    
+
     if success_folder_partition == discard_folder_partition:
         folders_to_clear = [success_folder, discard_folder]
         (total, used, free) = disk_usage(success_folder)
-        bytes_to_clear = int(max(used - total * emergency_clearing_level, 0))
+        bytes_to_clear = int(max(used - total * emergency_clean_trigger, 0))
         if bytes_to_clear > 0:
             clean_dirs(folders_to_clear, bytes_to_clear)
     else:
@@ -87,12 +88,12 @@ def clean(args) -> None:
         bytes_to_clear = 0
         for folder in folders:
             (total, used, free) = disk_usage(folder)
-            if int(max(used - total * emergency_clearing_level, 0)) > 0:
-                bytes_to_clear = int(max(used - total * emergency_clearing_level, 0))
+            if int(max(used - total * emergency_clean_trigger, 0)) > 0:
+                bytes_to_clear = int(max(used - total * emergency_clean_trigger, 0))
                 if bytes_to_clear > 0:
                     clean_dirs([folder], bytes_to_clear)
     
-
+    # Regular cleaning procedure
     if _is_offpeak(
         config.mercure.offpeak_start, 
         config.mercure.offpeak_end,
@@ -146,14 +147,13 @@ def clean_dirs(folders, bytes_to_clear) -> None:
         counter += 1
 
 
-def clean_dir(discard_folder, retention) -> None:
+def clean_dir(folder, retention) -> None:
     """
-    Cleans the discard folder if it is older than the retention time, starting
-    from oldest first.
+    Cleans items from the given folder that have exceeded the retention time, starting with the oldest items
     """
     candidates = [
         (f, f.stat().st_mtime)
-        for f in Path(discard_folder).iterdir()
+        for f in Path(folder).iterdir()
         if f.is_dir() and retention < timedelta(seconds=(time.time() - f.stat().st_mtime))
     ]
     # oldest_first = sorted(candidates, key=lambda x: x[1], reverse=True)

@@ -22,9 +22,9 @@
     "retry_max"                  :        5,
     "cleaner_scan_interval"      :       60,
     "retention"                  :   259200,
-    "emergency_clearing_level"   :      0.9,
     "offpeak_start"              :  "22:00",
     "offpeak_end"                :  "06:00",
+    "emergency_clean_percentage" :       90,
     "targets": {
     },
     "rules": {
