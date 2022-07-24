@@ -78,7 +78,7 @@ def test_cleaning_simple(fs: FakeFilesystem, mercure_config, mocked):
 def test_emergency_cleaning_same_disk(fs: FakeFilesystem, mercure_config):
     """ """
     config = mercure_config() 
-    emergency_clearing_level = config.emergency_clearing_level
+    emergency_clearing_level: float = config.emergency_clean_percentage / 100.
     
     # need to set_disk_usage to get number of bytes that are currently used.
     free_disk_space_requested = 10_000
@@ -89,7 +89,7 @@ def test_emergency_cleaning_same_disk(fs: FakeFilesystem, mercure_config):
     
     success_folder = Path(config.success_folder)
     discard_folder = Path(config.discard_folder)
-
+    
     assert free == free_disk_space_requested
 
     with freeze_time("2020-01-01 00:00:00") as frozen_time:  # Pretend it's January 1st
@@ -119,7 +119,7 @@ def test_emergency_cleaning_different_disks(fs: FakeFilesystem, mercure_config):
     """ """
     config = mercure_config() 
 
-    emergency_clearing_level = config.emergency_clearing_level
+    emergency_clearing_level: float = config.emergency_clean_percentage / 100.
 
     success_folder = Path(config.success_folder)
     discard_folder = Path(config.discard_folder)

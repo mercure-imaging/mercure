@@ -77,16 +77,20 @@ def clean(args) -> None:
     success_folder_partition = os.stat(success_folder).st_dev
     discard_folder_partition = os.stat(discard_folder).st_dev
 
+    # If the success and discard folders are on the same volume, then we need to combine 
+    # them and sort by time, then delete the oldest folders until free disk space is less 
+    # than certain size. 
+    # If the folders are on different volumes, then we need to go through clearning 
+    # prodecure separately for each of the volumes.
+    folders_to_clear = [success_folder, discard_folder]
     if success_folder_partition == discard_folder_partition:
-        folders_to_clear = [success_folder, discard_folder]
         (total, used, free) = disk_usage(success_folder)
         bytes_to_clear = int(max(used - total * emergency_clean_trigger, 0))
         if bytes_to_clear > 0:
             clean_dirs(folders_to_clear, bytes_to_clear)
     else:
-        folders = [success_folder, discard_folder]
         bytes_to_clear = 0
-        for folder in folders:
+        for folder in folders_to_clear:
             (total, used, free) = disk_usage(folder)
             bytes_to_clear = int(max(used - total * emergency_clean_trigger, 0))
             if bytes_to_clear > 0:
@@ -139,7 +143,7 @@ def clean_dirs(folders, bytes_to_clear) -> None:
 
     bytes_cleared = 0
     counter = 0
-    while bytes_cleared < bytes_to_clear:
+    while counter < len(oldest_first) and bytes_cleared < bytes_to_clear:
         entry = oldest_first[counter]
         bytes_cleared += _dir_size(str(entry[0]))
         delete_folder(entry)
