@@ -16,7 +16,7 @@ import time
 from datetime import timedelta, datetime
 from datetime import time as _time
 from pathlib import Path
-from shutil import rmtree
+from shutil import rmtree, disk_usage
 import traceback
 import daiquiri
 import graphyte
@@ -66,15 +66,53 @@ def clean(args) -> None:
         )
         return
 
-    # TODO: Adaptively reduce the retention time if the disk space is running low
+    ## Emergency cleaning procedure: Check if server is running out of disk space. If so, clean images right away
 
+    # Get the percentage of disk usage that should trigger the emergency cleaning
+    emergency_clean_trigger: float = config.mercure.emergency_clean_percentage / 100.0
+
+    # Check if the success and discard folder are stored on the same volume
+    success_folder = config.mercure.success_folder
+    discard_folder = config.mercure.discard_folder
+    success_folder_partition = os.stat(success_folder).st_dev
+    discard_folder_partition = os.stat(discard_folder).st_dev
+
+    # For emergency cleaning need to take into account if success and discard
+    # folders are on the same volume or not.
+    emergency_retention = timedelta(0)
+    folders_to_clear = [success_folder, discard_folder]
+    if success_folder_partition == discard_folder_partition:
+        (total, used, _) = disk_usage(success_folder)
+        bytes_to_clear = int(max(used - total * emergency_clean_trigger, 0))
+        if bytes_to_clear > 0:
+            for folder in folders_to_clear:
+                # Need to delete all scan data in the both folders to urgently clean up the space.
+                clean_dir(folder, emergency_retention)
+            monitor.send_event(
+                monitor.m_events.PROCESSING,
+                monitor.severity.WARNING,
+                f"Disk is almost full. Emergency cleaning of the {success_folder} and {discard_folder} folders. Consider adjusting retention period.",
+            )
+    else:
+        bytes_to_clear = 0
+        for folder in folders_to_clear:
+            (total, used, _) = disk_usage(folder)
+            bytes_to_clear = int(max(used - total * emergency_clean_trigger, 0))
+            if bytes_to_clear > 0:
+                # Need to delete all scan data in the folder to urgently clean up the space.
+                clean_dir(folder, emergency_retention)
+                monitor.send_event(
+                    monitor.m_events.PROCESSING,
+                    monitor.severity.WARNING,
+                    f"Disk is almost full. Emergency cleaning of the {folder} folder. Consider adjusting retention period.",
+                )
+
+    ## Regular cleaning procedure
     if _is_offpeak(
         config.mercure.offpeak_start,
         config.mercure.offpeak_end,
         datetime.now().time(),
     ):
-        success_folder = config.mercure.success_folder
-        discard_folder = config.mercure.discard_folder
         retention = timedelta(seconds=config.mercure.retention)
         clean_dir(success_folder, retention)
         clean_dir(discard_folder, retention)
@@ -85,7 +123,9 @@ def _is_offpeak(offpeak_start: str, offpeak_end: str, current_time: _time) -> bo
         start_time = datetime.strptime(offpeak_start, "%H:%M").time()
         end_time = datetime.strptime(offpeak_end, "%H:%M").time()
     except Exception as e:
-        logger.error(f"Unable to parse offpeak time: {offpeak_start}, {offpeak_end}", None)  # handle_error
+        logger.error(
+            f"Unable to parse offpeak time: {offpeak_start}, {offpeak_end}", None
+        )  # handle_error
         return True
 
     if start_time < end_time:
@@ -94,18 +134,18 @@ def _is_offpeak(offpeak_start: str, offpeak_end: str, current_time: _time) -> bo
     return current_time >= start_time or current_time <= end_time
 
 
-def clean_dir(discard_folder, retention) -> None:
+def clean_dir(folder, retention) -> None:
     """
-    Cleans the discard folder if it is older than the retention time, starting
-    from oldest first.
+    Cleans items from the given folder that have exceeded the retention time, starting with the oldest items
     """
     candidates = [
         (f, f.stat().st_mtime)
-        for f in Path(discard_folder).iterdir()
-        if f.is_dir() and retention < timedelta(seconds=(time.time() - f.stat().st_mtime))
+        for f in Path(folder).iterdir()
+        if f.is_dir()
+        and retention < timedelta(seconds=(time.time() - f.stat().st_mtime))
     ]
-    oldest_first = sorted(candidates, key=lambda x: x[1], reverse=True)
-    for entry in oldest_first:
+
+    for entry in candidates:
         delete_folder(entry)
 
 
@@ -116,10 +156,14 @@ def delete_folder(entry) -> None:
     try:
         rmtree(delete_path)
         logger.info(f"Deleted folder {delete_path} from {series_uid}")
-        monitor.send_task_event(task_event.CLEAN, Path(delete_path).stem, 0, delete_path, "Deleted folder")
+        monitor.send_task_event(
+            task_event.CLEAN, Path(delete_path).stem, 0, delete_path, "Deleted folder"
+        )
     except Exception as e:
         logger.error(
-            f"Unable to delete folder {delete_path}", Path(delete_path).stem, target=delete_path
+            f"Unable to delete folder {delete_path}",
+            Path(delete_path).stem,
+            target=delete_path,
         )  # handle_error
 
 
@@ -175,7 +219,9 @@ def main(args=sys.argv[1:]) -> None:
     logger.info(sys.version)
 
     monitor.configure("cleaner", instance_name, config.mercure.bookkeeper)
-    monitor.send_event(monitor.m_events.BOOT, monitor.severity.INFO, f"PID = {os.getpid()}")
+    monitor.send_event(
+        monitor.m_events.BOOT, monitor.severity.INFO, f"PID = {os.getpid()}"
+    )
 
     if len(config.mercure.graphite_ip) > 0:
         logger.info(f"Sending events to graphite server: {config.mercure.graphite_ip}")
@@ -187,7 +233,9 @@ def main(args=sys.argv[1:]) -> None:
         )
 
     global main_loop
-    main_loop = helper.RepeatedTimer(config.mercure.cleaner_scan_interval, clean, exit_cleaner, {})
+    main_loop = helper.RepeatedTimer(
+        config.mercure.cleaner_scan_interval, clean, exit_cleaner, {}
+    )
     main_loop.start()
 
     helper.g_log("events.boot", 1)
@@ -199,11 +247,12 @@ def main(args=sys.argv[1:]) -> None:
     monitor.send_event(monitor.m_events.SHUTDOWN, monitor.severity.INFO)
 
     # Finish all asyncio tasks that might be still pending
-    remaining_tasks = helper.asyncio.all_tasks(helper.loop) # type: ignore[attr-defined]
+    remaining_tasks = helper.asyncio.all_tasks(helper.loop)  # type: ignore[attr-defined]
     if remaining_tasks:
         helper.loop.run_until_complete(helper.asyncio.gather(*remaining_tasks))
 
     logger.info("Going down now")
+
 
 if __name__ == "__main__":
     main()

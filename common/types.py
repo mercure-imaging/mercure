@@ -151,6 +151,7 @@ class Config(BaseModel, Compat):
     dispatcher_scan_interval: int  # in seconds
     cleaner_scan_interval: int  # in seconds
     retention: int  # in seconds (3 days)
+    emergency_clean_percentage: int  # in % of disk space
     retry_delay: int  # in seconds (15 min)
     retry_max: int
     series_complete_trigger: int  # in seconds

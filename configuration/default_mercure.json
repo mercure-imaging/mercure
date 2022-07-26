@@ -24,6 +24,7 @@
     "retention"                  :   259200,
     "offpeak_start"              :  "22:00",
     "offpeak_end"                :  "06:00",
+    "emergency_clean_percentage" :       90,
     "targets": {
     },
     "rules": {
