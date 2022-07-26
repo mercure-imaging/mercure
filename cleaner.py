@@ -66,7 +66,7 @@ def clean(args) -> None:
         )
         return
 
-    # Emergency cleaning: Check if server is running out of disk space. If so, clean images right away
+    ## Emergency cleaning procedure: Check if server is running out of disk space. If so, clean images right away
 
     # Get the percentage of disk usage that should trigger the emergency cleaning
     emergency_clean_trigger: float = config.mercure.emergency_clean_percentage / 100.0
@@ -79,11 +79,10 @@ def clean(args) -> None:
 
     # For emergency cleaning need to take into account if success and discard
     # folders are on the same volume or not.
-    emergency_clean = False
     emergency_retention = timedelta(0)
     folders_to_clear = [success_folder, discard_folder]
     if success_folder_partition == discard_folder_partition:
-        (total, used, free) = disk_usage(success_folder)
+        (total, used, _) = disk_usage(success_folder)
         bytes_to_clear = int(max(used - total * emergency_clean_trigger, 0))
         if bytes_to_clear > 0:
             for folder in folders_to_clear:
@@ -97,7 +96,7 @@ def clean(args) -> None:
     else:
         bytes_to_clear = 0
         for folder in folders_to_clear:
-            (total, used, free) = disk_usage(folder)
+            (total, used, _) = disk_usage(folder)
             bytes_to_clear = int(max(used - total * emergency_clean_trigger, 0))
             if bytes_to_clear > 0:
                 # Need to delete all scan data in the folder to urgently clean up the space.
@@ -108,7 +107,7 @@ def clean(args) -> None:
                     f"Disk is almost full. Emergency cleaning of the {folder} folder. Consider adjusting retention period.",
                 )
 
-    # Regular cleaning procedure
+    ## Regular cleaning procedure
     if _is_offpeak(
         config.mercure.offpeak_start,
         config.mercure.offpeak_end,
