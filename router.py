@@ -181,15 +181,18 @@ def main(args=sys.argv[1:]) -> None:
     main_loop = helper.AsyncTimer(config.mercure.router_scan_interval, run_router)
 
     helper.g_log("events.boot", 1)
-    main_loop.run_until_cancelled(helper.loop)
 
-    # Process will exit here once the asyncio loop has been stopped
-    monitor.send_event(monitor.m_events.SHUTDOWN, monitor.severity.INFO)
-
-    # Finish all asyncio tasks that might be still pending
-    remaining_tasks = helper.asyncio.all_tasks(helper.loop)  # type: ignore[attr-defined]
-    if remaining_tasks:
-        helper.loop.run_until_complete(helper.asyncio.gather(*remaining_tasks))
+    try:
+        main_loop.run_until_complete(helper.loop)
+        # Process will exit here once the asyncio loop has been stopped
+        monitor.send_event(monitor.m_events.SHUTDOWN, monitor.severity.INFO)
+    except Exception as e:
+        monitor.send_event(monitor.m_events.SHUTDOWN, monitor.severity.ERROR, str(e))
+    finally:
+        # Finish all asyncio tasks that might be still pending
+        remaining_tasks = helper.asyncio.all_tasks(helper.loop)  # type: ignore[attr-defined]
+        if remaining_tasks:
+            helper.loop.run_until_complete(helper.asyncio.gather(*remaining_tasks))
 
     logger.info("Going down now")
 

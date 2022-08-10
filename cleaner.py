@@ -18,14 +18,11 @@ from datetime import timedelta, datetime
 from datetime import time as _time
 from pathlib import Path
 from shutil import rmtree, disk_usage
-import traceback
-import daiquiri
 import graphyte
 import hupper
 
 # App-specific includes
 import common.config as config
-import common.log_helpers as log_helpers
 
 import common.helper as helper
 import common.monitor as monitor
@@ -233,18 +230,21 @@ def main(args=sys.argv[1:]) -> None:
 
     helper.g_log("events.boot", 1)
 
-    # Start the asyncio event loop for asynchronous function calls
-    main_loop.run_until_cancelled(helper.loop)
+    try:
+        # Start the asyncio event loop for asynchronous function calls
+        main_loop.run_until_complete(helper.loop)
+        # Process will exit here once the asyncio loop has been stopped
+        monitor.send_event(monitor.m_events.SHUTDOWN, monitor.severity.INFO)
+    except Exception as e:
+        # Process will exit here once the asyncio loop has been stopped
+        monitor.send_event(monitor.m_events.SHUTDOWN, monitor.severity.ERROR, str(e))
+    finally:
+        # Finish all asyncio tasks that might be still pending
+        remaining_tasks = helper.asyncio.all_tasks(helper.loop)  # type: ignore[attr-defined]
+        if remaining_tasks:
+            helper.loop.run_until_complete(helper.asyncio.gather(*remaining_tasks))
 
-    # Process will exit here once the asyncio loop has been stopped
-    monitor.send_event(monitor.m_events.SHUTDOWN, monitor.severity.INFO)
-
-    # Finish all asyncio tasks that might be still pending
-    remaining_tasks = helper.asyncio.all_tasks(helper.loop)  # type: ignore[attr-defined]
-    if remaining_tasks:
-        helper.loop.run_until_complete(helper.asyncio.gather(*remaining_tasks))
-
-    logger.info("Going down now")
+        logger.info("Going down now")
 
 
 if __name__ == "__main__":

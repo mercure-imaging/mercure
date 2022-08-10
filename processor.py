@@ -234,7 +234,7 @@ async def terminate_process(signalNumber, loop) -> None:
     monitor.send_event(monitor.m_events.SHUTDOWN_REQUEST, monitor.severity.INFO)
     # Note: processing_loop can be read here because it has been declared as global variable
     if "processing_loop" in globals() and processing_loop.is_running:
-        await processing_loop.stop()
+        processing_loop.stop()
     helper.trigger_terminate()
 
 
@@ -294,16 +294,17 @@ def main(args=sys.argv[1:]) -> None:
 
     helper.g_log("events.boot", 1)
 
-    processing_loop.run_until_cancelled(helper.loop)
-
-    # # Process will exit here once the asyncio loop has been stopped
-    monitor.send_event(monitor.m_events.SHUTDOWN, monitor.severity.INFO)
-
-    # Finish all asyncio tasks that might be still pending
-    remaining_tasks = helper.asyncio.all_tasks(helper.loop)  # type: ignore[attr-defined]
-    if remaining_tasks:
-        helper.loop.run_until_complete(helper.asyncio.gather(*remaining_tasks))
-    logger.info("Going down now")
+    try:
+        processing_loop.run_until_complete(helper.loop)
+        # # Process will exit here once the asyncio loop has been stopped
+        monitor.send_event(monitor.m_events.SHUTDOWN, monitor.severity.INFO)
+    except Exception as e:
+        monitor.send_event(monitor.m_events.SHUTDOWN, monitor.severity.ERROR, str(e))
+    finally:  # Finish all asyncio tasks that might be still pending
+        remaining_tasks = helper.asyncio.all_tasks(helper.loop)  # type: ignore[attr-defined]
+        if remaining_tasks:
+            helper.loop.run_until_complete(helper.asyncio.gather(*remaining_tasks))
+        logger.info("Going down now")
 
 
 if __name__ == "__main__":

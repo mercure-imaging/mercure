@@ -52,9 +52,8 @@ def g_log(*args, **kwargs) -> None:
 
 
 class AsyncTimer(object):
-    def __init__(self, interval: int, func, exit_func=None):
+    def __init__(self, interval: int, func):
         self.func = func
-        self.exit_func = exit_func
         self.time = interval
         self.is_running = False
         self._task: Optional[asyncio.Task] = None
@@ -65,35 +64,27 @@ class AsyncTimer(object):
             # Start task to call func periodically:
             self._task = asyncio.ensure_future(self._run())
 
-    async def stop(self) -> None:
-        if self.is_running:
-            self.is_running = False
-            # Stop task and await it stopped:
-            assert self._task is not None
-            self._task.cancel()
-            with suppress(asyncio.CancelledError):
-                await self._task
-
-            if self.exit_func is not None:
-                res = self.exit_func()
-                if inspect.isawaitable(res):
-                    await res
+    def stop(self) -> None:
+        """Signal to stop after the current"""
+        self.is_running = False
 
     async def _run(self) -> None:
         global terminate
-        while True:
+        while self.is_running:
             await asyncio.sleep(self.time)
             if terminate:
-                await self.stop()
-                return
-            res = self.func()
-            if inspect.isawaitable(res):
+                self.stop()
+
+            if not self.is_running:
+                break
+
+            if inspect.isawaitable(res := self.func()):
                 await res
 
-    def run_until_cancelled(self, loop) -> None:
+    def run_until_complete(self, loop=None) -> None:
         self.start()
-        with suppress(asyncio.CancelledError):
-            loop.run_until_complete(self._task)
+        loop = loop or asyncio.get_event_loop()
+        loop.run_until_complete(self._task)
 
 
 class RepeatedTimer(object):
