@@ -5,6 +5,7 @@ The dispatcher service of mercure that executes the DICOM transfer to the differ
 """
 
 # Standard python includes
+import asyncio
 import logging
 import os
 import signal
@@ -26,14 +27,14 @@ from common.constants import mercure_defs
 
 # Create local logger instance
 logger = config.get_logger()
-main_loop = None  # type: helper.RepeatedTimer # type: ignore
+main_loop = None  # type: helper.AsyncTimer # type: ignore
 
 
 dispatcher_lockfile = None
 dispatcher_is_locked = False
 
 
-def terminate_process(signalNumber, frame) -> None:
+async def terminate_process(signalNumber, frame) -> None:
     """Triggers the shutdown of the service."""
     helper.g_log("events.shutdown", 1)
     logger.info("Shutdown requested")
@@ -44,7 +45,7 @@ def terminate_process(signalNumber, frame) -> None:
     helper.trigger_terminate()
 
 
-def dispatch(args) -> None:
+def dispatch() -> None:
     global dispatcher_lockfile
     global dispatcher_is_locked
 
@@ -111,8 +112,9 @@ def main(args=sys.argv[1:]) -> None:
     logger.info("")
 
     # Register system signals to be caught
-    signal.signal(signal.SIGINT, terminate_process)
-    signal.signal(signal.SIGTERM, terminate_process)
+    signals = (signal.SIGTERM, signal.SIGINT)
+    for s in signals:
+        helper.loop.add_signal_handler(s, lambda s=s: asyncio.create_task(terminate_process(s, helper.loop)))
 
     instance_name = "main"
     if len(sys.argv) > 1:
@@ -147,23 +149,26 @@ def main(args=sys.argv[1:]) -> None:
     dispatcher_lockfile = Path(config.mercure.outgoing_folder + "/" + mercure_names.HALT)
 
     global main_loop
-    main_loop = helper.RepeatedTimer(config.mercure.dispatcher_scan_interval, dispatch, exit_dispatcher, {})
-    main_loop.start()
+    main_loop = helper.AsyncTimer(config.mercure.dispatcher_scan_interval, dispatch)
 
     helper.g_log("events.boot", 1)
 
-    # Start the asyncio event loop for asynchronous function calls
-    helper.loop.run_forever()
+    try:
+        # Start the asyncio event loop for asynchronous function calls
+        main_loop.run_until_complete(helper.loop)
+        # Process will exit here once the asyncio loop has been stopped
+        monitor.send_event(monitor.m_events.SHUTDOWN, monitor.severity.INFO)
+    except Exception as e:
+        # Process will exit here once the asyncio loop has been stopped
+        monitor.send_event(monitor.m_events.SHUTDOWN, monitor.severity.ERROR, str(e))
+    finally:
+        # Finish all asyncio tasks that might be still pending
+        remaining_tasks = helper.asyncio.all_tasks(helper.loop)  # type: ignore[attr-defined]
+        if remaining_tasks:
+            helper.loop.run_until_complete(helper.asyncio.gather(*remaining_tasks))
 
-    # Process will exit here once the asyncio loop has been stopped
-    monitor.send_event(monitor.m_events.SHUTDOWN, monitor.severity.INFO)
+        logging.info("Going down now")
 
-    # Finish all asyncio tasks that might be still pending
-    remaining_tasks = helper.asyncio.all_tasks(helper.loop) # type: ignore[attr-defined]
-    if remaining_tasks:
-        helper.loop.run_until_complete(helper.asyncio.gather(*remaining_tasks))
-
-    logging.info("Going down now")
 
 if __name__ == "__main__":
     main()

@@ -5,6 +5,7 @@ mercure's central router module that evaluates the routing rules and decides whi
 """
 
 # Standard python includes
+import asyncio
 import time
 import signal
 import os
@@ -26,10 +27,10 @@ from routing.common import generate_task_id
 
 # Create local logger instance
 logger = config.get_logger()
-main_loop = None  # type: helper.RepeatedTimer # type: ignore
+main_loop = None  # type: helper.AsyncTimer # type: ignore
 
 
-def terminate_process(signalNumber, frame) -> None:
+async def terminate_process(signalNumber, frame) -> None:
     """
     Triggers the shutdown of the service
     """
@@ -42,7 +43,7 @@ def terminate_process(signalNumber, frame) -> None:
     helper.trigger_terminate()
 
 
-def run_router(args=None) -> None:
+def run_router() -> None:
     """
     Main processing function that is called every second
     """
@@ -136,8 +137,9 @@ def main(args=sys.argv[1:]) -> None:
     logger.info("")
 
     # Register system signals to be caught
-    signal.signal(signal.SIGINT, terminate_process)
-    signal.signal(signal.SIGTERM, terminate_process)
+    signals = (signal.SIGTERM, signal.SIGINT)
+    for s in signals:
+        helper.loop.add_signal_handler(s, lambda s=s: asyncio.create_task(terminate_process(s, helper.loop)))
 
     instance_name = "main"
 
@@ -176,21 +178,21 @@ def main(args=sys.argv[1:]) -> None:
 
     # Start the timer that will periodically trigger the scan of the incoming folder
     global main_loop
-    main_loop = helper.RepeatedTimer(config.mercure.router_scan_interval, run_router, exit_router, {})
-    main_loop.start()
+    main_loop = helper.AsyncTimer(config.mercure.router_scan_interval, run_router)
 
     helper.g_log("events.boot", 1)
 
-    # Start the asyncio event loop for asynchronous function calls
-    helper.loop.run_forever()
-
-    # Process will exit here once the asyncio loop has been stopped
-    monitor.send_event(monitor.m_events.SHUTDOWN, monitor.severity.INFO)
-
-    # Finish all asyncio tasks that might be still pending
-    remaining_tasks = helper.asyncio.all_tasks(helper.loop)  # type: ignore[attr-defined]
-    if remaining_tasks:
-        helper.loop.run_until_complete(helper.asyncio.gather(*remaining_tasks))
+    try:
+        main_loop.run_until_complete(helper.loop)
+        # Process will exit here once the asyncio loop has been stopped
+        monitor.send_event(monitor.m_events.SHUTDOWN, monitor.severity.INFO)
+    except Exception as e:
+        monitor.send_event(monitor.m_events.SHUTDOWN, monitor.severity.ERROR, str(e))
+    finally:
+        # Finish all asyncio tasks that might be still pending
+        remaining_tasks = helper.asyncio.all_tasks(helper.loop)  # type: ignore[attr-defined]
+        if remaining_tasks:
+            helper.loop.run_until_complete(helper.asyncio.gather(*remaining_tasks))
 
     logger.info("Going down now")
 

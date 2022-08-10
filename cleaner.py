@@ -8,6 +8,7 @@ to minimum when receiving and sending exams.
 """
 
 # Standard python includes
+import asyncio
 import logging
 import os
 import signal
@@ -17,14 +18,11 @@ from datetime import timedelta, datetime
 from datetime import time as _time
 from pathlib import Path
 from shutil import rmtree, disk_usage
-import traceback
-import daiquiri
 import graphyte
 import hupper
 
 # App-specific includes
 import common.config as config
-import common.log_helpers as log_helpers
 
 import common.helper as helper
 import common.monitor as monitor
@@ -35,10 +33,10 @@ from common.constants import mercure_defs
 # Setup daiquiri logger
 logger = config.get_logger()
 
-main_loop = None  # type: helper.RepeatedTimer # type: ignore
+main_loop = None  # type: helper.AsyncTimer # type: ignore
 
 
-def terminate_process(signalNumber, frame) -> None:
+async def terminate_process(signalNumber, frame) -> None:
     """Triggers the shutdown of the service."""
     helper.g_log("events.shutdown", 1)
     logger.info("Shutdown requested")
@@ -49,7 +47,7 @@ def terminate_process(signalNumber, frame) -> None:
     helper.trigger_terminate()
 
 
-def clean(args) -> None:
+def clean() -> None:
     """Main entry function."""
     if helper.is_terminated():
         return
@@ -123,9 +121,7 @@ def _is_offpeak(offpeak_start: str, offpeak_end: str, current_time: _time) -> bo
         start_time = datetime.strptime(offpeak_start, "%H:%M").time()
         end_time = datetime.strptime(offpeak_end, "%H:%M").time()
     except Exception as e:
-        logger.error(
-            f"Unable to parse offpeak time: {offpeak_start}, {offpeak_end}", None
-        )  # handle_error
+        logger.error(f"Unable to parse offpeak time: {offpeak_start}, {offpeak_end}", None)  # handle_error
         return True
 
     if start_time < end_time:
@@ -141,8 +137,7 @@ def clean_dir(folder, retention) -> None:
     candidates = [
         (f, f.stat().st_mtime)
         for f in Path(folder).iterdir()
-        if f.is_dir()
-        and retention < timedelta(seconds=(time.time() - f.stat().st_mtime))
+        if f.is_dir() and retention < timedelta(seconds=(time.time() - f.stat().st_mtime))
     ]
 
     for entry in candidates:
@@ -156,9 +151,7 @@ def delete_folder(entry) -> None:
     try:
         rmtree(delete_path)
         logger.info(f"Deleted folder {delete_path} from {series_uid}")
-        monitor.send_task_event(
-            task_event.CLEAN, Path(delete_path).stem, 0, delete_path, "Deleted folder"
-        )
+        monitor.send_task_event(task_event.CLEAN, Path(delete_path).stem, 0, delete_path, "Deleted folder")
     except Exception as e:
         logger.error(
             f"Unable to delete folder {delete_path}",
@@ -197,8 +190,9 @@ def main(args=sys.argv[1:]) -> None:
     logger.info("")
 
     # Register system signals to be caught
-    signal.signal(signal.SIGINT, terminate_process)
-    signal.signal(signal.SIGTERM, terminate_process)
+    signals = (signal.SIGTERM, signal.SIGINT)
+    for s in signals:
+        helper.loop.add_signal_handler(s, lambda s=s: asyncio.create_task(terminate_process(s, helper.loop)))
 
     instance_name = "main"
 
@@ -219,9 +213,7 @@ def main(args=sys.argv[1:]) -> None:
     logger.info(sys.version)
 
     monitor.configure("cleaner", instance_name, config.mercure.bookkeeper)
-    monitor.send_event(
-        monitor.m_events.BOOT, monitor.severity.INFO, f"PID = {os.getpid()}"
-    )
+    monitor.send_event(monitor.m_events.BOOT, monitor.severity.INFO, f"PID = {os.getpid()}")
 
     if len(config.mercure.graphite_ip) > 0:
         logger.info(f"Sending events to graphite server: {config.mercure.graphite_ip}")
@@ -233,25 +225,26 @@ def main(args=sys.argv[1:]) -> None:
         )
 
     global main_loop
-    main_loop = helper.RepeatedTimer(
-        config.mercure.cleaner_scan_interval, clean, exit_cleaner, {}
-    )
+    main_loop = helper.AsyncTimer(config.mercure.cleaner_scan_interval, clean)
     main_loop.start()
 
     helper.g_log("events.boot", 1)
 
-    # Start the asyncio event loop for asynchronous function calls
-    helper.loop.run_forever()
+    try:
+        # Start the asyncio event loop for asynchronous function calls
+        main_loop.run_until_complete(helper.loop)
+        # Process will exit here once the asyncio loop has been stopped
+        monitor.send_event(monitor.m_events.SHUTDOWN, monitor.severity.INFO)
+    except Exception as e:
+        # Process will exit here once the asyncio loop has been stopped
+        monitor.send_event(monitor.m_events.SHUTDOWN, monitor.severity.ERROR, str(e))
+    finally:
+        # Finish all asyncio tasks that might be still pending
+        remaining_tasks = helper.asyncio.all_tasks(helper.loop)  # type: ignore[attr-defined]
+        if remaining_tasks:
+            helper.loop.run_until_complete(helper.asyncio.gather(*remaining_tasks))
 
-    # Process will exit here once the asyncio loop has been stopped
-    monitor.send_event(monitor.m_events.SHUTDOWN, monitor.severity.INFO)
-
-    # Finish all asyncio tasks that might be still pending
-    remaining_tasks = helper.asyncio.all_tasks(helper.loop)  # type: ignore[attr-defined]
-    if remaining_tasks:
-        helper.loop.run_until_complete(helper.asyncio.gather(*remaining_tasks))
-
-    logger.info("Going down now")
+        logger.info("Going down now")
 
 
 if __name__ == "__main__":

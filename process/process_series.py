@@ -92,7 +92,7 @@ def nomad_runtime(task: Task, folder: str, file_count_begin: int) -> bool:
 docker_pull_throttle: Dict[str, datetime] = {}
 
 
-def docker_runtime(task: Task, folder: str, file_count_begin: int) -> bool:
+async def docker_runtime(task: Task, folder: str, file_count_begin: int) -> bool:
     docker_client = docker.from_env()
 
     if not task.process:
@@ -180,7 +180,7 @@ def docker_runtime(task: Task, folder: str, file_count_begin: int) -> bool:
         # nomad job dispatch -meta IMAGE_ID=alpine:3.11 -meta PATH=test  mercure-processor
         # nomad_connection.job.dispatch_job('mercure-processor', meta={"IMAGE_ID":"alpine:3.11", "PATH": "test"})
 
-        monitor.send_task_event(
+        await monitor.async_send_task_event(
             monitor.task_event.PROCESS_BEGIN,
             task.id,
             file_count_begin,
@@ -201,6 +201,7 @@ def docker_runtime(task: Task, folder: str, file_count_begin: int) -> bool:
             group_add=[os.getegid()],
             detach=True,
         )
+
         # Wait for end of container execution
         docker_result = container.wait()
         logger.info(docker_result)
@@ -235,8 +236,8 @@ def docker_runtime(task: Task, folder: str, file_count_begin: int) -> bool:
     return processing_success
 
 
-@log_helpers.clear_task_decorator
-def process_series(folder: str) -> None:
+@log_helpers.clear_task_decorator_async
+async def process_series(folder: str) -> None:
     logger.info("----------------------------------------------------------------------------------")
     logger.info(f"Now processing {folder}")
     processing_success = False
@@ -289,7 +290,7 @@ def process_series(folder: str) -> None:
         elif helper.get_runner() in ("docker", "systemd"):
             logger.debug("Processing with Docker")
             # Use docker if we're being run inside docker or just by systemd
-            processing_success = docker_runtime(task, folder, file_count_begin)
+            processing_success = await docker_runtime(task, folder, file_count_begin)
         else:
             processing_success = False
             raise Exception("Unable to determine valid runtime for processing")

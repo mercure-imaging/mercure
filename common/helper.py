@@ -5,6 +5,8 @@ Various internal helper functions for mercure.
 """
 # Standard python includes
 import asyncio
+from contextlib import suppress
+import inspect
 from pathlib import Path
 import threading
 from typing import Callable, Optional
@@ -33,7 +35,7 @@ def is_terminated() -> bool:
     return terminate
 
 
-async def send_to_graphite(*args, **kwargs) -> None:
+def send_to_graphite(*args, **kwargs) -> None:
     """Wrapper for asynchronous graphite call to avoid wait time of main loop."""
     if graphyte.default_sender == None:
         return
@@ -42,7 +44,47 @@ async def send_to_graphite(*args, **kwargs) -> None:
 
 def g_log(*args, **kwargs) -> None:
     """Sends diagnostic information to graphite (if configured)."""
-    asyncio.run_coroutine_threadsafe(send_to_graphite(*args, **kwargs), loop)
+    try:
+        loop = asyncio.get_running_loop()
+        loop.call_soon(send_to_graphite, *args, **kwargs)
+    except:
+        send_to_graphite(*args, **kwargs)
+
+
+class AsyncTimer(object):
+    def __init__(self, interval: int, func):
+        self.func = func
+        self.time = interval
+        self.is_running = False
+        self._task: Optional[asyncio.Task] = None
+
+    def start(self) -> None:
+        if not self.is_running:
+            self.is_running = True
+            # Start task to call func periodically:
+            self._task = asyncio.ensure_future(self._run())
+
+    def stop(self) -> None:
+        """Signal to stop after the current"""
+        self.is_running = False
+
+    async def _run(self) -> None:
+        global terminate
+        while self.is_running:
+            await asyncio.sleep(self.time)
+            if terminate:
+                self.stop()
+
+            if not self.is_running:
+                break
+
+            if inspect.isawaitable(res := self.func()):
+                await res
+
+    def run_until_complete(self, loop=None) -> None:
+        self.start()
+        loop = loop or asyncio.get_event_loop()
+        loop.run_until_complete(self._task)
 
 
 class RepeatedTimer(object):

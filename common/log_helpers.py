@@ -90,6 +90,16 @@ def clear_task_decorator(func):
     return wrapper
 
 
+def clear_task_decorator_async(func):
+    async def wrapper(*args, **kwargs):
+        try:
+            return await func(*args, **kwargs)
+        finally:
+            get_logger().clearTask()
+
+    return wrapper
+
+
 # logging.setLogRecordFactory(CustomLogRecord)
 
 logger = ExceptionsKeywordArgumentAdapter(logging.getLogger("handle_error"), {})

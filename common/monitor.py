@@ -14,6 +14,7 @@ from urllib.error import HTTPError
 import aiohttp
 import daiquiri
 import datetime
+import threading
 
 # App-specific includes
 from common.types import Task
@@ -26,7 +27,7 @@ api_key: Optional[str] = None
 
 sender_name = ""
 bookkeeper_address = ""
-loop = None
+loop: Optional[asyncio.AbstractEventLoop] = None
 
 
 class MonitorHTTPError(Exception):
@@ -63,16 +64,39 @@ async def do_post(endpoint, kwargs, catch_errors=False) -> None:
                     logger.warning(
                         f"Failed POST request {kwargs} to bookkeeper endpoint {endpoint}: status: {resp.status}"
                     )
-    except aiohttp.client_exceptions.ClientConnectorError as e:
+    except aiohttp.client_exceptions.ClientError as e:
         logger.error(f"Failed POST request to bookkeeper endpoint {endpoint}: {e}")
+        if not catch_errors:
+            raise
+    except asyncio.TimeoutError as e:
+        logger.error(f"Failed POST request to bookkeeper endpoint {endpoint} with timeout: {e}")
         if not catch_errors:
             raise
 
 
 def post(endpoint: str, **kwargs) -> None:
     if api_key is None:
-        return
+        return None
+
+    if not bookkeeper_address:
+        return None
+
+    # create_task requires a running event loop; during boot there might not be one running yet.
     asyncio.ensure_future(do_post(endpoint, kwargs, True), loop=loop)
+
+
+async def async_post(endpoint: str, **kwargs):
+    if api_key is None:
+        return None
+
+    if not bookkeeper_address:
+        return None
+
+    return await do_post(
+        endpoint,
+        kwargs,
+        True,
+    )
 
 
 async def get(endpoint: str, payload: Any = {}) -> Any:
@@ -116,7 +140,9 @@ def configure(module, instance, address) -> None:
 
 def send_event(event: m_events, severity: severity = severity.INFO, description: str = "") -> None:
     """Sends information about general mercure events to the bookkeeper (e.g., during module start)."""
-    logger.debug(f'Monitor (mercure-event): level {severity.value} {event}: "{description}"')
+    logger.debug(
+        f'Monitor (mercure-event): level {severity.value} {event}: "{description}"'
+    )
 
     if not bookkeeper_address:
         return
@@ -147,8 +173,6 @@ def send_webgui_event(event: w_events, user: str, description="") -> None:
 def send_register_series(tags: Dict[str, str]) -> None:
     """Registers a received series on the bookkeeper. This should be called when a series has been
     fully received and the DICOM tags have been parsed."""
-    if not bookkeeper_address:
-        return
     logger.debug(f"Monitor (register-series): series_uid={tags.get('series_uid',None)}")
     # requests.post(bookkeeper_address + "/register-series", data=tags, timeout=1)
     post("register-series", data=tags)
@@ -156,17 +180,11 @@ def send_register_series(tags: Dict[str, str]) -> None:
 
 def send_register_task(task_id: str, series_uid: str, parent_id: Optional[str] = None) -> None:
     """Registers a new task on the bookkeeper. This should be called whenever a new task has been created."""
-    if not bookkeeper_address:
-        return
-
     post("register-task", json={"id": task_id, "series_uid": series_uid, "parent_id": parent_id})
 
 
 def send_update_task(task: Task) -> None:
     """Registers a new task on the bookkeeper. This should be called whenever a new task has been created."""
-    if not bookkeeper_address:
-        return
-
     task_dict = task.dict()
 
     logger.debug(f"Monitor (update-task): task.id={task_dict['id']} ")
@@ -174,14 +192,8 @@ def send_update_task(task: Task) -> None:
     post("update-task", json=task_dict)
 
 
-def send_task_event(event: task_event, task_id, file_count, target, info) -> None:
-    """Send an event related to a specific series to the bookkeeper."""
-    logger.debug(f"Monitor (task-event): event={event} task_id={task_id} info={info}")
-
-    if not bookkeeper_address:
-        return
-
-    payload = {
+def task_event_payload(event: task_event, task_id: str, file_count: int, target, info):
+    return {
         "sender": sender_name,
         "event": event.value,
         "file_count": file_count,
@@ -191,14 +203,23 @@ def send_task_event(event: task_event, task_id, file_count, target, info) -> Non
         "timestamp": time.monotonic(),
         "time": datetime.datetime.now(),
     }
-    post("task-event", data=payload)
-    # requests.post(bookkeeper_address + "/series-event", data=payload, timeout=1)
 
 
-def send_process_logs(task_id, module_name: str, logs: str) -> None:
+def send_task_event(event: task_event, task_id: str, file_count: int, target: str, info: str) -> None:
+    """Send an event related to a specific series to the bookkeeper."""
+    logger.debug(f"Monitor (task-event): event={event} task_id={task_id} info={info}")
+
+    post("task-event", data=task_event_payload(event, task_id, file_count, target, info))
+
+
+async def async_send_task_event(event: task_event, task_id: str, file_count: int, target: str, info: str):
+    logger.debug(f"Monitor (task-event): event={event} task_id={task_id} info={info}")
+
+    return await async_post("task-event", data=task_event_payload(event, task_id, file_count, target, info))
+
+
+def send_process_logs(task_id: str, module_name: str, logs: str) -> None:
     logger.debug(f"Monitor (processor-logs): task_id={task_id}")
-    if not bookkeeper_address:
-        return
 
     payload = {
         "sender": sender_name,

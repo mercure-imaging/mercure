@@ -6,12 +6,14 @@ mercure' processor that executes processing modules on DICOM series filtered for
 
 # Standard python includes
 import base64
+import asyncio
 import shutil
 import signal
 import os
 import sys
 import json
 from typing import Dict
+import threading
 import graphyte
 import daiquiri
 import nomad
@@ -36,7 +38,7 @@ from common.types import Task, TaskProcessing
 
 # Create local logger instance
 logger = config.get_logger()
-main_loop = None  # type: helper.RepeatedTimer # type: ignore
+processing_loop = None  # type: helper.AsyncTimer # type: ignore
 
 
 processor_lockfile = None
@@ -49,7 +51,7 @@ except:
     nomad_connection = None
 
 
-def search_folder(counter) -> bool:
+async def search_folder(counter) -> bool:
     global processor_lockfile
     global processor_is_locked
     global nomad_connection
@@ -167,7 +169,7 @@ def search_folder(counter) -> bool:
 
     # Return if no tasks have been found
     if not len(tasks):
-        logger.debug("No tasks found")
+        # logger.debug("No tasks found")
         return False
 
     sorted_tasks = sorted(tasks)
@@ -180,7 +182,7 @@ def search_folder(counter) -> bool:
     task_folder = sorted_tasks[0]
 
     try:
-        process_series(task_folder)
+        await process_series(task_folder)
         # Return true, so that the parent function will trigger another search of the folder
         return True
     except Exception:
@@ -197,7 +199,7 @@ def search_folder(counter) -> bool:
         return False
 
 
-def run_processor(args=None) -> None:
+async def run_processor() -> None:
     """Main processing function that is called every second."""
     if helper.is_terminated():
         return
@@ -213,26 +215,26 @@ def run_processor(args=None) -> None:
 
     call_counter = 0
 
-    while search_folder(call_counter):
+    while await search_folder(call_counter):
         call_counter += 1
         # If termination is requested, stop processing series after the active one has been completed
         if helper.is_terminated():
             return
 
 
-def exit_processor(args) -> None:
+def exit_processor() -> None:
     """Callback function that is triggered when the process terminates. Stops the asyncio event loop."""
     helper.loop.call_soon_threadsafe(helper.loop.stop)
 
 
-def terminate_process(signalNumber, frame) -> None:
+async def terminate_process(signalNumber, loop) -> None:
     """Triggers the shutdown of the service."""
     helper.g_log("events.shutdown", 1)
     logger.info("Shutdown requested")
     monitor.send_event(monitor.m_events.SHUTDOWN_REQUEST, monitor.severity.INFO)
-    # Note: main_loop can be read here because it has been declared as global variable
-    if "main_loop" in globals() and main_loop.is_running:
-        main_loop.stop()
+    # Note: processing_loop can be read here because it has been declared as global variable
+    if "processing_loop" in globals() and processing_loop.is_running:
+        processing_loop.stop()
     helper.trigger_terminate()
 
 
@@ -251,8 +253,9 @@ def main(args=sys.argv[1:]) -> None:
     logger.info("")
 
     # Register system signals to be caught
-    signal.signal(signal.SIGINT, terminate_process)
-    signal.signal(signal.SIGTERM, terminate_process)
+    signals = (signal.SIGTERM, signal.SIGINT)
+    for s in signals:
+        helper.loop.add_signal_handler(s, lambda s=s: asyncio.create_task(terminate_process(s, helper.loop)))
 
     instance_name = "main"
 
@@ -271,6 +274,7 @@ def main(args=sys.argv[1:]) -> None:
     logger.info(f"Appliance name = {appliance_name}")
     logger.info(f"Instance  name = {instance_name}")
     logger.info(f"Instance  PID  = {os.getpid()}")
+    logger.info(f"Thread ID  = {threading.get_native_id()}")
     logger.info(sys.version)
 
     monitor.configure("processor", instance_name, config.mercure.bookkeeper)
@@ -285,24 +289,22 @@ def main(args=sys.argv[1:]) -> None:
     processor_lockfile = Path(config.mercure.processing_folder + "/" + mercure_names.HALT)
 
     # Start the timer that will periodically trigger the scan of the incoming folder
-    global main_loop
-    main_loop = helper.RepeatedTimer(config.mercure.dispatcher_scan_interval, run_processor, exit_processor, {})
-    main_loop.start()
+    global processing_loop
+    processing_loop = helper.AsyncTimer(config.mercure.dispatcher_scan_interval, run_processor)  # , exit_processor)
 
     helper.g_log("events.boot", 1)
 
-    # Start the asyncio event loop for asynchronous function calls
-    helper.loop.run_forever()
-
-    # Process will exit here once the asyncio loop has been stopped
-    monitor.send_event(monitor.m_events.SHUTDOWN, monitor.severity.INFO)
-
-    # Finish all asyncio tasks that might be still pending
-    remaining_tasks = helper.asyncio.all_tasks(helper.loop)  # type: ignore[attr-defined]
-    if remaining_tasks:
-        helper.loop.run_until_complete(helper.asyncio.gather(*remaining_tasks))
-
-    logger.info("Going down now")
+    try:
+        processing_loop.run_until_complete(helper.loop)
+        # # Process will exit here once the asyncio loop has been stopped
+        monitor.send_event(monitor.m_events.SHUTDOWN, monitor.severity.INFO)
+    except Exception as e:
+        monitor.send_event(monitor.m_events.SHUTDOWN, monitor.severity.ERROR, str(e))
+    finally:  # Finish all asyncio tasks that might be still pending
+        remaining_tasks = helper.asyncio.all_tasks(helper.loop)  # type: ignore[attr-defined]
+        if remaining_tasks:
+            helper.loop.run_until_complete(helper.asyncio.gather(*remaining_tasks))
+        logger.info("Going down now")
 
 
 if __name__ == "__main__":
