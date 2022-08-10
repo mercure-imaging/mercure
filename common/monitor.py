@@ -141,7 +141,7 @@ def configure(module, instance, address) -> None:
 def send_event(event: m_events, severity: severity = severity.INFO, description: str = "") -> None:
     """Sends information about general mercure events to the bookkeeper (e.g., during module start)."""
     logger.debug(
-        f'Monitor (Thread: {threading.get_native_id()}) (mercure-event): level {severity.value} {event}: "{description}"'
+        f'Monitor (mercure-event): level {severity.value} {event}: "{description}"'
     )
 
     if not bookkeeper_address:
