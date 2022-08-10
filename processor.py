@@ -253,9 +253,6 @@ def main(args=sys.argv[1:]) -> None:
     logger.info("")
 
     # Register system signals to be caught
-    # signal.signal(signal.SIGINT, terminate_process)
-    # signal.signal(signal.SIGTERM, terminate_process)
-
     signals = (signal.SIGTERM, signal.SIGINT)
     for s in signals:
         helper.loop.add_signal_handler(s, lambda s=s: asyncio.create_task(terminate_process(s, helper.loop)))
