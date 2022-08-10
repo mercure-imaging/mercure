@@ -71,8 +71,8 @@ async def do_post(endpoint, kwargs, catch_errors=False) -> None:
 
 
 def returning(value=None) -> asyncio.Future:
+    global loop
     if not loop:
-        global loop
         loop = asyncio.get_event_loop()
 
     future = loop.create_future()
@@ -83,6 +83,8 @@ def returning(value=None) -> asyncio.Future:
 def post(endpoint: str, **kwargs) -> asyncio.Future:
     if api_key is None:
         return returning(None)
+
+    # create_task requires a running event loop; during boot there might not be one running yet.
     return asyncio.ensure_future(do_post(endpoint, kwargs, True), loop=loop)
 
 
@@ -187,14 +189,14 @@ def send_update_task(task: Task) -> None:
     post("update-task", json=task_dict)
 
 
-async def send_task_event(event: task_event, task_id, file_count, target, info) -> None:
+def send_task_event(event: task_event, task_id, file_count, target, info) -> asyncio.Future:
     """Send an event related to a specific series to the bookkeeper."""
     logger.debug(
         f"Monitor (Thread: {threading.get_native_id()}) (task-event): event={event} task_id={task_id} info={info}"
     )
 
     if not bookkeeper_address:
-        return None
+        return returning(None)
 
     payload = {
         "sender": sender_name,
@@ -206,7 +208,7 @@ async def send_task_event(event: task_event, task_id, file_count, target, info) 
         "timestamp": time.monotonic(),
         "time": datetime.datetime.now(),
     }
-    await post("task-event", data=payload)
+    return post("task-event", data=payload)
     # requests.post(bookkeeper_address + "/series-event", data=payload, timeout=1)
 
 

@@ -35,7 +35,7 @@ def is_terminated() -> bool:
     return terminate
 
 
-async def send_to_graphite(*args, **kwargs) -> None:
+def send_to_graphite(*args, **kwargs) -> None:
     """Wrapper for asynchronous graphite call to avoid wait time of main loop."""
     if graphyte.default_sender == None:
         return
@@ -44,7 +44,11 @@ async def send_to_graphite(*args, **kwargs) -> None:
 
 def g_log(*args, **kwargs) -> None:
     """Sends diagnostic information to graphite (if configured)."""
-    asyncio.run_coroutine_threadsafe(send_to_graphite(*args, **kwargs), loop)
+    try:
+        loop = asyncio.get_running_loop()
+        loop.call_soon(send_to_graphite, *args, **kwargs)
+    except:
+        send_to_graphite(*args, **kwargs)
 
 
 class AsyncTimer(object):

@@ -77,7 +77,8 @@ def create_and_route(fs, mocked, task_id, uid="TESTFAKEUID") -> Tuple[List[str],
     return ["task.json", f"{uid}#bar.dcm", f"{uid}#bar.tags"], new_task_id
 
 
-def test_process_series_nomad(fs, mercure_config: Callable[[Dict], Config], mocked: MockerFixture):
+@pytest.mark.asyncio
+async def test_process_series_nomad(fs, mercure_config: Callable[[Dict], Config], mocked: MockerFixture):
     mercure_config(
         {"process_runner": "nomad", **config_partial},
     )
@@ -113,7 +114,7 @@ def test_process_series_nomad(fs, mercure_config: Callable[[Dict], Config], mock
     mocked.patch.object(Job, "get_job", new=lambda x, y: dict(Status="dead"))
 
     logger.info("Run processing...")
-    processor.run_processor()
+    await processor.run_processor()
     processor.process_series.assert_called_once_with(str(processor_path))  # type: ignore
 
     fake_run.assert_called_once_with("processor-test_module", meta={"PATH": processor_path.name})
@@ -184,7 +185,7 @@ def test_process_series_nomad(fs, mercure_config: Callable[[Dict], Config], mock
 
     router.run_router()
     processor_path = next(Path("/var/processing").iterdir())
-    processor.run_processor()
+    await processor.run_processor()
 
     assert (Path("/var/error") / processor_path.name).exists()
     assert ["task.json", "FAILEDFAILED#bar.dcm", "FAILEDFAILED#bar.tags"] == [
@@ -221,7 +222,8 @@ class my_fake_container:
         pass
 
 
-def test_process_series(fs, mercure_config: Callable[[Dict], Config], mocked: MockerFixture):
+@pytest.mark.asyncio
+async def test_process_series(fs, mercure_config: Callable[[Dict], Config], mocked: MockerFixture):
     global processor_path
     config = mercure_config(
         {"process_runner": "docker", **config_partial},
@@ -244,7 +246,7 @@ def test_process_series(fs, mercure_config: Callable[[Dict], Config], mocked: Mo
 
     fake_run = mocked.Mock(return_value=my_fake_container(), side_effect=fake_processor)  # type: ignore
     mocked.patch.object(ContainerCollection, "run", new=fake_run)
-    processor.run_processor()
+    await processor.run_processor()
 
     # processor_path = next(Path("/var/processing").iterdir())
     # process.process_series.process_series.assert_called_once_with(str(processor_path))  # type: ignore
@@ -268,7 +270,7 @@ def test_process_series(fs, mercure_config: Callable[[Dict], Config], mocked: Mo
     common.monitor.send_task_event.assert_has_calls(  # type: ignore
         [
             call(task_event.REGISTER, task_id, 1, "catchall", "Registered series"),
-            call(task_event.DELEGATE, task_id, 1, new_task_id, "catchall"),        
+            call(task_event.DELEGATE, task_id, 1, new_task_id, "catchall"),
             call(task_event.MOVE, task_id, 1, f"/var/processing/{new_task_id}/", "Moved files"),
             call(task_event.PROCESS_BEGIN, new_task_id, 1, "test_module", "Processing job running"),
             call(task_event.PROCESS_COMPLETE, new_task_id, 1, "", "Processing job complete"),
