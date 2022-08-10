@@ -150,7 +150,7 @@ def task_will_dispatch_to(task, config, fake_process) -> None:
     expect_command = f"dcmsend {t.ip} {t.port} +sd /var/outgoing/{task.id} -aet -aec {t.aet_target} -nuc +sp *.dcm -to 60 +crf /var/outgoing/{task.id}/sent.txt"  # type: ignore
     fake_process.register(expect_command)  # type: ignore
     common.monitor.configure("dispatcher", "test", config.bookkeeper)
-    dispatcher.dispatch("")
+    dispatcher.dispatch()
 
     assert Path(f"/var/success/{task.id}").is_dir()
 
