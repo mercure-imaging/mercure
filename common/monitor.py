@@ -27,7 +27,7 @@ api_key: Optional[str] = None
 
 sender_name = ""
 bookkeeper_address = ""
-loop = None
+loop: Optional[asyncio.AbstractEventLoop] = None
 
 
 class MonitorHTTPError(Exception):
@@ -70,7 +70,11 @@ async def do_post(endpoint, kwargs, catch_errors=False) -> None:
             raise
 
 
-def returning(value=None):
+def returning(value=None) -> asyncio.Future:
+    if not loop:
+        global loop
+        loop = asyncio.get_event_loop()
+
     future = loop.create_future()
     future.set_result(value)
     return future

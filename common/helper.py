@@ -47,34 +47,35 @@ def g_log(*args, **kwargs) -> None:
     asyncio.run_coroutine_threadsafe(send_to_graphite(*args, **kwargs), loop)
 
 
-class AsyncTimer:
-    def __init__(self, interval, func, exit_func=None):
+class AsyncTimer(object):
+    def __init__(self, interval: int, func, exit_func=None):
         self.func = func
         self.exit_func = exit_func
         self.time = interval
         self.is_running = False
-        self._task = None
+        self._task: Optional[asyncio.Task] = None
 
-    async def start(self):
+    def start(self) -> None:
         if not self.is_running:
             self.is_running = True
             # Start task to call func periodically:
             self._task = asyncio.ensure_future(self._run())
 
-    async def stop(self):
+    async def stop(self) -> None:
         if self.is_running:
             self.is_running = False
             # Stop task and await it stopped:
+            assert self._task is not None
             self._task.cancel()
             with suppress(asyncio.CancelledError):
                 await self._task
 
-            if self.exit_func:
+            if self.exit_func is not None:
                 res = self.exit_func()
                 if inspect.isawaitable(res):
                     await res
 
-    async def _run(self):
+    async def _run(self) -> None:
         global terminate
         while True:
             await asyncio.sleep(self.time)
@@ -84,6 +85,11 @@ class AsyncTimer:
             res = self.func()
             if inspect.isawaitable(res):
                 await res
+
+    def run_until_cancelled(self, loop) -> None:
+        self.start()
+        with suppress(asyncio.CancelledError):
+            loop.run_until_complete(self._task)
 
 
 class RepeatedTimer(object):

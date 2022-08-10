@@ -38,7 +38,7 @@ from common.types import Task, TaskProcessing
 
 # Create local logger instance
 logger = config.get_logger()
-main_loop = None  # type: helper.AsyncTimer # type: ignore
+processing_loop = None  # type: helper.AsyncTimer # type: ignore
 
 
 processor_lockfile = None
@@ -232,9 +232,9 @@ async def terminate_process(signalNumber, loop) -> None:
     helper.g_log("events.shutdown", 1)
     logger.info("Shutdown requested")
     monitor.send_event(monitor.m_events.SHUTDOWN_REQUEST, monitor.severity.INFO)
-    # Note: main_loop can be read here because it has been declared as global variable
-    if "main_loop" in globals() and main_loop.is_running:
-        await main_loop.stop()
+    # Note: processing_loop can be read here because it has been declared as global variable
+    if "processing_loop" in globals() and processing_loop.is_running:
+        await processing_loop.stop()
     helper.trigger_terminate()
 
 
@@ -292,23 +292,20 @@ def main(args=sys.argv[1:]) -> None:
     processor_lockfile = Path(config.mercure.processing_folder + "/" + mercure_names.HALT)
 
     # Start the timer that will periodically trigger the scan of the incoming folder
-    global main_loop
-    main_loop = helper.AsyncTimer(config.mercure.dispatcher_scan_interval, run_processor, exit_processor)
-    asyncio.ensure_future(main_loop.start())
+    global processing_loop
+    processing_loop = helper.AsyncTimer(config.mercure.dispatcher_scan_interval, run_processor)  # , exit_processor)
 
     helper.g_log("events.boot", 1)
 
-    # Start the asyncio event loop for asynchronous function calls
-    helper.loop.run_forever()
+    processing_loop.run_until_cancelled(helper.loop)
 
-    # Process will exit here once the asyncio loop has been stopped
+    # # Process will exit here once the asyncio loop has been stopped
     monitor.send_event(monitor.m_events.SHUTDOWN, monitor.severity.INFO)
 
     # Finish all asyncio tasks that might be still pending
     remaining_tasks = helper.asyncio.all_tasks(helper.loop)  # type: ignore[attr-defined]
     if remaining_tasks:
         helper.loop.run_until_complete(helper.asyncio.gather(*remaining_tasks))
-
     logger.info("Going down now")
 
 
