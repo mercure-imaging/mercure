@@ -45,7 +45,7 @@ async def terminate_process(signalNumber, frame) -> None:
     helper.trigger_terminate()
 
 
-def dispatch(args) -> None:
+def dispatch() -> None:
     global dispatcher_lockfile
     global dispatcher_is_locked
 

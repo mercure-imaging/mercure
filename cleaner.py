@@ -50,7 +50,7 @@ async def terminate_process(signalNumber, frame) -> None:
     helper.trigger_terminate()
 
 
-def clean(args) -> None:
+def clean() -> None:
     """Main entry function."""
     if helper.is_terminated():
         return

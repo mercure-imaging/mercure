@@ -43,7 +43,7 @@ async def terminate_process(signalNumber, frame) -> None:
     helper.trigger_terminate()
 
 
-def run_router(args=None) -> None:
+def run_router() -> None:
     """
     Main processing function that is called every second
     """

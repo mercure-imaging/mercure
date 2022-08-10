@@ -199,7 +199,7 @@ async def search_folder(counter) -> bool:
         return False
 
 
-async def run_processor(args=None) -> None:
+async def run_processor() -> None:
     """Main processing function that is called every second."""
     if helper.is_terminated():
         return
