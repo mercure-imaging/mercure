@@ -5,6 +5,8 @@ Various internal helper functions for mercure.
 """
 # Standard python includes
 import asyncio
+from contextlib import suppress
+import inspect
 from pathlib import Path
 import threading
 from typing import Callable, Optional
@@ -43,6 +45,45 @@ async def send_to_graphite(*args, **kwargs) -> None:
 def g_log(*args, **kwargs) -> None:
     """Sends diagnostic information to graphite (if configured)."""
     asyncio.run_coroutine_threadsafe(send_to_graphite(*args, **kwargs), loop)
+
+
+class AsyncTimer:
+    def __init__(self, interval, func, exit_func=None):
+        self.func = func
+        self.exit_func = exit_func
+        self.time = interval
+        self.is_running = False
+        self._task = None
+
+    async def start(self):
+        if not self.is_running:
+            self.is_running = True
+            # Start task to call func periodically:
+            self._task = asyncio.ensure_future(self._run())
+
+    async def stop(self):
+        if self.is_running:
+            self.is_running = False
+            # Stop task and await it stopped:
+            self._task.cancel()
+            with suppress(asyncio.CancelledError):
+                await self._task
+
+            if self.exit_func:
+                res = self.exit_func()
+                if inspect.isawaitable(res):
+                    await res
+
+    async def _run(self):
+        global terminate
+        while True:
+            await asyncio.sleep(self.time)
+            if terminate:
+                await self.stop()
+                return
+            res = self.func()
+            if inspect.isawaitable(res):
+                await res
 
 
 class RepeatedTimer(object):

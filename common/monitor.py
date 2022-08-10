@@ -14,6 +14,7 @@ from urllib.error import HTTPError
 import aiohttp
 import daiquiri
 import datetime
+import threading
 
 # App-specific includes
 from common.types import Task
@@ -69,10 +70,16 @@ async def do_post(endpoint, kwargs, catch_errors=False) -> None:
             raise
 
 
-def post(endpoint: str, **kwargs) -> None:
+def returning(value=None):
+    future = loop.create_future()
+    future.set_result(value)
+    return future
+
+
+def post(endpoint: str, **kwargs) -> asyncio.Future:
     if api_key is None:
-        return
-    asyncio.ensure_future(do_post(endpoint, kwargs, True), loop=loop)
+        return returning(None)
+    return asyncio.ensure_future(do_post(endpoint, kwargs, True), loop=loop)
 
 
 async def get(endpoint: str, payload: Any = {}) -> Any:
@@ -116,7 +123,9 @@ def configure(module, instance, address) -> None:
 
 def send_event(event: m_events, severity: severity = severity.INFO, description: str = "") -> None:
     """Sends information about general mercure events to the bookkeeper (e.g., during module start)."""
-    logger.debug(f'Monitor (mercure-event): level {severity.value} {event}: "{description}"')
+    logger.debug(
+        f'Monitor (Thread: {threading.get_native_id()}) (mercure-event): level {severity.value} {event}: "{description}"'
+    )
 
     if not bookkeeper_address:
         return
@@ -174,12 +183,14 @@ def send_update_task(task: Task) -> None:
     post("update-task", json=task_dict)
 
 
-def send_task_event(event: task_event, task_id, file_count, target, info) -> None:
+async def send_task_event(event: task_event, task_id, file_count, target, info) -> None:
     """Send an event related to a specific series to the bookkeeper."""
-    logger.debug(f"Monitor (task-event): event={event} task_id={task_id} info={info}")
+    logger.debug(
+        f"Monitor (Thread: {threading.get_native_id()}) (task-event): event={event} task_id={task_id} info={info}"
+    )
 
     if not bookkeeper_address:
-        return
+        return None
 
     payload = {
         "sender": sender_name,
@@ -191,7 +202,7 @@ def send_task_event(event: task_event, task_id, file_count, target, info) -> Non
         "timestamp": time.monotonic(),
         "time": datetime.datetime.now(),
     }
-    post("task-event", data=payload)
+    await post("task-event", data=payload)
     # requests.post(bookkeeper_address + "/series-event", data=payload, timeout=1)
 
 
