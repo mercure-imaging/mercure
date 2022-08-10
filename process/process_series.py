@@ -180,7 +180,7 @@ async def docker_runtime(task: Task, folder: str, file_count_begin: int) -> bool
         # nomad job dispatch -meta IMAGE_ID=alpine:3.11 -meta PATH=test  mercure-processor
         # nomad_connection.job.dispatch_job('mercure-processor', meta={"IMAGE_ID":"alpine:3.11", "PATH": "test"})
 
-        await monitor.send_task_event(
+        await monitor.async_send_task_event(
             monitor.task_event.PROCESS_BEGIN,
             task.id,
             file_count_begin,

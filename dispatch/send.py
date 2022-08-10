@@ -174,7 +174,7 @@ def execute(
                 "",
                 "Routing job complete",
             )
-            
+
             monitor.send_task_event(task_event.MOVE, task_content.id, 0, str(success_folder), "Moved to success folder")
             _move_sent_directory(task_content.id, source_folder, success_folder)
 
@@ -195,7 +195,7 @@ def execute(
                 logger.info(f"Max retries reached, moving to {error_folder}")
                 monitor.send_task_event(task_event.SUSPEND, task_content.id, 0, target_name, "Max retries reached")
                 _move_sent_directory(task_content.id, source_folder, error_folder)
-                monitor.send_task_event(task_event.MOVE, task_content.id, 0, error_folder, "Moved to error folder")
+                monitor.send_task_event(task_event.MOVE, task_content.id, 0, str(error_folder), "Moved to error folder")
                 monitor.send_event(m_events.PROCESSING, severity.ERROR, f"Series suspended after reaching max retries")
                 _trigger_notification(task_content, mercure_events.ERROR)
 
@@ -250,7 +250,7 @@ def _trigger_notification(task: Task, event) -> None:
             )  # handle_error
             continue
 
-        notification_type = ''
+        notification_type = ""
 
         # Now fire the webhook if configured
         if event == mercure_events.RECEPTION:
@@ -262,7 +262,7 @@ def _trigger_notification(task: Task, event) -> None:
                     current_rule,
                     task.id,
                 )
-                notification_type = 'RECEPTION'
+                notification_type = "RECEPTION"
 
         if event == mercure_events.COMPLETION:
             if config.mercure.rules[current_rule].notification_trigger_completion == "True":
@@ -273,7 +273,7 @@ def _trigger_notification(task: Task, event) -> None:
                     current_rule,
                     task.id,
                 )
-                notification_type = 'COMPLETION'            
+                notification_type = "COMPLETION"
 
         if event == mercure_events.ERROR:
             if config.mercure.rules[current_rule].notification_trigger_error == "True":
@@ -284,7 +284,7 @@ def _trigger_notification(task: Task, event) -> None:
                     current_rule,
                     task.id,
                 )
-                notification_type = 'ERROR'
+                notification_type = "ERROR"
 
         if notification_type and config.mercure.rules[current_rule].get("notification_webhook", ""):
             monitor.send_task_event(
@@ -293,4 +293,4 @@ def _trigger_notification(task: Task, event) -> None:
                 0,
                 config.mercure.rules[current_rule].get("notification_webhook", ""),
                 "Announced " + notification_type,
-            )                
+            )
