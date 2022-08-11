@@ -408,6 +408,17 @@ async def post_task_event(request) -> JSONResponse:
     return JSONResponse({"ok": ""})
 
 
+@app.route("/store-processor-output", methods=["POST"])
+@requires("authenticated")
+async def store_processor_output(request) -> JSONResponse:
+    payload = dict(await request.json())
+    id = payload["task_id"]
+    output = payload["output"]
+    query = processor_outputs_table.insert().values(task_id=id, output=output)
+    await database.execute(query)
+    return JSONResponse({"ok": ""})
+
+
 ###################################################################################
 ## Main entry function
 ###################################################################################
