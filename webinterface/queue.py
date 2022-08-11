@@ -231,7 +231,7 @@ async def show_jobs_studies(request):
                         job_rule = task.info.applied_rule
                     job_acc = task.info.acc
                     job_mrn = task.info.mrn
-                    if task.study.complete_force == "True":
+                    if task.study.complete_force == True:
                         job_completion = "Force"
                     else:
                         if task.study.complete_trigger == "received_series":

@@ -149,7 +149,7 @@ async def test_process_series_nomad(fs, mercure_config: Callable[[Dict], Config]
             "module_name": "test_module",
             "module_config": {"constraints": "", "resources": "", **config_partial["modules"]["test_module"]},
             "settings": {},
-            "retain_input_images": "False",
+            "retain_input_images": False,
         },
         "study": {},
         "nomad_info": fake_run.return_value,

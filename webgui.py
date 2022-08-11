@@ -455,7 +455,7 @@ async def self_test_notification(request) -> Response:
             await monitor.do_post("test-end", dict(json=dict(id=test_id, status="success")))
             for p in ("begin", "end"):
                 if f"{test_id}_self_test_rule_{p}" in config.mercure.rules:
-                    config.mercure.rules[f"{test_id}_self_test_rule_{p}"].disabled = "True"
+                    config.mercure.rules[f"{test_id}_self_test_rule_{p}"].disabled = True
             try:
                 config.save_config()
             except ResourceWarning:
@@ -511,7 +511,7 @@ async def self_test(request) -> Response:
             rule=f'@ReceiverAET@ == "{test_id}_begin"',
             target=test_target,
             action="route",
-            notification_trigger_completion="False",
+            notification_trigger_completion=False,
             action_trigger=rule_type,
             notification_webhook=f"http://{gui_host}:{gui_port}/self_test_notification",
             notification_payload=f'"rule":"@rule@", "event":"@event@", "test_id":"{test_id}", "task_id":"@task_id@"',
@@ -530,7 +530,7 @@ async def self_test(request) -> Response:
             action="notification",
             action_trigger=rule_type,
             notification_webhook=f"http://{gui_host}:{gui_port}/self_test_notification",
-            notification_trigger_reception="False",
+            notification_trigger_reception=False,
             notification_payload=f'"rule":"@rule@", "event":"@event@", "test_id":"{test_id}"',
         )
 

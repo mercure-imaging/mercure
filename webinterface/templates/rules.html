@@ -13,9 +13,9 @@
         {% for x in rules %}
         <div class="card rulecard">
             <header class="card-header has-background-light ">
-                <p class="card-header-title card-toggle {% if rules[x]['disabled']=='True' %}has-text-grey-light{% endif %}">
-                    <span class="icon {% if rules[x]['disabled']!='True' %}{% else %}has-text-grey-light{% endif %} has-tooltip-left {% if rules[x]['disabled']!='True' %}has-tooltip-success{% endif %}" data-tooltip=
-                    {% if rules[x]['disabled']=='True' %}
+                <p class="card-header-title card-toggle {% if rules[x]['disabled']==True %}has-text-grey-light{% endif %}">
+                    <span class="icon {% if rules[x]['disabled']!=True %}{% else %}has-text-grey-light{% endif %} has-tooltip-left {% if rules[x]['disabled']!=True %}has-tooltip-success{% endif %}" data-tooltip=
+                    {% if rules[x]['disabled']==True %}
                     "Disabled"
                     {% else %}
                     {% if rules[x]['action']=='route' %}"Routing Only"
@@ -33,7 +33,7 @@
                     {% elif rules[x]['action']=='discard' %}<i class="fas fa-ban fa-lg"></i>
                     {% else %}<i class=" fas fa-robot fa-lg"></i>
                     {% endif %}</span>&nbsp;&nbsp;{{ x }}<span style="margin-left: auto;"></span>
-                    {% if rules[x]['fallback']=='True' %}
+                    {% if rules[x]['fallback']==True %}
                     <span class="has-tooltip-right has-tooltip-success" data-tooltip="Fallback Rule"><i class="fas fa-magnet ruleicon"></i></span>
                     {% endif %}
                     {% if rules[x]['priority']=='urgent' %}

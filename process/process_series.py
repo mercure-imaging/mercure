@@ -314,7 +314,7 @@ async def process_series(folder: str) -> None:
             # Copy the task to the output folder (in case the module didn't move it)
             push_input_task(f_path / "in", f_path / "out")
             # If configured in the rule, copy the input images to the output folder
-            if task is not None and task.process and task.process.retain_input_images == "True":
+            if task is not None and task.process and task.process.retain_input_images == True:
                 push_input_images(task_id, f_path / "in", f_path / "out")
             # Remember the number of DCM files in the output folder (for logging purpose)
             file_count_complete = len(list(Path(f_path / "out").glob(mercure_names.DCMFILTER)))
@@ -450,7 +450,7 @@ def trigger_notification(task: Task, event) -> None:
 
     # Now fire the webhook if configured
     if event == mercure_events.RECEPTION:
-        if config.mercure.rules[current_rule].notification_trigger_reception == "True":
+        if config.mercure.rules[current_rule].notification_trigger_reception == True:
             notification.send_webhook(
                 config.mercure.rules[current_rule].get("notification_webhook", ""),
                 config.mercure.rules[current_rule].get("notification_payload", ""),
@@ -461,7 +461,7 @@ def trigger_notification(task: Task, event) -> None:
             notification_type = "RECEPTION"
 
     if event == mercure_events.COMPLETION:
-        if config.mercure.rules[current_rule].notification_trigger_completion == "True":
+        if config.mercure.rules[current_rule].notification_trigger_completion == True:
             notification.send_webhook(
                 config.mercure.rules[current_rule].get("notification_webhook", ""),
                 config.mercure.rules[current_rule].get("notification_payload", ""),
@@ -472,7 +472,7 @@ def trigger_notification(task: Task, event) -> None:
             notification_type = "COMPLETION"
 
     if event == mercure_events.ERROR:
-        if config.mercure.rules[current_rule].notification_trigger_error == "True":
+        if config.mercure.rules[current_rule].notification_trigger_error == True:
             notification.send_webhook(
                 config.mercure.rules[current_rule].get("notification_webhook", ""),
                 config.mercure.rules[current_rule].get("notification_payload", ""),

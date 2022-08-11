@@ -254,7 +254,7 @@ def _trigger_notification(task: Task, event) -> None:
 
         # Now fire the webhook if configured
         if event == mercure_events.RECEPTION:
-            if config.mercure.rules[current_rule].notification_trigger_reception == "True":
+            if config.mercure.rules[current_rule].notification_trigger_reception == True:
                 notification.send_webhook(
                     config.mercure.rules[current_rule].get("notification_webhook", ""),
                     config.mercure.rules[current_rule].get("notification_payload", ""),
@@ -265,7 +265,7 @@ def _trigger_notification(task: Task, event) -> None:
                 notification_type = "RECEPTION"
 
         if event == mercure_events.COMPLETION:
-            if config.mercure.rules[current_rule].notification_trigger_completion == "True":
+            if config.mercure.rules[current_rule].notification_trigger_completion == True:
                 notification.send_webhook(
                     config.mercure.rules[current_rule].get("notification_webhook", ""),
                     config.mercure.rules[current_rule].get("notification_payload", ""),
@@ -276,7 +276,7 @@ def _trigger_notification(task: Task, event) -> None:
                 notification_type = "COMPLETION"
 
         if event == mercure_events.ERROR:
-            if config.mercure.rules[current_rule].notification_trigger_error == "True":
+            if config.mercure.rules[current_rule].notification_trigger_error == True:
                 notification.send_webhook(
                     config.mercure.rules[current_rule].get("notification_webhook", ""),
                     config.mercure.rules[current_rule].get("notification_payload", ""),

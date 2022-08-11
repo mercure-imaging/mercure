@@ -135,11 +135,11 @@ def get_triggered_rules(
             rule: Rule = config.mercure.rules[current_rule]
 
             # Check if the current rule has been disabled
-            if rule.get(mercure_rule.DISABLED, "False") == "True":
+            if rule.disabled == True:
                 continue
 
             # If the current rule is flagged as fallback rule, remember the name (to avoid having to iterate over the rules again)
-            if rule.get(mercure_rule.FALLBACK, "False") == "True":
+            if rule.fallback == True:
                 fallback_rule = current_rule
 
             # Check if the current rule is triggered for the provided tag set

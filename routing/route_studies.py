@@ -101,10 +101,10 @@ def is_study_complete(folder: str, pending_series: Dict[str, float]) -> bool:
         with open(Path(folder) / mercure_names.TASKFILE, "r") as json_file:
             task: TaskHasStudy = TaskHasStudy(**json.load(json_file))
 
-        if task.study.get("complete_force", "False") == "True":
+        if task.study.complete_force == True:
             return True
         if (Path(folder) / mercure_names.FORCE_COMPLETE).exists():
-            task.study.complete_force = "True"
+            task.study.complete_force = True
             with open(Path(folder) / mercure_names.TASKFILE, "w") as json_file:
                 json.dump(task.dict(), json_file)
             return True
@@ -407,7 +407,7 @@ def trigger_studylevel_notification(study: str, task: Task, event) -> bool:
 
     # OK, now fire out the webhook if configured
     if event == mercure_events.RECEPTION:
-        if config.mercure.rules[current_rule].notification_trigger_reception == "True":
+        if config.mercure.rules[current_rule].notification_trigger_reception == True:
             notification.send_webhook(
                 config.mercure.rules[current_rule].get("notification_webhook", ""),
                 config.mercure.rules[current_rule].get("notification_payload", ""),
@@ -416,7 +416,7 @@ def trigger_studylevel_notification(study: str, task: Task, event) -> bool:
                 task.id,
             )
     if event == mercure_events.COMPLETION:
-        if config.mercure.rules[current_rule].notification_trigger_completion == "True":
+        if config.mercure.rules[current_rule].notification_trigger_completion == True:
             notification.send_webhook(
                 config.mercure.rules[current_rule].get("notification_webhook", ""),
                 config.mercure.rules[current_rule].get("notification_payload", ""),
@@ -425,7 +425,7 @@ def trigger_studylevel_notification(study: str, task: Task, event) -> bool:
                 task.id,
             )
     if event == mercure_events.ERROR:
-        if config.mercure.rules[current_rule].notification_trigger_error == "True":
+        if config.mercure.rules[current_rule].notification_trigger_error == True:
             notification.send_webhook(
                 config.mercure.rules[current_rule].get("notification_webhook", ""),
                 config.mercure.rules[current_rule].get("notification_payload", ""),

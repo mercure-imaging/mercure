@@ -111,8 +111,8 @@ class UnsetRule(TypedDict):
 class Rule(BaseModel, Compat):
     rule: str = "False"
     target: str = ""
-    disabled: Literal["True", "False"] = "False"
-    fallback: Literal["True", "False"] = "False"
+    disabled: bool = False
+    fallback: bool = False
     contact: str = ""
     comment: str = ""
     tags: str = ""
@@ -123,12 +123,12 @@ class Rule(BaseModel, Compat):
     priority: Literal["normal", "urgent", "offpeak"] = "normal"
     processing_module: str = ""
     processing_settings: Dict[str, Any] = {}
-    processing_retain_images: Literal["True", "False"] = "False"
+    processing_retain_images: bool = False
     notification_webhook: str = ""
     notification_payload: str = ""
-    notification_trigger_reception: Literal["True", "False"] = "True"
-    notification_trigger_completion: Literal["True", "False"] = "True"
-    notification_trigger_error: Literal["True", "False"] = "True"
+    notification_trigger_reception: bool = True
+    notification_trigger_completion: bool = True
+    notification_trigger_error: bool = True
 
 
 class ProcessingLogsConfig(BaseModel):
@@ -139,7 +139,7 @@ class ProcessingLogsConfig(BaseModel):
 class Config(BaseModel, Compat):
     appliance_name: str
     port: int
-    accept_compressed_images: str
+    accept_compressed_images: bool
     incoming_folder: str
     studies_folder: str
     outgoing_folder: str
@@ -199,14 +199,14 @@ class TaskStudy(BaseModel, Compat):
     last_receive_time: str
     received_series: Optional[List[str]]
     received_series_uid: Optional[List[str]]
-    complete_force: Literal["True", "False"]
+    complete_force: bool = False
 
 
 class TaskProcessing(BaseModel, Compat):
     module_name: str
     module_config: Optional[Module]
     settings: Dict[str, Any] = {}
-    retain_input_images: Literal["False", "True"]
+    retain_input_images: bool
 
 
 # class PydanticFile(object):

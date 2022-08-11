@@ -34,7 +34,7 @@ configuration_filename = (os.getenv("MERCURE_CONFIG_FOLDER") or "/opt/mercure/co
 mercure_defaults = {
     "appliance_name": "master",
     "port": 11112,
-    "accept_compressed_images": "False",
+    "accept_compressed_images": False,
     "incoming_folder": "/opt/mercure/data/incoming",
     "studies_folder": "/opt/mercure/data/studies",
     "outgoing_folder": "/opt/mercure/data/outgoing",

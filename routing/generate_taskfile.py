@@ -125,7 +125,7 @@ def add_study(
         last_receive_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         received_series=[tags_list.get("SeriesDescription", mercure_options.INVALID)],
         received_series_uid=[tags_list.get("SeriesInstanceUID", mercure_options.INVALID)],
-        complete_force="False",
+        complete_force=False,
     )
 
     return study_info
