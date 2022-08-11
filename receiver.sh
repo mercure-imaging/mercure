@@ -70,7 +70,7 @@ else
 fi
 
 transfer_syntax_option=""
-if [ $accept_compressed = "True" ]
+if [ $accept_compressed = "true" ]
 then
     echo "NOTE: Accepting all supported transfer syntaxes"
     transfer_syntax_option="+xa"
