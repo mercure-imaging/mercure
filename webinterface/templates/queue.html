@@ -696,7 +696,7 @@
                     }
                 },
                 {
-                    text: '<i class="far fa-share-square"></i>',
+                    text: '<i class="far fa-play-circle"></i>',
                     titleAttr: 'Force study completion',
                     action: function ( e, dt, node, config ) {
 
@@ -825,8 +825,8 @@
                     }
                 },
                 {
-                    text: '<i class="fas fa-file"></i>',
-                    titleAttr: 'Logs',
+                    text: '<i class="far fa-file-alt"></i>',
+                    titleAttr: 'Processing Logs',
                     action: function ( e, dt, node, config ) {
                         var jid = $('#jobs_archive').DataTable().rows( { selected: true } ).data()[0].slice(-1)[0];
                         showLogs(jid);
@@ -843,6 +843,7 @@
             var selectedRows = $('#jobs_archive').DataTable().rows( { selected: true } ).count();
             $('#jobs_archive').DataTable().button(0).enable( selectedRows > 0 );
             $('#jobs_archive').DataTable().button(1).enable( selectedRows > 0 );
+            $('#jobs_archive').DataTable().button(2).enable( selectedRows > 0 );
         } );
         $("#job_archive_search").on('keyup', function (event) {
             if (event.keyCode === 13) {
@@ -922,6 +923,7 @@
                     }
                     $('#jobs_archive').DataTable().button(0).enable(false);
                     $('#jobs_archive').DataTable().button(1).enable(false);
+                    $('#jobs_archive').DataTable().button(2).enable(false);
                     jobtable.draw();
                 },
                 complete: function (data) {
