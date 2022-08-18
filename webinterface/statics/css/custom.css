@@ -357,3 +357,38 @@ table.dataTable tbody tr.selected th, table.dataTable tbody tr.selected td {
 #job-events-table_wrapper .table th {
   padding: 3px 11px !important;
 }
+
+.process-logs::-webkit-scrollbar-track,
+.process-logs::-webkit-scrollbar-corner {
+  background-color: #0a0a0a;
+}
+
+.process-logs::-webkit-scrollbar-thumb {
+  background: #22c65b;
+  border-radius: 10px;
+  border: 4px solid transparent;
+  background-clip: content-box;
+}
+
+.process-logs::-webkit-scrollbar-thumb:hover {
+  background: #22c65b;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+
+.process-logs::-webkit-scrollbar {
+  width: 14px;
+  height: 14px;
+}
+
+.process-logs-output {
+  font-family: monospace;
+  background-color: #0a0a0a;
+  color: #fff;
+  padding: 8px;
+}
+
+.process-logs-output::selection {
+  background-color: rgb(50, 115, 220);
+  color: #fff;
+}

@@ -20,7 +20,7 @@
                 <div class="container">
                     <div class="field is-grouped is-pulled-right">
                         <p class="control" style="margin-right: 5px;">
-                            <button class="button is-small has-tooltip-left has-tooltip-success" data-tooltip="Auto Update" onclick="toggleautoupdate()" id="autoupdate">
+                            <button class="button is-small has-tooltip-left has-tooltip-success" data-tooltip="Auto Update" onclick="toggleAutoUpdate()" id="autoupdate">
                                 <i class="far fa-clock"></i></button>                            
                         </p>
                         <p class="control">
@@ -301,12 +301,12 @@
 
     <div class="modal" id="process_logs">
         <div class="modal-background"></div>
-        <div class="modal-card" style="width: 90%;">
+        <div class="modal-card process-logs" style="width: 90%;">
             <header class="modal-card-head">
-                <p class="modal-card-title">Processing logs</p>
+                <p class="modal-card-title">Processing Log</p>
             </header>
-            <section class="modal-card-body">
-                <pre id="process_logs_display"></pre>
+            <section class="modal-card-body process-logs" style="background-color: #0a0a0a; border-left: 3px solid #FFF; border-right: 3px solid #FFF;">
+                <pre id="process_logs_display" class="process-logs process-logs-output"></pre>
             </section>
             <footer class="modal-card-foot buttons is-centered">
                 <button class="button" type="button" id="closeprocesslogs" onclick="closeProcessLogs()">Close</button>
@@ -826,7 +826,7 @@
                 },
                 {
                     text: '<i class="far fa-file-alt"></i>',
-                    titleAttr: 'Processing Logs',
+                    titleAttr: 'Processing log',
                     action: function ( e, dt, node, config ) {
                         var jid = $('#jobs_archive').DataTable().rows( { selected: true } ).data()[0].slice(-1)[0];
                         showLogs(jid);
@@ -935,7 +935,6 @@
         }
     }
 
-
     function showLogs(jobId)
     {
         if (jobId === "") {
@@ -1004,6 +1003,7 @@
     {
         $("#process_logs").removeClass("is-active");
     }
+
     function showJobInformation(jobId,category)
     {
         if ((jobId === "") || (category === "")) {
@@ -1083,7 +1083,7 @@
 
     var updateTimer;
 
-    function toggleautoupdate()
+    function toggleAutoUpdate()
     {
         $("#autoupdate").toggleClass("is-dark");
         $("#autoupdate").blur();
