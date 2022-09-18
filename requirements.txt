@@ -99,8 +99,10 @@ jmespath==1.0.0
     # via
     #   boto3
     #   botocore
-mako==1.2.0
-    # via alembic
+mako==1.2.2
+    # via
+    #   -r requirements.in
+    #   alembic
 markupsafe==2.1.1
     # via
     #   jinja2
