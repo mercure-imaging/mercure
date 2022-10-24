@@ -9,8 +9,11 @@
         <div class="columns">
             <div class="column is-full">
                 {% if config_edited>0 %}
-                <div class="notification is-success">
+                <div class="notification is-success" style="margin-bottom: 1rem;">
                     <i class="fas fa-check"></i>&nbsp;&nbsp;Configuration has been updated.
+                </div>
+                <div class="notification" style="margin-bottom: 40px;">
+                    <i class="fas fa-bolt"></i>&nbsp;&nbsp;Changes of DICOM connectivity settings require manual restart of the receiver service! Make sure to restart when the receiver is idle.
                 </div>
                 {% endif %}
                 <h5 class="title is-5 configtitle"><i class="fas fa-server has-text-success"></i>&nbsp;&nbsp;General
