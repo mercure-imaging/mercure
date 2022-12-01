@@ -51,7 +51,7 @@ python-nomad
 # other
 pydicom
 pydantic
-pillow >= 9.1.1
+pillow >= 9.2.0
 dicomweb-client
 boto3
 freezegun
