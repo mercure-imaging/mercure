@@ -951,16 +951,12 @@
                 // $('#erroralert').show();
             },
             success: function (data) {
-                // alert(data[0].logs)
                 if (data && data.length > 0) {
-                    $("#process_logs").addClass("is-active");
                     $("#process_logs_display").text(data[0].logs)
+                } else {
+                    $("#process_logs_display").text("No processing log available for selected task.")
                 }
-                // var eventstable = $('#job-events-table').DataTable().clear();
-                // Object.keys(data).forEach(function (key) {
-                //     eventstable.row.add([ data[key]["task_id"].slice(0,8) || "", data[key]["time"], data[key]["event"], data[key]["sender"], data[key]["target"], data[key]["file_count"], data[key]["info"] ])
-                // })
-                // eventstable.draw();
+                $("#process_logs").addClass("is-active");
             },
             timeout: 3000
         });

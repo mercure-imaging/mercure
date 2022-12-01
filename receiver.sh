@@ -6,7 +6,9 @@ echo "----------------------"
 echo ""
 
 binary=bin/getdcmtags
-if [[ $(lsb_release -rs) == "20.04" ]]; then 
+if [[ $(lsb_release -rs) == "22.04" ]]; then 
+    binary=bin/ubuntu22.04/getdcmtags
+elif [[ $(lsb_release -rs) == "20.04" ]]; then 
     binary=bin/ubuntu20.04/getdcmtags
 elif [[ $(lsb_release -rs) == "18.04" ]]; then 
     binary=bin/ubuntu18.04/getdcmtags
