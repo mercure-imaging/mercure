@@ -9,15 +9,27 @@ error() {
 }
 trap 'error ${LINENO}' ERR
 
+UBUNTU_VERSION=$(lsb_release -rs)
+if [ $UBUNTU_VERSION != "20.04" ]; then
+  echo "Invalid operating system!"
+  echo "This mercure version requires Ubuntu 20.04 LTS"
+  echo "Detected operating system = $UBUNTU_VERSION"
+  exit 1
+fi
+
 if [ ! -f "VERSION" ]; then
     echo "Error: VERSION file missing. Unable to proceed."
     exit 1
 fi
 VERSION=`cat VERSION`
 IMAGE_TAG=":$VERSION"
+VER_LENGTH=${#VERSION}+28
 echo "mercure Installer - Version $VERSION"
+for ((i=1;i<=VER_LENGTH;i++)); do
+    echo -n "="
+done
 echo ""
-
+echo ""
 OWNER=$USER
 if [ $OWNER = "root" ]
 then

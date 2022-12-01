@@ -10,7 +10,7 @@
 #include "dcmtk/dcmdata/dcspchrs.h"
 #include "dcmtk/dcmdata/dctypes.h"
 
-#define VERSION "0.5.1"
+#define VERSION "0.5.2"
 
 static OFString tagSpecificCharacterSet = "";
 static OFString tagPatientName = "";
@@ -55,6 +55,7 @@ static OFString tagAcquisitionNumber = "";
 static OFString tagInstitutionName = "";
 static OFString tagMediaStorageSOPClassUID = "";
 static OFString tagAcquisitionType = "";
+static OFString tagImageType = "";
 
 static OFString helperSenderAET = "";
 static OFString helperReceiverAET = "";
@@ -217,6 +218,7 @@ bool writeTagsFile(OFString dcmFile, OFString originalFile)
     INSERTTAG("InstitutionName", tagInstitutionName, "Some institution");
     INSERTTAG("MediaStorageSOPClassUID", tagMediaStorageSOPClassUID, "1.2.840.10008.5.1.4.1.1.4");
     INSERTTAG("AcquisitionType", tagAcquisitionType, "SPIRAL");
+    INSERTTAG("ImageType", tagImageType, "ORIGINAL");
 
     INSERTTAG("SenderAET", helperSenderAET, "STORESCU");
     INSERTTAG("ReceiverAET", helperReceiverAET, "ANY-SCP");
@@ -228,32 +230,32 @@ bool writeTagsFile(OFString dcmFile, OFString originalFile)
     return true;
 }
 
-#define READTAG(TAG, VAR)                                                                                                \
-    if ((dcmFile.getDataset()->tagExistsWithValue(TAG)) && (!dcmFile.getDataset()->findAndGetOFString(TAG, VAR).good())) \
-    {                                                                                                                    \
-        OFString errorStr = "Unable to read tag ";                                                                       \
-        errorStr.append(TAG.toString());                                                                                 \
-        errorStr.append("\nReason: ");                                                                                   \
-        errorStr.append(dcmFile.getDataset()->findAndGetOFString(TAG, VAR).text());                                      \
-        writeErrorInformation(path + origFilename, errorStr);                                                            \
-        return 1;                                                                                                        \
-    }                                                                                                                    \
-    for (size_t i = 0; i < VAR.length(); i++)                                                                            \
-    {                                                                                                                    \
-        switch (VAR[i])                                                                                                  \
-        {                                                                                                                \
-        case 13:                                                                                                         \
-            VAR[i] = ';';                                                                                                \
-            break;                                                                                                       \
-        case 10:                                                                                                         \
-            VAR[i] = ' ';                                                                                                \
-            break;                                                                                                       \
-        case 34:                                                                                                         \
-            VAR[i] = 39;                                                                                                 \
-            break;                                                                                                       \
-        default:                                                                                                         \
-            break;                                                                                                       \
-        }                                                                                                                \
+#define READTAG(TAG, VAR)                                                                                                     \
+    if ((dcmFile.getDataset()->tagExistsWithValue(TAG)) && (!dcmFile.getDataset()->findAndGetOFStringArray(TAG, VAR).good())) \
+    {                                                                                                                         \
+        OFString errorStr = "Unable to read tag ";                                                                            \
+        errorStr.append(TAG.toString());                                                                                      \
+        errorStr.append("\nReason: ");                                                                                        \
+        errorStr.append(dcmFile.getDataset()->findAndGetOFStringArray(TAG, VAR).text());                                      \
+        writeErrorInformation(path + origFilename, errorStr);                                                                 \
+        return 1;                                                                                                             \
+    }                                                                                                                         \
+    for (size_t i = 0; i < VAR.length(); i++)                                                                                 \
+    {                                                                                                                         \
+        switch (VAR[i])                                                                                                       \
+        {                                                                                                                     \
+        case 13:                                                                                                              \
+            VAR[i] = ';';                                                                                                     \
+            break;                                                                                                            \
+        case 10:                                                                                                              \
+            VAR[i] = ' ';                                                                                                     \
+            break;                                                                                                            \
+        case 34:                                                                                                              \
+            VAR[i] = 39;                                                                                                      \
+            break;                                                                                                            \
+        default:                                                                                                              \
+            break;                                                                                                            \
+        }                                                                                                                     \
     }
 
 int main(int argc, char *argv[])
@@ -359,6 +361,7 @@ int main(int argc, char *argv[])
     READTAG(DCM_InstitutionName, tagInstitutionName);
     READTAG(DCM_MediaStorageSOPClassUID, tagMediaStorageSOPClassUID);
     READTAG(DCM_AcquisitionType, tagAcquisitionType);
+    READTAG(DCM_ImageType, tagImageType);
 
     isConversionNeeded = true;
     if (tagSpecificCharacterSet.compare("ISO_IR 192") == 0)
