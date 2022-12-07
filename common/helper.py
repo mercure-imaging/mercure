@@ -137,9 +137,10 @@ class FileLock:
     no spurious lock files remain if exceptions are raised."""
 
     def __init__(self, path_for_lockfile: Path):
-        self.lockCreated = True
         self.lockfile = path_for_lockfile
+        # TODO: Handle case if lock file cannot be created
         self.lockfile.touch(exist_ok=False)
+        self.lockCreated = True
 
     # Destructor to ensure that the lock file gets deleted
     # if the calling function is left somewhere as result
