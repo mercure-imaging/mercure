@@ -167,7 +167,6 @@ async def docker_runtime(task: Task, folder: str, file_count_begin: int) -> bool
             # Don't use ERROR here because the exception will be raised for all Docker images that
             # have been built locally and are not present in the Docker Registry.
             logger.info("Couldn't check for module update (this is normal for unpublished modules)")
-            logger.info(e)
 
     # Run the container and handle errors of running the container
     processing_success = True
@@ -251,6 +250,9 @@ async def process_series(folder: str) -> None:
         try:
             lock_file.touch(exist_ok=False)
             # lock = helper.FileLock(lock_file)
+        except FileExistsError:
+            # Return if the case has already been locked by another instance in the meantime
+            return           
         except Exception as e:
             # Can't create lock file, so something must be seriously wrong
             # Not sure what should happen here- trying to copy the case out probably won't work,
@@ -389,6 +391,7 @@ def move_results(
         lock_file.touch(exist_ok=False)
     except Exception:
         logger.error(f"Error locking folder to be moved {folder}", task_id)  # handle_error
+        return
 
     if lock is not None:
         lock.free()
