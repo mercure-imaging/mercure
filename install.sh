@@ -10,9 +10,9 @@ error() {
 trap 'error ${LINENO}' ERR
 
 UBUNTU_VERSION=$(lsb_release -rs)
-if [ $UBUNTU_VERSION != "20.04" ]; then
+if [ $UBUNTU_VERSION != "20.04" ] && [ $UBUNTU_VERSION != "22.04" ]; then
   echo "Invalid operating system!"
-  echo "This mercure version requires Ubuntu 20.04 LTS"
+  echo "This mercure version requires Ubuntu 20.04 LTS or 22.04 LTS"
   echo "Detected operating system = $UBUNTU_VERSION"
   exit 1
 fi
@@ -24,6 +24,7 @@ fi
 VERSION=`cat VERSION`
 IMAGE_TAG=":$VERSION"
 VER_LENGTH=${#VERSION}+28
+echo ""
 echo "mercure Installer - Version $VERSION"
 for ((i=1;i<=VER_LENGTH;i++)); do
     echo -n "="
@@ -345,7 +346,7 @@ install_app_files() {
 install_packages() {
   echo "## Installing Linux packages..."
   sudo apt-get update
-  sudo apt-get install -y build-essential wget git dcmtk jq inetutils-ping sshpass postgresql postgresql-contrib libpq-dev git-lfs python3-wheel python3.8-dev python3.8 python3.8-venv
+  sudo apt-get install -y build-essential wget git dcmtk jq inetutils-ping sshpass postgresql postgresql-contrib libpq-dev git-lfs python3-wheel python3-dev python3 python3-venv
 }
 
 
@@ -353,7 +354,7 @@ install_dependencies() {
   echo "## Installing Python runtime environment..."
   if [ ! -e "$MERCURE_BASE/env" ]; then
     sudo mkdir "$MERCURE_BASE/env" && sudo chown $USER "$MERCURE_BASE/env"
-    python3.8 -m venv "$MERCURE_BASE/env"
+    python3 -m venv "$MERCURE_BASE/env"
   fi
 
   echo "## Installing required Python packages..."
