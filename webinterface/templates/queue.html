@@ -228,7 +228,7 @@
 
     <div class="modal" id="jobinformation">
         <div class="modal-background"></div>
-        <div class="modal-card" style="width: 960px;">
+        <div class="modal-card" style="width: 960px; min-height: 75%; max-height: 75%;">
             <header class="modal-card-head">
                 <p class="modal-card-title">Job Information</p>
             </header>
@@ -236,7 +236,8 @@
                 <div class="container">
                     <div class="field">
                         <div class="control" id="jobinfocontrol" >
-                            <textarea class="textarea has-fixed-size taskinfotextarea" rows="15" id="jobinformationcontent" name="jobinformationcontent" readonly></textarea>
+                            <pre id="jobinfo-renderer"></pre>
+                            <div id="jobinformationcontent"></div>
                         </div>
                     </div>                    
                 </div>
@@ -1006,7 +1007,7 @@
             return;
         }
 
-        $("#jobinformationcontent").val("");
+        $('#jobinfo-renderer').jsonViewer();
         $("#jobinformation").addClass("is-active");
         $("#jobinfocontrol").addClass("is-loading");        
 
@@ -1023,13 +1024,14 @@
                 } catch(e) {
                     textContent = data;
                 }                
-                $("#jobinformationcontent").val(textContent);
+                $('#jobinfo-renderer').jsonViewer(jsondata, {rootCollapsable: false, collapsed: true});
+                $("#jobinfo-renderer > ul > li:nth-child(1) > a").click();                
             },
             error: function (data, status) {
                 if (status === "parsererror") {                    
-                    $("#jobinformationcontent").val(data.responseText);
+                    $("#jobinformationcontent").html(data.responseText);
                 } else {
-                    $("#jobinformationcontent").val("ERROR: Unable to retrieve job information");
+                    $("#jobinformationcontent").html("ERROR: Unable to retrieve job information");
                 }
             },
             complete: function (data) {
@@ -1041,6 +1043,7 @@
     function closeJobInformation()
     {
         $("#jobinformation").removeClass("is-active");
+        $('#jobinfo-renderer').jsonViewer();
     }
 
     function showArchiveJobInformation(jobId)
@@ -1049,6 +1052,7 @@
             return;
         }
 
+        $('#json-renderer').jsonViewer({});
         $("#jobarchiveinformation").addClass("is-active");
         $("#jobarchiveinfocontrol").addClass("is-loading");        
 
@@ -1074,7 +1078,7 @@
     function closeJobArchiveInformation()
     {
         $("#jobarchiveinformation").removeClass("is-active");
-        $('#json-renderer').jsonViewer({});
+        $('#json-renderer').jsonViewer();
     }
 
     var updateTimer;
