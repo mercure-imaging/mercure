@@ -19,7 +19,6 @@ class FolderTargetTargetHandler(TargetHandler[FolderTarget]):
     display_name = "Folder"
     icon = "fa-folder"
 
-
     def send_to_target(self, task_id: str, target: FolderTarget, dispatch_info: TaskDispatch, source_folder: Path) -> str:
         # send dicoms in source-folder to target folder
         new_folder = Path(target.folder) / str(uuid.uuid4())
@@ -42,3 +41,4 @@ class FolderTargetTargetHandler(TargetHandler[FolderTarget]):
             print(e)
             result["Folder is writeable"] = False
         return result
+        

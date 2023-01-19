@@ -88,6 +88,11 @@ class S3Target(Target):
     secret_access_key: str
 
 
+class FolderTarget(Target):
+    target_type: Literal["folder"] = "folder"
+    folder: str
+
+
 class DummyTarget(Target):
     target_type: Literal["dummy"] = "dummy"
 
