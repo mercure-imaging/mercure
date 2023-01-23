@@ -71,28 +71,31 @@ def dispatch() -> None:
     retry_max = config.mercure.retry_max
     retry_delay = config.mercure.retry_delay
 
-    # Obtain a sorted folder list, so that the oldest DICOMs get dispatched first
-    items = sorted(Path(config.mercure.outgoing_folder).iterdir(), key=os.path.getmtime)
-    for entry in items:
-        # First, check if dispatching might have been suspended via the UI
-        if dispatcher_lockfile and dispatcher_lockfile.exists():
-            if not dispatcher_is_locked:
-                dispatcher_is_locked = True
-                logger.info(f"Dispatching halted")
-            break
-        else:
-            if dispatcher_is_locked:
-                dispatcher_is_locked = False
-                logger.info("Dispatching resumed")
+    try:
+        # Obtain a sorted folder list, so that the oldest DICOMs get dispatched first
+        items = sorted(Path(config.mercure.outgoing_folder).iterdir(), key=os.path.getmtime)
+        for entry in items:
+            # First, check if dispatching might have been suspended via the UI
+            if dispatcher_lockfile and dispatcher_lockfile.exists():
+                if not dispatcher_is_locked:
+                    dispatcher_is_locked = True
+                    logger.info(f"Dispatching halted")
+                break
+            else:
+                if dispatcher_is_locked:
+                    dispatcher_is_locked = False
+                    logger.info("Dispatching resumed")
 
-        # Now process the folders that are ready for dispatching
-        if entry.is_dir() and is_ready_for_sending(entry):
-            execute(Path(entry), success_folder, error_folder, retry_max, retry_delay)
+            # Now process the folders that are ready for dispatching
+            if entry.is_dir() and is_ready_for_sending(entry):
+                execute(Path(entry), success_folder, error_folder, retry_max, retry_delay)
 
-        # If termination is requested, stop processing series after the
-        # active one has been completed
-        if helper.is_terminated():
-            break
+            # If termination is requested, stop processing series after the
+            # active one has been completed
+            if helper.is_terminated():
+                break
+    except:
+        return    
 
 
 def exit_dispatcher(args) -> None:
