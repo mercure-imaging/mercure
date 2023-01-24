@@ -18,8 +18,7 @@ from webinterface.common import templates
 import common.config as config
 from starlette.responses import RedirectResponse
 
-config = config.get_logger()
-
+logger = config.get_logger()
 
 ###################################################################################
 ## Test endpoints
