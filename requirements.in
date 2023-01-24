@@ -6,7 +6,7 @@ watchdog
 dataclasses; python_version < '3.7'
 mako>=1.2.2
 alembic
-wheel
+wheel>=0.38.1
 
 # logging / monitoring
 graphyte
@@ -15,7 +15,7 @@ aiohttp
 types-requests
 
 # documentation
-sphinx
+sphinx==5.0.0
 sphinx-rtd-theme
 
 # testing
@@ -55,3 +55,4 @@ pillow >= 9.2.0
 dicomweb-client
 boto3
 freezegun
+certifi>=2022.12.07
