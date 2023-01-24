@@ -71,13 +71,13 @@ class ExceptionsKeywordArgumentAdapter(daiquiri.KeywordArgumentAdapter):
         return msg, kwargs  # {"extra": {"_daiquiri_extra_keys": set()}}
 
     def setTask(self, task_id: str) -> None:
-        self.extra["context_task"] = task_id
+        self.extra["context_task"] = task_id  # type: ignore
         logger.debug(f"Setting task")
 
     def clearTask(self) -> None:
         if "context_task" in self.extra:
             logger.debug("Clearing task")
-            del self.extra["context_task"]
+            del self.extra["context_task"]  # type: ignore
 
 
 def clear_task_decorator(func):
@@ -114,7 +114,7 @@ def get_logger() -> ExceptionsKeywordArgumentAdapter:
             outputs=(
                 daiquiri.output.Stream(
                     formatter=daiquiri.formatter.ColorExtrasFormatter(
-                        fmt=get_logformat(), keywords=["event_type", "severity", "context_task"]
+                        fmt=get_logformat(), keywords={"event_type", "severity", "context_task"}
                     )
                 ),
             ),
