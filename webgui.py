@@ -330,8 +330,7 @@ async def configuration(request) -> Response:
         return PlainTextResponse("Error reading configuration file.")
     template = "configuration.html"
     config_edited = int(request.query_params.get("edited", 0))
-    os_info = distro.linux_distribution()
-    os_string = f"{os_info[0]} Version {os_info[1]} ({os_info[2]})"
+    os_string = distro.name(True)
     runtime = helper.get_runner()
     context = {
         "request": request,
