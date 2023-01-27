@@ -10,7 +10,7 @@
 #include "dcmtk/dcmdata/dcspchrs.h"
 #include "dcmtk/dcmdata/dctypes.h"
 
-#define VERSION "0.5.2"
+#define VERSION "0.5.3"
 
 static OFString tagSpecificCharacterSet = "";
 static OFString tagPatientName = "";
@@ -230,13 +230,13 @@ bool writeTagsFile(OFString dcmFile, OFString originalFile)
     return true;
 }
 
-#define READTAG(TAG, VAR)                                                                                                     \
-    if ((dcmFile.getDataset()->tagExistsWithValue(TAG)) && (!dcmFile.getDataset()->findAndGetOFStringArray(TAG, VAR).good())) \
+#define READTAG(TAG, SOURCE, VAR)                                                                                             \
+    if ((dcmFile.SOURCE->tagExistsWithValue(TAG)) && (!dcmFile.SOURCE->findAndGetOFStringArray(TAG, VAR).good()))             \
     {                                                                                                                         \
         OFString errorStr = "Unable to read tag ";                                                                            \
         errorStr.append(TAG.toString());                                                                                      \
         errorStr.append("\nReason: ");                                                                                        \
-        errorStr.append(dcmFile.getDataset()->findAndGetOFStringArray(TAG, VAR).text());                                      \
+        errorStr.append(dcmFile.SOURCE->findAndGetOFStringArray(TAG, VAR).text());                                            \
         writeErrorInformation(path + origFilename, errorStr);                                                                 \
         return 1;                                                                                                             \
     }                                                                                                                         \
@@ -318,50 +318,50 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    READTAG(DCM_SpecificCharacterSet, tagSpecificCharacterSet);
-    READTAG(DCM_Modality, tagModality);
-    READTAG(DCM_BodyPartExamined, tagBodyPartExamined);
-    READTAG(DCM_ProtocolName, tagProtocolName);
-    READTAG(DCM_RetrieveAETitle, tagRetrieveAETitle);
-    READTAG(DCM_StationAETitle, tagStationAETitle);
-    READTAG(DCM_Manufacturer, tagManufacturer);
-    READTAG(DCM_ManufacturerModelName, tagManufacturerModelName);
-    READTAG(DCM_StudyDescription, tagStudyDescription);
-    READTAG(DCM_CodeValue, tagCodeValue);
-    READTAG(DCM_CodeMeaning, tagCodeMeaning);
-    READTAG(DCM_SeriesDescription, tagSeriesDescription);
-    READTAG(DCM_PatientName, tagPatientName);
-    READTAG(DCM_PatientID, tagPatientID);
-    READTAG(DCM_PatientBirthDate, tagPatientBirthDate);
-    READTAG(DCM_PatientSex, tagPatientSex);
-    READTAG(DCM_AccessionNumber, tagAccessionNumber);
-    READTAG(DCM_ReferringPhysicianName, tagReferringPhysicianName);
-    READTAG(DCM_StudyID, tagStudyID);
-    READTAG(DCM_SeriesNumber, tagSeriesNumber);
-    READTAG(DCM_SOPInstanceUID, tagSOPInstanceUID);
-    READTAG(DCM_SeriesInstanceUID, tagSeriesInstanceUID);
-    READTAG(DCM_StudyInstanceUID, tagStudyInstanceUID);
-    READTAG(DCM_SeriesDate, tagSeriesDate);
-    READTAG(DCM_SeriesTime, tagSeriesTime);
-    READTAG(DCM_AcquisitionDate, tagAcquisitionDate);
-    READTAG(DCM_AcquisitionTime, tagAcquisitionTime);
-    READTAG(DCM_SequenceName, tagSequenceName);
-    READTAG(DCM_ScanningSequence, tagScanningSequence);
-    READTAG(DCM_SequenceVariant, tagSequenceVariant);
-    READTAG(DCM_MagneticFieldStrength, tagMagneticFieldStrength);
-    READTAG(DCM_StationName, tagStationName);
-    READTAG(DCM_DeviceSerialNumber, tagDeviceSerialNumber);
-    READTAG(DCM_DeviceUID, tagDeviceUID);
-    READTAG(DCM_SoftwareVersions, tagSoftwareVersions);
-    READTAG(DCM_ContrastBolusAgent, tagContrastBolusAgent);
-    READTAG(DCM_ImageComments, tagImageComments);
-    READTAG(DCM_SliceThickness, tagSliceThickness);
-    READTAG(DCM_InstanceNumber, tagInstanceNumber);
-    READTAG(DCM_AcquisitionNumber, tagAcquisitionNumber);
-    READTAG(DCM_InstitutionName, tagInstitutionName);
-    READTAG(DCM_MediaStorageSOPClassUID, tagMediaStorageSOPClassUID);
-    READTAG(DCM_AcquisitionType, tagAcquisitionType);
-    READTAG(DCM_ImageType, tagImageType);
+    READTAG(DCM_SpecificCharacterSet, getDataset(), tagSpecificCharacterSet);
+    READTAG(DCM_Modality, getDataset(), tagModality);
+    READTAG(DCM_BodyPartExamined, getDataset(), tagBodyPartExamined);
+    READTAG(DCM_ProtocolName, getDataset(), tagProtocolName);
+    READTAG(DCM_RetrieveAETitle, getDataset(), tagRetrieveAETitle);
+    READTAG(DCM_StationAETitle, getDataset(), tagStationAETitle);
+    READTAG(DCM_Manufacturer, getDataset(), tagManufacturer);
+    READTAG(DCM_ManufacturerModelName, getDataset(), tagManufacturerModelName);
+    READTAG(DCM_StudyDescription, getDataset(), tagStudyDescription);
+    READTAG(DCM_CodeValue, getDataset(), tagCodeValue);
+    READTAG(DCM_CodeMeaning, getDataset(), tagCodeMeaning);
+    READTAG(DCM_SeriesDescription, getDataset(), tagSeriesDescription);
+    READTAG(DCM_PatientName, getDataset(), tagPatientName);
+    READTAG(DCM_PatientID, getDataset(), tagPatientID);
+    READTAG(DCM_PatientBirthDate, getDataset(), tagPatientBirthDate);
+    READTAG(DCM_PatientSex, getDataset(), tagPatientSex);
+    READTAG(DCM_AccessionNumber, getDataset(), tagAccessionNumber);
+    READTAG(DCM_ReferringPhysicianName, getDataset(), tagReferringPhysicianName);
+    READTAG(DCM_StudyID, getDataset(), tagStudyID);
+    READTAG(DCM_SeriesNumber, getDataset(), tagSeriesNumber);
+    READTAG(DCM_SOPInstanceUID, getDataset(), tagSOPInstanceUID);
+    READTAG(DCM_SeriesInstanceUID, getDataset(), tagSeriesInstanceUID);
+    READTAG(DCM_StudyInstanceUID, getDataset(), tagStudyInstanceUID);
+    READTAG(DCM_SeriesDate, getDataset(), tagSeriesDate);
+    READTAG(DCM_SeriesTime, getDataset(), tagSeriesTime);
+    READTAG(DCM_AcquisitionDate, getDataset(), tagAcquisitionDate);
+    READTAG(DCM_AcquisitionTime, getDataset(), tagAcquisitionTime);
+    READTAG(DCM_SequenceName, getDataset(), tagSequenceName);
+    READTAG(DCM_ScanningSequence, getDataset(), tagScanningSequence);
+    READTAG(DCM_SequenceVariant, getDataset(), tagSequenceVariant);
+    READTAG(DCM_MagneticFieldStrength, getDataset(), tagMagneticFieldStrength);
+    READTAG(DCM_StationName, getDataset(), tagStationName);
+    READTAG(DCM_DeviceSerialNumber, getDataset(), tagDeviceSerialNumber);
+    READTAG(DCM_DeviceUID, getDataset(), tagDeviceUID);
+    READTAG(DCM_SoftwareVersions, getDataset(), tagSoftwareVersions);
+    READTAG(DCM_ContrastBolusAgent, getDataset(), tagContrastBolusAgent);
+    READTAG(DCM_ImageComments, getDataset(), tagImageComments);
+    READTAG(DCM_SliceThickness, getDataset(), tagSliceThickness);
+    READTAG(DCM_InstanceNumber, getDataset(), tagInstanceNumber);
+    READTAG(DCM_AcquisitionNumber, getDataset(), tagAcquisitionNumber);
+    READTAG(DCM_InstitutionName, getDataset(), tagInstitutionName);
+    READTAG(DCM_MediaStorageSOPClassUID, getMetaInfo(), tagMediaStorageSOPClassUID);
+    READTAG(DCM_AcquisitionType, getDataset(), tagAcquisitionType);
+    READTAG(DCM_ImageType, getDataset(), tagImageType);
 
     isConversionNeeded = true;
     if (tagSpecificCharacterSet.compare("ISO_IR 192") == 0)
