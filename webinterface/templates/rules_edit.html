@@ -525,13 +525,13 @@
     });
 
     $('#rule').on('input', function () {
-        $(this).outerHeight(36).outerHeight(this.scrollHeight + 2);
+        $(this).outerHeight(36).outerHeight(this.scrollHeight + 1);
     });
 
     $(document).ready(function () {
         var quickviews = bulmaQuickview.attach();
 
-        $('#rule').outerHeight($('#rule').prop('scrollHeight') + 2);
+        $('#rule').outerHeight($('#rule').prop('scrollHeight') + 1);
 
         $('#tabs li').on('click', function () {
             var tab = $(this).data('tab');
