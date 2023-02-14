@@ -182,14 +182,6 @@ img.logo {
     padding: 0px;
 }
 
-.gitter-chat-embed {
-    z-index: 99999 !important;
-}
-
-.gitter-open-chat-button, .gitter-open-chat-button:visited, .gitter-open-chat-button:hover {
-    background-color: hsl(141, 71%, 48%);
-}
-
 html.writer-html5 .rst-content table.docutils td>p {
     line-height: unset;
 }
@@ -232,3 +224,26 @@ html.writer-html5 .rst-content table.docutils td>p {
 .wy-menu-vertical {
     margin-bottom: 20px;
 }
+
+.chat-button, .chat-button:visited {
+    color: #FFF;
+    background-color: hsl(141, 71%, 48%);
+    z-index: 100;
+    position: fixed;
+    bottom: 0;
+    right: 10px;
+    padding: 1em 3em;
+    border: 0;
+    border-top-left-radius: 0.5em;
+    border-top-right-radius: 0.5em;
+    font-family: sans-serif;
+    font-size: 12px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+    cursor: hand;
+    transition: all .3s ease;
+  }
+  
