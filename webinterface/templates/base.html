@@ -72,7 +72,7 @@
               <a class="navbar-item" href="https://mercure-imaging.org/docs/index.html" target="_blank">
                 Help
               </a>
-              <a class="navbar-item get-support" href="https://gitter.im/mercure-imaging/Support"  id="get_support" name="get_support">
+              <a class="navbar-item get-support" href="https://github.com/orgs/mercure-imaging/discussions" target="_blank">
                 Get Support
               </a>         
               <a class="navbar-item" href="https://github.com/mercure-imaging/mercure/issues" target="_blank">
@@ -118,22 +118,5 @@
       });
     });        
   </script>
-
-{% if logged_in %}
-<script>
-  ((window.gitter = {}).chat = {}).options = {
-    room: 'mercure-imaging/Support',
-    activationElement: '#get_support'
-  };
-</script>
-<script src="{{ url_for('static', path='/js/sidecar.v1.js') }}" async defer></script>
-<script>
-  $(document).ready(function () { 
-    setTimeout(function() {
-      $('<div class="gitter_note"><div class="notification is-danger" style="padding-top: 10px; padding-bottom: 10px;"><i class="fas fa-exclamation"></i>&nbsp; NEVER post any PHI in here! The chat is public</div></div>').insertBefore(".gitter-chat-embed-action-bar");
-    }, 500);    
-  });     
-</script>
-{% endif %}
 </body>
 </html>
