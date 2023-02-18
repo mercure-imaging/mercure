@@ -37,6 +37,6 @@ def set_api_key() -> None:
             c = read_config()
             API_KEY = c.bookkeeper_api_key
             if not API_KEY or API_KEY == "BOOKKEEPER_TOKEN_PLACEHOLDER":
-                raise Exception("No API key set in config.json. Bookkeeper cannot function.")
+                raise Exception("No API key set in mercure.json or value unchanged from placeholder. Bookkeeper cannot function.")
         except (ResourceWarning, FileNotFoundError) as e:
             raise e
