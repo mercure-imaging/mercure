@@ -57,3 +57,21 @@ Mercure-Anonymizer
 +---------------+------------------------------------------------------------------------------------+
 | Code          | https://github.com/mercure-imaging/mercure-anonymizer                              |
 +---------------+------------------------------------------------------------------------------------+
+
+
+Mercure-TotalSegmentator
+------------------------
+
++---------------+---------------------------------------------------------------------------------------------------------------+
+| Docker Tag    | mercureimaging/mercure-totalsegmentator                                                                       |
++===============+===============================================================================================================+
+| Description   | mercure integration of the TotalSegmentator model for segmentation of CT scans,                               | 
+|               |                                                                                                               | 
+|               | developed by the University Hospital Basel:                                                                   |
+|               |                                                                                                               | 
+|               | https://github.com/wasserth/TotalSegmentator                                                                  |  
++---------------+---------------------------------------------------------------------------------------------------------------+
+| Tutorial      | https://github.com/mercure-imaging/mercure-totalsegmentator/blob/main/tutorial_mercure-totalsegmentator.ipynb |
++---------------+---------------------------------------------------------------------------------------------------------------+
+| Code          | https://github.com/mercure-imaging/mercure-totalsegmentator                                                   |
++---------------+---------------------------------------------------------------------------------------------------------------+

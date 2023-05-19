@@ -5,6 +5,9 @@ It is recommended to install mercure on a Linux machine running Ubuntu Server 20
 
 .. note:: mercure might run on other Linux distributions as well, but the installation script will not work without modification. When trying to install mercure on other Linux distributions, it might be best to focus on a Docker-based installation and derive a custom installation script from the script included in the repository.
 
+.. warning:: mercure servers and the web-based user interface should never be placed on the internet! mercure has been designed for use in intranet environments that are secured against unauthorized access. It has not been hardened and tested for installation on the public internet. Also, DICOM transfers should never be made over the public internet (unless encrypted and secured transfer protocols are used, e.g. based on  DICOMweb).
+
+
 Installation types
 ------------------
 
