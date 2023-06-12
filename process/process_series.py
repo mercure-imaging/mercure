@@ -25,7 +25,7 @@ import common.helper as helper
 import common.config as config
 
 from common.constants import mercure_names
-from common.types import Task, TaskInfo, Module, Rule
+from common.types import Task, TaskInfo, Module, Rule, TaskProcessing
 import common.notification as notification
 from common.version import mercure_version
 import common.log_helpers as log_helpers
@@ -37,13 +37,13 @@ from common.constants import (
 logger = config.get_logger()
 
 
-def nomad_runtime(task: Task, folder: str, file_count_begin: int) -> bool:
+async def nomad_runtime(task: Task, folder: str, file_count_begin: int, task_processing:TaskProcessing) -> bool:
     nomad_connection = nomad.Nomad(host="172.17.0.1", timeout=5)
 
     if not task.process:
         return False
 
-    module: Module = cast(Module, task.process.module_config)
+    module: Module = cast(Module, task_processing.module_config)
 
     f_path = Path(folder)
     if not module.docker_tag:
@@ -69,13 +69,13 @@ def nomad_runtime(task: Task, folder: str, file_count_begin: int) -> bool:
         return False
     # logger.debug(job_definition)
 
-    job_definition["ID"] = f"processor-{task.process.module_name}"
-    job_definition["Name"] = f"processor-{task.process.module_name}"
+    job_definition["ID"] = f"processor-{task_processing.module_name}"
+    job_definition["Name"] = f"processor-{task_processing.module_name}"
     nomad_connection.job.register_job(job_definition["ID"], dict(Job=job_definition))
 
     meta = {"PATH": f_path.name}
     logger.debug(meta)
-    job_info = nomad_connection.job.dispatch_job(f"processor-{task.process.module_name}", meta=meta)
+    job_info = nomad_connection.job.dispatch_job(f"processor-{task_processing.module_name}", meta=meta)
     with open(f_path / "nomad_job.json", "w") as json_file:
         json.dump(job_info, json_file, indent=4)
 
@@ -83,7 +83,7 @@ def nomad_runtime(task: Task, folder: str, file_count_begin: int) -> bool:
         monitor.task_event.PROCESS_BEGIN,
         task.id,
         file_count_begin,
-        task.process.module_name,
+        task_processing.module_name,
         "Processing job dispatched",
     )
     return True
@@ -92,13 +92,13 @@ def nomad_runtime(task: Task, folder: str, file_count_begin: int) -> bool:
 docker_pull_throttle: Dict[str, datetime] = {}
 
 
-async def docker_runtime(task: Task, folder: str, file_count_begin: int) -> bool:
+async def docker_runtime(task: Task, folder: str, file_count_begin: int, task_processing:TaskProcessing) -> bool:
     docker_client = docker.from_env()
 
     if not task.process:
         return False
 
-    module: Module = cast(Module, task.process.module_config)
+    module: Module = cast(Module, task_processing.module_config)
 
     def decode_task_json(json_string: Optional[str]) -> Any:
         if not json_string:
@@ -183,7 +183,7 @@ async def docker_runtime(task: Task, folder: str, file_count_begin: int) -> bool
             monitor.task_event.PROCESS_BEGIN,
             task.id,
             file_count_begin,
-            task.process.module_name,
+            task_processing.module_name,
             f"Processing job running",
         )
 
@@ -210,9 +210,17 @@ async def docker_runtime(task: Task, folder: str, file_count_begin: int) -> bool
         if container.logs() is not None:
             logs = container.logs().decode("utf-8")
             if not config.mercure.processing_logs.discard_logs:
-                monitor.send_process_logs(task.id, task.process.module_name, logs)
+                monitor.send_process_logs(task.id, task_processing.module_name, logs)
             logger.info(logs)
         logger.info("=== MODULE OUTPUT - END ==========================================")
+
+        await monitor.async_send_task_event(
+            monitor.task_event.PROCESS_MODULE_COMPLETE,
+            task.id,
+            file_count_begin,
+            task_processing.module_name,
+            f"Processing module running",
+        )
 
         # Check if the processing was successful (i.e., container returned exit code 0)
         exit_code = docker_result.get("StatusCode")
@@ -285,17 +293,31 @@ async def process_series(folder: str) -> None:
                 # logger.info(f"Moving {child}")
                 child.rename(f_path / "in" / child.name)
         (f_path / "out").mkdir()
+
         if helper.get_runner() == "nomad" or config.mercure.process_runner == "nomad":
             logger.debug("Processing with Nomad.")
             # Use nomad if we're being run inside nomad, or we're configured to use nomad regardless
-            processing_success = nomad_runtime(task, folder, file_count_begin)
+            runtime = nomad_runtime
         elif helper.get_runner() in ("docker", "systemd"):
             logger.debug("Processing with Docker")
             # Use docker if we're being run inside docker or just by systemd
-            processing_success = await docker_runtime(task, folder, file_count_begin)
+            runtime = docker_runtime
         else:
             processing_success = False
             raise Exception("Unable to determine valid runtime for processing")
+        
+        if runtime == docker_runtime and isinstance(task.process,list):
+            for i, task_processing in enumerate(task.process):
+                processing_success = await runtime(task, folder, file_count_begin, task_processing)
+                if not processing_success:
+                    break
+                shutil.rmtree(f_path / "in")
+                if i < len(task.process)-1:
+                    (f_path / "out").rename(f_path / "in")
+                    (f_path / "out").mkdir()
+        else:
+            processing_success = await runtime(task, folder, file_count_begin, cast(TaskProcessing,task.process))
+
     except Exception as e:
         processing_success = False
         if task is not None:
@@ -316,7 +338,7 @@ async def process_series(folder: str) -> None:
             # Copy the task to the output folder (in case the module didn't move it)
             push_input_task(f_path / "in", f_path / "out")
             # If configured in the rule, copy the input images to the output folder
-            if task is not None and task.process and task.process.retain_input_images == True:
+            if task is not None and task.process and not isinstance(task.process, list) and task.process.retain_input_images == True:
                 push_input_images(task_id, f_path / "in", f_path / "out")
             # Remember the number of DCM files in the output folder (for logging purpose)
             file_count_complete = len(list(Path(f_path / "out").glob(mercure_names.DCMFILTER)))
