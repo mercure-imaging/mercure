@@ -519,9 +519,11 @@ async def self_test(request) -> Response:
             config.mercure.modules[test_rule + "_self_test_module"] = Module(
                 docker_tag=f"mercureimaging/mercure-dummy-processor:{mercure_defs.VERSION}",
             )
-
+            config.mercure.modules[test_rule + "_self_test_module_2"] = Module(
+                docker_tag="mercureimaging/mercure-dummy-processor:0.2.0-beta.7",
+            )
             config.mercure.rules[test_rule + "_begin"].action = "both"
-            config.mercure.rules[test_rule + "_begin"].processing_module = test_rule + "_self_test_module"
+            config.mercure.rules[test_rule + "_begin"].processing_module = [test_rule + "_self_test_module", test_rule + "_self_test_module_2"]
 
         # "end" rule is triggered when the test is completed. It just performs a notification to register the test success.
         config.mercure.rules[test_rule + "_end"] = Rule(

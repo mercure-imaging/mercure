@@ -126,7 +126,7 @@ class Rule(BaseModel, Compat):
     study_trigger_condition: Literal["timeout", "received_series"] = "timeout"
     study_trigger_series: str = ""
     priority: Literal["normal", "urgent", "offpeak"] = "normal"
-    processing_module: str = ""
+    processing_module: Union[str,List[str]] = ""
     processing_settings: Dict[str, Any] = {}
     processing_retain_images: bool = False
     notification_webhook: str = ""
@@ -244,7 +244,7 @@ class Task(BaseModel, Compat):
     info: TaskInfo
     id: str
     dispatch: Union[TaskDispatch, EmptyDict] = cast(EmptyDict, {})
-    process: Union[TaskProcessing, EmptyDict] = cast(EmptyDict, {})
+    process: Union[TaskProcessing, EmptyDict,List[TaskProcessing]] = cast(EmptyDict, {})
     study: Union[TaskStudy, EmptyDict] = cast(EmptyDict, {})
     nomad_info: Optional[Any]
 
