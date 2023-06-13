@@ -281,3 +281,88 @@ async def test_process_series(fs, mercure_config: Callable[[Dict], Config], mock
             call(task_event.PROCESS_BEGIN, new_task_id, 1, "test_module", "Processing job running"),
         ]
     )
+
+
+
+@pytest.mark.asyncio
+async def test_multi_process_series(fs, mercure_config: Callable[[Dict], Config], mocked: MockerFixture):
+    global processor_path
+    partial: Dict[str, Dict] = {
+        "modules": {
+            "test_module_1": Module(docker_tag="busybox:stable").dict(),
+            "test_module_2": Module(docker_tag="busybox:stable").dict(),
+        },
+        "rules": {
+            "catchall": Rule(
+                rule="True",
+                action="process",
+                action_trigger="series",
+                study_trigger_condition="timeout",
+                processing_module=["test_module_1","test_module_2"],
+            ).dict()
+        },
+    }
+    config = mercure_config(
+        {"process_runner": "docker", **partial},
+    )
+    task_id = str(uuid.uuid1())
+    files, new_task_id = create_and_route(fs, mocked, task_id)
+    processor_path = Path()
+
+    def fake_processor(tag, environment, volumes: Dict, **kwargs):
+        global processor_path
+        in_ = Path(next((k for k in volumes.keys() if volumes[k]["bind"] == "/tmp/data")))
+        out_ = Path(next((k for k in volumes.keys() if volumes[k]["bind"] == "/tmp/output")))
+
+        processor_path = in_.parent
+        for child in in_.iterdir():
+            print(f"Moving {child} to {out_ / child.name})")
+            shutil.copy(child, out_ / child.name)
+
+        return mocked.DEFAULT
+
+    fake_run = mocked.Mock(return_value=my_fake_container(), side_effect=fake_processor)  # type: ignore
+    mocked.patch.object(ContainerCollection, "run", new=fake_run)
+    await processor.run_processor()
+
+    # processor_path = next(Path("/var/processing").iterdir())
+    # process.process_series.process_series.assert_called_once_with(str(processor_path))  # type: ignore
+
+    uid_string = f"{os.getuid()}:{os.getegid()}"
+    fake_run.assert_has_calls(
+        [call(
+            config.modules[m].docker_tag,
+            environment={"MERCURE_IN_DIR": "/tmp/data", "MERCURE_OUT_DIR": "/tmp/output"},
+            user=uid_string,
+            group_add=[os.getegid()],
+            volumes={
+                str(processor_path / "in"): {"bind": "/tmp/data", "mode": "rw"},
+                str(processor_path / "out"): {"bind": "/tmp/output", "mode": "rw"},
+            },
+            detach=True,
+            )
+            for m in partial["rules"]["catchall"]["processing_module"]
+        ]
+    )
+
+    assert [] == [k.name for k in Path("/var/processing").glob("**/*")]
+    assert files == [k.name for k in (Path("/var/success") / processor_path.name).glob("*") if k.is_file()]
+
+    common.monitor.send_task_event.assert_has_calls(  # type: ignore
+        [
+            call(task_event.REGISTER, task_id, 1, "catchall", "Registered series"),
+            call(task_event.DELEGATE, task_id, 1, new_task_id, "catchall"),
+            call(task_event.MOVE, task_id, 1, f"/var/processing/{new_task_id}/", "Moved files"),
+            call(task_event.PROCESS_COMPLETE, new_task_id, 1, "", "Processing job complete"),
+            call(task_event.COMPLETE, new_task_id, 0, "", "Task complete"),
+        ]
+    )
+    common.monitor.async_send_task_event.assert_has_calls(  # type: ignore
+        [
+            call(task_event.PROCESS_BEGIN, new_task_id, 1, "test_module_1", "Processing job running"),
+            call(task_event.PROCESS_MODULE_BEGIN, new_task_id, 1, "test_module_1", "Processing module running"),
+            call(task_event.PROCESS_MODULE_COMPLETE, new_task_id, 1, "test_module_1", "Processing module complete"),
+            call(task_event.PROCESS_MODULE_BEGIN, new_task_id, 1, "test_module_2", "Processing module running"),
+            call(task_event.PROCESS_MODULE_COMPLETE, new_task_id, 1, "test_module_2", "Processing module complete"),
+        ]
+    )
