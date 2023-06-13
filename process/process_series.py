@@ -180,11 +180,11 @@ async def docker_runtime(task: Task, folder: str, file_count_begin: int, task_pr
         # nomad_connection.job.dispatch_job('mercure-processor', meta={"IMAGE_ID":"alpine:3.11", "PATH": "test"})
 
         await monitor.async_send_task_event(
-            monitor.task_event.PROCESS_BEGIN,
+            monitor.task_event.PROCESS_MODULE_BEGIN,
             task.id,
             file_count_begin,
             task_processing.module_name,
-            f"Processing job running",
+            f"Processing module running",
         )
 
         # Run the container -- need to do in detached mode to be able to print the log output if container exits
@@ -219,7 +219,7 @@ async def docker_runtime(task: Task, folder: str, file_count_begin: int, task_pr
             task.id,
             file_count_begin,
             task_processing.module_name,
-            f"Processing module running",
+            f"Processing module complete",
         )
 
         # Check if the processing was successful (i.e., container returned exit code 0)
@@ -306,6 +306,14 @@ async def process_series(folder: str) -> None:
             processing_success = False
             raise Exception("Unable to determine valid runtime for processing")
         
+        if runtime == docker_runtime: # docker runtime might run several processing steps, need to put this event here
+            await monitor.async_send_task_event(
+                monitor.task_event.PROCESS_BEGIN,
+                task.id,
+                file_count_begin,
+                task.process[0].module_name if isinstance(task.process,list) else task.process.module_name,
+                f"Processing job running",
+            )
         if runtime == docker_runtime and isinstance(task.process,list):
             for i, task_processing in enumerate(task.process):
                 processing_success = await runtime(task, folder, file_count_begin, task_processing)
