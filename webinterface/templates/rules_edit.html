@@ -240,7 +240,7 @@
                             <label class="label">Module</label>
                             <div class="select">
                                 <div class="control">
-                                    <select name="processing_module">
+                                    <select id="processing_module" name="processing_module">
                                         {% for t in modules %}
                                         <option value="{{t}}" {% if rules[rule]['processing_module']==t %}selected{%
                                             endif%}>{{ t }}
@@ -249,8 +249,22 @@
                                     </select>
                                 </div>
                             </div>
+                            {% if process_runner == "docker" %}
+                                <a class="button" id="add-module"><i class="fas fa-plus"></i>&nbsp;Add</a>
+                            {% endif %}
                         </div>
                     </div>
+                    {% if process_runner == "docker" %}
+                    <div class="field" id="modules_list">
+                        <label class="label">Modules</label>
+                        <div class="control" style="min-height: 40px;">
+                            
+                            <input id="processing_module_list" name="processing_module_list" class="input" type="tags" placeholder="Modules"
+                            value="{{rules[rule]['processing_module']|join(',') if (rules[rule]['processing_module'].pop) else rules[rule]['processing_module']}}"
+                                style="height: 36px !important; font-size: 13.33px !important;">
+                        </div>
+                    </div>
+                    {% endif %}
                     <div class="field">
                         <label class="label">Settings</label>
                         <div class="control">
@@ -543,6 +557,10 @@
             $('div.panel[data-content="' + tab + '"]').addClass('is-active');
         });
 
+        $('#add-module').click(function() {
+            bulmaTagsInstances[0].addTag($("#processing_module").val());
+            bulmaTagsInstances[0].save();
+        })
         $('#action').change(function () {
             var action = $(this).children("option:selected").val();
 
@@ -744,7 +762,11 @@
 </script>
 <script type="text/javascript" src="{{ url_for('static', path='/js/bulma-tagsinput.min.js') }}"></script>
 <script>
-    bulmaTagsinput.attach();
+    var bulmaTagsInstances = bulmaTagsinput.attach();
+    window.setTimeout(function(){$("#modules_list input").attr("readonly","true")},200)
+    
+
+    // bulmaTagsInstances[0].container.getElementsByTagName("input")[0].setAttribute("readonly",1)
 </script>
 
 {% endblock %}
