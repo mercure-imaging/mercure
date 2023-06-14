@@ -77,7 +77,11 @@ async def show_modules(request):
     used_modules = {}
     for rule in config.mercure.rules:
         used_module = config.mercure.rules[rule].get("processing_module", "NONE")
-        used_modules[used_module] = rule
+        if isinstance(used_module,list):
+            for m in used_module:
+                used_modules[m] = rule
+        else:
+            used_modules[used_module] = rule
 
     template = "modules.html"
     context = {

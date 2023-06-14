@@ -127,7 +127,7 @@ class Rule(BaseModel, Compat):
     study_trigger_series: str = ""
     priority: Literal["normal", "urgent", "offpeak"] = "normal"
     processing_module: Union[str,List[str]] = ""
-    processing_settings: Dict[str, Any] = {}
+    processing_settings: Union[List[Dict[str, Any]],Dict[str, Any]] = {}
     processing_retain_images: bool = False
     notification_webhook: str = ""
     notification_payload: str = ""

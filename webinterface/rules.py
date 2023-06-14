@@ -168,7 +168,7 @@ async def rules_edit_post(request) -> Response:
     #     },
     # )
     if "processing_module_list" in form:
-        processing_module = form.get("processing_module_list").split(",")
+        processing_module = form.get("processing_module_list","").split(",")
         if processing_module == [""]:
             processing_module = ""
     else:
