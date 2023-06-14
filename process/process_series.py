@@ -314,10 +314,12 @@ async def process_series(folder: str) -> None:
                 monitor.task_event.PROCESS_BEGIN,
                 task.id,
                 file_count_begin,
-                task.process[0].module_name if isinstance(task.process,list) else task.process.module_name,
+                (task.process[0].module_name if isinstance(task.process,list) else task.process.module_name) if task.process else "UNKNOWN",
                 f"Processing job running",
             )
         if runtime == docker_runtime and isinstance(task.process,list):
+            if task.process[0].retain_input_images:
+                shutil.copytree(f_path / "in", f_path / "input_files")
             for i, task_processing in enumerate(task.process):
                 processing_success = await runtime(task, folder, file_count_begin, task_processing)
                 if not processing_success:
@@ -326,6 +328,8 @@ async def process_series(folder: str) -> None:
                 if i < len(task.process)-1:
                     (f_path / "out").rename(f_path / "in")
                     (f_path / "out").mkdir()
+            if task.process[0].retain_input_images:
+                (f_path / "input_files").rename(f_path / "in")
         else:
             processing_success = await runtime(task, folder, file_count_begin, cast(TaskProcessing,task.process))
 
@@ -349,7 +353,7 @@ async def process_series(folder: str) -> None:
             # Copy the task to the output folder (in case the module didn't move it)
             push_input_task(f_path / "in", f_path / "out")
             # If configured in the rule, copy the input images to the output folder
-            if task is not None and task.process and not isinstance(task.process, list) and task.process.retain_input_images == True:
+            if task is not None and task.process and (task.process[0] if isinstance(task.process,list) else task.process).retain_input_images == True:
                 push_input_images(task_id, f_path / "in", f_path / "out")
             # Remember the number of DCM files in the output folder (for logging purpose)
             file_count_complete = len(list((f_path / "out").glob(mercure_names.DCMFILTER)))

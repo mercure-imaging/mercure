@@ -51,6 +51,18 @@ config_partial: Dict[str, Dict] = {
     },
 }
 
+expected_task_info = {
+            "uid": "TESTFAKEUID",
+            "action": "process",
+            "applied_rule": "catchall",
+            "uid_type": "series",
+            "triggered_rules": {"catchall": True},
+            "mrn": "MISSING",
+            "acc": "MISSING",
+            "mercure_version": mercure_version.get_version_string(),
+            "mercure_appliance": "master",
+            "mercure_server": socket.gethostname(),
+        }
 
 def create_and_route(fs, mocked, task_id, uid="TESTFAKEUID") -> Tuple[List[str], str]:
     print("Mocked task_id is", task_id)
@@ -132,18 +144,7 @@ async def test_process_series_nomad(fs, mercure_config: Callable[[Dict], Config]
         task = json.load(t)
     assert task == {
         "id": new_task_id,
-        "info": {
-            "uid": "TESTFAKEUID",
-            "action": "process",
-            "applied_rule": "catchall",
-            "uid_type": "series",
-            "triggered_rules": {"catchall": True},
-            "mrn": "MISSING",
-            "acc": "MISSING",
-            "mercure_version": mercure_version.get_version_string(),
-            "mercure_appliance": "master",
-            "mercure_server": socket.gethostname(),
-        },
+        "info": expected_task_info,
         "dispatch": {},
         "process": {
             "module_name": "test_module",
@@ -299,6 +300,8 @@ async def test_multi_process_series(fs, mercure_config: Callable[[Dict], Config]
                 action_trigger="series",
                 study_trigger_condition="timeout",
                 processing_module=["test_module_1","test_module_2"],
+                processing_settings=[{"foo":"bar"},{"bar":"baz"}],
+                processing_retain_images=True
             ).dict()
         },
     }
@@ -348,6 +351,22 @@ async def test_multi_process_series(fs, mercure_config: Callable[[Dict], Config]
     assert [] == [k.name for k in Path("/var/processing").glob("**/*")]
     assert files == [k.name for k in (Path("/var/success") / processor_path.name).glob("*") if k.is_file()]
 
+    with open(Path("/var/success") / processor_path.name / "task.json") as t:
+        task = json.load(t)
+    
+    assert task == {
+        "id": new_task_id,
+        "info": expected_task_info,
+        "dispatch": {},
+        "process": [{
+            "module_name": m,
+            "module_config": {"constraints": "", "resources": "", **partial["modules"][m]},
+            "settings": partial["rules"]["catchall"]["processing_settings"][i],
+            "retain_input_images": True,
+        } for i, m in enumerate(partial["modules"])],
+        "study": {},
+        "nomad_info": None,
+    }
     common.monitor.send_task_event.assert_has_calls(  # type: ignore
         [
             call(task_event.REGISTER, task_id, 1, "catchall", "Registered series"),
