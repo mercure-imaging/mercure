@@ -317,19 +317,30 @@ async def process_series(folder: str) -> None:
                 (task.process[0].module_name if isinstance(task.process,list) else task.process.module_name) if task.process else "UNKNOWN",
                 f"Processing job running",
             )
+        # There are multiple processing steps
         if runtime == docker_runtime and isinstance(task.process,list):
-            if task.process[0].retain_input_images:
+            if task.process[0].retain_input_images: # Keep a copy of the input files
                 shutil.copytree(f_path / "in", f_path / "input_files")
-            for i, task_processing in enumerate(task.process):
-                processing_success = await runtime(task, folder, file_count_begin, task_processing)
-                if not processing_success:
-                    break
-                shutil.rmtree(f_path / "in")
-                if i < len(task.process)-1:
-                    (f_path / "out").rename(f_path / "in")
-                    (f_path / "out").mkdir()
-            if task.process[0].retain_input_images:
-                (f_path / "input_files").rename(f_path / "in")
+            logger.info("==== TASK ====",task.dict())
+            copied_task = task.copy(deep=True)
+            try:
+                for i, task_processing in enumerate(task.process):
+                    copied_task.process = task_processing
+                    with open(f_path / "in" / mercure_names.TASKFILE,"w") as task_file:
+                        json.dump(copied_task.dict(), task_file)
+                    processing_success = await docker_runtime(task, folder, file_count_begin, task_processing)
+                    if not processing_success:
+                        break
+                    
+                    shutil.rmtree(f_path / "in")
+                    if i < len(task.process)-1: # Move the results of the processing step to the input folder of the next one
+                        (f_path / "out").rename(f_path / "in")
+                        (f_path / "out").mkdir()
+                if task.process[0].retain_input_images:
+                    (f_path / "input_files").rename(f_path / "in")
+            finally:
+                with open(f_path / "out" / mercure_names.TASKFILE,"w") as task_file:
+                     json.dump(task.dict(), task_file, indent=4)
         else:
             processing_success = await runtime(task, folder, file_count_begin, cast(TaskProcessing,task.process))
 
