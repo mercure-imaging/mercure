@@ -38,7 +38,7 @@ logger = config.get_logger()
 processor_path = Path()
 config_partial: Dict[str, Dict] = {
     "modules": {
-        "test_module": Module(docker_tag="busybox:stable").dict(),
+        "test_module": Module(docker_tag="busybox:stable",settings={"fizz":"buzz"}).dict(),
     },
     "rules": {
         "catchall": Rule(
@@ -149,7 +149,7 @@ async def test_process_series_nomad(fs, mercure_config: Callable[[Dict], Config]
         "process": {
             "module_name": "test_module",
             "module_config": {"constraints": "", "resources": "", **config_partial["modules"]["test_module"]},
-            "settings": {},
+            "settings": {"fizz":"buzz"},
             "retain_input_images": False,
         },
         "study": {},
@@ -290,8 +290,8 @@ async def test_multi_process_series(fs, mercure_config: Callable[[Dict], Config]
     global processor_path
     partial: Dict[str, Dict] = {
         "modules": {
-            "test_module_1": Module(docker_tag="busybox:stable").dict(),
-            "test_module_2": Module(docker_tag="busybox:stable").dict(),
+            "test_module_1": Module(docker_tag="busybox:stable",settings={"fizz":"buzz"}).dict(),
+            "test_module_2": Module(docker_tag="busybox:stable",settings={"fizz":"buzz"}).dict(),
         },
         "rules": {
             "catchall": Rule(
@@ -361,7 +361,7 @@ async def test_multi_process_series(fs, mercure_config: Callable[[Dict], Config]
         "process": [{
             "module_name": m,
             "module_config": {"constraints": "", "resources": "", **partial["modules"][m]},
-            "settings": partial["rules"]["catchall"]["processing_settings"][i],
+            "settings": {"fizz":"buzz",**partial["rules"]["catchall"]["processing_settings"][i]},
             "retain_input_images": True,
         } for i, m in enumerate(partial["modules"])],
         "study": {},
