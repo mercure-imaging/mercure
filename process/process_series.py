@@ -39,7 +39,7 @@ logger = config.get_logger()
 
 
 def nomad_runtime(task: Task, folder: str, file_count_begin: int) -> bool:
-    nomad_connection = nomad.Nomad(host="172.17.0.1", timeout=5)
+    nomad_connection = nomad.Nomad(host="172.17.0.1", timeout=5) # type: ignore
 
     if not task.process:
         return False
@@ -63,7 +63,7 @@ def nomad_runtime(task: Task, folder: str, file_count_begin: int) -> bool:
     logger.debug(rendered)
     try:
         job_definition = nomad_connection.jobs.parse(rendered)
-    except nomad.api.exceptions.BadRequestNomadException as err:
+    except nomad.api.exceptions.BadRequestNomadException as err: # type: ignore
         logger.error(err)
         print(err.nomad_resp.reason)
         print(err.nomad_resp.text)
@@ -94,7 +94,7 @@ docker_pull_throttle: Dict[str, datetime] = {}
 
 
 async def docker_runtime(task: Task, folder: str, file_count_begin: int) -> bool:
-    docker_client = docker.from_env()
+    docker_client = docker.from_env() # type: ignore
 
     if not task.process:
         return False
@@ -224,12 +224,12 @@ async def docker_runtime(task: Task, folder: str, file_count_begin: int) -> bool
         # Remove the container now to avoid that the drive gets full
         container.remove()
 
-    except docker.errors.APIError:
+    except docker.errors.APIError: # type: ignore
         # Something really serious happened
         logger.error(f"API error while trying to run Docker container, tag: {docker_tag}", task.id)  # handle_error
         processing_success = False
 
-    except docker.errors.ImageNotFound:
+    except docker.errors.ImageNotFound: # type: ignore
         logger.error(f"Error running docker container. Image for tag {docker_tag} not found.", task.id)  # handle_error
         processing_success = False
 
