@@ -109,7 +109,8 @@ def add_processing(uid: str, applied_rule: str, tags_list: Dict[str, str]) -> Op
         else:
             rule_settings = [applied_rule_info.processing_settings]
 
-        settings.update(rule_settings[i])
+        if i < len(rule_settings):
+            settings.update(rule_settings[i])
 
         # Store in the target structure
         process_info: TaskProcessing = TaskProcessing(
