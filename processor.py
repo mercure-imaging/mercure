@@ -45,7 +45,7 @@ processor_lockfile = None
 processor_is_locked = False
 
 try:
-    nomad_connection = nomad.Nomad(host="172.17.0.1", timeout=5)
+    nomad_connection = nomad.Nomad(host="172.17.0.1", timeout=5) # type: ignore
     logger.info("Connected to Nomad")
 except:
     nomad_connection = None

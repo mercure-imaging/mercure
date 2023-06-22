@@ -77,7 +77,7 @@ logger = config.get_logger()
 
 
 try:
-    nomad_connection = nomad.Nomad(host="172.17.0.1", timeout=5)
+    nomad_connection = nomad.Nomad(host="172.17.0.1", timeout=5) # type: ignore
     # TODO: Print message only if connection to Nomad successful
     logger.info("Connected to Nomad")
 except:
@@ -275,13 +275,13 @@ async def show_log(request) -> Response:
         return_code = -1 if run_result[0] is None else run_result[0]
         raw_logs = run_result[1]
     elif runtime == "docker":
-        client = docker.from_env()
+        client = docker.from_env() # type: ignore
         try:
             container = client.containers.get(services.services_list[requested_service]["docker_service"])
             container.reload()
             raw_logs = container.logs(since=start_obj)
             return_code = 0
-        except (docker.errors.NotFound, docker.errors.APIError):
+        except (docker.errors.NotFound, docker.errors.APIError): # type: ignore
             return_code = 1
 
     # return_code, raw_logs = (await async_run("/usr/bin/nomad alloc logs -job -stderr -f -tail mercure router"))[:2]
@@ -675,7 +675,7 @@ async def homepage(request) -> Response:
                 running_status = True
 
         elif runtime == "docker":
-            client = docker.from_env()
+            client = docker.from_env() # type: ignore
             try:
                 container = client.containers.get(services.services_list[service]["docker_service"])
                 container.reload()
@@ -684,7 +684,7 @@ async def homepage(request) -> Response:
                 if status == "running":
                     running_status = True
 
-            except (docker.errors.NotFound, docker.errors.APIError):
+            except (docker.errors.NotFound, docker.errors.APIError): # type: ignore
                 running_status = False
         elif runtime == "nomad":
             if nomad_connection is None:
@@ -750,7 +750,7 @@ async def control_services(request) -> Response:
                 await async_run(command)
 
             elif runtime == "docker":
-                client = docker.from_env()
+                client = docker.from_env() # type: ignore
                 logger.info(f'Executing: {action} on {services.services_list[service]["docker_service"]}')
                 try:
                     container = client.containers.get(services.services_list[service]["docker_service"])
@@ -763,7 +763,7 @@ async def control_services(request) -> Response:
                         container.restart()
                     if action == "kill":
                         container.kill()
-                except (docker.errors.NotFound, docker.errors.APIError) as docker_error:
+                except (docker.errors.NotFound, docker.errors.APIError) as docker_error: # type: ignore
                     logger.error(f"{docker_error}")
                     pass
 
