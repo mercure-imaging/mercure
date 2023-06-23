@@ -191,9 +191,7 @@ def send_update_task(task: Task) -> None:
 
     post("update-task", json=task_dict)
 
-def send_processor_output(task_id: str, output: dict) -> None:
-    post("store-processor-output", json=dict(task_id=task_id, output=output))
-    
+
 def task_event_payload(event: task_event, task_id: str, file_count: int, target, info):
     return {
         "sender": sender_name,

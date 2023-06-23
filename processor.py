@@ -32,7 +32,6 @@ from process.process_series import (
     trigger_notification,
     push_input_task,
     push_input_images,
-    handle_processor_output,
 )
 from common.types import Task, TaskProcessing
 
@@ -135,17 +134,16 @@ async def search_folder(counter) -> bool:
 
         # Remember the number of DCM files in the output folder (for logging purpose)
         file_count_complete = len(list(Path(out_folder).glob(mercure_names.DCMFILTER)))
-        handle_processor_output(task_id, p_folder)
 
         # If the only file is task.json, the processing failed
         if [p.name for p in out_folder.rglob("*")] == ["task.json"]:
             logger.error("Processing failed", task.id)
-            move_results(task.id, p_folder, None, False, False)
+            move_results(task.id, str(p_folder), None, False, False)
             trigger_notification(task, mercure_events.ERROR)
             continue
 
         needs_dispatching = True if task.get("dispatch") else False
-        move_results(task.id, p_folder, None, True, needs_dispatching)
+        move_results(task.id, str(p_folder), None, True, needs_dispatching)
         shutil.rmtree(in_folder)
         (p_folder / "nomad_job.json").unlink()
         (p_folder / ".processing").unlink()

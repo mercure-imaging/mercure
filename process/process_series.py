@@ -5,7 +5,6 @@ Helper functions for mercure's processor module
 """
 
 # Standard python includes
-from genericpath import isfile
 import json
 import os
 from pathlib import Path
@@ -251,13 +250,10 @@ async def process_series(folder: str) -> None:
     processing_success = False
     needs_dispatching = False
 
-    f_path = Path(folder)
-
-    lock_file = f_path / mercure_names.PROCESSING
+    lock_file = Path(folder) / mercure_names.PROCESSING
     lock = None
     task: Optional[Task] = None
-    taskfile_path = f_path / mercure_names.TASKFILE
-
+    taskfile_path = Path(folder) / mercure_names.TASKFILE
     try:
         try:
             lock_file.touch(exist_ok=False)
@@ -288,8 +284,9 @@ async def process_series(folder: str) -> None:
             needs_dispatching = True
 
         # Remember the number of incoming DCM files (for logging purpose)
-        file_count_begin = len(list(f_path.glob(mercure_names.DCMFILTER)))
+        file_count_begin = len(list(Path(folder).glob(mercure_names.DCMFILTER)))
 
+        f_path = Path(folder)
         (f_path / "in").mkdir()
         for child in f_path.iterdir():
             if child.is_file() and child.name != ".processing":
@@ -367,11 +364,9 @@ async def process_series(folder: str) -> None:
             if task is not None and task.process and (task.process[0] if isinstance(task.process,list) else task.process).retain_input_images == True:
                 push_input_images(task_id, f_path / "in", f_path / "out")
             # Remember the number of DCM files in the output folder (for logging purpose)
-            file_count_complete = len(list((f_path / "out").glob(mercure_names.DCMFILTER)))
-
-            handle_processor_output(task_id, f_path)
+            file_count_complete = len(list(Path(f_path / "out").glob(mercure_names.DCMFILTER)))
             # Push the results either to the success or error folder
-            move_results(task_id, f_path, lock, processing_success, needs_dispatching)
+            move_results(task_id, folder, lock, processing_success, needs_dispatching)
             shutil.rmtree(folder, ignore_errors=True)
 
             if processing_success:
@@ -392,7 +387,7 @@ async def process_series(folder: str) -> None:
                 logger.info(f"Done submitting for processing")
             else:
                 logger.info(f"Unable to process task")
-                move_results(task_id, f_path, lock, False, False)
+                move_results(task_id, folder, lock, False, False)
                 monitor.send_task_event(monitor.task_event.ERROR, task_id, 0, "", "Unable to process task")
                 if task is not None:
                     trigger_notification(task, mercure_events.ERROR)
@@ -427,23 +422,13 @@ def push_input_images(task_id: str, input_folder: Path, output_folder: Path):
             f"Error while copying files to output folder {output_folder}", task_id, exc_info=error_info
         )  # handle_error
 
-def handle_processor_output(task_id:str, folder:Path):
-    output_file = folder / "out" / "result.json"
-    if not output_file.is_file():
-        return
-    try:
-        output = json.loads(output_file.read_text())
-    except json.JSONDecodeError as e: 
-        # Not json
-        return 
-    monitor.send_processor_output(task_id, output)
 
 def move_results(
-    task_id: str, folder: Path, lock: Optional[helper.FileLock], processing_success: bool, needs_dispatching: bool
+    task_id: str, folder: str, lock: Optional[helper.FileLock], processing_success: bool, needs_dispatching: bool
 ) -> None:
     # Create a new lock file to ensure that no other process picks up the folder while copying
     logger.debug(f"Moving results folder {folder} {'with' if needs_dispatching else 'without'} dispatching")
-    lock_file = folder / mercure_names.LOCK
+    lock_file = Path(folder) / mercure_names.LOCK
     if lock_file.exists():
         logger.error(f"Folder already contains lockfile {folder}/" + mercure_names.LOCK)
         return
@@ -455,21 +440,22 @@ def move_results(
 
     if lock is not None:
         lock.free()
+
     if not processing_success:
         logger.debug(f"Failing: {folder}")
-        move_out_folder(task_id, folder, Path(config.mercure.error_folder), move_all=True)
+        move_out_folder(task_id, folder, config.mercure.error_folder, move_all=True)
     else:
         if needs_dispatching:
             logger.debug(f"Dispatching: {folder}")
-            move_out_folder(task_id, folder, Path(config.mercure.outgoing_folder))
+            move_out_folder(task_id, folder, config.mercure.outgoing_folder)
         else:
             logger.debug(f"Success: {folder}")
-            move_out_folder(task_id, folder, Path(config.mercure.success_folder))
+            move_out_folder(task_id, folder, config.mercure.success_folder)
 
 
-def move_out_folder(task_id: str, source_folder: Path, destination_folder: Path, move_all=False) -> None:
-    # source_folder = Path(source_folder_str)
-    # destination_folder = Path(destination_folder_str)
+def move_out_folder(task_id: str, source_folder_str, destination_folder_str, move_all=False) -> None:
+    source_folder = Path(source_folder_str)
+    destination_folder = Path(destination_folder_str)
 
     target_folder = destination_folder / source_folder.name
     if target_folder.exists():
