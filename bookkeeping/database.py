@@ -165,3 +165,10 @@ processor_logs_table = sqlalchemy.Table(
     sqlalchemy.Column("logs", sqlalchemy.String, nullable=True),
     sqlalchemy.Column("time", sqlalchemy.DateTime, nullable=True),
 )
+
+processor_outputs_table = sqlalchemy.Table(
+    "processor_outputs",
+    metadata,
+    sqlalchemy.Column("task_id", sqlalchemy.String, primary_key=True),
+    sqlalchemy.Column("output", JSONB),
+)
