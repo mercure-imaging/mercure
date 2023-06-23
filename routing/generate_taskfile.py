@@ -65,7 +65,7 @@ def compose_task(
     return task
 
 
-def add_processing(uid: str, applied_rule: str, tags_list: Dict[str, str]) -> Optional[TaskProcessing]:
+def add_processing(uid: str, applied_rule: str, tags_list: Dict[str, str]) -> Optional[Union[TaskProcessing,List[TaskProcessing]]]:
     """
     Adds information about the desired processing step into the task file, which is evaluated by the processing module
     """
@@ -76,16 +76,25 @@ def add_processing(uid: str, applied_rule: str, tags_list: Dict[str, str]) -> Op
     applied_rule_info: Rule = config.mercure.rules[applied_rule]
     logger.debug(f"Applied rule info: {applied_rule_info}")
 
-    if applied_rule_info.action in (
+    if applied_rule_info.action not in (
         mercure_actions.PROCESS,
         mercure_actions.BOTH,
     ):
-        # TODO: Revise this part. Needs to be prepared for sequential execution of modules
+        return None
 
-        # Get the name of the module that should be triggered
-        module_name: str = applied_rule_info.processing_module
-        logger.info(f"module: {module_name}")
+    # TODO: Revise this part. Needs to be prepared for sequential execution of modules
 
+    # Get the name of the module that should be triggered
+    module_names: List[str] = []
+    if isinstance(applied_rule_info.processing_module,str):
+        module_names = [applied_rule_info.processing_module]
+    else:
+        module_names = applied_rule_info.processing_module
+    
+    logger.info(f"module: {module_names}")
+
+    process_infos = []
+    for i, module_name in enumerate(module_names):
         # Get the configuration of this module
         module_config = config.mercure.modules.get(module_name, None)
 
@@ -93,7 +102,15 @@ def add_processing(uid: str, applied_rule: str, tags_list: Dict[str, str]) -> Op
         settings: Dict[str, Any] = {}
         if module_config is not None:
             settings.update(module_config.settings)
-        settings.update(applied_rule_info.processing_settings)
+
+        rule_settings: List[Dict[str,Any]] = []
+        if isinstance(applied_rule_info.processing_settings,list):
+            rule_settings = applied_rule_info.processing_settings
+        else:
+            rule_settings = [applied_rule_info.processing_settings]
+
+        if i < len(rule_settings):
+            settings.update(rule_settings[i])
 
         # Store in the target structure
         process_info: TaskProcessing = TaskProcessing(
@@ -102,9 +119,10 @@ def add_processing(uid: str, applied_rule: str, tags_list: Dict[str, str]) -> Op
             settings=settings,
             retain_input_images=applied_rule_info.processing_retain_images,
         )
-        return process_info
-
-    return None
+        process_infos.append(process_info)
+    if len(process_infos) > 1:
+        return process_infos
+    return process_infos[0]
 
 
 def add_study(

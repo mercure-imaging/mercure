@@ -129,7 +129,7 @@ async def search_folder(counter) -> bool:
             json.dump(task.dict(), f)
 
         # Copy input images if configured in rule
-        if task.process and task.process.retain_input_images == True:
+        if task.process and (task.process[0] if isinstance(task.process,list) else task.process).retain_input_images == True:
             push_input_images(task.id, in_folder, out_folder)
 
         # Remember the number of DCM files in the output folder (for logging purpose)

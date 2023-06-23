@@ -20,6 +20,7 @@ import common.monitor as monitor
 from common.constants import mercure_defs
 from common.types import Rule
 import common.rule_evaluation as rule_evaluation
+import common.helper as helper
 from webinterface.common import *
 import webinterface.tagslist as tagslist
 
@@ -108,6 +109,7 @@ async def rules_edit(request) -> Response:
         "alltags": tagslist.alltags,
         "sortedtags": tagslist.sortedtags,
         "processing_settings": settings_string,
+        "process_runner": config.mercure.process_runner
     }
     context.update(get_user_information(request))
 
@@ -165,7 +167,12 @@ async def rules_edit_post(request) -> Response:
     #         )
     #     },
     # )
-
+    if "processing_module_list" in form:
+        processing_module = form.get("processing_module_list","").split(",")
+        if processing_module == [""]:
+            processing_module = ""
+    else:
+        processing_module = form.get("processing_module", "")
     new_rule: Rule = Rule(
         rule=form.get("rule", "False"),
         target=form.get("target", ""),
@@ -179,7 +186,7 @@ async def rules_edit_post(request) -> Response:
         study_trigger_condition=form.get("study_trigger_condition", "timeout"),
         study_trigger_series=form.get("study_trigger_series", ""),
         priority=form.get("priority", "normal"),
-        processing_module=form.get("processing_module", ""),
+        processing_module=processing_module,
         processing_settings=new_processing_settings,
         processing_retain_images=form.get("processing_retain_images", "False"),
         notification_webhook=form.get("notification_webhook", ""),
