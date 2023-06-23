@@ -517,7 +517,7 @@ async def self_test(request) -> Response:
         )
         if test_type == "process":
             config.mercure.modules[test_rule + "_self_test_module"] = Module(
-                docker_tag="mercureimaging/mercure-dummy-processor:0.2.0-beta.7",
+                docker_tag=f"mercureimaging/mercure-dummy-processor:{mercure_defs.VERSION}",
             )
             config.mercure.modules[test_rule + "_self_test_module_2"] = Module(
                 docker_tag="mercureimaging/mercure-dummy-processor:0.2.0-beta.7",
