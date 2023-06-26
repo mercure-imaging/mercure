@@ -323,6 +323,7 @@ async def process_series(folder: str) -> None:
                 shutil.copytree(f_path / "in", f_path / "input_files")
             logger.info("==== TASK ====",task.dict())
             copied_task = task.copy(deep=True)
+            outputs = []
             try:
                 for i, task_processing in enumerate(task.process):
                     copied_task.process = task_processing
@@ -331,7 +332,8 @@ async def process_series(folder: str) -> None:
                     processing_success = await docker_runtime(task, folder, file_count_begin, task_processing)
                     if not processing_success:
                         break
-                    handle_processor_output(task, task_processing, i, f_path)
+                    output = handle_processor_output(task, task_processing, i, f_path)
+                    outputs.append(output)
                     ( f_path / "out" / "result.json" ).unlink()
                     shutil.rmtree(f_path / "in")
                     if i < len(task.process)-1: # Move the results of the processing step to the input folder of the next one
@@ -339,6 +341,9 @@ async def process_series(folder: str) -> None:
                         (f_path / "out").mkdir()
                 if task.process[0].retain_input_images:
                     (f_path / "input_files").rename(f_path / "in")
+                with open(f_path / "out" / "result.json","w") as fp:
+                     json.dump(outputs, fp, indent=4)
+
             finally:
                 with open(f_path / "out" / mercure_names.TASKFILE,"w") as task_file:
                      json.dump(task.dict(), task_file, indent=4)
@@ -430,7 +435,7 @@ def push_input_images(task_id: str, input_folder: Path, output_folder: Path):
             f"Error while copying files to output folder {output_folder}", task_id, exc_info=error_info
         )  # handle_error
 
-def handle_processor_output(task:Task, task_processing:TaskProcessing, index:int, folder:Path):
+def handle_processor_output(task:Task, task_processing:TaskProcessing, index:int, folder:Path) -> Any:
     output_file = folder / "out" / "result.json"
     if not output_file.is_file():
         logger.info("No result.json")
@@ -444,6 +449,7 @@ def handle_processor_output(task:Task, task_processing:TaskProcessing, index:int
     logger.info("Read result.json:")
     logger.info(output)
     monitor.send_processor_output(task, task_processing, index, output)
+    return output
 
 def move_results(
     task_id: str, folder: Path, lock: Optional[helper.FileLock], processing_success: bool, needs_dispatching: bool
