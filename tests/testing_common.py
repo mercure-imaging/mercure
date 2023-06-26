@@ -43,6 +43,7 @@ def attach_spies(mocker) -> None:
             "common.monitor.send_register_task",
             "common.monitor.send_task_event",
             "common.monitor.async_send_task_event",
+            "common.monitor.send_processor_output",
             "common.monitor.send_update_task",
         ],
     )

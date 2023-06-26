@@ -290,8 +290,8 @@ async def test_multi_process_series(fs, mercure_config: Callable[[Dict], Config]
     global processor_path
     partial: Dict[str, Dict] = {
         "modules": {
-            "test_module_1": Module(docker_tag="busybox:stable",settings={"fizz":"buzz"}).dict(),
-            "test_module_2": Module(docker_tag="busybox:stable",settings={"fizz":"buzz"}).dict(),
+            "test_module_1": Module(docker_tag="busybox:stable",settings={"fizz":"buzz","result":[1,2,3,4]}).dict(),
+            "test_module_2": Module(docker_tag="busybox:stable",settings={"fizz":"bing","result":[100,200,300,400]}).dict(),
         },
         "rules": {
             "catchall": Rule(
@@ -321,7 +321,9 @@ async def test_multi_process_series(fs, mercure_config: Callable[[Dict], Config]
         for child in in_.iterdir():
             print(f"Moving {child} to {out_ / child.name})")
             shutil.copy(child, out_ / child.name)
-
+        with (in_ / "task.json").open("r") as fp:
+            results = json.load(fp)["process"]["settings"]["result"]
+        fs.create_file(out_ / "result.json", contents=json.dumps(results))
         return mocked.DEFAULT
 
     fake_run = mocked.Mock(return_value=my_fake_container(), side_effect=fake_processor)  # type: ignore
@@ -361,7 +363,7 @@ async def test_multi_process_series(fs, mercure_config: Callable[[Dict], Config]
         "process": [{
             "module_name": m,
             "module_config": {"constraints": "", "resources": "", **partial["modules"][m]},
-            "settings": {"fizz":"buzz",**partial["rules"]["catchall"]["processing_settings"][i]},
+            "settings": { **partial["modules"][m]["settings"],**partial["rules"]["catchall"]["processing_settings"][i]},
             "retain_input_images": True,
         } for i, m in enumerate(partial["modules"])],
         "study": {},
@@ -383,5 +385,10 @@ async def test_multi_process_series(fs, mercure_config: Callable[[Dict], Config]
             call(task_event.PROCESS_MODULE_COMPLETE, new_task_id, 1, "test_module_1", "Processing module complete"),
             call(task_event.PROCESS_MODULE_BEGIN, new_task_id, 1, "test_module_2", "Processing module running"),
             call(task_event.PROCESS_MODULE_COMPLETE, new_task_id, 1, "test_module_2", "Processing module complete"),
+        ]
+    )
+    common.monitor.send_processor_output.assert_has_calls(
+        [
+            call(Task(**task),TaskProcessing(**task["process"][i]),i, partial["modules"][m]["settings"]["result"]) for i,m in enumerate(partial["modules"])
         ]
     )

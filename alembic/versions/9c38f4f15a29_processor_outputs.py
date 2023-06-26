@@ -8,6 +8,7 @@ Create Date: 2022-08-11 20:20:25.337807
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
+from sqlalchemy.sql import func
 
 
 # revision identifiers, used by Alembic.
@@ -20,10 +21,19 @@ depends_on = None
 def upgrade():
     op.create_table(
         "processor_outputs",
-        sa.Column("task_id", sa.String, primary_key=True),
+        sa.Column("id", sa.Integer, primary_key=True, autoincrement=True),
+        sa.Column("time", sa.DateTime(timezone=True), server_default=func.now()),
+        sa.Column("task_id", sa.String, sa.ForeignKey("tasks.id"),nullable=True),
+        sa.Column("task_acc", sa.String),
+        sa.Column("task_mrn", sa.String),
+        sa.Column("module", sa.String),
+        sa.Column("index", sa.Integer),
+        sa.Column("settings", postgresql.JSONB),
         sa.Column("output", postgresql.JSONB),
+
     )
 
 
 def downgrade():
+    op.drop_table("processor_outputs")
     pass

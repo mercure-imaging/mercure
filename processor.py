@@ -130,12 +130,15 @@ async def search_folder(counter) -> bool:
             json.dump(task.dict(), f)
 
         # Copy input images if configured in rule
-        if task.process and (task.process[0] if isinstance(task.process,list) else task.process).retain_input_images == True:
+        task_processing = (task.process[0] if isinstance(task.process,list) else task.process)
+        if not task_processing:
+            continue
+        if task_processing.retain_input_images == True:
             push_input_images(task.id, in_folder, out_folder)
 
         # Remember the number of DCM files in the output folder (for logging purpose)
         file_count_complete = len(list(Path(out_folder).glob(mercure_names.DCMFILTER)))
-        handle_processor_output(task_id, p_folder)
+        handle_processor_output(task, task_processing, 0, p_folder)
 
         # If the only file is task.json, the processing failed
         if [p.name for p in out_folder.rglob("*")] == ["task.json"]:

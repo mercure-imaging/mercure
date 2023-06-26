@@ -331,7 +331,8 @@ async def process_series(folder: str) -> None:
                     processing_success = await docker_runtime(task, folder, file_count_begin, task_processing)
                     if not processing_success:
                         break
-                    
+                    handle_processor_output(task, task_processing, i, f_path)
+                    ( f_path / "out" / "result.json" ).unlink()
                     shutil.rmtree(f_path / "in")
                     if i < len(task.process)-1: # Move the results of the processing step to the input folder of the next one
                         (f_path / "out").rename(f_path / "in")
@@ -343,17 +344,20 @@ async def process_series(folder: str) -> None:
                      json.dump(task.dict(), task_file, indent=4)
         else:
             processing_success = await runtime(task, folder, file_count_begin, cast(TaskProcessing,task.process))
+            if processing_success:
+                handle_processor_output(task, cast(TaskProcessing,task.process), 0, f_path)
 
     except Exception as e:
         processing_success = False
+        task_id = None
         if task is not None:
-            logger.error("Processing error.", task.id)  # handle_error
+            task_id = task.id
         else:
             try:
                 task_id = json.load(open(taskfile_path, "r"))["id"]
-                logger.error("Processing error.", task_id)  # handle_error
-            except Exception:
-                logger.error("Processing error.", None)  # handle_error
+            except:
+                pass
+        logger.error("Processing error.", task_id)  # handle_error
     finally:
         if task is not None:
             task_id = task.id
@@ -369,7 +373,6 @@ async def process_series(folder: str) -> None:
             # Remember the number of DCM files in the output folder (for logging purpose)
             file_count_complete = len(list((f_path / "out").glob(mercure_names.DCMFILTER)))
 
-            handle_processor_output(task_id, f_path)
             # Push the results either to the success or error folder
             move_results(task_id, f_path, lock, processing_success, needs_dispatching)
             shutil.rmtree(folder, ignore_errors=True)
@@ -427,16 +430,20 @@ def push_input_images(task_id: str, input_folder: Path, output_folder: Path):
             f"Error while copying files to output folder {output_folder}", task_id, exc_info=error_info
         )  # handle_error
 
-def handle_processor_output(task_id:str, folder:Path):
+def handle_processor_output(task:Task, task_processing:TaskProcessing, index:int, folder:Path):
     output_file = folder / "out" / "result.json"
     if not output_file.is_file():
+        logger.info("No result.json")
         return
     try:
         output = json.loads(output_file.read_text())
     except json.JSONDecodeError as e: 
         # Not json
-        return 
-    monitor.send_processor_output(task_id, output)
+        logger.info("Failed to parse result.json")
+        return
+    logger.info("Read result.json:")
+    logger.info(output)
+    monitor.send_processor_output(task, task_processing, index, output)
 
 def move_results(
     task_id: str, folder: Path, lock: Optional[helper.FileLock], processing_success: bool, needs_dispatching: bool

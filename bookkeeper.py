@@ -412,9 +412,8 @@ async def post_task_event(request) -> JSONResponse:
 @requires("authenticated")
 async def store_processor_output(request) -> JSONResponse:
     payload = dict(await request.json())
-    id = payload["task_id"]
-    output = payload["output"]
-    query = processor_outputs_table.insert().values(task_id=id, output=output)
+    values_dict = {k:payload[k] for k in ("task_id", "task_acc", "task_mrn", "module", "index", "settings", "output")}
+    query = processor_outputs_table.insert().values(**values_dict)
     await database.execute(query)
     return JSONResponse({"ok": ""})
 

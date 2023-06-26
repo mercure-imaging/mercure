@@ -7,6 +7,7 @@ Database functions needed for the bookkeeper service.
 # Standard python includes
 from sqlalchemy.dialects.postgresql import JSONB
 import sqlalchemy
+from sqlalchemy.sql import func
 import databases
 
 # Starlette-related includes
@@ -169,6 +170,13 @@ processor_logs_table = sqlalchemy.Table(
 processor_outputs_table = sqlalchemy.Table(
     "processor_outputs",
     metadata,
-    sqlalchemy.Column("task_id", sqlalchemy.String, primary_key=True),
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
+    sqlalchemy.Column("time", sqlalchemy.DateTime(timezone=True), server_default=func.now()),
+    sqlalchemy.Column("task_id", sqlalchemy.String, sqlalchemy.ForeignKey("tasks.id"),nullable=True),
+    sqlalchemy.Column("task_acc", sqlalchemy.String),
+    sqlalchemy.Column("task_mrn", sqlalchemy.String),
+    sqlalchemy.Column("module", sqlalchemy.String),
+    sqlalchemy.Column("index", sqlalchemy.Integer),
+    sqlalchemy.Column("settings", JSONB),
     sqlalchemy.Column("output", JSONB),
 )

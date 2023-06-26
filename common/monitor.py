@@ -17,7 +17,7 @@ import datetime
 import threading
 
 # App-specific includes
-from common.types import Task
+from common.types import Task, TaskProcessing
 from common.event_types import *
 
 
@@ -191,8 +191,8 @@ def send_update_task(task: Task) -> None:
 
     post("update-task", json=task_dict)
 
-def send_processor_output(task_id: str, output: dict) -> None:
-    post("store-processor-output", json=dict(task_id=task_id, output=output))
+def send_processor_output(task: Task, task_processing: TaskProcessing, index:int, output: dict) -> None:
+    post("store-processor-output", json=dict(task_id=task.id, task_acc=task.info.acc, task_mrn=task.info.mrn, module=task_processing.module_name, index=index, settings=task_processing.settings, output=output))
     
 def task_event_payload(event: task_event, task_id: str, file_count: int, target, info):
     return {
