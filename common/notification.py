@@ -39,24 +39,20 @@ def post(url: str, payload: Any) -> None:
 
     asyncio.ensure_future(do_post(url, payload), loop=loop)
 
+def parse_payload(payload: str, event: mercure_events, rule_name: str, task_id: str) -> str:
+    payload_parsed = payload
+    payload_parsed = payload_parsed.replace("@rule@", rule_name)
+    payload_parsed = payload_parsed.replace("@task_id@", task_id)
+    payload_parsed = payload_parsed.replace("@event@", event.name)
 
-def send_webhook(url, payload, event, rule_name, task_id="") -> None:
+    return payload_parsed
+
+def send_webhook(url:str, payload: str, event: mercure_events, rule_name: str, task_id: str ="") -> None:
     if (not url):
         return
 
     # Replace macros in payload
-    payload_parsed = payload
-
-    payload_parsed = payload_parsed.replace("@rule@", rule_name)
-    payload_parsed = payload_parsed.replace("@task_id@", task_id)
-
-    if event == mercure_events.RECEPTION:
-        payload_parsed = payload_parsed.replace("@event@", "RECEIVED")
-    if event == mercure_events.COMPLETION:
-        payload_parsed = payload_parsed.replace("@event@", "COMPLETED")
-    if event == mercure_events.ERROR:
-        payload_parsed = payload_parsed.replace("@event@", "ERROR")
-
+    payload_parsed = parse_payload(payload,event, rule_name, task_id)
     try:
         payload_data = json.loads("{" + payload_parsed + "}")
         post(url, payload_data)
@@ -70,3 +66,32 @@ def send_webhook(url, payload, event, rule_name, task_id="") -> None:
         logger.error(f"ERROR: Webhook notification failed")
         logger.error(traceback.format_exc())
         return
+
+import smtplib
+from email.message import EmailMessage
+
+def send_email(address: str, payload: str, event: mercure_events, rule_name: str, task_id: str="") -> None:
+    if not address:
+        return
+    payload_parsed = parse_payload(payload,event, rule_name, task_id)
+    subject = f"Rule {rule_name} {event}"
+    try: 
+        send_email_helper(address, subject, payload_parsed)
+    except:
+        logger.exception(f"ERROR: Email notification failed")
+
+
+def send_email_helper(to:str, subject:str, content:str) -> None:
+    # Create a text/plain message
+    msg = EmailMessage()
+    msg['Subject'] = f'[Mercure] {subject}'
+    msg['From'] = "test@example.com"
+    msg['To'] = to
+    msg.set_content(content)
+
+    # Send the message via our own SMTP server.
+    s = smtplib.SMTP('localhost')
+    try: 
+        s.send_message(msg)
+    finally:
+        s.quit()

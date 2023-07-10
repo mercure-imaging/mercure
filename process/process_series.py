@@ -505,63 +505,66 @@ def move_out_folder(task_id: str, source_folder: Path, destination_folder: Path,
         logger.error(f"Error moving folder {source_folder} to {destination_folder}", task_id)  # handle_error
 
 
-def trigger_notification(task: Task, event) -> None:
+def trigger_notification(task: Task, event: mercure_events) -> None:
     task_info = task.info
-    current_rule = task_info.get("applied_rule")
-    logger.debug(f"Notification {event}")
+    current_rule_name = task_info.get("applied_rule")
+    logger.info(f"Notification {event}")
     # Check if the rule is available
-    if not current_rule:
+    if not current_rule_name:
         logger.error(f"Missing applied_rule in task file in task {task.id}", task.id)  # handle_error
         return
 
+    current_rule = config.mercure.rules.get(current_rule_name)
     # Check if the mercure configuration still contains that rule
-    if not isinstance(config.mercure.rules.get(current_rule, ""), Rule):
+    if not isinstance(current_rule, Rule):
         logger.error(
             f"Applied rule not existing anymore in mercure configuration from task {task.id}", task.id
         )  # handle_error
         return
 
-    notification_type = ""
 
+    do_send = False
     # Now fire the webhook if configured
-    if event == mercure_events.RECEPTION:
-        if config.mercure.rules[current_rule].notification_trigger_reception == True:
-            notification.send_webhook(
-                config.mercure.rules[current_rule].get("notification_webhook", ""),
-                config.mercure.rules[current_rule].get("notification_payload", ""),
-                mercure_events.RECEPTION,
-                current_rule,
-                task.id,
-            )
-            notification_type = "RECEPTION"
+    if event == mercure_events.RECEPTION and current_rule.notification_trigger_reception == True:
+        do_send = True
+    elif event == mercure_events.COMPLETION and current_rule.notification_trigger_completion == True:
+        do_send = True
+    elif event == mercure_events.ERROR and current_rule.notification_trigger_error == True:
+        do_send = True
+    
+    if not do_send:
+        return
 
-    if event == mercure_events.COMPLETION:
-        if config.mercure.rules[current_rule].notification_trigger_completion == True:
-            notification.send_webhook(
-                config.mercure.rules[current_rule].get("notification_webhook", ""),
-                config.mercure.rules[current_rule].get("notification_payload", ""),
-                mercure_events.COMPLETION,
-                current_rule,
-                task.id,
-            )
-            notification_type = "COMPLETION"
-
-    if event == mercure_events.ERROR:
-        if config.mercure.rules[current_rule].notification_trigger_error == True:
-            notification.send_webhook(
-                config.mercure.rules[current_rule].get("notification_webhook", ""),
-                config.mercure.rules[current_rule].get("notification_payload", ""),
-                mercure_events.ERROR,
-                current_rule,
-                task.id,
-            )
-            notification_type = "ERROR"
-
-    if notification_type and config.mercure.rules[current_rule].get("notification_webhook", ""):
+    webhook_url = current_rule.get("notification_webhook")
+    if webhook_url:
+        notification.send_webhook(
+            webhook_url,
+            current_rule.get("notification_payload", ""),
+            event,
+            current_rule_name,
+            task.id,
+        )
         monitor.send_task_event(
             monitor.task_event.NOTIFICATION,
             task.id,
             0,
-            config.mercure.rules[current_rule].get("notification_webhook", ""),
-            "Announced " + notification_type,
+            webhook_url,
+            "Announced " + event.name,
+        )
+
+    email_address = current_rule.get("notification_email")
+    if email_address:
+        notification.send_email(
+            email_address,
+            current_rule.get("notification_email_body", ""),
+            event,
+            current_rule_name,
+            task.id,
+        )
+        monitor.send_task_event(
+            monitor.task_event.NOTIFICATION,
+            task.id,
+            0,
+            email_address,
+            "Announced " + event.name,
         )

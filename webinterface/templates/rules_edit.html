@@ -348,6 +348,24 @@
                             </div>
                         </div>
                     </div>
+
+                    <div class="field">
+                        <label class="label">Email</label>
+                        <div class="control">
+                            <input name="notification_email" class="input" autocomplete='off' type="email"
+                                placeholder="Email address"
+                                value="{{rules[rule]['notification_email']}}">
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label class="label">Email Body</label>
+                        <div class="control">
+                            <textarea name="notification_email_body" id="notification_email_body" class="textarea"
+                                autocomplete='off'
+                                placeholder="Contents of notification email">{{rules[rule]['notification_email_body']}}</textarea>
+                        </div>
+                    </div>
+
                     <div class="field">
                         <label class="label">Trigger</label>
                     </div>

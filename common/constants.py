@@ -5,6 +5,7 @@ mercure-wide constants, used for standardizing key names and extensions.
 """
 
 # App-specific includes
+from enum import IntEnum
 from common.version import mercure_version
 
 
@@ -116,7 +117,7 @@ class mercure_options:
     INVALID = "#@INVALID@#"
 
 
-class mercure_events:
+class mercure_events(IntEnum):
     RECEPTION = 0
     COMPLETION = 1
     ERROR = 2

@@ -387,7 +387,7 @@ async def test_multi_process_series(fs, mercure_config: Callable[[Dict], Config]
             call(task_event.PROCESS_MODULE_COMPLETE, new_task_id, 1, "test_module_2", "Processing module complete"),
         ]
     )
-    common.monitor.send_processor_output.assert_has_calls(
+    common.monitor.send_processor_output.assert_has_calls(  # type: ignore
         [
             call(Task(**task),TaskProcessing(**task["process"][i]),i, partial["modules"][m]["settings"]["result"]) for i,m in enumerate(partial["modules"])
         ]

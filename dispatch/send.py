@@ -225,7 +225,7 @@ def _move_sent_directory(task_id, source_folder, destination_folder) -> None:
         logger.error(f"Error moving folder {source_folder} to {destination_folder}", task_id)  # handle_error
 
 
-def _trigger_notification(task: Task, event) -> None:
+def _trigger_notification(task: Task, event: mercure_events) -> None:
     # Select which notifications need to be sent. If applied_rule is not empty, check only this rule. Otherwise,
     # check all rules that are contained in triggered_rules (applied only to series-level dispatching)
     task_info = task.info

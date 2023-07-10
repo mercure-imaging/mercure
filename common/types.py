@@ -129,8 +129,10 @@ class Rule(BaseModel, Compat):
     processing_module: Union[str,List[str]] = ""
     processing_settings: Union[List[Dict[str, Any]],Dict[str, Any]] = {}
     processing_retain_images: bool = False
+    notification_email: str = ""
     notification_webhook: str = ""
     notification_payload: str = ""
+    notification_email_body: str = ""
     notification_trigger_reception: bool = True
     notification_trigger_completion: bool = True
     notification_trigger_error: bool = True

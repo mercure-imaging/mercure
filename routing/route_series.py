@@ -604,7 +604,7 @@ def route_error_files() -> None:
     return
 
 
-def trigger_serieslevel_notification(current_rule: str, tags_list: Dict[str, str], event, task_id: str) -> None:
+def trigger_serieslevel_notification(current_rule: str, tags_list: Dict[str, str], event:mercure_events, task_id: str) -> None:
     notification_type = ''
 
     if event == mercure_events.RECEPTION:

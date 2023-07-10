@@ -184,14 +184,14 @@ async def search_folder(counter) -> bool:
     # Only process one case at a time because the processing might take a while and
     # another instance might have processed the other entries already. So the folder
     # needs to be refreshed each time
-    task_folder = sorted_tasks[0]
+    task_folder = Path(sorted_tasks[0])
 
     try:
         await process_series(task_folder)
         # Return true, so that the parent function will trigger another search of the folder
         return True
     except Exception:
-        for p in (Path(task_folder) / "out" / "task.json", Path(task_folder) / "in" / "task.json"):
+        for p in (task_folder / "out" / "task.json", task_folder / "in" / "task.json"):
             try:
                 task_id = json.load(open(p))["id"]
                 logger.error("Exception while processing", task_id)  # handle_error

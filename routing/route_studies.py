@@ -393,7 +393,7 @@ def remove_study_folder(task_id: Union[str, None], study: str, lock: helper.File
     return True
 
 
-def trigger_studylevel_notification(study: str, task: Task, event) -> bool:
+def trigger_studylevel_notification(study: str, task: Task, event: mercure_events) -> bool:
     # Check if the applied_rule is available
     current_rule = task.info.applied_rule
     if not current_rule:
