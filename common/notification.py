@@ -44,24 +44,23 @@ def post(url: str, payload: Any) -> None:
     asyncio.ensure_future(do_post(url, payload), loop=loop)
 
 
-def parse_payload(payload: str, event: mercure_events, rule_name: str, task_id: str, context: dict={}) -> str:
+def parse_payload(payload: str, event: mercure_events, rule_name: str, task_id: str, details: str ="", context: dict={}) -> str:
     payload_parsed = payload
     payload_parsed = payload_parsed.replace("@rule@", rule_name)
     payload_parsed = payload_parsed.replace("@task_id@", task_id)
     payload_parsed = payload_parsed.replace("@event@", event.name)
-    context = {**dict(rule=rule_name, task_id=task_id, event=event.name),**context}
+    context = {**dict(rule=rule_name, task_id=task_id, event=event.name, details=details),**context}
     
     return Template(payload_parsed).render(context)
     
 
-def send_webhook(url:str, payload: str, event: mercure_events, rule_name: str, task_id: str ="", context: dict={}) -> None:
-    if (not url):
+def send_webhook(url:str, payload: str) -> None:
+    if not url:
         return
 
     # Replace macros in payload
-    payload_parsed = parse_payload(payload,event, rule_name, task_id, context)
     try:
-        payload_data = json.loads("{" + payload_parsed + "}")
+        payload_data = json.loads("{" + payload + "}")
         post(url, payload_data)
         # response = requests.post(
         #     url, data=json.dumps(payload_data), headers={"Content-type": "application/json"}
@@ -77,13 +76,12 @@ def send_webhook(url:str, payload: str, event: mercure_events, rule_name: str, t
 import smtplib
 from email.message import EmailMessage
 
-def send_email(address: str, payload: str, event: mercure_events, rule_name: str, task_id: str="") -> None:
+def send_email(address: str, payload: str, event: mercure_events, rule_name: str) -> None:
     if not address:
         return
-    payload_parsed = parse_payload(payload,event, rule_name, task_id)
-    subject = f"Rule {rule_name} {event}"
+    subject = f"Rule {rule_name}: {event.name}"
     try: 
-        send_email_helper(address, subject, payload_parsed)
+        send_email_helper(address, subject, payload)
     except:
         logger.exception(f"ERROR: Email notification failed")
 
@@ -104,7 +102,7 @@ def send_email_helper(to:str, subject:str, content:str) -> None:
         s.quit()
 
 
-def trigger_notification_for_rule(rule_name: str, task_id: str, event: mercure_events):
+def trigger_notification_for_rule(rule_name: str, task_id: str, event: mercure_events, details: str=""):
     current_rule = config.mercure.rules.get(rule_name)
     # Check if the rule is available
     if not current_rule or not isinstance(current_rule, Rule):
@@ -126,12 +124,10 @@ def trigger_notification_for_rule(rule_name: str, task_id: str, event: mercure_e
 
     webhook_url = current_rule.get("notification_webhook")
     if webhook_url:
+        webhook_payload = parse_payload(current_rule.get("notification_payload", ""),event, rule_name, task_id, details)
         send_webhook(
             webhook_url,
-            current_rule.get("notification_payload", ""),
-            event,
-            rule_name,
-            task_id,
+            webhook_payload
         )
         monitor.send_task_event(
             monitor.task_event.NOTIFICATION,
@@ -143,12 +139,12 @@ def trigger_notification_for_rule(rule_name: str, task_id: str, event: mercure_e
 
     email_address = current_rule.get("notification_email")
     if email_address:
+        email_payload = parse_payload(current_rule.get("notification_email_body", ""),event, rule_name, task_id, details)
         send_email(
             email_address,
-            current_rule.get("notification_email_body", ""),
+            email_payload,
             event,
             rule_name,
-            task_id,
         )
         monitor.send_task_event(
             monitor.task_event.NOTIFICATION,

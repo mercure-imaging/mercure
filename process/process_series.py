@@ -357,7 +357,6 @@ async def process_series(folder: Path) -> None:
                 output = handle_processor_output(task, task_process, 0, folder)
                 outputs.append((task_process.module_name,output))
         
-
     except Exception as e:
         processing_success = False
         task_id = None
@@ -396,7 +395,9 @@ async def process_series(folder: Path) -> None:
                 if not needs_dispatching:
                     monitor.send_task_event(monitor.task_event.COMPLETE, task_id, 0, "", "Task complete")
                     # TODO: task really is never none if processing_success is true
-                    trigger_notification(task, mercure_events.COMPLETION)  # type: ignore
+
+                    #TODO: what if we are dispatching?
+                    trigger_notification(task, mercure_events.COMPLETION, get_task_custom_notification(outputs))  # type: ignore
             else:
                 monitor.send_task_event(monitor.task_event.ERROR, task_id, 0, "", "Processing failed")
                 if task is not None:  # TODO: handle if task is none?
@@ -412,10 +413,15 @@ async def process_series(folder: Path) -> None:
                     trigger_notification(task, mercure_events.ERROR)
     return
 
-# def handle_task_custom_notification(task_output: dict) -> None:
-#     if not (notification_info := task_output.get("__mercure_notification")):
-#         return
-
+def get_task_custom_notification(outputs) -> Optional[str]:
+    results = []
+    for module_name, out in outputs:
+        if (notification_info := out.get("__mercure_notification")) and (text:= notification_info.get("text")):
+            results.append((module_name,text))
+    
+    str_results = [ f"{module_name}: {text}" for module_name, text in results]
+    return "\n".join(str_results)
+        
 def push_input_task(input_folder: Path, output_folder: Path):
     task_json = output_folder / "task.json"
     if not task_json.exists():
@@ -523,4 +529,4 @@ def trigger_notification(task: Task, event: mercure_events, details: str="") -> 
         logger.error(f"Missing applied_rule in task file in task {task.id}", task.id)  # handle_error
         return
 
-    notification.trigger_notification_for_rule(current_rule_name, task.id, event)
+    notification.trigger_notification_for_rule(current_rule_name, task.id, event, details)
