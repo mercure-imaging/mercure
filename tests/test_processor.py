@@ -127,7 +127,7 @@ async def test_process_series_nomad(fs, mercure_config: Callable[[Dict], Config]
 
     logger.info("Run processing...")
     await processor.run_processor()
-    processor.process_series.assert_called_once_with(str(processor_path))  # type: ignore
+    processor.process_series.assert_called_once_with(processor_path)  # type: ignore
 
     fake_run.assert_called_once_with("processor-test_module", meta={"PATH": processor_path.name})
 
