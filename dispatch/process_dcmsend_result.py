@@ -44,7 +44,9 @@ def parse(result_file) -> Dict:
     for index, element in enumerate(content):
         if element.startswith("Status Summary"):
             summary_start = index
-
+            break
+    else:
+        raise Exception("Failed to parse dcmsend result.")
     result["summary"] = _parse_summary(content[summary_start:])
     # Just take the first 8 lines of the result file,
     # optimistic guessing length of the header

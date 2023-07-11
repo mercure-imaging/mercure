@@ -16,6 +16,8 @@ import shutil
 import daiquiri
 from datetime import datetime
 import docker
+from docker.models.containers import Container
+
 import traceback
 import nomad
 from jinja2 import Template
@@ -38,7 +40,7 @@ from common.constants import (
 logger = config.get_logger()
 
 
-async def nomad_runtime(task: Task, folder: str, file_count_begin: int, task_processing:TaskProcessing) -> bool:
+async def nomad_runtime(task: Task, folder: Path, file_count_begin: int, task_processing:TaskProcessing) -> bool:
     nomad_connection = nomad.Nomad(host="172.17.0.1", timeout=5) # type: ignore
 
     if not task.process:
@@ -46,7 +48,6 @@ async def nomad_runtime(task: Task, folder: str, file_count_begin: int, task_pro
 
     module: Module = cast(Module, task_processing.module_config)
 
-    f_path = Path(folder)
     if not module.docker_tag:
         logger.error("No docker tag supplied")
         return False
@@ -74,10 +75,10 @@ async def nomad_runtime(task: Task, folder: str, file_count_begin: int, task_pro
     job_definition["Name"] = f"processor-{task_processing.module_name}"
     nomad_connection.job.register_job(job_definition["ID"], dict(Job=job_definition))
 
-    meta = {"PATH": f_path.name}
+    meta = {"PATH": folder.name}
     logger.debug(meta)
     job_info = nomad_connection.job.dispatch_job(f"processor-{task_processing.module_name}", meta=meta)
-    with open(f_path / "nomad_job.json", "w") as json_file:
+    with open(folder / "nomad_job.json", "w") as json_file:
         json.dump(job_info, json_file, indent=4)
 
     monitor.send_task_event(
@@ -93,7 +94,7 @@ async def nomad_runtime(task: Task, folder: str, file_count_begin: int, task_pro
 docker_pull_throttle: Dict[str, datetime] = {}
 
 
-async def docker_runtime(task: Task, folder: str, file_count_begin: int, task_processing:TaskProcessing) -> bool:
+async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_processing:TaskProcessing) -> bool:
     docker_client = docker.from_env()  # type: ignore
 
     if not task.process:
@@ -109,7 +110,7 @@ async def docker_runtime(task: Task, folder: str, file_count_begin: int, task_pr
         except json.decoder.JSONDecodeError:
             return {}
 
-    real_folder = Path(folder)
+    real_folder = folder    
 
     if helper.get_runner() == "docker":
         # We want to bind the correct path into the processor, but if we're inside docker we need to use the host path
@@ -192,7 +193,7 @@ async def docker_runtime(task: Task, folder: str, file_count_begin: int, task_pr
         # with non-zero code while allowing the container to be removed after execution (with autoremoval and
         # non-detached mode, the log output is gone before it can be printed from the exception)
         uid_string = f"{os.getuid()}:{os.getegid()}"
-        container = docker_client.containers.run(
+        container  = docker_client.containers.run(
             docker_tag,
             volumes=merged_volumes,
             environment=environment,
@@ -245,18 +246,17 @@ async def docker_runtime(task: Task, folder: str, file_count_begin: int, task_pr
 
 
 @log_helpers.clear_task_decorator_async
-async def process_series(folder: str) -> None:
+async def process_series(folder: Path) -> None:
     logger.info("----------------------------------------------------------------------------------")
     logger.info(f"Now processing {folder}")
     processing_success = False
     needs_dispatching = False
 
-    f_path = Path(folder)
 
-    lock_file = f_path / mercure_names.PROCESSING
+    lock_file = folder / mercure_names.PROCESSING
     lock = None
     task: Optional[Task] = None
-    taskfile_path = f_path / mercure_names.TASKFILE
+    taskfile_path = folder / mercure_names.TASKFILE
 
     try:
         try:
@@ -288,14 +288,14 @@ async def process_series(folder: str) -> None:
             needs_dispatching = True
 
         # Remember the number of incoming DCM files (for logging purpose)
-        file_count_begin = len(list(f_path.glob(mercure_names.DCMFILTER)))
+        file_count_begin = len(list(folder.glob(mercure_names.DCMFILTER)))
 
-        (f_path / "in").mkdir()
-        for child in f_path.iterdir():
+        (folder / "in").mkdir()
+        for child in folder.iterdir():
             if child.is_file() and child.name != ".processing":
                 # logger.info(f"Moving {child}")
-                child.rename(f_path / "in" / child.name)
-        (f_path / "out").mkdir()
+                child.rename(folder / "in" / child.name)
+        (folder / "out").mkdir()
 
         if helper.get_runner() == "nomad" or config.mercure.process_runner == "nomad":
             logger.debug("Processing with Nomad.")
@@ -317,40 +317,46 @@ async def process_series(folder: str) -> None:
                 (task.process[0].module_name if isinstance(task.process,list) else task.process.module_name) if task.process else "UNKNOWN",
                 f"Processing job running",
             )
+        outputs = []
         # There are multiple processing steps
         if runtime == docker_runtime and isinstance(task.process,list):
             if task.process[0].retain_input_images: # Keep a copy of the input files
-                shutil.copytree(f_path / "in", f_path / "input_files")
+                shutil.copytree(folder / "in", folder / "input_files")
             logger.info("==== TASK ====",task.dict())
             copied_task = task.copy(deep=True)
-            outputs = []
             try:
                 for i, task_processing in enumerate(task.process):
+                    # As far as the processing step is concerned, theres' only one processing step and it's this one,
+                    # so we copy this one's information into a copy of the task file and hand that to the container.
                     copied_task.process = task_processing
-                    with open(f_path / "in" / mercure_names.TASKFILE,"w") as task_file:
+                    with open(folder / "in" / mercure_names.TASKFILE,"w") as task_file:
                         json.dump(copied_task.dict(), task_file)
+
                     processing_success = await docker_runtime(task, folder, file_count_begin, task_processing)
                     if not processing_success:
                         break
-                    output = handle_processor_output(task, task_processing, i, f_path)
-                    outputs.append(output)
-                    ( f_path / "out" / "result.json" ).unlink()
-                    shutil.rmtree(f_path / "in")
+                    output = handle_processor_output(task, task_processing, i, folder)
+                    outputs.append((task_processing.module_name,output))
+                    (folder / "out" / "result.json").unlink()
+                    shutil.rmtree(folder / "in")
                     if i < len(task.process)-1: # Move the results of the processing step to the input folder of the next one
-                        (f_path / "out").rename(f_path / "in")
-                        (f_path / "out").mkdir()
+                        (folder / "out").rename(folder / "in")
+                        (folder / "out").mkdir()
                 if task.process[0].retain_input_images:
-                    (f_path / "input_files").rename(f_path / "in")
-                with open(f_path / "out" / "result.json","w") as fp:
+                    (folder / "input_files").rename(folder / "in")
+                with open(folder / "out" / "result.json","w") as fp:
                      json.dump(outputs, fp, indent=4)
 
             finally:
-                with open(f_path / "out" / mercure_names.TASKFILE,"w") as task_file:
+                with open(folder / "out" / mercure_names.TASKFILE,"w") as task_file:
                      json.dump(task.dict(), task_file, indent=4)
         else:
-            processing_success = await runtime(task, folder, file_count_begin, cast(TaskProcessing,task.process))
+            task_process = cast(TaskProcessing,task.process)
+            processing_success = await runtime(task, folder, file_count_begin, task_process)
             if processing_success:
-                handle_processor_output(task, cast(TaskProcessing,task.process), 0, f_path)
+                output = handle_processor_output(task, task_process, 0, folder)
+                outputs.append((task_process.module_name,output))
+        
 
     except Exception as e:
         processing_success = False
@@ -371,15 +377,15 @@ async def process_series(folder: str) -> None:
         if helper.get_runner() in ("docker", "systemd") and config.mercure.process_runner != "nomad":
             logger.info("Docker processing complete")
             # Copy the task to the output folder (in case the module didn't move it)
-            push_input_task(f_path / "in", f_path / "out")
+            push_input_task(folder / "in", folder / "out")
             # If configured in the rule, copy the input images to the output folder
             if task is not None and task.process and (task.process[0] if isinstance(task.process,list) else task.process).retain_input_images == True:
-                push_input_images(task_id, f_path / "in", f_path / "out")
+                push_input_images(task_id, folder / "in", folder / "out")
             # Remember the number of DCM files in the output folder (for logging purpose)
-            file_count_complete = len(list((f_path / "out").glob(mercure_names.DCMFILTER)))
+            file_count_complete = len(list((folder / "out").glob(mercure_names.DCMFILTER)))
 
             # Push the results either to the success or error folder
-            move_results(task_id, f_path, lock, processing_success, needs_dispatching)
+            move_results(task_id, folder, lock, processing_success, needs_dispatching)
             shutil.rmtree(folder, ignore_errors=True)
 
             if processing_success:
@@ -400,12 +406,15 @@ async def process_series(folder: str) -> None:
                 logger.info(f"Done submitting for processing")
             else:
                 logger.info(f"Unable to process task")
-                move_results(task_id, f_path, lock, False, False)
+                move_results(task_id, folder, lock, False, False)
                 monitor.send_task_event(monitor.task_event.ERROR, task_id, 0, "", "Unable to process task")
                 if task is not None:
                     trigger_notification(task, mercure_events.ERROR)
     return
 
+# def handle_task_custom_notification(task_output: dict) -> None:
+#     if not (notification_info := task_output.get("__mercure_notification")):
+#         return
 
 def push_input_task(input_folder: Path, output_folder: Path):
     task_json = output_folder / "task.json"
@@ -505,66 +514,13 @@ def move_out_folder(task_id: str, source_folder: Path, destination_folder: Path,
         logger.error(f"Error moving folder {source_folder} to {destination_folder}", task_id)  # handle_error
 
 
-def trigger_notification(task: Task, event: mercure_events) -> None:
+def trigger_notification(task: Task, event: mercure_events, details: str="") -> None:
     task_info = task.info
     current_rule_name = task_info.get("applied_rule")
-    logger.info(f"Notification {event}")
+    logger.debug(f"Notification {event}")
     # Check if the rule is available
     if not current_rule_name:
         logger.error(f"Missing applied_rule in task file in task {task.id}", task.id)  # handle_error
         return
 
-    current_rule = config.mercure.rules.get(current_rule_name)
-    # Check if the mercure configuration still contains that rule
-    if not isinstance(current_rule, Rule):
-        logger.error(
-            f"Applied rule not existing anymore in mercure configuration from task {task.id}", task.id
-        )  # handle_error
-        return
-
-
-    do_send = False
-    # Now fire the webhook if configured
-    if event == mercure_events.RECEPTION and current_rule.notification_trigger_reception == True:
-        do_send = True
-    elif event == mercure_events.COMPLETION and current_rule.notification_trigger_completion == True:
-        do_send = True
-    elif event == mercure_events.ERROR and current_rule.notification_trigger_error == True:
-        do_send = True
-    
-    if not do_send:
-        return
-
-    webhook_url = current_rule.get("notification_webhook")
-    if webhook_url:
-        notification.send_webhook(
-            webhook_url,
-            current_rule.get("notification_payload", ""),
-            event,
-            current_rule_name,
-            task.id,
-        )
-        monitor.send_task_event(
-            monitor.task_event.NOTIFICATION,
-            task.id,
-            0,
-            webhook_url,
-            "Announced " + event.name,
-        )
-
-    email_address = current_rule.get("notification_email")
-    if email_address:
-        notification.send_email(
-            email_address,
-            current_rule.get("notification_email_body", ""),
-            event,
-            current_rule_name,
-            task.id,
-        )
-        monitor.send_task_event(
-            monitor.task_event.NOTIFICATION,
-            task.id,
-            0,
-            email_address,
-            "Announced " + event.name,
-        )
+    notification.trigger_notification_for_rule(current_rule_name, task.id, event)

@@ -351,7 +351,7 @@ async def test_multi_process_series(fs, mercure_config: Callable[[Dict], Config]
     )
 
     assert [] == [k.name for k in Path("/var/processing").glob("**/*")]
-    assert files == [k.name for k in (Path("/var/success") / processor_path.name).glob("*") if k.is_file()]
+    assert [*files, 'result.json'] == [k.name for k in (Path("/var/success") / processor_path.name).glob("*") if k.is_file()]
 
     with open(Path("/var/success") / processor_path.name / "task.json") as t:
         task = json.load(t)

@@ -6,14 +6,18 @@ Helper functions for triggering webhook calls.
 
 # Standard python includes
 import json
-from typing import Any
+from typing import Any, Optional
 import aiohttp
 import daiquiri
 import json
 import asyncio
 import traceback
+
+from common import monitor
+from common.types import Rule, Task
 from .helper import loop
 import common.config as config
+from jinja2 import Template
 
 # App-specific includes
 from common.constants import (
@@ -39,20 +43,23 @@ def post(url: str, payload: Any) -> None:
 
     asyncio.ensure_future(do_post(url, payload), loop=loop)
 
-def parse_payload(payload: str, event: mercure_events, rule_name: str, task_id: str) -> str:
+
+def parse_payload(payload: str, event: mercure_events, rule_name: str, task_id: str, context: dict={}) -> str:
     payload_parsed = payload
     payload_parsed = payload_parsed.replace("@rule@", rule_name)
     payload_parsed = payload_parsed.replace("@task_id@", task_id)
     payload_parsed = payload_parsed.replace("@event@", event.name)
+    context = {**dict(rule=rule_name, task_id=task_id, event=event.name),**context}
+    
+    return Template(payload_parsed).render(context)
+    
 
-    return payload_parsed
-
-def send_webhook(url:str, payload: str, event: mercure_events, rule_name: str, task_id: str ="") -> None:
+def send_webhook(url:str, payload: str, event: mercure_events, rule_name: str, task_id: str ="", context: dict={}) -> None:
     if (not url):
         return
 
     # Replace macros in payload
-    payload_parsed = parse_payload(payload,event, rule_name, task_id)
+    payload_parsed = parse_payload(payload,event, rule_name, task_id, context)
     try:
         payload_data = json.loads("{" + payload_parsed + "}")
         post(url, payload_data)
@@ -95,3 +102,59 @@ def send_email_helper(to:str, subject:str, content:str) -> None:
         s.send_message(msg)
     finally:
         s.quit()
+
+
+def trigger_notification_for_rule(rule_name: str, task_id: str, event: mercure_events):
+    current_rule = config.mercure.rules.get(rule_name)
+    # Check if the rule is available
+    if not current_rule or not isinstance(current_rule, Rule):
+        logger.error(f"Rule {rule_name} does not exist in mercure configuration", task_id)  # handle_error
+        return False
+
+
+    do_send = False
+    # Now fire the webhook if configured
+    if event == mercure_events.RECEPTION and current_rule.notification_trigger_reception == True:
+        do_send = True
+    elif event == mercure_events.COMPLETION and current_rule.notification_trigger_completion == True:
+        do_send = True
+    elif event == mercure_events.ERROR and current_rule.notification_trigger_error == True:
+        do_send = True
+    
+    if not do_send:
+        return
+
+    webhook_url = current_rule.get("notification_webhook")
+    if webhook_url:
+        send_webhook(
+            webhook_url,
+            current_rule.get("notification_payload", ""),
+            event,
+            rule_name,
+            task_id,
+        )
+        monitor.send_task_event(
+            monitor.task_event.NOTIFICATION,
+            task_id,
+            0,
+            webhook_url,
+            "Announced " + event.name,
+        )
+
+    email_address = current_rule.get("notification_email")
+    if email_address:
+        send_email(
+            email_address,
+            current_rule.get("notification_email_body", ""),
+            event,
+            rule_name,
+            task_id,
+        )
+        monitor.send_task_event(
+            monitor.task_event.NOTIFICATION,
+            task_id,
+            0,
+            email_address,
+            "Announced " + event.name,
+        )
+    return True

@@ -399,39 +399,5 @@ def trigger_studylevel_notification(study: str, task: Task, event: mercure_event
     if not current_rule:
         logger.error(f"Missing applied_rule in task file in study {study}", task.id)  # handle_error
         return False
-
-    # Check if the mercure configuration still contains that rule
-    if not isinstance(config.mercure.rules.get(current_rule, ""), Rule):
-        logger.error(f"Applied rule not existing anymore in mercure configuration {study}", task.id)  # handle_error
-        return False
-
-    # OK, now fire out the webhook if configured
-    if event == mercure_events.RECEPTION:
-        if config.mercure.rules[current_rule].notification_trigger_reception == True:
-            notification.send_webhook(
-                config.mercure.rules[current_rule].get("notification_webhook", ""),
-                config.mercure.rules[current_rule].get("notification_payload", ""),
-                mercure_events.RECEPTION,
-                current_rule,
-                task.id,
-            )
-    if event == mercure_events.COMPLETION:
-        if config.mercure.rules[current_rule].notification_trigger_completion == True:
-            notification.send_webhook(
-                config.mercure.rules[current_rule].get("notification_webhook", ""),
-                config.mercure.rules[current_rule].get("notification_payload", ""),
-                mercure_events.COMPLETION,
-                current_rule,
-                task.id,
-            )
-    if event == mercure_events.ERROR:
-        if config.mercure.rules[current_rule].notification_trigger_error == True:
-            notification.send_webhook(
-                config.mercure.rules[current_rule].get("notification_webhook", ""),
-                config.mercure.rules[current_rule].get("notification_payload", ""),
-                mercure_events.ERROR,
-                current_rule,
-                task.id,
-            )
-
+    notification.trigger_notification_for_rule(current_rule, task.id, event)
     return True

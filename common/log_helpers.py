@@ -1,5 +1,7 @@
+import collections.abc
 import logging, re, sys, os
 from typing import Tuple
+import typing
 import daiquiri
 from common import helper
 from common import event_types, monitor
@@ -33,6 +35,8 @@ class BookkeeperHandler(logging.Handler):
             severity = event_types.severity.ERROR
         elif record.levelname == "WARNING":
             severity = event_types.severity.WARNING
+        else:
+            severity = event_types.severity.INFO
 
         task_id = getattr(record, "task", None)
         if task_id is not None:
@@ -56,7 +60,7 @@ class ExceptionsKeywordArgumentAdapter(daiquiri.KeywordArgumentAdapter):
         super().__init__(logger, extra)
         self.logger.addHandler(BookkeeperHandler())
 
-    def process(self, msg, kwargs) -> Tuple[str, dict]:
+    def process(self, msg, kwargs) -> Tuple[str, "collections.abc.MutableMapping[str, typing.Any]"]:
         if sys.exc_info()[0] is not None and "exc_info" not in kwargs:
             kwargs["exc_info"] = True
         msg, kwargs = super().process(msg, kwargs)
@@ -75,7 +79,7 @@ class ExceptionsKeywordArgumentAdapter(daiquiri.KeywordArgumentAdapter):
         logger.debug(f"Setting task")
 
     def clearTask(self) -> None:
-        if "context_task" in self.extra:
+        if self.extra and "context_task" in self.extra:
             logger.debug("Clearing task")
             del self.extra["context_task"]  # type: ignore
 

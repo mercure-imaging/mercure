@@ -6,6 +6,7 @@ Helper functions and definitions for monitoring mercure's operations via the boo
 
 # Standard python includes
 import asyncio
+import asyncio.exceptions
 from json import JSONDecodeError
 import os
 import time
@@ -64,7 +65,7 @@ async def do_post(endpoint, kwargs, catch_errors=False) -> None:
                     logger.warning(
                         f"Failed POST request {kwargs} to bookkeeper endpoint {endpoint}: status: {resp.status}"
                     )
-    except aiohttp.client_exceptions.ClientError as e:
+    except aiohttp.client.ClientError as e:
         logger.error(f"Failed POST request to bookkeeper endpoint {endpoint}: {e}")
         if not catch_errors:
             raise

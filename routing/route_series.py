@@ -605,44 +605,4 @@ def route_error_files() -> None:
 
 
 def trigger_serieslevel_notification(current_rule: str, tags_list: Dict[str, str], event:mercure_events, task_id: str) -> None:
-    notification_type = ''
-
-    if event == mercure_events.RECEPTION:
-        if config.mercure.rules[current_rule].notification_trigger_reception == "True":
-            notification.send_webhook(
-                config.mercure.rules[current_rule].get("notification_webhook", ""),
-                config.mercure.rules[current_rule].get("notification_payload", ""),
-                mercure_events.RECEPTION,
-                current_rule,
-                task_id,
-            )
-            notification_type = 'RECEPTION'
-
-    if event == mercure_events.COMPLETION:
-        if config.mercure.rules[current_rule].notification_trigger_completion == "True":
-            notification.send_webhook(
-                config.mercure.rules[current_rule].get("notification_webhook", ""),
-                config.mercure.rules[current_rule].get("notification_payload", ""),
-                mercure_events.COMPLETION,
-                current_rule,
-                task_id,
-            )
-            notification_type = 'COMPLETION'            
-
-    if event == mercure_events.ERROR:
-        if config.mercure.rules[current_rule].notification_trigger_error == "True":
-            notification.send_webhook(
-                config.mercure.rules[current_rule].get("notification_webhook", ""),
-                config.mercure.rules[current_rule].get("notification_payload", ""),
-                mercure_events.ERROR,
-                current_rule,
-                task_id,
-            )
-            notification_type = 'ERROR'
-
-    if notification_type and config.mercure.rules[current_rule].get("notification_webhook", ""):
-        monitor.send_task_event(
-            monitor.task_event.NOTIFICATION, task_id, 0, 
-            config.mercure.rules[current_rule].get("notification_webhook", ""), 
-            "Announced " + notification_type
-        )
+    notification.trigger_notification_for_rule(current_rule, task_id, event)
