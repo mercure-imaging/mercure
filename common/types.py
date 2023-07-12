@@ -132,6 +132,7 @@ class Rule(BaseModel, Compat):
     notification_email: str = ""
     notification_webhook: str = ""
     notification_payload: str = ""
+    notification_payload_body: str = ""
     notification_email_body: str = ""
     notification_trigger_reception: bool = True
     notification_trigger_completion: bool = True
@@ -184,6 +185,7 @@ class TaskInfo(BaseModel, Compat):
     uid_type: Literal["series", "study"]
     triggered_rules: Union[Dict[str, Literal[True]], str]
     applied_rule: Optional[str]
+    patient_name: str
     mrn: str
     acc: str
     mercure_version: str

@@ -320,13 +320,21 @@
                         </div>
                     </div>
                     <div class="field">
-                        <label class="label">Payload</label>
+                        <label class="label">Body</label>
+                        <div class="control">
+                            <textarea name="notification_payload_body" id="notification_payload_body" class="textarea"
+                                autocomplete='off'
+                                placeholder="Free text for body of REST call">{{rules[rule]['notification_payload_body']}}</textarea>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label class="label">JSON Payload</label>
                         <div class="control">
                             <textarea name="notification_payload" id="notification_payload" class="textarea"
                                 autocomplete='off'
-                                placeholder="Data for body of REST call">{{rules[rule]['notification_payload']}}</textarea>
+                                placeholder="JSON Payload for REST call">{{rules[rule]['notification_payload']}}</textarea>
                         </div>
-                    </div>
+                    </div>                    
                     <div class="field is-grouped is-grouped-right">
                         <div class="dropdown is-right">
                             <div class="dropdown-trigger">

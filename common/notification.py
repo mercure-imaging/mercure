@@ -13,6 +13,8 @@ import json
 import asyncio
 import traceback
 
+import jinja2.utils
+
 from common import monitor
 from common.types import Rule, Task
 from .helper import loop
@@ -36,6 +38,7 @@ def post(url: str, payload: Any) -> None:
                 async with session.post(url, json=payload) as resp:
                     if resp.status not in (200, 204):
                         logger.warning(f"Webhook notification failed {url}, status: {resp.status}")
+                        logger.warning(payload)
                     # logger.warning(f"{await resp.text()}")
             except Exception as e:
                 logger.warning(f"Webhook notification failed {url}, exception: {e}")
@@ -102,7 +105,7 @@ def send_email_helper(to:str, subject:str, content:str) -> None:
         s.quit()
 
 
-def trigger_notification_for_rule(rule_name: str, task_id: str, event: mercure_events, details: str=""):
+def trigger_notification_for_rule(rule_name: str, task_id: str, event: mercure_events, details: str="", task: Optional[Task] = None):
     current_rule = config.mercure.rules.get(rule_name)
     # Check if the rule is available
     if not current_rule or not isinstance(current_rule, Rule):
@@ -124,7 +127,11 @@ def trigger_notification_for_rule(rule_name: str, task_id: str, event: mercure_e
 
     webhook_url = current_rule.get("notification_webhook")
     if webhook_url:
-        webhook_payload = parse_payload(current_rule.get("notification_payload", ""),event, rule_name, task_id, details)
+        body = current_rule.get("notification_payload_body", "")
+        context = dict(body=jinja2.utils.htmlsafe_json_dumps(parse_payload(body,event, rule_name, task_id, details))[1:-1])
+
+        webhook_payload = parse_payload(current_rule.get("notification_payload", ""),event, rule_name, task_id, details, context)
+        logger.warning(webhook_payload)
         send_webhook(
             webhook_url,
             webhook_payload
@@ -139,7 +146,11 @@ def trigger_notification_for_rule(rule_name: str, task_id: str, event: mercure_e
 
     email_address = current_rule.get("notification_email")
     if email_address:
-        email_payload = parse_payload(current_rule.get("notification_email_body", ""),event, rule_name, task_id, details)
+        if task:
+            context = dict(acc=task.info.acc, mrn=task.info.mrn, patient_name=task.info.patient_name)
+        else:
+            context = {}
+        email_payload = parse_payload(current_rule.get("notification_email_body", ""),event, rule_name, task_id, details, context)
         send_email(
             email_address,
             email_payload,

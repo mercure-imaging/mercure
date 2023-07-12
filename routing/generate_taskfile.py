@@ -222,6 +222,7 @@ def add_info(
         uid_type=uid_type,
         triggered_rules=triggered_rules,
         applied_rule=applied_rule,
+        patient_name=tags_list.get("PatientName", mercure_options.MISSING),
         mrn=tags_list.get("PatientID", mercure_options.MISSING),
         acc=tags_list.get("AccessionNumber", mercure_options.MISSING),
         mercure_version=mercure_defs.VERSION,

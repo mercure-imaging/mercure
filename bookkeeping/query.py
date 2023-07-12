@@ -236,7 +236,7 @@ async def get_task_info(request) -> JSONResponse:
         left join dicom_series on dicom_series.series_uid = tasks.series_uid 
         where (tasks.id = '{task_id}') and (tasks.parent_id is null)
         limit 1"""
-    )
+    ) # TODO: use sqlalchemy interpolation
 
     info_rows = await database.fetch_all(info_query)
     info_results = [dict(row) for row in info_rows]

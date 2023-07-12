@@ -399,5 +399,5 @@ def trigger_studylevel_notification(study: str, task: Task, event: mercure_event
     if not current_rule:
         logger.error(f"Missing applied_rule in task file in study {study}", task.id)  # handle_error
         return False
-    notification.trigger_notification_for_rule(current_rule, task.id, event)
+    notification.trigger_notification_for_rule(current_rule, task.id, event,task=task)
     return True

@@ -192,6 +192,7 @@ async def rules_edit_post(request) -> Response:
         notification_webhook=form.get("notification_webhook", ""),
         notification_email=form.get("notification_email", ""),
         notification_payload=form.get("notification_payload", ""),
+        notification_payload_body=form.get("notification_payload_body", ""),
         notification_email_body=form.get("notification_email_body", ""),
         notification_trigger_reception=form.get("notification_trigger_reception", "False"),
         notification_trigger_completion=form.get("notification_trigger_completion", "False"),
