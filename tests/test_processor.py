@@ -57,6 +57,7 @@ expected_task_info = {
             "applied_rule": "catchall",
             "uid_type": "series",
             "triggered_rules": {"catchall": True},
+            "patient_name": "MISSING",
             "mrn": "MISSING",
             "acc": "MISSING",
             "mercure_version": mercure_version.get_version_string(),
@@ -290,8 +291,8 @@ async def test_multi_process_series(fs, mercure_config: Callable[[Dict], Config]
     global processor_path
     partial: Dict[str, Dict] = {
         "modules": {
-            "test_module_1": Module(docker_tag="busybox:stable",settings={"fizz":"buzz","result":[1,2,3,4]}).dict(),
-            "test_module_2": Module(docker_tag="busybox:stable",settings={"fizz":"bing","result":[100,200,300,400]}).dict(),
+            "test_module_1": Module(docker_tag="busybox:stable",settings={"fizz":"buzz","result":{"value":[1,2,3,4]}}).dict(),
+            "test_module_2": Module(docker_tag="busybox:stable",settings={"fizz":"bing","result":{"value":[100,200,300,400]}}).dict(),
         },
         "rules": {
             "catchall": Rule(
