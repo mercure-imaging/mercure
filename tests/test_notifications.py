@@ -59,7 +59,7 @@ TF = (True, False)
 def parametrize_with(**params) -> Any:
     params_keys = list(params.keys())
     params_list = ",".join(params_keys)
-    values_list = []
+    values_list: List[Any] = []
 
     for v in params.values():
         if not isinstance(v, Iterable):

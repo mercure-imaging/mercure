@@ -129,7 +129,7 @@ def make_fake_processor(fs, mocked, fails):
         in_ = Path(next((k for k in volumes.keys() if volumes[k]["bind"] == "/tmp/data")))
         out_ = Path(next((k for k in volumes.keys() if volumes[k]["bind"] == "/tmp/output")))
 
-        processor_path = in_.parent
+        # processor_path = in_.parent
         for child in in_.iterdir():
             print(f"Moving {child} to {out_ / child.name})")
             shutil.copy(child, out_ / child.name)

@@ -16,10 +16,9 @@ import os
 
 # Global variable to broadcast when the process should terminate
 terminate = False
-try:
-    loop = asyncio.get_running_loop()
-except:
-    loop = None
+
+
+loop = asyncio.get_event_loop()
 
 
 def get_runner() -> str:

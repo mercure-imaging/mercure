@@ -354,12 +354,14 @@ async def process_series(folder: Path) -> None:
                 with open(folder / "out" / mercure_names.TASKFILE,"w") as task_file:
                     #  logger.warning(f"DUMPING to {folder / 'out' / mercure_names.TASKFILE} TASK {task=}")
                      json.dump(task.dict(), task_file, indent=4)
+        elif isinstance(task.process,list):
+            raise Exception("Multiple processing steps are only supported on the Docker runtime.")
         else:
             task_process = cast(TaskProcessing,task.process)
             processing_success = await runtime(task, folder, file_count_begin, task_process)
             if processing_success:
                 output = handle_processor_output(task, task_process, 0, folder)
-                task.process.output = output
+                task.process.output = output # type: ignore
                 with open(folder / "out" / mercure_names.TASKFILE,"w")as fp:
                     # logger.warning(f"DUMPING to {folder / 'out' / mercure_names.TASKFILE} TASK {task=}")
                     json.dump(task.dict(), fp, indent=4)
