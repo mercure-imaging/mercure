@@ -56,9 +56,8 @@ class CaptureValues(object):
 
 TF = (True, False)
 
-def parametrize_with(**params) -> Any:
+def get_params(**params) -> Any:
     params_keys = list(params.keys())
-    params_list = ",".join(params_keys)
     values_list: List[Any] = []
 
     for v in params.values():
@@ -67,19 +66,31 @@ def parametrize_with(**params) -> Any:
         else:
             values_list.append(v)
     
-    cases = product(*values_list)
-
+    cases = list(product(*values_list))
     cases_print = [[{True:"T",False:"F"}.get(v,v) for v in c] for c in cases]
-
     ids = [",".join([f"{param}={value}" for param, value in zip(params_keys, c)]) for c in cases_print]
-    return pytest.mark.parametrize(params_list, product(*values_list), ids=ids)
+    return dict(params_keys=params_keys, cases=cases, ids=ids)
 
-pytestmark = parametrize_with(action=["process","both"], on_reception=TF, on_completion=TF, on_request=TF, do_request=TF, do_error=TF, on_error=TF)
+def parametrize_with(*args) -> Any:
+    cases = p_add(args)
+    return pytest.mark.parametrize(",".join(cases["params_keys"]),cases["cases"], ids=cases["ids"])
+import itertools
+
+def p_add(c_info) -> Any:
+    return dict(params_keys=c_info[0]["params_keys"], cases = list(itertools.chain(*[c["cases"] for c in c_info])), ids= list(itertools.chain(*[c["ids"] for c in c_info])))
+    
+p = get_params(action=["process","both"], on_reception=TF, on_completion=TF, on_request=TF, do_request=TF, do_error=TF, on_error=TF)
+# TODO: routing errors?
+p_route = get_params(action=["route"], on_reception=TF, on_completion=TF, on_request=False, do_request=False, do_error=False, on_error=False)
+p_notification =  get_params(action=["notification"], on_reception=TF, on_completion=TF, on_request=False, do_request=False, do_error=False, on_error=False)
+pytestmark = parametrize_with(p,p_route,p_notification)
 
 @pytest.mark.asyncio
 async def test_notifications(fs, mercure_config: Callable[[Dict], Config], mocked: MockerFixture, \
                               action, on_reception, on_completion, on_request, do_request, 
                               do_error, on_error):
+    if (do_error and action == "route"):
+        return
     assert hasattr(notification.trigger_notification_for_rule,"call_count")
     assert hasattr(notification.trigger_notification_for_rule,"spy_return")
     assert hasattr(notification.trigger_notification_for_rule,"assert_called_with")
@@ -92,19 +103,9 @@ async def test_notifications(fs, mercure_config: Callable[[Dict], Config], mocke
     generator = generate_uuids()
     mocked.patch("uuid.uuid1", new=lambda: next(generator))
 
-
-    # options = product(["process","both"],*[(True,False)]*2)
-    # # options = [("both", True, True)]#, ("process", True, True)]
-    # n=0
-    # for action, on_reception, on_completion  in options: # type: ignore
-    # on_request, do_request, do_error, on_error = (False,False, False,False)
-    logger.info(f"++++++++++ TESTING: {on_reception=}, {on_completion=}, {do_request=}, {on_request=}, {do_error=}, {on_error=}")
     task_id = uuids[0]
     new_task_id = uuids[1]
-    # new_task_id = "new-task-" + str(uuid.uuid1())
-    # task_id = "task-" + str(uuid.uuid1())
-    # mock_task_ids(mocked,task_id, new_task_id)
-    # mocked.patch("routing.route_series.parse_ascconv", new=lambda x: {})
+
     uid = "TESTFAKEUID"
     fs.create_file(f"/var/incoming/{uid}#bar.dcm", contents="asdfasdfafd")
     fs.create_file(f"/var/incoming/{uid}#bar.tags", contents="{}")
@@ -115,18 +116,28 @@ async def test_notifications(fs, mercure_config: Callable[[Dict], Config], mocke
                            trigger_error=on_error, do_request=do_request)},
     )
     router.run_router()
-    notification.trigger_notification_for_rule.assert_called_with("catchall", task_id, mercure_events.RECEPTION)
+    if action=="notification":
+        notification.trigger_notification_for_rule.assert_has_calls( 
+            [
+                call("catchall", task_id, mercure_events.RECEPTION),
+                call("catchall", task_id, mercure_events.COMPLETION)
+            ])
+        assert notification.trigger_notification_for_rule.spy_return == on_completion
+        return
+    else:
+        notification.trigger_notification_for_rule.assert_called_with("catchall", task_id, mercure_events.RECEPTION)
     assert notification.trigger_notification_for_rule.spy_return == on_reception
 
     fake_run = mocked.Mock(return_value=FakeDockerContainer(), side_effect=make_fake_processor(fs,mocked, do_error))  # type: ignore
     mocked.patch.object(ContainerCollection, "run", new=fake_run)
-    await processor.run_processor()
+    if action != "route":
+        await processor.run_processor()
     # assert notification.trigger_notification_for_rule.call_count == 2 
     # logger.info(notification.trigger_notification_for_rule.call_args_list)  # type: ignore
     dispatcher.dispatch()
     if not do_error:
         notification.trigger_notification_for_rule.assert_called_with( 
-            "catchall",new_task_id, mercure_events.COMPLETION, "test_module_1: notification", unittest.mock.ANY, on_request and do_request)
+            "catchall",new_task_id, mercure_events.COMPLETION, "test_module_1: notification" if action in ("process","both") else None, unittest.mock.ANY, on_request and do_request if action in ("process","both") else False)
         assert notification.trigger_notification_for_rule.spy_return == on_completion or (on_request and do_request)
     else:
         notification.trigger_notification_for_rule.assert_called_with( 

@@ -115,8 +115,8 @@ def get_task_requested_notification(task:Task) -> bool:
         if (notification_info := process.output.get("__mercure_notification")) and notification_info.get("requested"):
             return True
     return False
+
 def get_task_custom_notification(task:Task) -> Optional[str]:
-    logger.warning(f"GET TASK CUSTOM NOTIFICATION {task}")
     results = []
     process_infos = task.process
     if not isinstance(process_infos,(TaskProcessing,List)):
