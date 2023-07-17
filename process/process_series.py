@@ -10,7 +10,7 @@ import json
 import os
 from pathlib import Path
 import sys
-from typing import Any, Dict, cast, Optional
+from typing import Any, Dict, List, cast, Optional
 import json
 import shutil
 import daiquiri
@@ -257,6 +257,7 @@ async def process_series(folder: Path) -> None:
     lock = None
     task: Optional[Task] = None
     taskfile_path = folder / mercure_names.TASKFILE
+    outputs = []
 
     try:
         try:
@@ -317,7 +318,6 @@ async def process_series(folder: Path) -> None:
                 (task.process[0].module_name if isinstance(task.process,list) else task.process.module_name) if task.process else "UNKNOWN",
                 f"Processing job running",
             )
-        outputs = []
         # There are multiple processing steps
         if runtime == docker_runtime and isinstance(task.process,list):
             if task.process[0].retain_input_images: # Keep a copy of the input files
@@ -342,19 +342,27 @@ async def process_series(folder: Path) -> None:
                     if i < len(task.process)-1: # Move the results of the processing step to the input folder of the next one
                         (folder / "out").rename(folder / "in")
                         (folder / "out").mkdir()
+                    task_processing.output = output
+                # Done all steps
                 if task.process[0].retain_input_images:
                     (folder / "input_files").rename(folder / "in")
+                
                 with open(folder / "out" / "result.json","w") as fp:
                      json.dump(outputs, fp, indent=4)
 
             finally:
                 with open(folder / "out" / mercure_names.TASKFILE,"w") as task_file:
+                    #  logger.warning(f"DUMPING to {folder / 'out' / mercure_names.TASKFILE} TASK {task=}")
                      json.dump(task.dict(), task_file, indent=4)
         else:
             task_process = cast(TaskProcessing,task.process)
             processing_success = await runtime(task, folder, file_count_begin, task_process)
             if processing_success:
                 output = handle_processor_output(task, task_process, 0, folder)
+                task.process.output = output
+                with open(folder / "out" / mercure_names.TASKFILE,"w")as fp:
+                    # logger.warning(f"DUMPING to {folder / 'out' / mercure_names.TASKFILE} TASK {task=}")
+                    json.dump(task.dict(), fp, indent=4)
                 outputs.append((task_process.module_name,output))
         
     except Exception as e:
@@ -391,13 +399,18 @@ async def process_series(folder: Path) -> None:
                 monitor.send_task_event(
                     monitor.task_event.PROCESS_COMPLETE, task_id, file_count_complete, "", "Processing job complete"
                 )
+                
                 # If dispatching not needed, then trigger the completion notification (for docker/systemd)
                 if not needs_dispatching:
                     monitor.send_task_event(monitor.task_event.COMPLETE, task_id, 0, "", "Task complete")
                     # TODO: task really is never none if processing_success is true
 
                     #TODO: what if we are dispatching?
-                    trigger_notification(task, mercure_events.COMPLETION, get_task_custom_notification(outputs))  # type: ignore
+                    # request_do_send = False
+                    # if outputs and task and (applied_rule :=config.mercure.rules.get(task.info.get("applied_rule"))) and applied_rule.notification_trigger_completion_on_request:
+                    #     if get_task_requested_notification(outputs):
+                    #         request_do_send = True
+                    trigger_notification(task, mercure_events.COMPLETION, notification.get_task_custom_notification(task), False)  # type: ignore
             else:
                 monitor.send_task_event(monitor.task_event.ERROR, task_id, 0, "", "Processing failed")
                 if task is not None:  # TODO: handle if task is none?
@@ -413,14 +426,13 @@ async def process_series(folder: Path) -> None:
                     trigger_notification(task, mercure_events.ERROR)
     return
 
-def get_task_custom_notification(outputs) -> Optional[str]:
-    results = []
+def get_task_requested_notification(outputs) -> bool:
     for module_name, out in outputs:
-        if (notification_info := out.get("__mercure_notification")) and (text:= notification_info.get("text")):
-            results.append((module_name,text))
-    
-    str_results = [ f"{module_name}: {text}" for module_name, text in results]
-    return "\n".join(str_results)
+        logger.info(out)
+        if (notification_info := out.get("__mercure_notification")) and (requested:= notification_info.get("requested")):
+            return True
+    return False
+
         
 def push_input_task(input_folder: Path, output_folder: Path):
     task_json = output_folder / "task.json"
@@ -520,13 +532,12 @@ def move_out_folder(task_id: str, source_folder: Path, destination_folder: Path,
         logger.error(f"Error moving folder {source_folder} to {destination_folder}", task_id)  # handle_error
 
 
-def trigger_notification(task: Task, event: mercure_events, details: str="") -> None:
-    task_info = task.info
-    current_rule_name = task_info.get("applied_rule")
-    logger.debug(f"Notification {event}")
+def trigger_notification(task: Task, event: mercure_events, details: str="", send_always = False) -> None:
+    current_rule_name = task.info.get("applied_rule")
+    logger.debug(f"Notification {event.name}")
     # Check if the rule is available
     if not current_rule_name:
         logger.error(f"Missing applied_rule in task file in task {task.id}", task.id)  # handle_error
         return
 
-    notification.trigger_notification_for_rule(current_rule_name, task.id, event, details, task)
+    notification.trigger_notification_for_rule(current_rule_name, task.id, event, details, task, send_always)

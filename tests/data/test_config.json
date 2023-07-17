@@ -37,6 +37,9 @@
             "folder": "/",
             "user": "foo",
             "host": "bar"
+        },
+        "dummy": {
+            "target_type" : "dummy"
         }
     },
     "rules": {},

@@ -6,7 +6,7 @@ Helper functions for triggering webhook calls.
 
 # Standard python includes
 import json
-from typing import Any, Optional
+from typing import Any, List, Optional
 import aiohttp
 import daiquiri
 import json
@@ -16,7 +16,7 @@ import traceback
 import jinja2.utils
 
 from common import monitor
-from common.types import Rule, Task
+from common.types import EmptyDict, Rule, Task, TaskProcessing
 from .helper import loop
 import common.config as config
 from jinja2 import Template
@@ -105,7 +105,29 @@ def send_email_helper(to:str, subject:str, content:str) -> None:
         s.quit()
 
 
-def trigger_notification_for_rule(rule_name: str, task_id: str, event: mercure_events, details: str="", task: Optional[Task] = None):
+def get_task_custom_notification(task:Task) -> Optional[str]:
+    logger.warning(f"GET TASK CUSTOM NOTIFICATION {task}")
+    results = []
+    process_infos = task.process
+    if not isinstance(process_infos,(TaskProcessing,List)):
+
+        return None
+
+    for process in (process_infos if isinstance(process_infos,List) else [process_infos]):
+        if not process.output:
+            continue
+        if (notification_info := process.output.get("__mercure_notification")) and (text:= notification_info.get("text")):
+            results.append((process.module_name,text))
+    if not results:
+        return None
+
+    str_results = [ f"{module_name}: {text}" for module_name, text in results]
+    return "\n".join(str_results)
+
+
+def trigger_notification_for_rule(rule_name: str, task_id: str, event: mercure_events, details: Optional[str]="", task: Optional[Task] = None, send_always = False):
+    # logger.warning(f"TRIGGER NOTIFICATION FOR RULE {rule_name} {event=} {details=}\n {task=}")
+    details = details if details is not None else ""
     current_rule = config.mercure.rules.get(rule_name)
     # Check if the rule is available
     if not current_rule or not isinstance(current_rule, Rule):
@@ -113,7 +135,7 @@ def trigger_notification_for_rule(rule_name: str, task_id: str, event: mercure_e
         return False
 
 
-    do_send = False
+    do_send = send_always # default false
     # Now fire the webhook if configured
     if event == mercure_events.RECEPTION and current_rule.notification_trigger_reception == True:
         do_send = True
@@ -123,9 +145,10 @@ def trigger_notification_for_rule(rule_name: str, task_id: str, event: mercure_e
         do_send = True
     
     if not do_send:
-        return
+        return False
 
     webhook_url = current_rule.get("notification_webhook")
+    
     if webhook_url:
         body = current_rule.get("notification_payload_body", "")
         context = dict(body=jinja2.utils.htmlsafe_json_dumps(parse_payload(body,event, rule_name, task_id, details))[1:-1])

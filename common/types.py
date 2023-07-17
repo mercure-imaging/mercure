@@ -136,6 +136,7 @@ class Rule(BaseModel, Compat):
     notification_email_body: str = ""
     notification_trigger_reception: bool = True
     notification_trigger_completion: bool = True
+    notification_trigger_completion_on_request: bool = True
     notification_trigger_error: bool = True
 
 
@@ -185,7 +186,7 @@ class TaskInfo(BaseModel, Compat):
     uid_type: Literal["series", "study"]
     triggered_rules: Union[Dict[str, Literal[True]], str]
     applied_rule: Optional[str]
-    patient_name: str
+    patient_name: Optional[str]
     mrn: str
     acc: str
     mercure_version: str
@@ -216,7 +217,7 @@ class TaskProcessing(BaseModel, Compat):
     module_config: Optional[Module]
     settings: Dict[str, Any] = {}
     retain_input_images: bool
-
+    output: Optional[Dict]
 
 # class PydanticFile(object):
 #     def __init__(self, klass, file_name):

@@ -152,6 +152,7 @@ async def test_process_series_nomad(fs, mercure_config: Callable[[Dict], Config]
             "module_config": {"constraints": "", "resources": "", **config_partial["modules"]["test_module"]},
             "settings": {"fizz":"buzz"},
             "retain_input_images": False,
+            "output": None,
         },
         "study": {},
         "nomad_info": fake_run.return_value,
@@ -209,20 +210,6 @@ async def test_process_series_nomad(fs, mercure_config: Callable[[Dict], Config]
     )
 
 
-class my_fake_container:
-    def __init__(self):
-        pass
-
-    def wait(self):
-        return {"StatusCode": 0}
-
-    def logs(self):
-        test_string = "Log output"
-        return test_string.encode(encoding="utf8")
-
-    def remove(self):
-        pass
-
 
 @pytest.mark.asyncio
 async def test_process_series(fs, mercure_config: Callable[[Dict], Config], mocked: MockerFixture):
@@ -246,7 +233,7 @@ async def test_process_series(fs, mercure_config: Callable[[Dict], Config], mock
 
         return mocked.DEFAULT
 
-    fake_run = mocked.Mock(return_value=my_fake_container(), side_effect=fake_processor)  # type: ignore
+    fake_run = mocked.Mock(return_value=FakeDockerContainer(), side_effect=fake_processor)  # type: ignore
     mocked.patch.object(ContainerCollection, "run", new=fake_run)
     await processor.run_processor()
 
@@ -327,7 +314,7 @@ async def test_multi_process_series(fs, mercure_config: Callable[[Dict], Config]
         fs.create_file(out_ / "result.json", contents=json.dumps(results))
         return mocked.DEFAULT
 
-    fake_run = mocked.Mock(return_value=my_fake_container(), side_effect=fake_processor)  # type: ignore
+    fake_run = mocked.Mock(return_value=FakeDockerContainer(), side_effect=fake_processor)  # type: ignore
     mocked.patch.object(ContainerCollection, "run", new=fake_run)
     await processor.run_processor()
 
@@ -366,6 +353,7 @@ async def test_multi_process_series(fs, mercure_config: Callable[[Dict], Config]
             "module_config": {"constraints": "", "resources": "", **partial["modules"][m]},
             "settings": { **partial["modules"][m]["settings"],**partial["rules"]["catchall"]["processing_settings"][i]},
             "retain_input_images": True,
+            "output": partial["modules"][m]["settings"]["result"],
         } for i, m in enumerate(partial["modules"])],
         "study": {},
         "nomad_info": None,

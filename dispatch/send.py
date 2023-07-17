@@ -238,4 +238,4 @@ def _trigger_notification(task: Task, event: mercure_events) -> None:
             selected_rules = task_info.triggered_rules
 
     for current_rule in selected_rules:
-        notification.trigger_notification_for_rule(current_rule, task.id, event, task=task)
+        notification.trigger_notification_for_rule(current_rule, task.id, event, notification.get_task_custom_notification(task), task, False)
