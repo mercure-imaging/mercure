@@ -405,12 +405,11 @@ async def process_series(folder: Path) -> None:
                     monitor.send_task_event(monitor.task_event.COMPLETE, task_id, 0, "", "Task complete")
                     # TODO: task really is never none if processing_success is true
 
-                    #TODO: what if we are dispatching?
-                    # request_do_send = False
-                    # if outputs and task and (applied_rule :=config.mercure.rules.get(task.info.get("applied_rule"))) and applied_rule.notification_trigger_completion_on_request:
-                    #     if get_task_requested_notification(outputs):
-                    #         request_do_send = True
-                    trigger_notification(task, mercure_events.COMPLETION, notification.get_task_custom_notification(task), False)  # type: ignore
+                    request_do_send = False
+                    if outputs and task and (applied_rule :=config.mercure.rules.get(task.info.get("applied_rule"))) and applied_rule.notification_trigger_completion_on_request:
+                        if notification.get_task_requested_notification(task):
+                            request_do_send = True
+                    trigger_notification(task, mercure_events.COMPLETION, notification.get_task_custom_notification(task), request_do_send)  # type: ignore
             else:
                 monitor.send_task_event(monitor.task_event.ERROR, task_id, 0, "", "Processing failed")
                 if task is not None:  # TODO: handle if task is none?
@@ -425,13 +424,6 @@ async def process_series(folder: Path) -> None:
                 if task is not None:
                     trigger_notification(task, mercure_events.ERROR)
     return
-
-def get_task_requested_notification(outputs) -> bool:
-    for module_name, out in outputs:
-        logger.info(out)
-        if (notification_info := out.get("__mercure_notification")) and (requested:= notification_info.get("requested")):
-            return True
-    return False
 
         
 def push_input_task(input_folder: Path, output_folder: Path):

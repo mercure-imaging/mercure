@@ -53,8 +53,8 @@ def create_series(mocked, fs, config, tags) -> Tuple[str, str]:
     fs.create_file(f"{config.incoming_folder}/{series_uid}#baz.tags", contents=tags)
     return task_id, series_uid
 
-
-def test_route_series_fail1(fs: FakeFilesystem, mercure_config, mocked):
+@pytest.mark.asyncio
+async def test_route_series_fail1(fs: FakeFilesystem, mercure_config, mocked):
     config = mercure_config(rules)
 
     tags = {"SeriesInstanceUID": "foo"}
@@ -162,8 +162,8 @@ def task_will_dispatch_to(task, config, fake_process) -> None:
         ],
     )
 
-
-def test_route_study(fs: FakeFilesystem, mercure_config, mocked, fake_process):
+@pytest.mark.asyncio
+async def test_route_study(fs: FakeFilesystem, mercure_config, mocked, fake_process):
     config = mercure_config(rules)
 
     study_uid = str(uuid.uuid4())
@@ -218,8 +218,8 @@ def test_route_study(fs: FakeFilesystem, mercure_config, mocked, fake_process):
     #     f"Routed to test_target",
     # )
 
-
-def test_route_series(fs: FakeFilesystem, mercure_config, mocked, fake_process):
+@pytest.mark.asyncio
+async def test_route_series(fs: FakeFilesystem, mercure_config, mocked, fake_process):
     config = mercure_config(rules)
     # attach_spies(mocker)
     # mocker.patch("routing.route_series.parse_ascconv", new=lambda x: {})

@@ -136,7 +136,7 @@ def configure(module, instance, address) -> None:
     global api_key
     set_api_key()
     global loop
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
 
 
 def send_event(event: m_events, severity: severity = severity.INFO, description: str = "") -> None:

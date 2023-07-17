@@ -16,7 +16,10 @@ import os
 
 # Global variable to broadcast when the process should terminate
 terminate = False
-loop = asyncio.get_event_loop()
+try:
+    loop = asyncio.get_running_loop()
+except:
+    loop = None
 
 
 def get_runner() -> str:
@@ -43,6 +46,7 @@ def send_to_graphite(*args, **kwargs) -> None:
 
 
 def g_log(*args, **kwargs) -> None:
+    global loop
     """Sends diagnostic information to graphite (if configured)."""
     try:
         loop = asyncio.get_running_loop()

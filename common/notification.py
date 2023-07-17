@@ -104,13 +104,22 @@ def send_email_helper(to:str, subject:str, content:str) -> None:
     finally:
         s.quit()
 
+def get_task_requested_notification(task:Task) -> bool:
+    process_infos = task.process
+    if not isinstance(process_infos,(TaskProcessing,List)):
+        return False
 
+    for process in (process_infos if isinstance(process_infos,List) else [process_infos]):
+        if not process.output:
+            continue
+        if (notification_info := process.output.get("__mercure_notification")) and notification_info.get("requested"):
+            return True
+    return False
 def get_task_custom_notification(task:Task) -> Optional[str]:
     logger.warning(f"GET TASK CUSTOM NOTIFICATION {task}")
     results = []
     process_infos = task.process
     if not isinstance(process_infos,(TaskProcessing,List)):
-
         return None
 
     for process in (process_infos if isinstance(process_infos,List) else [process_infos]):
