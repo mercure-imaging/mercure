@@ -146,9 +146,9 @@ def trigger_notification_for_rule(rule_name: str, task_id: str, event: mercure_e
 
     do_send = send_always # default false
     # Now fire the webhook if configured
-    if event == mercure_events.RECEPTION and current_rule.notification_trigger_reception == True:
+    if event == mercure_events.RECEIVED and current_rule.notification_trigger_reception == True:
         do_send = True
-    elif event == mercure_events.COMPLETION and current_rule.notification_trigger_completion == True:
+    elif event == mercure_events.COMPLETED and current_rule.notification_trigger_completion == True:
         do_send = True
     elif event == mercure_events.ERROR and current_rule.notification_trigger_error == True:
         do_send = True

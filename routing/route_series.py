@@ -319,7 +319,7 @@ def push_serieslevel_routing(
                     selected_targets[target] = [current_rule]
                 else:
                     selected_targets[target].append(current_rule)
-            trigger_serieslevel_notification(current_rule, tags_list, mercure_events.RECEPTION, task_id)
+            trigger_serieslevel_notification(current_rule, tags_list, mercure_events.RECEIVED, task_id)
 
     push_serieslevel_outgoing(task_id, triggered_rules, file_list, series_UID, tags_list, selected_targets)
 
@@ -391,7 +391,7 @@ def push_serieslevel_processing(
                     logger.error(f"Unable to remove lock file {lock_file}", task_id)  # handle_error
                     return False
 
-                trigger_serieslevel_notification(current_rule, tags_list, mercure_events.RECEPTION, task_id)
+                trigger_serieslevel_notification(current_rule, tags_list, mercure_events.RECEIVED, task_id)
     return True
 
 
@@ -407,8 +407,8 @@ def push_serieslevel_notification(
     for current_rule in triggered_rules:
         if config.mercure.rules[current_rule].get("action_trigger", mercure_options.SERIES) == mercure_options.SERIES:
             if config.mercure.rules[current_rule].get("action", "") == mercure_actions.NOTIFICATION:
-                trigger_serieslevel_notification(current_rule, tags_list, mercure_events.RECEPTION, task_id)
-                trigger_serieslevel_notification(current_rule, tags_list, mercure_events.COMPLETION, task_id)
+                trigger_serieslevel_notification(current_rule, tags_list, mercure_events.RECEIVED, task_id)
+                trigger_serieslevel_notification(current_rule, tags_list, mercure_events.COMPLETED, task_id)
                 notification_rules_count += 1
 
     # If the current rule is "notification-only" and this is the only rule that has been

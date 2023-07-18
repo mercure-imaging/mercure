@@ -258,7 +258,7 @@ def push_studylevel_dispatch(study: str, task: Task) -> bool:
     """
     Pushes the study folder to the dispatchter, including the generated task file containing the destination information
     """
-    trigger_studylevel_notification(study, task, mercure_events.RECEPTION)
+    trigger_studylevel_notification(study, task, mercure_events.RECEIVED)
     return move_study_folder(task.id, study, "OUTGOING")
 
 
@@ -266,7 +266,7 @@ def push_studylevel_processing(study: str, task: Task) -> bool:
     """
     Pushes the study folder to the processor, including the generated task file containing the processing instructions
     """
-    trigger_studylevel_notification(study, task, mercure_events.RECEPTION)
+    trigger_studylevel_notification(study, task, mercure_events.RECEIVED)
     return move_study_folder(task.id, study, "PROCESSING")
 
 
@@ -274,8 +274,8 @@ def push_studylevel_notification(study: str, task: Task) -> bool:
     """
     Executes the study-level reception notification
     """
-    trigger_studylevel_notification(study, task, mercure_events.RECEPTION)
-    trigger_studylevel_notification(study, task, mercure_events.COMPLETION)
+    trigger_studylevel_notification(study, task, mercure_events.RECEIVED)
+    trigger_studylevel_notification(study, task, mercure_events.COMPLETED)
     move_study_folder(task.id, study, "SUCCESS")
     return True
 

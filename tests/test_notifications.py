@@ -94,7 +94,7 @@ async def test_notifications(fs, mercure_config: Callable[[Dict], Config], mocke
     assert hasattr(notification.trigger_notification_for_rule,"call_count")
     assert hasattr(notification.trigger_notification_for_rule,"spy_return")
     assert hasattr(notification.trigger_notification_for_rule,"assert_called_with")
-    
+    assert hasattr(notification.trigger_notification_for_rule,"assert_has_calls")
     uuids = [str(uuid.uuid1()) for i in range(2)]
     
     def generate_uuids() -> Iterator[str]:
@@ -119,13 +119,13 @@ async def test_notifications(fs, mercure_config: Callable[[Dict], Config], mocke
     if action=="notification":
         notification.trigger_notification_for_rule.assert_has_calls( 
             [
-                call("catchall", task_id, mercure_events.RECEPTION),
-                call("catchall", task_id, mercure_events.COMPLETION)
+                call("catchall", task_id, mercure_events.RECEIVED),
+                call("catchall", task_id, mercure_events.COMPLETED)
             ])
         assert notification.trigger_notification_for_rule.spy_return == on_completion
         return
     else:
-        notification.trigger_notification_for_rule.assert_called_with("catchall", task_id, mercure_events.RECEPTION)
+        notification.trigger_notification_for_rule.assert_called_with("catchall", task_id, mercure_events.RECEIVED)
     assert notification.trigger_notification_for_rule.spy_return == on_reception
 
     fake_run = mocked.Mock(return_value=FakeDockerContainer(), side_effect=make_fake_processor(fs,mocked, do_error))  # type: ignore
@@ -137,7 +137,7 @@ async def test_notifications(fs, mercure_config: Callable[[Dict], Config], mocke
     dispatcher.dispatch()
     if not do_error:
         notification.trigger_notification_for_rule.assert_called_with( 
-            "catchall",new_task_id, mercure_events.COMPLETION, "test_module_1: notification" if action in ("process","both") else None, unittest.mock.ANY, on_request and do_request if action in ("process","both") else False)
+            "catchall",new_task_id, mercure_events.COMPLETED, "test_module_1: notification" if action in ("process","both") else None, unittest.mock.ANY, on_request and do_request if action in ("process","both") else False)
         assert notification.trigger_notification_for_rule.spy_return == on_completion or (on_request and do_request)
     else:
         notification.trigger_notification_for_rule.assert_called_with( 

@@ -210,6 +210,11 @@ async def show_log(request) -> Response:
     # Get optional start and end dates from the URL. Make sure that the date format is clean.
     start_obj: Optional[datetime.datetime]
 
+    start_date = ""
+    start_time = "00:00"
+    end_date = ""
+    end_time = "00:00"
+    
     try:
         start_date = request.query_params.get("from", "")
         start_time = request.query_params.get("from_time", "00:00")
@@ -484,6 +489,9 @@ async def self_test(request) -> Response:
         receiver_host = "localhost"
         gui_host = "localhost"
     elif runner == "systemd":
+        receiver_host = "localhost"
+        gui_host = "localhost"
+    else:
         receiver_host = "localhost"
         gui_host = "localhost"
 

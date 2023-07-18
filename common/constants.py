@@ -118,6 +118,6 @@ class mercure_options:
 
 
 class mercure_events(IntEnum):
-    RECEPTION = 0
-    COMPLETION = 1
+    RECEIVED = 0
+    COMPLETED = 1
     ERROR = 2

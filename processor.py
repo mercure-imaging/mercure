@@ -158,7 +158,7 @@ async def search_folder(counter) -> bool:
         )
         # If dispatching not needed, then trigger the completion notification (for Nomad)
         if not needs_dispatching:
-            trigger_notification(task, mercure_events.COMPLETION)
+            trigger_notification(task, mercure_events.COMPLETED)
             monitor.send_task_event(monitor.task_event.COMPLETE, task.id, 0, "", "Task complete")
 
     # Check if processing has been suspended via the UI

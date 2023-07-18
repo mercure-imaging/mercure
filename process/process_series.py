@@ -337,7 +337,7 @@ async def process_series(folder: Path) -> None:
                         break
                     output = handle_processor_output(task, task_processing, i, folder)
                     outputs.append((task_processing.module_name,output))
-                    (folder / "out" / "result.json").unlink()
+                    (folder / "out" / "result.json").unlink(missing_ok=True)
                     shutil.rmtree(folder / "in")
                     if i < len(task.process)-1: # Move the results of the processing step to the input folder of the next one
                         (folder / "out").rename(folder / "in")
@@ -347,8 +347,9 @@ async def process_series(folder: Path) -> None:
                 if task.process[0].retain_input_images:
                     (folder / "input_files").rename(folder / "in")
                 
-                with open(folder / "out" / "result.json","w") as fp:
-                     json.dump(outputs, fp, indent=4)
+                if outputs:
+                    with open(folder / "out" / "result.json","w") as fp:
+                        json.dump(outputs, fp, indent=4)
 
             finally:
                 with open(folder / "out" / mercure_names.TASKFILE,"w") as task_file:
@@ -362,7 +363,7 @@ async def process_series(folder: Path) -> None:
             if processing_success:
                 output = handle_processor_output(task, task_process, 0, folder)
                 task.process.output = output # type: ignore
-                with open(folder / "out" / mercure_names.TASKFILE,"w")as fp:
+                with open(folder / "out" / mercure_names.TASKFILE,"w") as fp:
                     # logger.warning(f"DUMPING to {folder / 'out' / mercure_names.TASKFILE} TASK {task=}")
                     json.dump(task.dict(), fp, indent=4)
                 outputs.append((task_process.module_name,output))
@@ -411,7 +412,7 @@ async def process_series(folder: Path) -> None:
                     if outputs and task and (applied_rule :=config.mercure.rules.get(task.info.get("applied_rule"))) and applied_rule.notification_trigger_completion_on_request:
                         if notification.get_task_requested_notification(task):
                             request_do_send = True
-                    trigger_notification(task, mercure_events.COMPLETION, notification.get_task_custom_notification(task), request_do_send)  # type: ignore
+                    trigger_notification(task, mercure_events.COMPLETED, notification.get_task_custom_notification(task), request_do_send)  # type: ignore
             else:
                 monitor.send_task_event(monitor.task_event.ERROR, task_id, 0, "", "Processing failed")
                 if task is not None:  # TODO: handle if task is none?
