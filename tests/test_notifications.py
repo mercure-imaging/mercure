@@ -1,5 +1,6 @@
 import asyncio
 from itertools import product
+import time
 import unittest
 from unittest.mock import call
 import uuid
@@ -18,8 +19,14 @@ import unittest.mock
 logger = config.get_logger()
 
 processor_path = Path()
-
-def make_config(action, trigger_reception, trigger_completion, trigger_completion_on_request, trigger_error, do_request) -> Dict[str, Dict]:
+def make_config(action, trigger_reception, trigger_completion, trigger_completion_on_request, trigger_error, do_request, do_error) -> Dict[str, Dict]:
+    if action in ("both","route"):
+        if do_error:
+            target = "dummy_error"
+        else:
+            target = "dummy"
+    else:
+        target = ""
     return {
         "modules": {
             "test_module_1": Module(docker_tag="busybox:stable",settings={"fizz":"buzz","result":{"value":[1,2,3,4],"__mercure_notification": {"text":"notification","requested": do_request}}}).dict(),
@@ -29,7 +36,7 @@ def make_config(action, trigger_reception, trigger_completion, trigger_completio
             "catchall": Rule(
                 rule="True",
                 action=action,
-                target="dummy" if action in ("both","route") else "",
+                target=target,
                 action_trigger="series",
                 study_trigger_condition="timeout",
                 notification_webhook="",
@@ -44,15 +51,11 @@ def make_config(action, trigger_reception, trigger_completion, trigger_completio
         },
     }
 
-class CaptureValues(object):
-    def __init__(self, func):
-        self.func = func
-        self.return_values = []
-
-    def __call__(self, *args, **kwargs):
-        answer = self.func(*args, **kwargs)
-        self.return_values.append(answer)
-        return answer
+class NoneOrEmptyString():
+    def __eq__(self,other):
+        if other in ('', None):
+            return True
+        return False
 
 TF = (True, False)
 
@@ -81,16 +84,17 @@ def p_add(c_info) -> Any:
     
 p = get_params(action=["process","both"], on_reception=TF, on_completion=TF, on_request=TF, do_request=TF, do_error=TF, on_error=TF)
 # TODO: routing errors?
-p_route = get_params(action=["route"], on_reception=TF, on_completion=TF, on_request=False, do_request=False, do_error=False, on_error=False)
+p_route = get_params(action=["route"], on_reception=TF, on_completion=TF, on_request=False, do_request=False, do_error=TF, on_error=TF)
 p_notification =  get_params(action=["notification"], on_reception=TF, on_completion=TF, on_request=False, do_request=False, do_error=False, on_error=False)
+# pytestmark = parametrize_with(p,p_route,p_notification)
 pytestmark = parametrize_with(p,p_route,p_notification)
+
 
 @pytest.mark.asyncio
 async def test_notifications(fs, mercure_config: Callable[[Dict], Config], mocked: MockerFixture, \
                               action, on_reception, on_completion, on_request, do_request, 
                               do_error, on_error):
-    if (do_error and action == "route"):
-        return
+
     assert hasattr(notification.trigger_notification_for_rule,"call_count")
     assert hasattr(notification.trigger_notification_for_rule,"spy_return")
     assert hasattr(notification.trigger_notification_for_rule,"assert_called_with")
@@ -113,7 +117,7 @@ async def test_notifications(fs, mercure_config: Callable[[Dict], Config], mocke
     config = mercure_config(
         {"process_runner": "docker", 
             **make_config(action=action, trigger_reception=on_reception, trigger_completion=on_completion, trigger_completion_on_request=on_request,
-                           trigger_error=on_error, do_request=do_request)},
+                           trigger_error=on_error, do_request=do_request, do_error=do_error)},
     )
     router.run_router()
     if action=="notification":
@@ -128,7 +132,7 @@ async def test_notifications(fs, mercure_config: Callable[[Dict], Config], mocke
         notification.trigger_notification_for_rule.assert_called_with("catchall", task_id, mercure_events.RECEIVED)
     assert notification.trigger_notification_for_rule.spy_return == on_reception
 
-    fake_run = mocked.Mock(return_value=FakeDockerContainer(), side_effect=make_fake_processor(fs,mocked, do_error))  # type: ignore
+    fake_run = mocked.Mock(return_value=FakeDockerContainer(), side_effect=make_fake_processor(fs, mocked, do_error))  # type: ignore
     mocked.patch.object(ContainerCollection, "run", new=fake_run)
     if action != "route":
         await processor.run_processor()
@@ -141,6 +145,5 @@ async def test_notifications(fs, mercure_config: Callable[[Dict], Config], mocke
         assert notification.trigger_notification_for_rule.spy_return == on_completion or (on_request and do_request)
     else:
         notification.trigger_notification_for_rule.assert_called_with( 
-            "catchall",new_task_id, mercure_events.ERROR,'', unittest.mock.ANY, False)
+            "catchall",new_task_id, mercure_events.ERROR,NoneOrEmptyString(), unittest.mock.ANY, False)
         assert notification.trigger_notification_for_rule.spy_return == on_error
-

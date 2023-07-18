@@ -16,7 +16,7 @@
     "study_complete_trigger": -10,
     "dispatcher_scan_interval": 1,
     "retry_delay": 900,
-    "retry_max": 5,
+    "retry_max": 0,
     "cleaner_scan_interval": 60,
     "retention": 259200,
     "offpeak_start": "22:00",
@@ -40,6 +40,12 @@
         },
         "dummy": {
             "target_type" : "dummy"
+        },
+        "dummy_error": {
+            "target_type": "dicom",
+            "ip": "240.0.0.0",
+            "port": "11112",
+            "aet_target":"foo"
         }
     },
     "rules": {},
