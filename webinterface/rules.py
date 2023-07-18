@@ -196,6 +196,7 @@ async def rules_edit_post(request) -> Response:
         notification_email_body=form.get("notification_email_body", ""),
         notification_trigger_reception=form.get("notification_trigger_reception", "False"),
         notification_trigger_completion=form.get("notification_trigger_completion", "False"),
+        notification_trigger_completion_on_request=form.get("notification_trigger_completion_on_request", "False"),
         notification_trigger_error=form.get("notification_trigger_error", "False"),
     )
     config.mercure.rules[editrule] = new_rule

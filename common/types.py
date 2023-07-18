@@ -136,7 +136,7 @@ class Rule(BaseModel, Compat):
     notification_email_body: str = ""
     notification_trigger_reception: bool = True
     notification_trigger_completion: bool = True
-    notification_trigger_completion_on_request: bool = True
+    notification_trigger_completion_on_request: bool = False
     notification_trigger_error: bool = True
 
 
@@ -156,15 +156,15 @@ class Config(BaseModel, Compat):
     error_folder: str
     discard_folder: str
     processing_folder: str
-    router_scan_interval: int  # in seconds
-    dispatcher_scan_interval: int  # in seconds
-    cleaner_scan_interval: int  # in seconds
-    retention: int  # in seconds (3 days)
-    emergency_clean_percentage: int  # in % of disk space
-    retry_delay: int  # in seconds (15 min)
+    router_scan_interval: int       # in seconds
+    dispatcher_scan_interval: int   # in seconds
+    cleaner_scan_interval: int      # in seconds
+    retention: int                  # in seconds (3 days)
+    emergency_clean_percentage: int # in % of disk space
+    retry_delay: int                # in seconds (15 min)
     retry_max: int
-    series_complete_trigger: int  # in seconds
-    study_complete_trigger: int  # in seconds
+    series_complete_trigger: int    # in seconds
+    study_complete_trigger: int     # in seconds
     study_forcecomplete_trigger: int  # in seconds
     graphite_ip: str
     graphite_port: int
@@ -178,6 +178,7 @@ class Config(BaseModel, Compat):
     bookkeeper_api_key: Optional[str]
     features: Dict[str, bool]
     processing_logs: ProcessingLogsConfig = ProcessingLogsConfig()
+    email_notification_from: str = "mercure@mercure.mercure"
 
 
 class TaskInfo(BaseModel, Compat):

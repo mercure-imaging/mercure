@@ -93,7 +93,7 @@ def send_email_helper(to:str, subject:str, content:str) -> None:
     # Create a text/plain message
     msg = EmailMessage()
     msg['Subject'] = f'[Mercure] {subject}'
-    msg['From'] = "test@example.com"
+    msg['From'] = config.mercure.email_notification_from
     msg['To'] = to
     msg.set_content(content)
 

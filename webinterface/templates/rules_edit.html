@@ -390,6 +390,12 @@
                         <label for="notification_trigger_completion">Completion</label>
                     </div>
                     <div class="field">
+                        <input id="notification_trigger_completion_on_request" type="checkbox"
+                            name="notification_trigger_completion_on_request" class="switch is-rounded is-dark" value="True" {% if
+                            rules[rule]['notification_trigger_completion_on_request']==True %}checked="checked" {% endif%}>
+                        <label for="notification_trigger_completion_on_request">Completion (processor requested)</label>
+                    </div>
+                    <div class="field">
                         <input id="notification_trigger_error" type="checkbox" name="notification_trigger_error"
                             class="switch is-rounded is-dark" value="True" {% if
                             rules[rule]['notification_trigger_error']==True %}checked="checked" {% endif%}>
@@ -640,14 +646,18 @@
             event.stopPropagation();
             dropdown.classList.toggle('is-active');
         });
-
+        {% raw %}
+        var body_template = "Rule {{ rule }} triggered {{ event }}\n{% if details is defined and details|length %}\nDetails:\n{{ details }}\n{%endif%}"
         $('#template_slack').click(function () {
-            $('#notification_payload').val('"text": "Rule @rule@ triggered @event@",\n"channel": "YOUR_CHANNEL_ID"');
+            $('#notification_payload').val('"text": "{{ body }}",\n"channel": "YOUR_CHANNEL_ID"');
+            $('#notification_payload_body').val(body_template)
         });
 
         $('#template_webex').click(function () {
-            $('#notification_payload').val('"text": "Rule @rule@ triggered @event@"');
+            $('#notification_payload').val('"text": "{{ body }}"');
+            $('#notification_payload_body').val(body_template)
         });
+        {% endraw %}
 
         $("#savebutton").click(function(){
             if ($("#action_trigger").val() == 'series') {

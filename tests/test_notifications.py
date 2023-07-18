@@ -16,6 +16,8 @@ from pathlib import Path
 from testing_common import *
 from docker.models.containers import ContainerCollection
 import unittest.mock
+import itertools
+
 logger = config.get_logger()
 
 processor_path = Path()
@@ -77,15 +79,13 @@ def get_params(**params) -> Any:
 def parametrize_with(*args) -> Any:
     cases = p_add(args)
     return pytest.mark.parametrize(",".join(cases["params_keys"]),cases["cases"], ids=cases["ids"])
-import itertools
 
 def p_add(c_info) -> Any:
     return dict(params_keys=c_info[0]["params_keys"], cases = list(itertools.chain(*[c["cases"] for c in c_info])), ids= list(itertools.chain(*[c["ids"] for c in c_info])))
     
-p = get_params(action=["process","both"], on_reception=TF, on_completion=TF, on_request=TF, do_request=TF, do_error=TF, on_error=TF)
-# TODO: routing errors?
-p_route = get_params(action=["route"], on_reception=TF, on_completion=TF, on_request=False, do_request=False, do_error=TF, on_error=TF)
-p_notification =  get_params(action=["notification"], on_reception=TF, on_completion=TF, on_request=False, do_request=False, do_error=False, on_error=False)
+p =               get_params(action=["process","both"], on_reception=TF, on_completion=TF, on_request=TF,    do_request=TF,    do_error=TF,    on_error=TF)
+p_route =         get_params(action=["route"],          on_reception=TF, on_completion=TF, on_request=False, do_request=False, do_error=TF,    on_error=TF)
+p_notification =  get_params(action=["notification"],   on_reception=TF, on_completion=TF, on_request=False, do_request=False, do_error=False, on_error=False)
 # pytestmark = parametrize_with(p,p_route,p_notification)
 pytestmark = parametrize_with(p,p_route,p_notification)
 
