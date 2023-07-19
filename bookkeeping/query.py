@@ -20,17 +20,16 @@ import bookkeeping.config as bk_config
 from bookkeeping.database import *
 from bookkeeping.helper import *
 from common import config
-
+from decoRouter import Router as decoRouter
+router = decoRouter()
 
 ###################################################################################
 ## Query endpoints
 ###################################################################################
 
 
-query_app = Starlette()
 
-
-@query_app.route("/series", methods=["GET"])
+@router.get("/series")
 @requires("authenticated")
 async def get_series(request) -> JSONResponse:
     """Endpoint for retrieving series in the database."""
@@ -49,7 +48,7 @@ async def get_series(request) -> JSONResponse:
     return CustomJSONResponse(series)
 
 
-@query_app.route("/tasks", methods=["GET"])
+@router.get("/tasks")
 @requires("authenticated")
 async def get_tasks(request) -> JSONResponse:
     """Endpoint for retrieving tasks in the database."""
@@ -75,7 +74,7 @@ async def get_tasks(request) -> JSONResponse:
     return CustomJSONResponse(results)
 
 
-@query_app.route("/tests", methods=["GET"])
+@router.get("/tests")
 @requires("authenticated")
 async def get_test_task(request) -> JSONResponse:
     query = tests_table.select().order_by(tests_table.c.time_begin.desc())
@@ -101,7 +100,7 @@ async def get_test_task(request) -> JSONResponse:
     return CustomJSONResponse(results)
 
 
-@query_app.route("/task-events", methods=["GET"])
+@router.get("/task-events")
 @requires("authenticated")
 async def get_task_events(request) -> JSONResponse:
     """Endpoint for getting all events related to one task."""
@@ -123,7 +122,7 @@ async def get_task_events(request) -> JSONResponse:
     return CustomJSONResponse(results)
 
 
-@query_app.route("/dicom-files", methods=["GET"])
+@router.get("/dicom-files")
 @requires("authenticated")
 async def get_dicom_files(request) -> JSONResponse:
     """Endpoint for getting all events related to one series."""
@@ -135,7 +134,7 @@ async def get_dicom_files(request) -> JSONResponse:
     return CustomJSONResponse(results)
 
 
-@query_app.route("/task_process_logs", methods=["GET"])
+@router.get("/task_process_logs")
 @requires("authenticated")
 async def get_task_process_logs(request) -> JSONResponse:
     """Endpoint for getting all events related to one series."""
@@ -161,7 +160,7 @@ async def get_task_process_logs(request) -> JSONResponse:
     return CustomJSONResponse(results)
 
 
-@query_app.route("/find_task", methods=["GET"])
+@router.get("/find_task")
 @requires("authenticated")
 async def find_task(request) -> JSONResponse:
     search_term = request.query_params.get("search_term", "")
@@ -207,7 +206,7 @@ async def find_task(request) -> JSONResponse:
     return CustomJSONResponse(response)
 
 
-@query_app.route("/get_task_info", methods=["GET"])
+@router.get("/get_task_info")
 @requires("authenticated")
 async def get_task_info(request) -> JSONResponse:
     response: Dict = {}
@@ -273,3 +272,5 @@ async def get_task_info(request) -> JSONResponse:
             response[task_id] = item["data"]
 
     return CustomJSONResponse(response)
+
+query_app = Starlette(routes=router)

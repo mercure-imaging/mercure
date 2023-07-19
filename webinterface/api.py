@@ -14,7 +14,8 @@ from starlette.authentication import requires
 
 # App-specific includes
 import common.monitor as monitor
-
+from decoRouter import Router as decoRouter
+router = decoRouter()
 
 logger = daiquiri.getLogger("api")
 
@@ -24,10 +25,9 @@ logger = daiquiri.getLogger("api")
 ###################################################################################
 
 
-api_app = Starlette()
 
 
-@api_app.route("/get-task-events", methods=["GET"])
+@router.get("/get-task-events")
 @requires(["authenticated"])
 async def get_series_events(request):
     logger.debug(request.query_params)
@@ -38,7 +38,7 @@ async def get_series_events(request):
         return JSONResponse({"error": e.message}, status_code=e.status_code)
 
 
-@api_app.route("/get-series", methods=["GET"])
+@router.get("/get-series")
 @requires(["authenticated"])
 async def get_series(request):
     series_uid = request.query_params.get("series_uid", "")
@@ -48,7 +48,7 @@ async def get_series(request):
         return JSONResponse({"error": e.message}, status_code=e.status_code)
 
 
-@api_app.route("/get-tasks", methods=["GET"])
+@router.get("/get-tasks")
 @requires(["authenticated"])
 async def get_tasks(request):
     try:
@@ -57,7 +57,7 @@ async def get_tasks(request):
         return JSONResponse({"error": e.status_code}, status_code=e.status_code)
 
 
-@api_app.route("/get-tests", methods=["GET"])
+@router.get("/get-tests")
 @requires(["authenticated"])
 async def get_tests(request):
     try:
@@ -66,7 +66,7 @@ async def get_tests(request):
         return JSONResponse({"error": e.status_code}, status_code=e.status_code)
 
 
-@api_app.route("/find-tasks", methods=["GET"])
+@router.get("/find-tasks")
 @requires(["authenticated"])
 async def find_tasks(request):
     search_term = request.query_params.get("search_term", "")
@@ -76,7 +76,7 @@ async def find_tasks(request):
         return JSONResponse({"error": e.status_code}, status_code=e.status_code)
 
 
-@api_app.route("/task-process-logs", methods=["GET"])
+@router.get("/task-process-logs")
 @requires(["authenticated"])
 async def task_process_logs(request):
     task_id = request.query_params.get("task_id", "")
@@ -86,7 +86,7 @@ async def task_process_logs(request):
         return JSONResponse({"error": e.status_code}, status_code=e.status_code)
 
 
-@api_app.route("/get-task-info", methods=["GET"])
+@router.get("/get-task-info")
 @requires(["authenticated"])
 async def get_task_info(request):
     task_id = request.query_params.get("task_id", "")
@@ -94,3 +94,5 @@ async def get_task_info(request):
         return JSONResponse(await monitor.get_task_info(task_id))
     except monitor.MonitorHTTPError as e:
         return JSONResponse({"error": e.status_code}, status_code=e.status_code)
+
+api_app = Starlette(routes=router)

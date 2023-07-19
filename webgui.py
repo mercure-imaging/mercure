@@ -67,6 +67,9 @@ import webinterface.api as api
 import webinterface.dashboards as dashboards
 from webinterface.common import *
 
+from decoRouter import Router as decoRouter
+router = decoRouter()
+
 
 ###################################################################################
 ## Helper classes
@@ -133,21 +136,6 @@ async def shutdown():
     await delete_old_tests()
 
 
-app = Starlette(debug=DEBUG_MODE, on_startup=[startup], on_shutdown=[shutdown])
-# Don't check the existence of the static folder because the wrong parent folder is used if the
-# source code is parsed by sphinx. This would raise an exception and lead to failure of sphinx.
-app.mount("/static", StaticFiles(directory="webinterface/statics", check_dir=False), name="static")
-app.add_middleware(AuthenticationMiddleware, backend=SessionAuthBackend())
-app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY, session_cookie="mercure_session")
-app.mount("/rules", rules.rules_app)
-app.mount("/targets", targets.targets_app)
-app.mount("/modules", modules.modules_app)
-app.mount("/users", users.users_app)
-app.mount("/queue", queue.queue_app)
-app.mount("/api", api.api_app)
-app.mount("/dashboards", dashboards.dashboards_app)
-
-
 async def delete_old_tests() -> Response:
     tests = await monitor.get_tests()
     old_tests = [
@@ -178,7 +166,7 @@ async def delete_old_tests() -> Response:
 ###################################################################################
 
 
-@app.route("/logs")
+@router.get("/logs")
 @requires(["authenticated", "admin"], redirect="login")
 async def show_first_log(request) -> Response:
     """Get the first service entry and forward to corresponding log entry point."""
@@ -201,7 +189,7 @@ def get_nomad_logs(service, log_size: int) -> bytes:
     return base64.b64decode(json.loads(log_response).get("Data", ""))
 
 
-@app.route("/logs/{service}")
+@router.get("/logs/{service}")
 @requires(["authenticated", "admin"], redirect="login")
 async def show_log(request) -> Response:
     """Render the log for the given service. The time range can be specified via URL parameters."""
@@ -325,7 +313,7 @@ async def show_log(request) -> Response:
 ###################################################################################
 
 
-@app.route("/configuration")
+@router.get("/configuration")
 @requires(["authenticated"], redirect="homepage")
 async def configuration(request) -> Response:
     """Shows the current configuration of the mercure appliance."""
@@ -350,7 +338,7 @@ async def configuration(request) -> Response:
     return templates.TemplateResponse(template, context)
 
 
-@app.route("/configuration/edit")
+@router.get("/configuration/edit")
 @requires(["authenticated", "admin"], redirect="homepage")
 async def configuration_edit(request) -> Response:
     """Shows a configuration editor"""
@@ -380,7 +368,7 @@ async def configuration_edit(request) -> Response:
     return templates.TemplateResponse(template, context)
 
 
-@app.route("/configuration/edit", methods=["POST"])
+@router.post("/configuration/edit")
 @requires(["authenticated", "admin"], redirect="homepage")
 async def configuration_edit_post(request) -> Response:
     """Updates the configuration after post from editor"""
@@ -409,7 +397,7 @@ async def configuration_edit_post(request) -> Response:
 ###################################################################################
 
 
-@app.route("/login", methods=["GET"])
+@router.get("/login")
 async def login(request) -> Response:
     """Shows the login page."""
     try:
@@ -426,7 +414,7 @@ async def login(request) -> Response:
     return templates.TemplateResponse(template, context)
 
 
-# @app.route("/old_tests", methods=["GET"])
+# @router.get("/old_tests", methods=["GET"])
 
 
 async def self_test_cleanup(test_id: str, delay: int = 60) -> None:
@@ -445,7 +433,7 @@ async def self_test_cleanup(test_id: str, delay: int = 60) -> None:
     config.save_config()
 
 
-@app.route("/self_test_notification", methods=["POST"])
+@router.post("/self_test_notification")
 async def self_test_notification(request) -> Response:
     json = await request.json()
     test_id = json.get("test_id", "")
@@ -470,7 +458,7 @@ async def self_test_notification(request) -> Response:
     return PlainTextResponse("OK")
 
 
-@app.route("/self_test", methods=["POST"])
+@router.post("/self_test")
 @requires(["authenticated", "admin"], redirect="homepage")
 async def self_test(request) -> Response:
     """generate a test rule"""
@@ -570,7 +558,7 @@ async def self_test(request) -> Response:
     return PlainTextResponse("Test submitted.")
 
 
-@app.route("/login", methods=["POST"])
+@router.post("/login")
 async def login_post(request) -> Response:
     """Evaluate the submitted login information. Redirects to index page if login information valid, otherwise back to login.
     On the first login, the user will be directed to the settings page and asked to change the password."""
@@ -614,7 +602,7 @@ async def login_post(request) -> Response:
         return templates.TemplateResponse(template, context)
 
 
-@app.route("/logout")
+@router.get("/logout")
 async def logout(request):
     """Logouts the users by clearing the session cookie."""
     monitor.send_webgui_event(monitor.w_events.LOGOUT, request.user.display_name, "")
@@ -622,7 +610,7 @@ async def logout(request):
     return RedirectResponse(url="/login")
 
 
-@app.route("/settings", methods=["GET"])
+@router.get("/settings")
 @requires(["authenticated"], redirect="login")
 async def settings_edit(request) -> Response:
     """Shows the settings for the current user. Renders the same template as the normal user edit, but with parameter own_settings=True."""
@@ -652,7 +640,7 @@ async def settings_edit(request) -> Response:
 ###################################################################################
 
 
-@app.route("/")
+@router.get("/")
 @requires("authenticated", redirect="login")
 async def homepage(request) -> Response:
     """Renders the index page that shows information about the system status."""
@@ -731,7 +719,7 @@ async def homepage(request) -> Response:
     return templates.TemplateResponse(template, context)
 
 
-@app.route("/services/control", methods=["POST"])
+@router.post("/services/control")
 @requires(["authenticated", "admin"], redirect="homepage")
 async def control_services(request) -> Response:
     form = dict(await request.form())
@@ -791,12 +779,27 @@ async def control_services(request) -> Response:
 ###################################################################################
 
 
-@app.route("/error")
+@router.get("/error")
 async def error(request):
     """
     An example error. Switch the `debug` setting to see either tracebacks or 500 pages.
     """
     raise RuntimeError("Oh no")
+
+
+app = Starlette(debug=DEBUG_MODE, on_startup=[startup], on_shutdown=[shutdown], routes=router)
+# Don't check the existence of the static folder because the wrong parent folder is used if the
+# source code is parsed by sphinx. This would raise an exception and lead to failure of sphinx.
+app.mount("/static", StaticFiles(directory="webinterface/statics", check_dir=False), name="static")
+app.add_middleware(AuthenticationMiddleware, backend=SessionAuthBackend())
+app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY, session_cookie="mercure_session")
+app.mount("/rules", rules.rules_app)
+app.mount("/targets", targets.targets_app)
+app.mount("/modules", modules.modules_app)
+app.mount("/users", users.users_app)
+app.mount("/queue", queue.queue_app)
+app.mount("/api", api.api_app)
+app.mount("/dashboards", dashboards.dashboards_app)
 
 
 @app.exception_handler(404)
@@ -841,6 +844,7 @@ def launch_emergency_app() -> None:
         ]
     )
     uvicorn.run(emergency_app, host=WEBGUI_HOST, port=WEBGUI_PORT)
+
 
 
 ###################################################################################

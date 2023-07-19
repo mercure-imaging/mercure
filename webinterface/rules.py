@@ -23,6 +23,8 @@ import common.rule_evaluation as rule_evaluation
 import common.helper as helper
 from webinterface.common import *
 import webinterface.tagslist as tagslist
+from decoRouter import Router as decoRouter
+router = decoRouter()
 
 
 logger = config.get_logger()
@@ -33,10 +35,9 @@ logger = config.get_logger()
 ###################################################################################
 
 
-rules_app = Starlette()
 
 
-@rules_app.route("/", methods=["GET"])
+@router.get("/")
 @requires("authenticated", redirect="login")
 async def show_rules(request) -> Response:
     """Show all defined routing rules. Can be executed by all logged-in users."""
@@ -56,7 +57,7 @@ async def show_rules(request) -> Response:
     return templates.TemplateResponse(template, context)
 
 
-@rules_app.route("/", methods=["POST"])
+@router.post("/")
 @requires(["authenticated", "admin"], redirect="login")
 async def add_rule(request) -> Response:
     """Creates a new routing rule and forwards the user to the rule edit page."""
@@ -83,7 +84,7 @@ async def add_rule(request) -> Response:
     return RedirectResponse(url="/rules/edit/" + newrule, status_code=303)
 
 
-@rules_app.route("/edit/{rule}", methods=["GET"])
+@router.get("/edit/{rule}")
 @requires(["authenticated", "admin"], redirect="login")
 async def rules_edit(request) -> Response:
     """Shows the edit page for the given routing rule."""
@@ -117,7 +118,7 @@ async def rules_edit(request) -> Response:
     return templates.TemplateResponse(template, context)
 
 
-@rules_app.route("/edit/{rule}", methods=["POST"])
+@router.post("/edit/{rule}")
 @requires(["authenticated", "admin"], redirect="login")
 async def rules_edit_post(request) -> Response:
     """Updates the settings for the given routing rule."""
@@ -211,7 +212,7 @@ async def rules_edit_post(request) -> Response:
     return RedirectResponse(url="/rules", status_code=303)
 
 
-@rules_app.route("/delete/{rule}", methods=["POST"])
+@router.post("/delete/{rule}")
 @requires(["authenticated", "admin"], redirect="login")
 async def rules_delete_post(request) -> Response:
     """Deletes the given routing rule"""
@@ -235,7 +236,7 @@ async def rules_delete_post(request) -> Response:
     return RedirectResponse(url="/rules", status_code=303)
 
 
-@rules_app.route("/test", methods=["POST"])
+@router.post("/test")
 @requires(["authenticated", "admin"], redirect="login")
 async def rules_test(request) -> Response:
     """Evalutes if a given routing rule is valid. The rule and testing dictionary have to be passed as form parameters."""
@@ -266,7 +267,7 @@ async def rules_test(request) -> Response:
             )
 
 
-@rules_app.route("/test_completionseries", methods=["POST"])
+@router.post("/test_completionseries")
 @requires(["authenticated", "admin"], redirect="login")
 async def rules_test_completionseries(request) -> Response:
     """Evalutes if a given value for the series list for study completion is valid."""
@@ -286,3 +287,5 @@ async def rules_test_completionseries(request) -> Response:
         return PlainTextResponse(
             '<i class="fas fa-times-circle fa-lg has-text-danger"></i>&nbsp;&nbsp;Invalid: ' + result
         )
+
+rules_app = Starlette(routes=router)

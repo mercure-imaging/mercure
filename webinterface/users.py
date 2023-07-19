@@ -27,7 +27,8 @@ from webinterface.common import *
 from common.constants import mercure_defs, mercure_names
 import common.monitor as monitor
 import common.config as config
-
+from decoRouter import Router as decoRouter
+router = decoRouter()
 
 ###################################################################################
 ## Helper functions
@@ -175,10 +176,8 @@ def needs_change_password(username) -> bool:
 ###################################################################################
 
 
-users_app = Starlette()
 
-
-@users_app.route("/", methods=["GET"])
+@router.get("/")
 @requires(["authenticated", "admin"], redirect="homepage")
 async def show_users(request) -> Response:
     """Shows all available users."""
@@ -193,7 +192,7 @@ async def show_users(request) -> Response:
     return templates.TemplateResponse(template, context)
 
 
-@users_app.route("/", methods=["POST"])
+@router.post("/")
 @requires(["authenticated", "admin"], redirect="homepage")
 async def add_new_user(request) -> Response:
     """Creates a new user and redirects to the user-edit page."""
@@ -221,7 +220,7 @@ async def add_new_user(request) -> Response:
     return RedirectResponse(url="/users/edit/" + newuser, status_code=303)
 
 
-@users_app.route("/edit/{user}", methods=["GET"])
+@router.get("/edit/{user}")
 @requires(["authenticated", "admin"], redirect="login")
 async def users_edit(request) -> Response:
     """Shows the settings for a given user."""
@@ -247,7 +246,7 @@ async def users_edit(request) -> Response:
     return templates.TemplateResponse(template, context)
 
 
-@users_app.route("/edit/{user}", methods=["POST"])
+@router.post("/edit/{user}")
 @requires(["authenticated"], redirect="login")
 async def users_edit_post(request) -> Response:
     """Updates the given user with settings passed as form parameters."""
@@ -289,7 +288,7 @@ async def users_edit_post(request) -> Response:
         return RedirectResponse(url="/users", status_code=303)
 
 
-@users_app.route("/delete/{user}", methods=["POST"])
+@router.post("/delete/{user}")
 @requires(["authenticated", "admin"], redirect="login")
 async def users_delete_post(request) -> Response:
     """Deletes the given users."""
@@ -311,3 +310,5 @@ async def users_delete_post(request) -> Response:
     logger.info(f"Deleted user {deleteuser}")
     monitor.send_webgui_event(monitor.w_events.USER_DELETE, request.user.display_name, deleteuser)
     return RedirectResponse(url="/users", status_code=303)
+
+users_app = Starlette(routes=router)

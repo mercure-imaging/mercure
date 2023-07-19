@@ -17,6 +17,8 @@ from webinterface.common import get_user_information
 from webinterface.common import templates
 import common.config as config
 from starlette.responses import RedirectResponse
+from decoRouter import Router as decoRouter
+router = decoRouter()
 
 logger = config.get_logger()
 
@@ -24,16 +26,12 @@ logger = config.get_logger()
 ## Test endpoints
 ###################################################################################
 
-
-dashboards_app = Starlette()
-
-
-@dashboards_app.route("/", methods=["GET"])
+@router.get("/")
 async def index(request):
     return RedirectResponse(url="tests")
 
 
-@dashboards_app.route("/tasks", methods=["GET"])
+@router.get("/tasks")
 @requires("authenticated", redirect="login")
 async def tasks(request):
     template = "dashboards/tasks.html"
@@ -46,7 +44,7 @@ async def tasks(request):
     return templates.TemplateResponse(template, context)
 
 
-@dashboards_app.route("/tests", methods=["GET"])
+@router.get("/tests")
 @requires(["authenticated", "admin"], redirect="login")
 async def tests(request):
     template = "dashboards/tests.html"
@@ -57,3 +55,5 @@ async def tests(request):
     }
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
+
+dashboards_app = Starlette(routes=router)

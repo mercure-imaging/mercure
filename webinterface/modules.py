@@ -21,6 +21,8 @@ from common.types import Module
 
 from webinterface.common import get_user_information
 from webinterface.common import templates
+from decoRouter import Router as decoRouter
+router = decoRouter()
 
 
 ###################################################################################
@@ -61,10 +63,8 @@ async def save_module(form, name) -> Response:
 ###################################################################################
 
 
-modules_app = Starlette()
 
-
-@modules_app.route("/", methods=["GET"])
+@router.get("/")
 @requires("authenticated", redirect="login")
 async def show_modules(request):
     """Shows all installed modules"""
@@ -95,7 +95,7 @@ async def show_modules(request):
     return templates.TemplateResponse(template, context)
 
 
-@modules_app.route("/", methods=["POST"])
+@router.post("/")
 @requires(["authenticated", "admin"], redirect="login")
 async def add_module(request):
     """Creates a new module and forwards the user to the module edit page."""
@@ -116,7 +116,7 @@ async def add_module(request):
     return await save_module(form, name)
 
 
-@modules_app.route("/edit/{module}", methods=["GET"])
+@router.get("/edit/{module}")
 @requires("authenticated", redirect="login")
 async def edit_module(request):
     """Show the module edit page for the given module name."""
@@ -146,7 +146,7 @@ async def edit_module(request):
     return templates.TemplateResponse(template, context)
 
 
-@modules_app.route("/edit/{module}", methods=["POST"])
+@router.post("/edit/{module}")
 @requires(["authenticated", "admin"], redirect="login")
 async def edit_module_POST(request):
     """Save the settings for the given module name."""
@@ -164,7 +164,7 @@ async def edit_module_POST(request):
     return await save_module(form, name)
 
 
-@modules_app.route("/delete/{module}", methods=["POST"])
+@router.post("/delete/{module}")
 @requires(["authenticated", "admin"], redirect="login")
 async def delete_module(request):
     """Deletes the module with the given module name."""
@@ -184,3 +184,5 @@ async def delete_module(request):
     # logger.info(f'Created rule {newrule}')
     # monitor.send_webgui_event(monitor.w_events.RULE_CREATE, request.user.display_name, newrule)
     return RedirectResponse(url="/modules", status_code=303)
+
+modules_app = Starlette(routes=router)

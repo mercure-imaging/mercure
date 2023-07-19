@@ -34,7 +34,8 @@ from common.constants import mercure_defs
 from bookkeeping.database import *
 import bookkeeping.query as query
 import bookkeeping.config as bk_config
-
+from decoRouter import Router as decoRouter
+router = decoRouter()
 
 ###################################################################################
 ## Configuration and initialization
@@ -55,14 +56,6 @@ class TokenAuth(BaseTokenAuth):
         return SimpleUser("user")
 
 
-app = Starlette(debug=bk_config.DEBUG_MODE)
-app.add_middleware(
-    AuthenticationMiddleware,
-    backend=TokenAuth(),
-    on_error=lambda _, exc: PlainTextResponse(str(exc), status_code=401),
-)
-app.mount("/query", query.query_app)
-
 
 ###################################################################################
 ## Event handlers
@@ -82,20 +75,6 @@ def create_database() -> None:
     )
 
 
-@app.on_event("startup")
-async def startup() -> None:
-    """Connects to database on startup. If the database does not exist, it will
-    be created."""
-    await database.connect()
-    create_database()
-    bk_config.set_api_key()
-
-
-@app.on_event("shutdown")
-async def shutdown() -> None:
-    """Disconnect from database on shutdown."""
-    await database.disconnect()
-
 
 ###################################################################################
 ## Endpoints for event submission
@@ -109,14 +88,14 @@ async def shutdown() -> None:
 #     except:
 #         pass
 
-
-@app.route("/test", methods=["GET", "POST"])
+@router.post()
+@router.get("/test")
 async def test_endpoint(request) -> JSONResponse:
     """Endpoint for testing that the bookkeeper is active."""
     return JSONResponse({"ok": ""})
 
 
-@app.route("/mercure-event", methods=["POST"])
+@router.post("/mercure-event")
 @requires("authenticated")
 async def post_mercure_event(request) -> JSONResponse:
     """Endpoint for receiving mercure system events."""
@@ -134,7 +113,7 @@ async def post_mercure_event(request) -> JSONResponse:
     return JSONResponse({"ok": ""})
 
 
-@app.route("/processor-logs", methods=["POST"])
+@router.post("/processor-logs")
 @requires("authenticated")
 async def processor_logs(request) -> JSONResponse:
     """Endpoint for receiving mercure system events."""
@@ -173,7 +152,7 @@ async def processor_logs(request) -> JSONResponse:
     return JSONResponse({"ok": ""})
 
 
-@app.route("/webgui-event", methods=["POST"])
+@router.post("/webgui-event")
 @requires("authenticated")
 async def post_webgui_event(request) -> JSONResponse:
     """Endpoint for logging relevant events of the webgui."""
@@ -192,7 +171,7 @@ async def post_webgui_event(request) -> JSONResponse:
     return JSONResponse({"ok": ""})
 
 
-@app.route("/register-dicom", methods=["POST"])
+@router.post("/register-dicom")
 @requires("authenticated")
 async def register_dicom(request) -> JSONResponse:
     """Endpoint for registering newly received DICOM files. Called by the getdcmtags module."""
@@ -250,7 +229,7 @@ async def parse_and_submit_tags(payload) -> None:
     await database.execute(query)
 
 
-@app.route("/register-series", methods=["POST"])
+@router.post("/register-series")
 @requires("authenticated")
 async def register_series(request) -> JSONResponse:
     """Endpoint that is called by the router whenever a new series arrives."""
@@ -263,7 +242,7 @@ async def register_series(request) -> JSONResponse:
     return JSONResponse({"ok": ""})
 
 
-@app.route("/register-task", methods=["POST"])
+@router.post("/register-task")
 @requires("authenticated")
 async def register_task(request) -> JSONResponse:
     payload = dict(await request.json())
@@ -291,7 +270,7 @@ async def register_task(request) -> JSONResponse:
     return JSONResponse({"ok": ""})
 
 
-@app.route("/update-task", methods=["POST"])
+@router.post("/update-task")
 @requires("authenticated")
 async def update_task(request) -> JSONResponse:
     """Endpoint that is called by the router whenever a new series arrives."""
@@ -326,7 +305,7 @@ async def update_task(request) -> JSONResponse:
     return JSONResponse({"ok": ""})
 
 
-@app.route("/test-begin", methods=["POST"])
+@router.post("/test-begin")
 @requires("authenticated")
 async def test_begin(request) -> JSONResponse:
     payload = dict(await request.json())
@@ -348,7 +327,7 @@ async def test_begin(request) -> JSONResponse:
     return JSONResponse({"ok": ""})
 
 
-@app.route("/test-end", methods=["POST"])
+@router.post("/test-end")
 @requires("authenticated")
 async def test_end(request) -> JSONResponse:
     payload = dict(await request.json())
@@ -360,7 +339,7 @@ async def test_end(request) -> JSONResponse:
     return JSONResponse({"ok": ""})
 
 
-@app.route("/task-event", methods=["POST"])
+@router.post("/task-event")
 @requires("authenticated")
 async def post_task_event(request) -> JSONResponse:
     """Endpoint for logging all events related to one series."""
@@ -408,7 +387,7 @@ async def post_task_event(request) -> JSONResponse:
     return JSONResponse({"ok": ""})
 
 
-@app.route("/store-processor-output", methods=["POST"])
+@router.post("/store-processor-output")
 @requires("authenticated")
 async def store_processor_output(request) -> JSONResponse:
     payload = dict(await request.json())
@@ -422,6 +401,29 @@ async def store_processor_output(request) -> JSONResponse:
 ## Main entry function
 ###################################################################################
 
+
+app = Starlette(debug=bk_config.DEBUG_MODE, routes=router)
+app.add_middleware(
+    AuthenticationMiddleware,
+    backend=TokenAuth(),
+    on_error=lambda _, exc: PlainTextResponse(str(exc), status_code=401),
+)
+app.mount("/query", query.query_app)
+
+
+@app.on_event("startup")
+async def startup() -> None:
+    """Connects to database on startup. If the database does not exist, it will
+    be created."""
+    await database.connect()
+    create_database()
+    bk_config.set_api_key()
+
+
+@app.on_event("shutdown")
+async def shutdown() -> None:
+    """Disconnect from database on shutdown."""
+    await database.disconnect()
 
 @app.exception_handler(500)
 async def server_error(request, exc) -> Response:

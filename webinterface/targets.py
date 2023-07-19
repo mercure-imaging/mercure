@@ -21,7 +21,8 @@ from common.constants import mercure_defs
 from common.types import DicomTarget, SftpTarget
 from webinterface.common import *
 import dispatch.target_types as target_types
-
+from decoRouter import Router as decoRouter
+router = decoRouter()
 
 logger = config.get_logger()
 
@@ -31,10 +32,8 @@ logger = config.get_logger()
 ###################################################################################
 
 
-targets_app = Starlette()
 
-
-@targets_app.route("/", methods=["GET"])
+@router.get("/")
 @requires("authenticated", redirect="login")
 async def show_targets(request) -> Response:
     """Shows all configured targets."""
@@ -61,7 +60,7 @@ async def show_targets(request) -> Response:
     return templates.TemplateResponse(template, context)
 
 
-@targets_app.route("/", methods=["POST"])
+@router.post("/")
 @requires(["authenticated", "admin"], redirect="login")
 async def add_target(request) -> Response:
     """Creates a new target."""
@@ -88,7 +87,7 @@ async def add_target(request) -> Response:
     return RedirectResponse(url="/targets/edit/" + newtarget, status_code=303)
 
 
-@targets_app.route("/edit/{target}", methods=["GET"])
+@router.get("/edit/{target}")
 @requires(["authenticated", "admin"], redirect="login")
 async def targets_edit(request) -> Response:
     """Shows the edit page for the given target."""
@@ -121,7 +120,7 @@ async def targets_edit(request) -> Response:
     return templates.TemplateResponse(template, context)
 
 
-@targets_app.route("/edit/{target}", methods=["POST"])
+@router.post("/edit/{target}")
 @requires(["authenticated", "admin"], redirect="login")
 async def targets_edit_post(request) -> Union[RedirectResponse, PlainTextResponse]:
     """Updates the given target using the form values posted with the request."""
@@ -152,7 +151,7 @@ async def targets_edit_post(request) -> Union[RedirectResponse, PlainTextRespons
     return RedirectResponse(url="/targets", status_code=303)
 
 
-@targets_app.route("/delete/{target}", methods=["POST"])
+@router.post("/delete/{target}")
 @requires(["authenticated", "admin"], redirect="login")
 async def targets_delete_post(request) -> Response:
     """Deletes the given target."""
@@ -176,7 +175,7 @@ async def targets_delete_post(request) -> Response:
     return RedirectResponse(url="/targets", status_code=303)
 
 
-@targets_app.route("/test/{target}", methods=["POST"])
+@router.post("/test/{target}")
 @requires(["authenticated"], redirect="login")
 async def targets_test_post(request) -> Response:
     """Tests the connectivity of the given target by executing ping and c-echo requests."""
@@ -191,3 +190,5 @@ async def targets_test_post(request) -> Response:
     handler = target_types.get_handler(target)
     result = await handler.test_connection(target, testtarget)
     return templates.TemplateResponse(handler.test_template, {"request": request, "result": result})
+
+targets_app = Starlette(routes=router)

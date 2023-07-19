@@ -23,7 +23,8 @@ from common.constants import mercure_defs, mercure_names
 from webinterface.common import get_user_information
 from webinterface.common import templates
 from common.types import Task
-
+from decoRouter import Router as decoRouter
+router = decoRouter()
 
 logger = config.get_logger()
 
@@ -33,10 +34,7 @@ logger = config.get_logger()
 ###################################################################################
 
 
-queue_app = Starlette()
-
-
-@queue_app.route("/", methods=["GET"])
+@router.get("/")
 @requires("authenticated", redirect="login")
 async def show_queues(request):
     """Shows all installed modules"""
@@ -68,7 +66,7 @@ async def show_queues(request):
     return templates.TemplateResponse(template, context)
 
 
-@queue_app.route("/jobs/processing", methods=["GET"])
+@router.get("/jobs/processing")
 @requires("authenticated", redirect="login")
 async def show_jobs_processing(request):
     try:
@@ -133,7 +131,7 @@ async def show_jobs_processing(request):
     return JSONResponse(sorted_jobs)
 
 
-@queue_app.route("/jobs/routing", methods=["GET"])
+@router.get("/jobs/routing")
 @requires("authenticated", redirect="login")
 async def show_jobs_routing(request):
     try:
@@ -190,7 +188,7 @@ async def show_jobs_routing(request):
     return JSONResponse(sorted_jobs)
 
 
-@queue_app.route("/jobs/studies/force-complete", methods=["POST"])
+@router.post("/jobs/studies/force-complete")
 @requires("authenticated", redirect="login")
 async def force_study_complete(request):
     params = dict(await request.form())
@@ -203,7 +201,7 @@ async def force_study_complete(request):
     return JSONResponse({"success": True})
 
 
-@queue_app.route("/jobs/studies", methods=["GET"])
+@router.get("/jobs/studies")
 @requires("authenticated", redirect="login")
 async def show_jobs_studies(request):
     try:
@@ -264,7 +262,7 @@ async def show_jobs_studies(request):
     return JSONResponse(job_list)
 
 
-@queue_app.route("/jobs/fail", methods=["GET"])
+@router.get("/jobs/fail")
 @requires("authenticated", redirect="login")
 async def show_jobs_fail(request):
     try:
@@ -311,7 +309,7 @@ async def show_jobs_fail(request):
     return JSONResponse(job_list)
 
 
-@queue_app.route("/status", methods=["GET"])
+@router.get("/status")
 @requires("authenticated", redirect="login")
 async def show_queues_status(request):
 
@@ -376,7 +374,7 @@ async def show_queues_status(request):
     return JSONResponse(queue_status)
 
 
-@queue_app.route("/status", methods=["POST"])
+@router.post("/status")
 @requires("authenticated", redirect="login")
 async def set_queues_status(request):
 
@@ -410,7 +408,7 @@ async def set_queues_status(request):
     return JSONResponse({"result": "OK"})
 
 
-@queue_app.route("/jobinfo/{category}/{id}", methods=["GET"])
+@router.get("/jobinfo/{category}/{id}")
 @requires("authenticated", redirect="login")
 async def get_jobinfo(request):
     try:
@@ -448,3 +446,5 @@ async def get_jobinfo(request):
         return JSONResponse(loaded_task)
     else:
         return PlainTextResponse("Task not found. Refresh view!")
+
+queue_app = Starlette(routes=router)
