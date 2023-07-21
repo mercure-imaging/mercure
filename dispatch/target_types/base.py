@@ -35,7 +35,7 @@ class TargetHandler(Generic[TargetTypeVar]):
 
 class SubprocessTargetHandler(TargetHandler[TargetTypeVar]):
     def _create_command(self, target: TargetTypeVar, source_folder: Path):
-        pass
+        return ("",{})
 
     def send_to_target(
         self, task_id: str, target: TargetTypeVar, dispatch_info: TaskDispatch, source_folder: Path

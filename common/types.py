@@ -107,7 +107,7 @@ class Module(BaseModel, Compat):
     comment: Optional[str] = ""
     constraints: Optional[str] = ""
     resources: Optional[str] = ""
-
+    requires_root: Optional[bool] = False
 
 class UnsetRule(TypedDict):
     rule: str
@@ -179,7 +179,7 @@ class Config(BaseModel, Compat):
     features: Dict[str, bool]
     processing_logs: ProcessingLogsConfig = ProcessingLogsConfig()
     email_notification_from: str = "mercure@mercure.mercure"
-
+    support_root_modules: Optional[bool] = False
 
 class TaskInfo(BaseModel, Compat):
     action: Literal["route", "both", "process", "discard", "notification"]

@@ -21,8 +21,12 @@ from common.types import Module
 
 from webinterface.common import get_user_information
 from webinterface.common import templates
+
+import docker
+
 from decoRouter import Router as decoRouter
 router = decoRouter()
+logger = config.get_logger()
 
 
 ###################################################################################
@@ -49,6 +53,7 @@ async def save_module(form, name) -> Response:
         comment=form.get("comment", ""),
         constraints=form.get("constraints", ""),
         resources=form.get("resources", ""),
+        requires_root=form.get("requires_root",False) or form.get("container_type","mercure") == "monai"
     )
     try:
         config.save_config()
@@ -105,15 +110,28 @@ async def add_module(request):
         return PlainTextResponse("Configuration is being updated. Try again in a minute.")
 
     form = dict(await request.form())
+    print(form)
 
     name = form.get("name", "")
     if name in config.mercure.modules:
-        return PlainTextResponse("Name already exists.")
+        return PlainTextResponse("A module with this name already exists.")
 
+    client = docker.from_env()
+    try:
+        client.images.get(form["docker_tag"])
+    except docker.errors.ImageNotFound: 
+        try:
+            client.images.get_registry_data("royfoobar:baz")
+        except:
+            return PlainTextResponse(f"This docker tag is not available locally or in the registry.")
+    if form["container_type"] == "monai" and config.mercure.support_root_modules != True:
+        return PlainTextResponse(f"MONAI modules must run as root, and 'support_root_modules' is not set true in the Mercure configuration. Update this setting before installing MONAI modules.")
     # logger.info(f'Created rule {name}')
     # monitor.send_webgui_event(monitor.w_events.RULE_CREATE, request.user.display_name, name)
 
-    return await save_module(form, name)
+    await save_module(form, name)
+    # save_response.headers.append("HX-Refresh","true")
+    return PlainTextResponse(headers={"HX-Refresh":"true"})
 
 
 @router.get("/edit/{module}")

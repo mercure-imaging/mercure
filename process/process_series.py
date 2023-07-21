@@ -9,6 +9,7 @@ from genericpath import isfile
 import json
 import os
 from pathlib import Path
+import stat
 import sys
 from typing import Any, Dict, List, cast, Optional
 import json
@@ -112,6 +113,7 @@ async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_p
 
     real_folder = folder    
 
+
     if helper.get_runner() == "docker":
         # We want to bind the correct path into the processor, but if we're inside docker we need to use the host path
         try:
@@ -123,9 +125,11 @@ async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_p
         logger.info(f"Base path: {base_path}")
         real_folder = base_path / "processing" / real_folder.stem
 
+    container_in_dir = "/tmp/data"
+    container_out_dir = "/tmp/output"
     default_volumes = {
-        str(real_folder / "in"): {"bind": "/tmp/data", "mode": "rw"},
-        str(real_folder / "out"): {"bind": "/tmp/output", "mode": "rw"},
+        str(real_folder / "in"): {"bind": container_in_dir, "mode": "rw"},
+        str(real_folder / "out"): {"bind": container_out_dir, "mode": "rw"},
     }
     logger.debug(default_volumes)
 
@@ -134,9 +138,14 @@ async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_p
     else:
         logger.error("No docker tag supplied")
         return False
+    
+    image_is_monai_map = docker_client.images.get(docker_tag).labels
     additional_volumes: Dict[str, Dict[str, str]] = decode_task_json(module.additional_volumes)
-    environment = decode_task_json(module.environment)
-    environment = {**environment, **dict(MERCURE_IN_DIR="/tmp/data", MERCURE_OUT_DIR="/tmp/output")}
+    module_environment = decode_task_json(module.environment)
+    mercure_environment = dict(MERCURE_IN_DIR=container_in_dir, MERCURE_OUT_DIR=container_out_dir)
+
+    monai_environment = dict(MONAI_INPUTPATH=container_in_dir, MONAI_OUTPUTPATH=container_out_dir)
+    environment = {**module_environment, **mercure_environment, **monai_environment}
     arguments = decode_task_json(module.docker_arguments)
 
     # Merge the two dictionaries
@@ -172,6 +181,7 @@ async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_p
 
     # Run the container and handle errors of running the container
     processing_success = True
+    container = None
     try:
         logger.info("Now running container:")
         logger.info(
@@ -192,14 +202,30 @@ async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_p
         # Run the container -- need to do in detached mode to be able to print the log output if container exits
         # with non-zero code while allowing the container to be removed after execution (with autoremoval and
         # non-detached mode, the log output is gone before it can be printed from the exception)
-        uid_string = f"{os.getuid()}:{os.getegid()}"
+
+        user_info = dict(
+            user=f"{os.getuid()}:{os.getegid()}",
+            group_add=[os.getgid()]
+        )
+        if module.requires_root:
+            if not config.mercure.support_root_modules:
+                raise Exception("This module requires execution as root, but 'support_root_modules' is not set to true in the configuration. Aborting.")
+            user_info = {}
+            logger.warning("Executing module as root.")
+            # We might be operating in a user-remapped namespace. This makes sure that the user inside the container can read and write the files.
+            ( real_folder / "in" ).chmod(0o777)
+            for k in ( real_folder / "in" ).glob("**/*"):
+                k.chmod(0o666)
+            ( real_folder / "out" ).chmod(0o777)
+
+        else:
+            logger.warning("Executing module as mercure.")
         container  = docker_client.containers.run(
             docker_tag,
             volumes=merged_volumes,
             environment=environment,
             **arguments,
-            user=uid_string,
-            group_add=[os.getegid()],
+            **user_info,
             detach=True,
         )
 
@@ -207,6 +233,19 @@ async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_p
         docker_result = container.wait()
         logger.info(docker_result)
 
+        if module.requires_root:
+            # In lieu of making mercure a sudoer...
+            docker_client.images.pull("busybox:stable-musl")
+            docker_client.containers.run(
+                "busybox:stable-musl",
+                volumes=merged_volumes,
+                userns_mode="host",
+                command=f"chown -R {os.getuid()}:{os.getegid()} {container_out_dir}",
+                detach=True
+            )
+            ( real_folder / "out" ).chmod(0o755)
+            for k in ( real_folder / "out" ).glob("**/*"):
+                k.chmod(0o644)
         # Print the log out of the module
         logger.info("=== MODULE OUTPUT - BEGIN ========================================")
         if container.logs() is not None:
@@ -230,9 +269,6 @@ async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_p
             logger.error(f"Error while running container {docker_tag} - exit code {exit_code}", task.id)  # handle_error
             processing_success = False
 
-        # Remove the container now to avoid that the drive gets full
-        container.remove()
-
     except docker.errors.APIError: # type: ignore
         # Something really serious happened
         logger.error(f"API error while trying to run Docker container, tag: {docker_tag}", task.id)  # handle_error
@@ -241,6 +277,10 @@ async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_p
     except docker.errors.ImageNotFound: # type: ignore
         logger.error(f"Error running docker container. Image for tag {docker_tag} not found.", task.id)  # handle_error
         processing_success = False
+    finally:
+        if container:
+            # Remove the container now to avoid that the drive gets full
+            container.remove()
 
     return processing_success
 

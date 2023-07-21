@@ -3,6 +3,12 @@
 {% block title %}Modules{% endblock %}
 
 {% block content %}
+<style>
+    .radiobuttons > input:checked + label{
+        background: black;
+        color: white;
+    }
+</style>
     <main role="main">
         <div class="container">
             <h1 class="title">Processing Modules</h1>
@@ -64,7 +70,7 @@
                     <p class="modal-card-title">Install New Module</p>
                 </header>
                 <section class="modal-card-body">
-                    <form method="post">
+                    <form hx-post="./" hx-target="#addmodal_message">
                         <div class="field">
                             <p class="control">
                                 <input class="input" id="addnewname" type="text" required pattern="[-_A-Za-z0-9]+"
@@ -77,11 +83,26 @@
                             </p>
                         </div>
                         <div class="field">
+                            <label>Container type</label>
+                            <div class="control radiobuttons">
+                                <input type="radio" value="mercure" id="radio_mercure" name="container_type" style="display:none" checked>
+                                <label class="button" for="radio_mercure">
+                                  Mercure
+                                </label>
+
+                                <input type="radio" value="monai" id="radio_monai" name="container_type" style="display:none">
+                                <label class="button" for="radio_monai">
+                                  Monai MAP
+                                </label>
+                              </div>
+                        </div>
+                        <div class="field">
                             <p class="control" style="margin-top: 20px;">
                                 <button id="confirmaddmodal" class="button is-success">Install</button>
                                 <a id="closeaddmodal" class="button">Cancel</a>
                             </p>
                         </div>
+                        &nbsp;<i id="spinner" class="fas fa-spin fa-spinner htmx-indicator"></i><span id="addmodal_message" style="color:crimson"></span>
                     </form>
                 </section>
             </div>
@@ -134,6 +155,7 @@
         $(function () {
             $('#closeaddmodal').click(function () {
                 $("#addmodal").removeClass("is-active");
+                $("#addmodal_message").html("")
             })
 
             $('#closedeletemodal').click(function () {

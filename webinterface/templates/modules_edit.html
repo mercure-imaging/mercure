@@ -84,6 +84,12 @@
                                 value="{{module['docker_arguments']}}">
                         </p>
                     </div>
+                    <div class="field">
+                        <input id="requires_root" type="checkbox" name="requires_root"
+                            class="switch is-rounded is-dark" value="True" {% if
+                            module['requires_root']==True %}checked="checked" {% endif%}>
+                        <label for="requires_root">Requires requires_root</label>
+                    </div>
                 </div>
                 <div class="panel" data-content="settings">
                     <div class="field">
