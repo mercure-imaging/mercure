@@ -130,7 +130,6 @@ async def add_module(request):
     # monitor.send_webgui_event(monitor.w_events.RULE_CREATE, request.user.display_name, name)
 
     await save_module(form, name)
-    # save_response.headers.append("HX-Refresh","true")
     return PlainTextResponse(headers={"HX-Refresh":"true"})
 
 

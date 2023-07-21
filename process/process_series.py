@@ -138,15 +138,28 @@ async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_p
     else:
         logger.error("No docker tag supplied")
         return False
-    
-    image_is_monai_map = docker_client.images.get(docker_tag).labels
+      
     additional_volumes: Dict[str, Dict[str, str]] = decode_task_json(module.additional_volumes)
     module_environment = decode_task_json(module.environment)
     mercure_environment = dict(MERCURE_IN_DIR=container_in_dir, MERCURE_OUT_DIR=container_out_dir)
-
     monai_environment = dict(MONAI_INPUTPATH=container_in_dir, MONAI_OUTPUTPATH=container_out_dir)
+
     environment = {**module_environment, **mercure_environment, **monai_environment}
     arguments = decode_task_json(module.docker_arguments)
+
+    set_command = {}
+    image_is_monai_map = False
+    try:
+        monai_app_manifest = json.loads(docker_client.containers.run(docker_tag, "cat /etc/monai/app.json", entrypoint="").decode('utf-8'))
+        image_is_monai_map = True
+        set_command = dict(entrypoint="",command=monai_app_manifest["command"])
+        logger.debug("Detected MONAI MAP, using command from manifest.")
+    except docker.errors.ContainerError:
+        pass
+    except (json.decoder.JSONDecodeError, KeyError):
+        raise Exception("Failed to parse MONAI app manifest.")
+    
+    module.requires_root = module.requires_root or image_is_monai_map
 
     # Merge the two dictionaries
     merged_volumes = {**default_volumes, **additional_volumes}
@@ -224,6 +237,7 @@ async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_p
             docker_tag,
             volumes=merged_volumes,
             environment=environment,
+            **set_command,
             **arguments,
             **user_info,
             detach=True,
