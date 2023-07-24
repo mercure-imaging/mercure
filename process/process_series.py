@@ -156,6 +156,8 @@ async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_p
         logger.debug("Detected MONAI MAP, using command from manifest.")
     except docker.errors.ContainerError:
         pass
+    except docker.errors.NotFound:
+        raise Exception(f"Docker tag {docker_tag} not found, aborting.") from None
     except (json.decoder.JSONDecodeError, KeyError):
         raise Exception("Failed to parse MONAI app manifest.")
     
@@ -225,14 +227,15 @@ async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_p
                 raise Exception("This module requires execution as root, but 'support_root_modules' is not set to true in the configuration. Aborting.")
             user_info = {}
             logger.warning("Executing module as root.")
-            # We might be operating in a user-remapped namespace. This makes sure that the user inside the container can read and write the files.
-            ( real_folder / "in" ).chmod(0o777)
-            for k in ( real_folder / "in" ).glob("**/*"):
-                k.chmod(0o666)
-            ( real_folder / "out" ).chmod(0o777)
-
         else:
             logger.warning("Executing module as mercure.")
+
+        # We might be operating in a user-remapped namespace. This makes sure that the user inside the container can read and write the files.
+        ( real_folder / "in" ).chmod(0o777)
+        for k in ( real_folder / "in" ).glob("**/*"):
+            k.chmod(0o666)
+        ( real_folder / "out" ).chmod(0o777)
+
         container  = docker_client.containers.run(
             docker_tag,
             volumes=merged_volumes,
@@ -247,21 +250,30 @@ async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_p
         docker_result = container.wait()
         logger.info(docker_result)
 
-        if module.requires_root:
-            # In lieu of making mercure a sudoer...
-            logger.debug("Changing the ownership of the output directory...")
-            docker_client.images.pull("busybox:stable-musl")
-            set_usrns_mode = { "userns_mode": "host"} if helper.get_runner() != "docker" else {}
-            docker_client.containers.run(
-                "busybox:stable-musl",
-                volumes=merged_volumes,
-                **set_usrns_mode,
-                command=f"chown -R {os.getuid()}:{os.getegid()} {container_out_dir}",
-                detach=True
-            )
-            ( real_folder / "out" ).chmod(0o755)
-            for k in ( real_folder / "out" ).glob("**/*"):
-                k.chmod(0o644)
+        # In lieu of making mercure a sudoer...
+        logger.debug("Changing the ownership of the output directory...")
+        docker_client.images.pull("busybox:stable-musl")
+
+        if helper.get_runner() != "docker":
+            # We need to set the owner to the "real", unremapped mercure user that lives outside of the container, ie our actual uid.
+            # If docker isn't in usrns remap mode then this shouldn't have an effect.
+            set_usrns_mode = { "userns_mode": "host" } 
+        else:
+            # We're running inside docker, so we need to set the owner to our actual uid inside this container (probably 1000), not the one outside.
+            # If docker is in userns remap mode then this will get mapped, which is what we want. 
+            set_usrns_mode = {}
+        docker_client.containers.run(
+            "busybox:stable-musl",
+            volumes=merged_volumes,
+            **set_usrns_mode,
+            command=f"chown -R {os.getuid()}:{os.getegid()} {container_out_dir}",
+            detach=True
+        )
+
+        # Reset the permissions to owner rwx, world readonly. 
+        ( real_folder / "out" ).chmod(0o755)
+        for k in ( real_folder / "out" ).glob("**/*"):
+            k.chmod(0o644)
         # Print the log out of the module
         logger.info("=== MODULE OUTPUT - BEGIN ========================================")
         if container.logs() is not None:
