@@ -43,6 +43,7 @@ databases
 databases[aiopg]
 psycopg2
 asyncpg
+starlette-decoRouter
 
 # processing
 docker
