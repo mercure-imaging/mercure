@@ -249,11 +249,13 @@ async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_p
 
         if module.requires_root:
             # In lieu of making mercure a sudoer...
+            logger.debug("Changing the ownership of the output directory...")
             docker_client.images.pull("busybox:stable-musl")
+            set_usrns_mode = { "userns_mode": "host"} if helper.get_runner() != "docker" else {}
             docker_client.containers.run(
                 "busybox:stable-musl",
                 volumes=merged_volumes,
-                userns_mode="host",
+                **set_usrns_mode,
                 command=f"chown -R {os.getuid()}:{os.getegid()} {container_out_dir}",
                 detach=True
             )
