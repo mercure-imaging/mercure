@@ -121,7 +121,7 @@ async def add_module(request):
         client.images.get(form["docker_tag"])
     except docker.errors.ImageNotFound: 
         try:
-            client.images.get_registry_data("royfoobar:baz")
+            client.images.get_registry_data(form["docker_tag"])
         except:
             return PlainTextResponse(f"This docker tag is not available locally or in the registry.")
     if form["container_type"] == "monai" and config.mercure.support_root_modules != True:
