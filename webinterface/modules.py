@@ -110,9 +110,8 @@ async def add_module(request):
         return PlainTextResponse("Configuration is being updated. Try again in a minute.")
 
     form = dict(await request.form())
-    print(form)
-
     name = form.get("name", "")
+
     if name in config.mercure.modules:
         return PlainTextResponse("A module with this name already exists.")
 
@@ -124,6 +123,7 @@ async def add_module(request):
             client.images.get_registry_data(form["docker_tag"])
         except:
             return PlainTextResponse(f"This docker tag is not available locally or in the registry.")
+
     if form["container_type"] == "monai" and config.mercure.support_root_modules != True:
         return PlainTextResponse(f"MONAI modules must run as root, and 'support_root_modules' is not set true in the Mercure configuration. Update this setting before installing MONAI modules.")
     # logger.info(f'Created rule {name}')

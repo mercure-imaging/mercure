@@ -373,7 +373,12 @@
                                 placeholder="Contents of notification email">{{rules[rule]['notification_email_body']}}</textarea>
                         </div>
                     </div>
-
+                    <div class="field">
+                        <input id="notification_email_html" type="checkbox" name="notification_email_html"
+                            class="switch is-rounded is-dark" value="false" {% if
+                            rules[rule]['notification_email_type']=='html' %}checked="checked" {% endif%}>
+                        <label for="notification_email_html">HTML email</label>
+                    </div>
                     <div class="field">
                         <label class="label">Trigger</label>
                     </div>
@@ -650,12 +655,10 @@
         var body_template = "Rule {{ rule }} triggered {{ event }}\n{% if details is defined and details|length %}\nDetails:\n{{ details }}\n{%endif%}"
         $('#template_slack').click(function () {
             $('#notification_payload').val('"text": "{{ body }}",\n"channel": "YOUR_CHANNEL_ID"');
-            $('#notification_payload_body').val(body_template)
         });
 
         $('#template_webex').click(function () {
             $('#notification_payload').val('"text": "{{ body }}"');
-            $('#notification_payload_body').val(body_template)
         });
         {% endraw %}
 

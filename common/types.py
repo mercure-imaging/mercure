@@ -134,6 +134,7 @@ class Rule(BaseModel, Compat):
     notification_payload: str = ""
     notification_payload_body: str = ""
     notification_email_body: str = ""
+    notification_email_type: str = "plain"
     notification_trigger_reception: bool = True
     notification_trigger_completion: bool = True
     notification_trigger_completion_on_request: bool = False

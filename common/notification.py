@@ -79,23 +79,23 @@ def send_webhook(url:str, payload: str) -> None:
 import smtplib
 from email.message import EmailMessage
 
-def send_email(address: str, payload: str, event: mercure_events, rule_name: str) -> None:
+def send_email(address: str, payload: str, event: mercure_events, rule_name: str, rule_type:str) -> None:
     if not address:
         return
     subject = f"Rule {rule_name}: {event.name}"
     try: 
-        send_email_helper(address, subject, payload)
+        send_email_helper(address, subject, payload, rule_type)
     except:
         logger.exception(f"ERROR: Email notification failed")
 
 
-def send_email_helper(to:str, subject:str, content:str) -> None:
+def send_email_helper(to:str, subject:str, content:str, rule_type="plain") -> None:
     # Create a text/plain message
     msg = EmailMessage()
     msg['Subject'] = f'[Mercure] {subject}'
     msg['From'] = config.mercure.email_notification_from
     msg['To'] = to
-    msg.set_content(content)
+    msg.set_content(content, subtype=rule_type)
 
     # Send the message via our own SMTP server.
     s = smtplib.SMTP('localhost')
@@ -188,6 +188,7 @@ def trigger_notification_for_rule(rule_name: str, task_id: str, event: mercure_e
             email_payload,
             event,
             rule_name,
+            current_rule.get("notification_email_type", "plain"),
         )
         monitor.send_task_event(
             monitor.task_event.NOTIFICATION,

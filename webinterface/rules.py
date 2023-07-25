@@ -72,7 +72,21 @@ async def add_rule(request) -> Response:
     if newrule in config.mercure.rules:
         return PlainTextResponse("Rule already exists.")
 
-    config.mercure.rules[newrule] = Rule(rule="False")
+
+    default_payload_body = """Rule "{{ rule }}" triggered {{ event }}
+{% if details is defined and details|length %}
+Details:
+{{ details }}
+{% endif %}"""
+    default_email_body = """Rule "{{ rule }}" triggered {{ event }}
+Name: {{ patient_name }}
+ACC: {{ acc }}
+MRN: {{ mrn }}
+{% if details is defined and details|length %}
+Details:
+{{ details }}
+{% endif %}"""
+    config.mercure.rules[newrule] = Rule(rule="False",notification_payload_body=default_payload_body, notification_email_body=default_email_body)
 
     try:
         config.save_config()
@@ -195,6 +209,7 @@ async def rules_edit_post(request) -> Response:
         notification_payload=form.get("notification_payload", ""),
         notification_payload_body=form.get("notification_payload_body", ""),
         notification_email_body=form.get("notification_email_body", ""),
+        notification_email_type="html" if form.get("notification_email_html",False) else "plain",
         notification_trigger_reception=form.get("notification_trigger_reception", "False"),
         notification_trigger_completion=form.get("notification_trigger_completion", "False"),
         notification_trigger_completion_on_request=form.get("notification_trigger_completion_on_request", "False"),
