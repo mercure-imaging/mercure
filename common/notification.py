@@ -163,7 +163,6 @@ def trigger_notification_for_rule(rule_name: str, task_id: str, event: mercure_e
         context = dict(body=jinja2.utils.htmlsafe_json_dumps(parse_payload(body,event, rule_name, task_id, details))[1:-1]) # type: ignore
 
         webhook_payload = parse_payload(current_rule.get("notification_payload", ""),event, rule_name, task_id, details, context)
-        logger.warning(webhook_payload)
         send_webhook(
             webhook_url,
             webhook_payload
@@ -182,7 +181,7 @@ def trigger_notification_for_rule(rule_name: str, task_id: str, event: mercure_e
             context = dict(acc=task.info.acc, mrn=task.info.mrn, patient_name=task.info.patient_name)
         else:
             context = {}
-        email_payload = parse_payload(current_rule.get("notification_email_body", ""),event, rule_name, task_id, details, context)
+        email_payload = parse_payload(current_rule.get("notification_email_body", ""), event, rule_name, task_id, details, context)
         send_email(
             email_address,
             email_payload,

@@ -115,7 +115,7 @@ async def add_module(request):
     if name in config.mercure.modules:
         return PlainTextResponse("A module with this name already exists.")
 
-    client = docker.from_env()
+    client = docker.from_env() # type: ignore
     try:
         client.images.get(form["docker_tag"])
     except docker.errors.ImageNotFound: 

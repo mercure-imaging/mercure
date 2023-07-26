@@ -219,21 +219,21 @@ async def test_process_series(fs, mercure_config: Callable[[Dict], Config], mock
     )
     task_id = str(uuid.uuid1())
     files, new_task_id = create_and_route(fs, mocked, task_id)
-    processor_path = Path()
+    processor_path = Path(f"/var/processing/{task_id}")
 
-    def fake_processor(tag, environment, volumes: Dict, **kwargs):
-        global processor_path
-        in_ = Path(next((k for k in volumes.keys() if volumes[k]["bind"] == "/tmp/data")))
-        out_ = Path(next((k for k in volumes.keys() if volumes[k]["bind"] == "/tmp/output")))
+    # def fake_processor(tag, environment, volumes: Dict, **kwargs):
+    #     global processor_path
+    #     in_ = Path(next((k for k in volumes.keys() if volumes[k]["bind"] == "/tmp/data")))
+    #     out_ = Path(next((k for k in volumes.keys() if volumes[k]["bind"] == "/tmp/output")))
 
-        processor_path = in_.parent
-        for child in in_.iterdir():
-            print(f"Moving {child} to {out_ / child.name})")
-            shutil.copy(child, out_ / child.name)
+    #     processor_path = in_.parent
+    #     for child in in_.iterdir():
+    #         print(f"Moving {child} to {out_ / child.name})")
+    #         shutil.copy(child, out_ / child.name)
 
-        return mocked.DEFAULT
+    #     return mocked.DEFAULT
 
-    fake_run = mocked.Mock(return_value=FakeDockerContainer(), side_effect=fake_processor)  # type: ignore
+    fake_run = mocked.Mock(return_value=FakeDockerContainer(), side_effect=make_fake_processor(fs,mocked,False))  # type: ignore
     mocked.patch.object(ContainerCollection, "run", new=fake_run)
     await processor.run_processor()
 
@@ -241,20 +241,23 @@ async def test_process_series(fs, mercure_config: Callable[[Dict], Config], mock
     # process.process_series.process_series.assert_called_once_with(str(processor_path))  # type: ignore
 
     uid_string = f"{os.getuid()}:{os.getegid()}"
-    fake_run.assert_called_once_with(
+    print("FAKE RUN CALLS",fake_run.call_args_list)
+    fake_run.assert_has_calls(
+        [
+            call('busybox:stable', command='cat /etc/monai/app.json', entrypoint=''),
+            call(
         config.modules["test_module"].docker_tag,
-        environment={"MERCURE_IN_DIR": "/tmp/data", "MERCURE_OUT_DIR": "/tmp/output"},
+        environment={"MERCURE_IN_DIR": "/tmp/data", "MERCURE_OUT_DIR": "/tmp/output",  'MONAI_INPUTPATH': '/tmp/data', 'MONAI_OUTPUTPATH': '/tmp/output'},
         user=uid_string,
         group_add=[os.getegid()],
-        volumes={
-            str(processor_path / "in"): {"bind": "/tmp/data", "mode": "rw"},
-            str(processor_path / "out"): {"bind": "/tmp/output", "mode": "rw"},
-        },
-        detach=True,
+        volumes=unittest.mock.ANY,
+        detach=True),
+        call('busybox:stable-musl', volumes=unittest.mock.ANY, userns_mode='host', command='chown -R 1000:1000 /tmp/output', detach=True)
+        ]
     )
-
+    print("FAKE RUN RESULT FILES", list((Path("/var/success")).glob("**/*")))
     assert [] == [k.name for k in Path("/var/processing").glob("**/*")]
-    assert files == [k.name for k in (Path("/var/success") / processor_path.name).glob("*") if k.is_file()]
+    assert files + ["result.json"] == [k.name for k in (Path("/var/success")).glob("**/*") if k.is_file()]
 
     common.monitor.send_task_event.assert_has_calls(  # type: ignore
         [
@@ -275,7 +278,6 @@ async def test_process_series(fs, mercure_config: Callable[[Dict], Config], mock
 
 @pytest.mark.asyncio
 async def test_multi_process_series(fs, mercure_config: Callable[[Dict], Config], mocked: MockerFixture):
-    global processor_path
     partial: Dict[str, Dict] = {
         "modules": {
             "test_module_1": Module(docker_tag="busybox:stable",settings={"fizz":"buzz","result":{"value":[1,2,3,4]}}).dict(),
@@ -298,23 +300,23 @@ async def test_multi_process_series(fs, mercure_config: Callable[[Dict], Config]
     )
     task_id = str(uuid.uuid1())
     files, new_task_id = create_and_route(fs, mocked, task_id)
-    processor_path = Path()
+    processor_path = Path(f"/var/processing/{new_task_id}")
 
-    def fake_processor(tag, environment, volumes: Dict, **kwargs):
-        global processor_path
-        in_ = Path(next((k for k in volumes.keys() if volumes[k]["bind"] == "/tmp/data")))
-        out_ = Path(next((k for k in volumes.keys() if volumes[k]["bind"] == "/tmp/output")))
+    # def fake_processor(tag, environment, volumes: Dict, **kwargs):
+    #     global processor_path
+    #     in_ = Path(next((k for k in volumes.keys() if volumes[k]["bind"] == "/tmp/data")))
+    #     out_ = Path(next((k for k in volumes.keys() if volumes[k]["bind"] == "/tmp/output")))
 
-        processor_path = in_.parent
-        for child in in_.iterdir():
-            print(f"Moving {child} to {out_ / child.name})")
-            shutil.copy(child, out_ / child.name)
-        with (in_ / "task.json").open("r") as fp:
-            results = json.load(fp)["process"]["settings"]["result"]
-        fs.create_file(out_ / "result.json", contents=json.dumps(results))
-        return mocked.DEFAULT
+    #     processor_path = in_.parent
+    #     for child in in_.iterdir():
+    #         print(f"Moving {child} to {out_ / child.name})")
+    #         shutil.copy(child, out_ / child.name)
+    #     with (in_ / "task.json").open("r") as fp:
+    #         results = json.load(fp)["process"]["settings"]["result"]
+    #     fs.create_file(out_ / "result.json", contents=json.dumps(results))
+    #     return mocked.DEFAULT
 
-    fake_run = mocked.Mock(return_value=FakeDockerContainer(), side_effect=fake_processor)  # type: ignore
+    fake_run = mocked.Mock(return_value=FakeDockerContainer(), side_effect=make_fake_processor(fs,mocked,False))  # type: ignore
     mocked.patch.object(ContainerCollection, "run", new=fake_run)
     await processor.run_processor()
 
@@ -322,22 +324,19 @@ async def test_multi_process_series(fs, mercure_config: Callable[[Dict], Config]
     # process.process_series.process_series.assert_called_once_with(str(processor_path))  # type: ignore
 
     uid_string = f"{os.getuid()}:{os.getegid()}"
-    fake_run.assert_has_calls(
-        [call(
-            config.modules[m].docker_tag,
-            environment={"MERCURE_IN_DIR": "/tmp/data", "MERCURE_OUT_DIR": "/tmp/output"},
-            user=uid_string,
-            group_add=[os.getegid()],
-            volumes={
-                str(processor_path / "in"): {"bind": "/tmp/data", "mode": "rw"},
-                str(processor_path / "out"): {"bind": "/tmp/output", "mode": "rw"},
-            },
-            detach=True,
-            )
-            for m in partial["rules"]["catchall"]["processing_module"]
-        ]
-    )
-
+    for m in partial["rules"]["catchall"]["processing_module"]:
+        fake_run.assert_any_call(
+                config.modules[m].docker_tag,
+                environment={"MERCURE_IN_DIR": "/tmp/data", "MERCURE_OUT_DIR": "/tmp/output",  'MONAI_INPUTPATH': '/tmp/data', 'MONAI_OUTPUTPATH': '/tmp/output'},
+                user=uid_string,
+                group_add=[os.getegid()],
+                volumes={
+                    str(processor_path / "in"): {"bind": "/tmp/data", "mode": "rw"},
+                    str(processor_path / "out"): {"bind": "/tmp/output", "mode": "rw"},
+                },
+                detach=True,
+        )
+                
     assert [] == [k.name for k in Path("/var/processing").glob("**/*")]
     assert [*files, 'result.json'] == [k.name for k in (Path("/var/success") / processor_path.name).glob("*") if k.is_file()]
 

@@ -6,14 +6,14 @@ import json
 import os
 from pathlib import Path
 import shutil
-from typing import Callable, Dict, Any, Iterator
+from typing import Callable, Dict, Any, Iterator, Optional
 
 import pytest
 import process
 import routing, common, router, processor
 import common.config as config
 from common.types import Config
-
+import docker.errors
 
 def spy_on(mocker, obj) -> None:
     pieces = obj.split(".")
@@ -124,14 +124,20 @@ class FakeDockerContainer:
         pass
 
 def make_fake_processor(fs, mocked, fails):
-    def fake_processor(tag, environment, volumes: Dict, **kwargs):
+    def fake_processor(tag, environment: Optional[Dict] = None, volumes: Optional[Dict] = None, **kwargs):
         global processor_path
+        if "cat" in kwargs.get("command",""):
+            raise docker.errors.ContainerError(None,None,None,None,None)
+        if tag == "busybox:stable-musl":
+            return mocked.DEFAULT
+        if not volumes:
+            raise Exception()
         in_ = Path(next((k for k in volumes.keys() if volumes[k]["bind"] == "/tmp/data")))
         out_ = Path(next((k for k in volumes.keys() if volumes[k]["bind"] == "/tmp/output")))
 
         # processor_path = in_.parent
         for child in in_.iterdir():
-            print(f"Moving {child} to {out_ / child.name})")
+            print(f"FAKE PROCESSOR: Moving {child} to {out_ / child.name})")
             shutil.copy(child, out_ / child.name)
         with (in_ / "task.json").open("r") as fp:
             results = json.load(fp)["process"]["settings"].get("result",{})

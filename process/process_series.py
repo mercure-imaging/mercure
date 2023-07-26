@@ -150,7 +150,7 @@ async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_p
     set_command = {}
     image_is_monai_map = False
     try:
-        monai_app_manifest = json.loads(docker_client.containers.run(docker_tag, "cat /etc/monai/app.json", entrypoint="").decode('utf-8'))
+        monai_app_manifest = json.loads(docker_client.containers.run(docker_tag, command="cat /etc/monai/app.json", entrypoint="").decode('utf-8'))
         image_is_monai_map = True
         set_command = dict(entrypoint="",command=monai_app_manifest["command"])
         logger.debug("Detected MONAI MAP, using command from manifest.")
@@ -226,9 +226,9 @@ async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_p
             if not config.mercure.support_root_modules:
                 raise Exception("This module requires execution as root, but 'support_root_modules' is not set to true in the configuration. Aborting.")
             user_info = {}
-            logger.warning("Executing module as root.")
+            logger.debug("Executing module as root.")
         else:
-            logger.warning("Executing module as mercure.")
+            logger.debug("Executing module as mercure.")
 
         # We might be operating in a user-remapped namespace. This makes sure that the user inside the container can read and write the files.
         ( real_folder / "in" ).chmod(0o777)
