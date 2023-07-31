@@ -11,6 +11,7 @@ WorkingDirectory=/opt/mercure/app
 ExecStart=/opt/mercure/app/receiver.sh
 Restart=on-failure
 RestartSec=3
+User=mercure
 
 [Install]
 WantedBy=multi-user.target
