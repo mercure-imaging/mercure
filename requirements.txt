@@ -6,7 +6,7 @@
 #
 aiofiles==23.1.0
     # via -r requirements.in
-aiohttp==3.8.4
+aiohttp==3.8.5
     # via -r requirements.in
 aiopg==1.4.0
     # via databases
@@ -36,7 +36,7 @@ botocore==1.29.159
     # via
     #   boto3
     #   s3transfer
-certifi==2023.5.7
+certifi==2023.7.22
     # via
     #   -r requirements.in
     #   requests
@@ -217,6 +217,7 @@ starlette==0.28.0
     # via
     #   -r requirements.in
     #   starlette-auth-toolkit
+    #   starlette-decorouter
 starlette-auth-toolkit==0.5.0
     # via -r requirements.in
 starlette-decorouter==1.0.0
