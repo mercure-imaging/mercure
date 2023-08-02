@@ -21,6 +21,7 @@
     "retention": 259200,
     "offpeak_start": "22:00",
     "offpeak_end": "06:00",
+    "processing_runtime": "runc",
     "targets": {
         "test_target": {
             "target_type": "dicom",

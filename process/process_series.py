@@ -139,6 +139,10 @@ async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_p
         logger.error("No docker tag supplied")
         return False
       
+    runtime = {}
+    if config.mercure.processing_runtime:
+        runtime = dict(runtime=config.mercure.processing_runtime)
+        
     additional_volumes: Dict[str, Dict[str, str]] = decode_task_json(module.additional_volumes)
     module_environment = decode_task_json(module.environment)
     mercure_environment = dict(MERCURE_IN_DIR=container_in_dir, MERCURE_OUT_DIR=container_out_dir)
@@ -232,14 +236,18 @@ async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_p
 
         # We might be operating in a user-remapped namespace. This makes sure that the user inside the container can read and write the files.
         ( real_folder / "in" ).chmod(0o777)
-        for k in ( real_folder / "in" ).glob("**/*"):
-            k.chmod(0o666)
+        try:
+            for k in ( real_folder / "in" ).glob("**/*"):
+                k.chmod(0o666)
+        except PermissionError:
+            raise Exception("Unable to prepare input files for processor. The receiver may be running as root, which is no longer supported. ")
         ( real_folder / "out" ).chmod(0o777)
 
         container  = docker_client.containers.run(
             docker_tag,
             volumes=merged_volumes,
             environment=environment,
+            **runtime,
             **set_command,
             **arguments,
             **user_info,
