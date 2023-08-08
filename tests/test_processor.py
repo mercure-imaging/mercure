@@ -251,6 +251,7 @@ async def test_process_series(fs, mercure_config: Callable[[Dict], Config], mock
         user=uid_string,
         group_add=[os.getegid()],
         volumes=unittest.mock.ANY,
+        runtime="runc",
         detach=True),
         call('busybox:stable-musl', volumes=unittest.mock.ANY, userns_mode='host', command='chown -R 1000:1000 /tmp/output', detach=True)
         ]
@@ -330,6 +331,7 @@ async def test_multi_process_series(fs, mercure_config: Callable[[Dict], Config]
                 environment={"MERCURE_IN_DIR": "/tmp/data", "MERCURE_OUT_DIR": "/tmp/output",  'MONAI_INPUTPATH': '/tmp/data', 'MONAI_OUTPUTPATH': '/tmp/output'},
                 user=uid_string,
                 group_add=[os.getegid()],
+                runtime="runc",
                 volumes={
                     str(processor_path / "in"): {"bind": "/tmp/data", "mode": "rw"},
                     str(processor_path / "out"): {"bind": "/tmp/output", "mode": "rw"},

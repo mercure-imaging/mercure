@@ -176,6 +176,7 @@ class Config(BaseModel, Compat):
     rules: Dict[str, Rule]
     modules: Dict[str, Module]
     process_runner: Literal["docker", "nomad", ""] = ""
+    processing_runtime: Optional[str] = None
     bookkeeper_api_key: Optional[str]
     features: Dict[str, bool]
     processing_logs: ProcessingLogsConfig = ProcessingLogsConfig()
