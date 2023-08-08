@@ -37,6 +37,14 @@
                         <td>{{runtime}}</td>
                     </tr>
                     <tr>
+                        <td>Support Root Modules:</td>
+                        <td>{{config['support_root_modules']}}
+                            {% if config['support_root_modules']==True %}
+                            <a href="https://mercure-imaging.org/docs/advanced.html#additional-settings" target="_blank" title="This setting is needed for running MONAI models, but it makes the server more vulnerable. Carefully read the documentation"><i class="fas fa-exclamation-circle has-text-warning" style="margin-left: 1px;"></i></a>
+                            {% endif %}
+                        </td>
+                    </tr>                    
+                    <tr>
                         <td>DICOM Port:</td>
                         <td>{{config['port']}}</td>
                     </tr>
@@ -48,14 +56,6 @@
                             {% endif %}
                         </td>
                     </tr>
-                    <tr>
-                        <td>Support Root Modules:</td>
-                        <td>{{config['support_root_modules']}}
-                            {% if config['support_root_modules']==True %}
-                            <a href="https://mercure-imaging.org/docs/advanced.html#additional-settings" target="_blank" title="This setting is needed for running MONAI models, but it makes the server more vulnerable. Carefully read the documentation"><i class="fas fa-exclamation-circle has-text-warning" style="margin-left: 1px;"></i></a>
-                            {% endif %}
-                        </td>
-                    </tr>                    
                 </table>
             </div>
         </div>

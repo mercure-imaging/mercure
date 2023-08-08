@@ -392,3 +392,62 @@ table.dataTable tbody tr.selected th, table.dataTable tbody tr.selected td {
   background-color: rgb(50, 115, 220);
   color: #fff;
 }
+
+
+.textarea_scroll::-webkit-scrollbar-track,
+.textarea_scroll::-webkit-scrollbar-corner {
+  background: #ffffff00;
+}
+
+.textarea_scroll::-webkit-scrollbar-thumb {
+  background: rgb(219,219,219);
+  border-radius: 10px;
+  border: 4px solid transparent;
+  background-clip: content-box;
+}
+
+.textarea_scroll::-webkit-scrollbar-thumb:hover {
+  background: rgb(219,219,219);
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+
+.textarea_scroll::-webkit-scrollbar {
+  width: 14px;
+  height: 14px;
+}
+
+#modules_list > div > div > div > div > .tag {
+  font-size: 1rem !important;
+  background-color: #3273dc;
+}
+/* 
+#modules_list > div > div > div > div > span:before {
+  content: "";  
+  margin-right: 8px;
+}
+
+
+#modules_list > div > div > div > div > span:after {
+  content: "";
+  margin-left: 8px;
+} */
+
+
+/*#modules_list > div > div > div > div > .input {*/
+
+#modules_list > div > div > input[type=text] {
+  font-size: 1rem !important;
+}
+
+#modules_list > div > div > input[type=text]:focus-visible {
+  outline: none;
+}
+
+#modules_list > div > div > div > div > a {
+  background-color: #2f2f2f !important;
+}
+
+#modules_list > div > div > input[type=text] {
+  min-height: 32px;
+}

@@ -60,7 +60,7 @@
                         <div class="field has-addons">
                             <div class="control">
                                 <button id="toggletestrule" class="button" type="button" onclick="toggleTestRule()" title="Test Rule">
-                                    <i class="fas fa-cogs "></i>
+                                    <i class="fas fa-cogs"></i>
                                 </button> 
                             </div>
                             <div class="control is-expanded">
@@ -88,7 +88,7 @@
                                         <div class="field">
                                             <label class="label">Test Values:</label>
                                             <div class="control">
-                                                <textarea class="textarea testinclude" rows="8" placeholder="Testing tags" id="testvalues"
+                                                <textarea class="textarea testinclude textarea_scroll" rows="8" placeholder="Testing tags" id="testvalues"
                                                     name="testvalues" spellcheck="false">{{alltags|tojson(indent=4)}}</textarea>
                                             </div>
                                         </div>
@@ -238,7 +238,7 @@
                     {% if process_runner == "docker" %}
                     <div class="field" id="modules_list">
                         <label class="label">Processing Steps</label>
-                        <div class="control" style="min-height: 40px;">                            
+                        <div class="control process_list" style="min-height: 40px;">                            
                             <input id="processing_module_list" name="processing_module_list" class="input" type="tags" placeholder="Add module"
                             value="{{rules[rule]['processing_module']|join(',') if (rules[rule]['processing_module'].pop) else rules[rule]['processing_module']}}"
                             style="">
@@ -324,16 +324,16 @@
                     <div class="field">
                         <label class="label">Webhook Body</label>
                         <div class="control">
-                            <textarea name="notification_payload_body" id="notification_payload_body" class="textarea"
-                                autocomplete='off'
+                            <textarea name="notification_payload_body" id="notification_payload_body" class="textarea textarea_scroll"
+                                autocomplete="off" rows="6"
                                 placeholder="Free text for body of REST call">{{rules[rule]['notification_payload_body']}}</textarea>
                         </div>
                     </div>
                     <div class="field">
                         <label class="label">JSON Payload</label>
                         <div class="control">
-                            <textarea name="notification_payload" id="notification_payload" class="textarea"
-                                autocomplete='off'
+                            <textarea name="notification_payload" id="notification_payload" class="textarea textarea_scroll"
+                                autocomplete="off" rows="6"
                                 placeholder="JSON Payload for REST call">{{rules[rule]['notification_payload']}}</textarea>
                         </div>
                     </div>                    
@@ -370,8 +370,8 @@
                     <div class="field">
                         <label class="label">Email Body</label>
                         <div class="control">
-                            <textarea name="notification_email_body" id="notification_email_body" class="textarea"
-                                autocomplete='off'
+                            <textarea name="notification_email_body" id="notification_email_body" class="textarea textarea_scroll"
+                                autocomplete="off" rows="6"
                                 placeholder="Contents of notification email">{{rules[rule]['notification_email_body']}}</textarea>
                         </div>
                     </div>
@@ -414,7 +414,7 @@
                     <div class="field">
                         <label class="label">Comment</label>
                         <div class="control">
-                            <textarea name="comment" class="textarea" autocomplete='off' rows="5"
+                            <textarea name="comment" class="textarea textarea_scroll" autocomplete='off' rows="5"
                                 placeholder="Rule description">{{rules[rule]['comment']}}</textarea>
                         </div>
                     </div>
