@@ -173,6 +173,113 @@ static bool isConversionNeeded = false;
     }                                                                                   \
     fprintf(fp, "\"%s\": \"%s\",\n", A, escapeJSONValue(conversionBuffer).c_str())
 
+
+
+static DcmTagKey parseTagKey(const char *tagName)
+{
+    unsigned int group = 0xffff;
+    unsigned int elem = 0xffff;
+    if (sscanf(tagName, "%x,%x", &group, &elem) != 2)
+    {
+        DcmTagKey tagKey;
+        /* it is a name */
+        const DcmDataDictionary &globalDataDict = dcmDataDict.rdlock();
+        const DcmDictEntry *dicent = globalDataDict.findEntry(tagName);
+        if (dicent == NULL) {
+            tagKey = DCM_UndefinedTagKey;
+        } else {
+            tagKey = dicent->getKey();
+        }
+        dcmDataDict.rdunlock();
+        return tagKey;
+    } else     /* tag name has format "gggg,eeee" */
+    {
+        return DcmTagKey(OFstatic_cast(Uint16, group),OFstatic_cast(Uint16, elem));
+    }
+}
+
+QVariant readTag(DcmTagKey tag, DcmDataset* dataset, OFString& out, OFString path_info) {
+    if (!dataset->tagExistsWithValue(tag)) {
+        return QVariant(false);
+    }
+    if (!dataset->findAndGetOFStringArray(tag, out).good())
+    {
+        OFString errorStr = "Unable to read tag "; 
+        errorStr.append(tag.toString());
+        errorStr.append("\nReason: ");                                                                                        
+        errorStr.append(dataset->findAndGetOFStringArray(tag, out).text());                                            
+        writeErrorInformation(path_info, errorStr);                                                                 
+        return QVariant();
+    }
+    for (size_t i = 0; i < out.length(); i++)                                                                                 
+    {                                                                                                                         
+        switch (out[i])                                                                                                       
+        {                                                                                                                     
+        case 13:                                                                                                              
+            out[i] = ';';                                                                                                     
+            break;                                                                                                            
+        case 10:                                                                                                              
+            out[i] = ' ';                                                                                                     
+            break;                                                                                                            
+        case 34:                                                                                                              
+            out[i] = 39;                                                                                                      
+            break;                                                                                                            
+        default:                                                                                                              
+            break;                                                                                                            
+        }                                                                                                                     
+    }
+    return QVariant(true);
+}
+bool readExtraTags(DcmDataset* dataset, OFString path_info) {
+    QString filePath = "./dcm_extra_tags";
+    if (!QFileInfo::exists(filePath)) {
+        filePath = QCoreApplication::applicationDirPath() + "/dcm_extra_tags";
+    }
+    if (QFileInfo::exists(filePath)) {
+        QFile inputFile(filePath);
+        inputFile.open(QIODevice::ReadOnly);
+        if (!inputFile.isOpen()) {
+            std::cout << "Unable to read extra_tags file." << std::endl;
+            return false;
+        }
+
+        QTextStream stream(&inputFile);
+        for (QString line = stream.readLine();
+            !line.isNull();
+            line = stream.readLine()) {
+
+            OFString out;
+            DcmTagKey the_tag = parseTagKey(qPrintable(line));
+            if (the_tag == DCM_UndefinedTagKey) {
+                std::cout << "Unknown tag " << qPrintable(line) << std::endl;
+                return false;
+            }
+            QVariant found_tag = readTag(the_tag, dataset, out, path_info);
+            if (!found_tag.isValid())
+                return false;
+            if (found_tag.value<bool>())
+                additional_tags.append(QPair(the_tag, out));
+        };
+    }
+    return true;
+}
+void writeExtraTags(QVector<QPair<DcmTagKey, OFString>>& tags, FILE* fp, OFString& dcmFile, OFString& conversionBuffer) {
+    
+    QVectorIterator<QPair<DcmTagKey, OFString>> iter(tags);
+
+    const DcmDataDictionary &globalDataDict = dcmDataDict.rdlock();
+    while(iter.hasNext())
+    {
+        auto pair = iter.next();
+        const DcmDictEntry *dicent = globalDataDict.findEntry(pair.first, NULL);
+        if (dicent == NULL) { // If it's not in the dictionary
+            INSERTTAG(pair.first.toString().c_str(), pair.second,"");
+        } else {
+            INSERTTAG(dicent->getTagName(), pair.second,"");
+        }
+    }
+    dcmDataDict.rdunlock();
+}
 bool writeTagsFile(OFString dcmFile, OFString originalFile)
 {
     OFString filename = dcmFile + ".tags";
@@ -235,20 +342,7 @@ bool writeTagsFile(OFString dcmFile, OFString originalFile)
     INSERTTAG("SenderAET", helperSenderAET, "STORESCU");
     INSERTTAG("ReceiverAET", helperReceiverAET, "ANY-SCP");
 
-    QVectorIterator<QPair<DcmTagKey, OFString>> iter(additional_tags);
-
-    const DcmDataDictionary &globalDataDict = dcmDataDict.rdlock();
-    while(iter.hasNext())
-    {
-        auto pair = iter.next();
-        const DcmDictEntry *dicent = globalDataDict.findEntry(pair.first, NULL);
-        if (dicent == NULL) { // If it's not in the dictionary
-            INSERTTAG(pair.first.toString().c_str(), pair.second,"");
-        } else {
-            INSERTTAG(dicent->getTagName(), pair.second,"");
-        }
-    }
-    dcmDataDict.rdunlock();
+    writeExtraTags(additional_tags, fp, dcmFile, conversionBuffer);
 
     fprintf(fp, "\"Filename\": \"%s\"\n", originalFile.c_str());
     fprintf(fp, "}\n");
@@ -257,61 +351,6 @@ bool writeTagsFile(OFString dcmFile, OFString originalFile)
     return true;
 }
 
-static DcmTagKey parseTagKey(const char *tagName)
-{
-    unsigned int group = 0xffff;
-    unsigned int elem = 0xffff;
-    if (sscanf(tagName, "%x,%x", &group, &elem) != 2)
-    {
-        DcmTagKey tagKey;
-        /* it is a name */
-        const DcmDataDictionary &globalDataDict = dcmDataDict.rdlock();
-        const DcmDictEntry *dicent = globalDataDict.findEntry(tagName);
-        if (dicent == NULL) {
-            tagKey = DCM_UndefinedTagKey;
-        } else {
-            tagKey = dicent->getKey();
-        }
-        dcmDataDict.rdunlock();
-        return tagKey;
-    } else     /* tag name has format "gggg,eeee" */
-    {
-        return DcmTagKey(OFstatic_cast(Uint16, group),OFstatic_cast(Uint16, elem));
-    }
-}
-
-QVariant readTag(DcmTagKey tag, DcmDataset* dataset, OFString& out, OFString path_info) {
-    if (!dataset->tagExistsWithValue(tag)) {
-        return QVariant(false);
-    }
-    if (!dataset->findAndGetOFStringArray(tag, out).good())
-    {
-        OFString errorStr = "Unable to read tag "; 
-        errorStr.append(tag.toString());
-        errorStr.append("\nReason: ");                                                                                        
-        errorStr.append(dataset->findAndGetOFStringArray(tag, out).text());                                            
-        writeErrorInformation(path_info, errorStr);                                                                 
-        return QVariant();
-    }
-    for (size_t i = 0; i < out.length(); i++)                                                                                 
-    {                                                                                                                         
-        switch (out[i])                                                                                                       
-        {                                                                                                                     
-        case 13:                                                                                                              
-            out[i] = ';';                                                                                                     
-            break;                                                                                                            
-        case 10:                                                                                                              
-            out[i] = ' ';                                                                                                     
-            break;                                                                                                            
-        case 34:                                                                                                              
-            out[i] = 39;                                                                                                      
-            break;                                                                                                            
-        default:                                                                                                              
-            break;                                                                                                            
-        }                                                                                                                     
-    }
-    return QVariant(true);
-}
 
 #define READTAG(TAG, SOURCE, VAR)                                                                                             \
     if ((dcmFile.SOURCE->tagExistsWithValue(TAG)) && (!dcmFile.SOURCE->findAndGetOFStringArray(TAG, VAR).good()))             \
@@ -403,6 +442,7 @@ int main(int argc, char *argv[])
         writeErrorInformation(path + origFilename, errorString);
         return 1;
     }
+    
     READTAG(DCM_SpecificCharacterSet, getDataset(), tagSpecificCharacterSet);
     READTAG(DCM_Modality, getDataset(), tagModality);
     READTAG(DCM_BodyPartExamined, getDataset(), tagBodyPartExamined);
@@ -449,37 +489,9 @@ int main(int argc, char *argv[])
     READTAG(DCM_ImageType, getDataset(), tagImageType);
 
 
-    QString filePath = "./dcm_extra_tags";
-    if (!QFileInfo::exists(filePath)) {
-        filePath = QCoreApplication::applicationDirPath() + "/dcm_extra_tags";
+    if (!readExtraTags(dcmFile.getDataset(), path + origFilename)) {
+        return 1;
     }
-    if (QFileInfo::exists(filePath)) {
-        QFile inputFile(filePath);
-        inputFile.open(QIODevice::ReadOnly);
-        if (!inputFile.isOpen()) {
-            std::cout << "Unable to read extra_tags file." << std::endl;
-            return 1;
-        }
-
-        QTextStream stream(&inputFile);
-        for (QString line = stream.readLine();
-            !line.isNull();
-            line = stream.readLine()) {
-
-            OFString out;
-            DcmTagKey the_tag = parseTagKey(qPrintable(line));
-            if (the_tag == DCM_UndefinedTagKey) {
-                std::cout << "Unknown tag " << qPrintable(line) << std::endl;
-                return 1;
-            }
-            QVariant found_tag = readTag(the_tag, dcmFile.getDataset(), out, path + origFilename);
-            if (!found_tag.isValid())
-                return 1;
-            if (found_tag.value<bool>())
-                additional_tags.append(QPair(the_tag, out));
-        };
-    }
-
     isConversionNeeded = true;
     if (tagSpecificCharacterSet.compare("ISO_IR 192") == 0)
     {
