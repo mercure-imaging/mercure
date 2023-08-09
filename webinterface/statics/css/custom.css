@@ -421,20 +421,6 @@ table.dataTable tbody tr.selected th, table.dataTable tbody tr.selected td {
   font-size: 1rem !important;
   background-color: #3273dc;
 }
-/* 
-#modules_list > div > div > div > div > span:before {
-  content: "";  
-  margin-right: 8px;
-}
-
-
-#modules_list > div > div > div > div > span:after {
-  content: "";
-  margin-left: 8px;
-} */
-
-
-/*#modules_list > div > div > div > div > .input {*/
 
 #modules_list > div > div > input[type=text] {
   font-size: 1rem !important;
@@ -446,6 +432,11 @@ table.dataTable tbody tr.selected th, table.dataTable tbody tr.selected td {
 
 #modules_list > div > div > div > div > a {
   background-color: #2f2f2f !important;
+  
+}
+
+#modules_list > div > div > div > div > a:hover {
+  background-color: #ff3860 !important;
 }
 
 #modules_list > div > div > input[type=text] {

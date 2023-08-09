@@ -84,18 +84,23 @@
                                 value="{{module['docker_arguments']}}">
                         </p>
                     </div>
-                    <div class="field">
+                    <div class="field" style="margin-top: 30px;">
                         <input id="requires_root" type="checkbox" name="requires_root"
                             class="switch is-rounded is-dark" value="True" {% if
-                            module['requires_root']==True %}checked="checked" {% endif%}>
-                        <label for="requires_root">Requires root</label>
+                            module['requires_root']==True %}checked="checked" {% endif%} onclick="toggleRequiresRoot(this);">
+                        <label for="requires_root" title="This setting is required for running MONAI applications">Requires root user</label>
+                        {% if support_root_modules != True %}
+                        <div class="notification is-warning" id="warningroot" style="margin-top: 16px;">
+                            <i class="fas fa-info-circle"></i>&nbsp;&nbsp;You must enable &quot;Support Root Modules&quot; on the <a href="/configuration">Configuration</a> page before this option can be used.
+                        </div>                
+                        {% endif %}
                     </div>
                 </div>
                 <div class="panel" data-content="settings">
                     <div class="field">
                         <label class="label" for="settings">Settings</label>
                         <div class="control">
-                            <textarea name="settings" id="settings" class="textarea"
+                            <textarea name="settings" id="settings" class="textarea textarea_scroll"
                                 autocomplete='off' rows="9"
                                 placeholder="Global module settings">{{settings}}</textarea>
                         </div>
@@ -110,7 +115,7 @@
                     <div class="field">
                         <label class="label" for="constraints">Execution constraints (HCL) <sup><a class="greenlink" href="https://www.nomadproject.io/docs/job-specification/constraint" target="_blank"><i class="fas fa-question-circle"></i></a></sup></label>
                         <div class="control">
-                            <textarea name="constraints" id="constraints" class="textarea"
+                            <textarea name="constraints" id="constraints" class="textarea textarea_scroll"
                                 autocomplete='off' rows="5"
                                 placeholder='constraint {  attribute = "${attr.os.name}" value = "ubuntu" }&#10;&#10;See https://www.nomadproject.io/docs/job-specification/constraint for examples'>{{module.constraints}}</textarea>
                         </div>
@@ -118,7 +123,7 @@
                     <div class="field">
                         <label class="label" for="resources">Resource requirements (HCL) <sup><a class="greenlink" href="https://www.nomadproject.io/docs/job-specification/resources" target="_blank"><i class="fas fa-question-circle"></i></a></sup></label>
                         <div class="control">
-                            <textarea name="resources" id="resources" class="textarea"
+                            <textarea name="resources" id="resources" class="textarea textarea_scroll"
                                 autocomplete='off' rows="5"
                                 placeholder='resources { cpu = 100 memory = 256 }&#10;&#10;See https://www.nomadproject.io/docs/job-specification/resources for examples'>{{module.resources}}</textarea>
                         </div>
@@ -128,7 +133,7 @@
                     <div class="field"">
                         <label class="label" for="comment">Comment</label>
                         <div class="control">
-                            <textarea name="comment" id="comment" class="textarea"
+                            <textarea name="comment" id="comment" class="textarea textarea_scroll"
                                 autocomplete='off' rows="5"
                                 placeholder="Module description">{{module['comment']}}</textarea>
                         </div>
@@ -156,6 +161,17 @@
 
 
 <script>
+
+    function toggleRequiresRoot(cb) {
+        {% if support_root_modules != True %}
+        if (cb.checked) {
+            $( "#warningroot" ).show();
+        } else {
+            $( "#warningroot" ).hide();
+        }
+        {% endif %}
+    }
+
     function validate() {
         var field = "";
         try {
@@ -179,6 +195,12 @@
     }
 
     $(document).ready(function () {
+
+        {% if module['requires_root']==True %}
+        $("#warningroot").show();
+        {% else %}
+        $("#warningroot").hide();
+        {% endif %}
 
         $('#tabs li').on('click', function () {
             var tab = $(this).data('tab');

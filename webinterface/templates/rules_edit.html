@@ -64,7 +64,7 @@
                                 </button> 
                             </div>
                             <div class="control is-expanded">
-                                <textarea rows="1" name="rule" id="rule" class="textarea testinclude" autocomplete='off'
+                                <textarea rows="1" name="rule" id="rule" class="textarea testinclude textarea_scroll" autocomplete='off'
                                     onkeyup="this.value = this.value.replace(/[{}\x22\n]/g, '')" type="text"
                                     placeholder="Routing rule"
                                     style="border-top-left-radius: 0px; border-bottom-left-radius: 0px; padding-top: 5px; padding-bottom: 5px; min-height: 36px; height: 36px;">{{rules[rule]['rule']}}</textarea>
@@ -478,7 +478,7 @@
         <p class="title">Rule Notation</p>
         <span class="delete" data-dismiss="quickview"></span>
     </header>
-    <div class="quickview-body">
+    <div class="quickview-body textarea_scroll">
         <div class="quickview-block" style="margin-left: 20px; margin-right: 20px; margin-top: 20px;">
             <div class="table-container">
                 <label class="label">Examples:</label>

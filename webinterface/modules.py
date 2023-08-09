@@ -158,6 +158,7 @@ async def edit_module(request):
         "module_name": module,
         "settings": settings_string,
         "runtime": runtime,
+        "support_root_modules": config.mercure.support_root_modules
     }
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
