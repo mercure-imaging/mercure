@@ -45,14 +45,14 @@
             <div id="tab-content">
                 <div class="panel is-active" data-content="docker">
                     <div class="field">
-                        <label class="label" for="docker_tag">Docker tag</label>
+                        <label class="label" for="docker_tag">Docker Tag</label>
                         <p class="control">
                             <input class="input" id="docker_tag" required type="text" placeholder="Docker tag" name="docker_tag"
                                 value="{{module['docker_tag']}}">
                         </p>
                     </div>
                     <div class="field">
-                        <label class="label" for="additional_volumes">Additional volumes</label>
+                        <label class="label" for="additional_volumes">Additional Volumes</label>
                         <p class="control">
                             <input class="input"
                                 id="additional_volumes"
@@ -63,7 +63,7 @@
                         </p>
                     </div>
                     <div class="field">
-                        <label class="label" for="environment">Environment variables</label>
+                        <label class="label" for="environment">Environment Variables</label>
                         <p class="control">
                             <input class="input"
                                 id="environment"
@@ -74,7 +74,7 @@
                         </p>
                     </div>
                     <div class="field">
-                        <label class="label" for="docker_arguments">Other Docker arguments <sup><a class="greenlink" href="https://docker-py.readthedocs.io/en/stable/containers.html" target="_blank"><i class="fas fa-question-circle"></i></a></sup></label>
+                        <label class="label" for="docker_arguments">Other Docker Arguments <sup><a class="greenlink" href="https://docker-py.readthedocs.io/en/stable/containers.html" target="_blank"><i class="fas fa-question-circle"></i></a></sup></label>
                         <p class="control">
                             <input class="input"
                                 id="docker_arguments"
@@ -88,10 +88,10 @@
                         <input id="requires_root" type="checkbox" name="requires_root"
                             class="switch is-rounded is-dark" value="True" {% if
                             module['requires_root']==True %}checked="checked" {% endif%} onclick="toggleRequiresRoot(this);">
-                        <label for="requires_root" title="This setting is required for running MONAI applications">Requires root user</label>
+                        <label for="requires_root" title="This setting is required for running MONAI applications">Requires Root User</label>
                         {% if support_root_modules != True %}
                         <div class="notification is-warning" id="warningroot" style="margin-top: 16px;">
-                            <i class="fas fa-info-circle"></i>&nbsp;&nbsp;You must enable &quot;Support Root Modules&quot; on the <a href="/configuration">Configuration</a> page before this option can be used.
+                            <i class="fas fa-info-circle"></i>&nbsp;&nbsp;&quot;Support Root Modules&quot; must be enabled on the <a href="/configuration">Configuration</a> page before this option can be used.
                         </div>                
                         {% endif %}
                     </div>
@@ -113,7 +113,7 @@
                     </div>                    
                     {% endif %}
                     <div class="field">
-                        <label class="label" for="constraints">Execution constraints (HCL) <sup><a class="greenlink" href="https://www.nomadproject.io/docs/job-specification/constraint" target="_blank"><i class="fas fa-question-circle"></i></a></sup></label>
+                        <label class="label" for="constraints">Execution Constraints (HCL) <sup><a class="greenlink" href="https://www.nomadproject.io/docs/job-specification/constraint" target="_blank"><i class="fas fa-question-circle"></i></a></sup></label>
                         <div class="control">
                             <textarea name="constraints" id="constraints" class="textarea textarea_scroll"
                                 autocomplete='off' rows="5"
@@ -121,7 +121,7 @@
                         </div>
                     </div>   
                     <div class="field">
-                        <label class="label" for="resources">Resource requirements (HCL) <sup><a class="greenlink" href="https://www.nomadproject.io/docs/job-specification/resources" target="_blank"><i class="fas fa-question-circle"></i></a></sup></label>
+                        <label class="label" for="resources">Resource Requirements (HCL) <sup><a class="greenlink" href="https://www.nomadproject.io/docs/job-specification/resources" target="_blank"><i class="fas fa-question-circle"></i></a></sup></label>
                         <div class="control">
                             <textarea name="resources" id="resources" class="textarea textarea_scroll"
                                 autocomplete='off' rows="5"

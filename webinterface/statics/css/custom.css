@@ -393,7 +393,6 @@ table.dataTable tbody tr.selected th, table.dataTable tbody tr.selected td {
   color: #fff;
 }
 
-
 .textarea_scroll::-webkit-scrollbar-track,
 .textarea_scroll::-webkit-scrollbar-corner {
   background: #ffffff00;
@@ -419,7 +418,7 @@ table.dataTable tbody tr.selected th, table.dataTable tbody tr.selected td {
 
 #modules_list > div > div > div > div > .tag {
   font-size: 1rem !important;
-  background-color: #3273dc;
+  background-color: #3273dc;   
 }
 
 #modules_list > div > div > input[type=text] {
@@ -432,13 +431,56 @@ table.dataTable tbody tr.selected th, table.dataTable tbody tr.selected td {
 
 #modules_list > div > div > div > div > a {
   background-color: #2f2f2f !important;
-  
 }
 
 #modules_list > div > div > div > div > a:hover {
-  background-color: #ff3860 !important;
+  background-color: #ff3860 !important;  
 }
 
 #modules_list > div > div > input[type=text] {
   min-height: 32px;
+}
+
+#modules_list > div > div > div > div:after {
+  content: "\25B6";  
+  /* color: #b5b5b5; */
+  color: #dbdbdb;
+  margin-bottom: 0.5rem;
+  margin-left: 0.5rem;
+  font-size: 20px;;
+}
+
+#modules_list > div > div > div:nth-last-child(-n + 2) > div:after {
+  content: "";
+}
+
+#modules_list > div > div > *:nth-last-child(-n + 1) {
+  display: none;
+}
+ 
+#modules_list > div > div > *:first-child {
+  display: block;
+}
+
+#modules_list  .field.is-grouped>.control:not(:last-child) {
+  margin-right: 0.5rem;
+}
+
+.containerradiobtn {
+  width: 100px;
+  background-color: #f5f5f5;
+  color: #363636;
+}
+
+.containerradiobtn:checked {
+  background-color: #2f2f2f !important;
+  color: #FFF;
+}
+
+.containerradiobtn:hover {
+  background-color: #dbdbdb !important;
+}
+
+.radiobuttons_module > input:checked + label {
+  background: #2f2f2f !important;
 }

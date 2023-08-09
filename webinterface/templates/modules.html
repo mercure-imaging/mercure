@@ -27,7 +27,7 @@
                             <table class="table is-narrow" style="margin-bottom: 8px;">
                                 <col width="150">
                                 <tr>
-                                    <td>Docker tag:</td>
+                                    <td>Docker Tag:</td>
                                     <td>{{ modules[x]['docker_tag'] }}</td>
                                 </tr>
                                 <tr>
@@ -70,7 +70,7 @@
                     <p class="modal-card-title">Install New Module</p>
                 </header>
                 <section class="modal-card-body">
-                    <form hx-post="./" hx-target="#addmodal_message">
+                    <form hx-post="./" hx-target="#addmodal_message" htmx-added="title">
                         <div class="field">
                             <p class="control">
                                 <input class="input" id="addnewname" type="text" required pattern="[-_A-Za-z0-9]+"
@@ -82,27 +82,27 @@
                                 <input class="input" id="docker_tag" type="text" required placeholder="Docker tag" name="docker_tag">
                             </p>
                         </div>
-                        <div class="field">
-                            <label>Container type</label>
-                            <div class="control radiobuttons">
+                        <div class="field" style="margin-top: 15px; margin-bottom: 25px;">
+                            <label class="label">Container Type</label>
+                            <div class="control radiobuttons radiobuttons_module">
                                 <input type="radio" value="mercure" id="radio_mercure" name="container_type" style="display:none" checked>
-                                <label class="button" for="radio_mercure">
-                                  Mercure
+                                <label class="button containerradiobtn" for="radio_mercure" style="border-top-right-radius: 0px; border-bottom-right-radius: 0px; border-top-left-radius: 290486px; border-bottom-left-radius: 290486px;">
+                                 mercure
                                 </label>
-
                                 <input type="radio" value="monai" id="radio_monai" name="container_type" style="display:none">
-                                <label class="button" for="radio_monai">
-                                  Monai MAP
+                                <label class="button containerradiobtn" for="radio_monai" style="margin-left: -5px; border-top-left-radius: 0px; border-bottom-left-radius: 0px; border-top-right-radius: 290486px; border-bottom-right-radius: 290486px;">
+                                 MONAI
                                 </label>
-                              </div>
+                            </div>
                         </div>
-                        <div class="field">
-                            <p class="control" style="margin-top: 20px;">
+                        <div class="field" style="margin-top: 20px;"><span id="addmodal_message" style="color:#ff3860;"></span></div>
+                        <div class="field" style="margin-top: 25px;">
+                            <div class="control">
                                 <button id="confirmaddmodal" class="button is-success">Install</button>
                                 <a id="closeaddmodal" class="button">Cancel</a>
-                            </p>
+                                <i class="fas fa-spin fa-spinner htmx-indicator" style="font-size: 1.5em; float: right !important;"></i>
+                            </div>                            
                         </div>
-                        &nbsp;<i id="spinner" class="fas fa-spin fa-spinner htmx-indicator"></i><span id="addmodal_message" style="color:crimson"></span>
                     </form>
                 </section>
             </div>

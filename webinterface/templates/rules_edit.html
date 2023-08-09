@@ -252,7 +252,7 @@
                             {% endif %}
                             <div class="select">
                                 <div class="control">
-                                    <select id="processing_module" name="processing_module">
+                                    <select id="processing_module" name="processing_module" style="border-top-right-radius: 0px; border-bottom-right-radius: 0px;">
                                         {% for t in modules %}
                                         <option value="{{t}}" {% if rules[rule]['processing_module']==t %}selected{%
                                             endif%}>{{ t }}
@@ -262,7 +262,7 @@
                                 </div>
                             </div>
                             {% if process_runner == "docker" %}
-                                <a class="button" id="add-module"><i class="fas fa-plus"></i>&nbsp;Add</a>
+                                <a class="button" id="add-module" style="border-top-left-radius: 0px; border-bottom-left-radius: 0px;" title="Insert selected module"><i class="fas fa-plus"></i></a>
                             {% endif %}
                         </div>
                     </div>
@@ -302,7 +302,7 @@
                             <i class="fas fa-times"></i>
                             </span>
                         </a>
--->
+                        -->
                     </div>
                     <!--
                     <a class="button has-tooltip-right has-tooltip-success" data-tooltip="Add extra target">
@@ -310,7 +310,7 @@
                             <i class="fas fa-plus"></i>
                         </span>
                     </a>
--->
+                    -->
                 </div>
                 <div class="panel" data-content="notification">
                     <div class="field">
@@ -358,8 +358,7 @@
                             </div>
                         </div>
                     </div>
-
-                    <div class="field" style="margin-top: 50px;">
+                    <div class="field" style="margin-top: 40px;">
                         <label class="label">Email Address</label>
                         <div class="control">
                             <input name="notification_email" class="input" autocomplete='off' type="email"
@@ -371,7 +370,7 @@
                         <label class="label">Email Body</label>
                         <div class="control">
                             <textarea name="notification_email_body" id="notification_email_body" class="textarea textarea_scroll"
-                                autocomplete="off" rows="6"
+                                autocomplete="off" rows="9"
                                 placeholder="Contents of notification email">{{rules[rule]['notification_email_body']}}</textarea>
                         </div>
                     </div>
@@ -381,7 +380,7 @@
                             rules[rule]['notification_email_type']=='html' %}checked="checked" {% endif%}>
                         <label for="notification_email_html">HTML Content</label>
                     </div>
-                    <div class="field" style="margin-top: 50px;">
+                    <div class="field" style="margin-top: 40px;">
                         <label class="label">Trigger</label>
                     </div>
                     <div class="field">
@@ -805,9 +804,7 @@
 <script type="text/javascript" src="{{ url_for('static', path='/js/bulma-tagsinput.min.js') }}"></script>
 <script>
     var bulmaTagsInstances = bulmaTagsinput.attach();
-    window.setTimeout(function(){$("#modules_list input").attr("readonly","true")},200)
-    
-
+    window.setTimeout(function(){$("#modules_list input").attr("readonly","true")},200)   
     // bulmaTagsInstances[0].container.getElementsByTagName("input")[0].setAttribute("readonly",1)
 </script>
 

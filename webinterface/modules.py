@@ -122,10 +122,10 @@ async def add_module(request):
         try:
             client.images.get_registry_data(form["docker_tag"])
         except:
-            return PlainTextResponse(f"This docker tag is not available locally or in the registry.")
+            return PlainTextResponse(f"A Docker container with this tag does not exist locally or in the Docker Hub registry.")
 
     if form["container_type"] == "monai" and config.mercure.support_root_modules != True:
-        return PlainTextResponse(f"MONAI modules must run as root, and 'support_root_modules' is not set true in the Mercure configuration. Update this setting before installing MONAI modules.")
+        return PlainTextResponse(f"MONAI modules must run as root user, but the setting 'Support Root Modules' is disabled in the mercure configuration. Enable it on the Configuration page before installing MONAI modules.")
     # logger.info(f'Created rule {name}')
     # monitor.send_webgui_event(monitor.w_events.RULE_CREATE, request.user.display_name, name)
 
