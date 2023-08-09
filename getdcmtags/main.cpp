@@ -20,52 +20,14 @@
 #include <QVectorIterator>
 #include <QCoreApplication>
 
-#define VERSION "0.5.3"
+#include "tags_list.h"
+
+#define VERSION "0.6"
+
 
 static OFString tagSpecificCharacterSet = "";
-static OFString tagPatientName = "";
-static OFString tagSOPInstanceUID = "";
 static OFString tagSeriesInstanceUID = "";
-static OFString tagStudyInstanceUID = "";
-static OFString tagModality = "";
-static OFString tagBodyPartExamined = "";
-static OFString tagProtocolName = "";
-static OFString tagRetrieveAETitle = "";
-static OFString tagStationAETitle = "";
-static OFString tagManufacturer = "";
-static OFString tagManufacturerModelName = "";
-static OFString tagStudyDescription = "";
-static OFString tagCodeValue = "";
-static OFString tagCodeMeaning = "";
-static OFString tagSeriesDescription = "";
-static OFString tagPatientID = "";
-static OFString tagPatientBirthDate = "";
-static OFString tagPatientSex = "";
-static OFString tagAccessionNumber = "";
-static OFString tagReferringPhysicianName = "";
-static OFString tagStudyID = "";
-static OFString tagSeriesNumber = "";
-static OFString tagSeriesDate = "";
-static OFString tagSeriesTime = "";
-static OFString tagAcquisitionDate = "";
-static OFString tagAcquisitionTime = "";
-static OFString tagSequenceName = "";
-static OFString tagScanningSequence = "";
-static OFString tagSequenceVariant = "";
-static OFString tagMagneticFieldStrength = "";
-static OFString tagStationName = "";
-static OFString tagDeviceSerialNumber = "";
-static OFString tagDeviceUID = "";
-static OFString tagSoftwareVersions = "";
-static OFString tagContrastBolusAgent = "";
-static OFString tagImageComments = "";
-static OFString tagSliceThickness = "";
-static OFString tagInstanceNumber = "";
-static OFString tagAcquisitionNumber = "";
-static OFString tagInstitutionName = "";
-static OFString tagMediaStorageSOPClassUID = "";
-static OFString tagAcquisitionType = "";
-static OFString tagImageType = "";
+static OFString tagSOPInstanceUID = "";
 
 static OFString helperSenderAET = "";
 static OFString helperReceiverAET = "";
@@ -74,6 +36,7 @@ static std::string bookkeeperAddress = "";
 static std::string bookkeeperToken = "";
 
 static QVector<QPair<DcmTagKey, OFString>> additional_tags;
+static QVector<QPair<DcmTagKey, OFString>> main_tags;
 
 // Escape the JSON values properly to avoid problems if DICOM tags contains invalid characters
 // (see https://stackoverflow.com/questions/7724448/simple-json-string-escape-for-c)
@@ -198,9 +161,9 @@ static DcmTagKey parseTagKey(const char *tagName)
     }
 }
 
-QVariant readTag(DcmTagKey tag, DcmDataset* dataset, OFString& out, OFString path_info) {
+bool readTag(DcmTagKey tag, DcmItem* dataset, OFString& out, OFString path_info) {
     if (!dataset->tagExistsWithValue(tag)) {
-        return QVariant(false);
+        return true;
     }
     if (!dataset->findAndGetOFStringArray(tag, out).good())
     {
@@ -209,7 +172,7 @@ QVariant readTag(DcmTagKey tag, DcmDataset* dataset, OFString& out, OFString pat
         errorStr.append("\nReason: ");                                                                                        
         errorStr.append(dataset->findAndGetOFStringArray(tag, out).text());                                            
         writeErrorInformation(path_info, errorStr);                                                                 
-        return QVariant();
+        return false;
     }
     for (size_t i = 0; i < out.length(); i++)                                                                                 
     {                                                                                                                         
@@ -228,7 +191,7 @@ QVariant readTag(DcmTagKey tag, DcmDataset* dataset, OFString& out, OFString pat
             break;                                                                                                            
         }                                                                                                                     
     }
-    return QVariant(true);
+    return true;
 }
 bool readExtraTags(DcmDataset* dataset, OFString path_info) {
     QString filePath = "./dcm_extra_tags";
@@ -254,16 +217,14 @@ bool readExtraTags(DcmDataset* dataset, OFString path_info) {
                 std::cout << "Unknown tag " << qPrintable(line) << std::endl;
                 return false;
             }
-            QVariant found_tag = readTag(the_tag, dataset, out, path_info);
-            if (!found_tag.isValid())
+            if (!readTag(the_tag, dataset, out, path_info))
                 return false;
-            if (found_tag.value<bool>())
-                additional_tags.append(QPair(the_tag, out));
+            additional_tags.append(QPair(the_tag, out));
         };
     }
     return true;
 }
-void writeExtraTags(QVector<QPair<DcmTagKey, OFString>>& tags, FILE* fp, OFString& dcmFile, OFString& conversionBuffer) {
+void writeTagsList(QVector<QPair<DcmTagKey, OFString>>& tags, FILE* fp, OFString& dcmFile, OFString& conversionBuffer) {
     
     QVectorIterator<QPair<DcmTagKey, OFString>> iter(tags);
 
@@ -295,54 +256,14 @@ bool writeTagsFile(OFString dcmFile, OFString originalFile)
     OFString conversionBuffer = "";
 
     INSERTTAG("SpecificCharacterSet", tagSpecificCharacterSet, "ISO_IR 100");
-    INSERTTAG("Modality", tagModality, "MR");
-    INSERTTAG("BodyPartExamined", tagBodyPartExamined, "BRAIN");
-    INSERTTAG("ProtocolName", tagProtocolName, "COR T1 PIT(POST)");
-    INSERTTAG("RetrieveAETitle", tagRetrieveAETitle, "STORESCP");
-    INSERTTAG("StationAETitle", tagStationAETitle, "ANY-SCP");
-    INSERTTAG("Manufacturer", tagManufacturer, "mercure");
-    INSERTTAG("ManufacturerModelName", tagManufacturerModelName, "Router");
-    INSERTTAG("StudyDescription", tagStudyDescription, "NEURO^HEAD");
-    INSERTTAG("CodeValue", tagCodeValue, "IMG11291");
-    INSERTTAG("CodeMeaning", tagCodeMeaning, "MRI BRAIN PITUITARY WITH AND WITHOUT IV CONTRAST");
-    INSERTTAG("SeriesDescription", tagSeriesDescription, "COR T1 POST");
-    INSERTTAG("PatientName", tagPatientName, "Knight^Michael");
-    INSERTTAG("PatientID", tagPatientID, "987654321");
-    INSERTTAG("PatientBirthDate", tagPatientBirthDate, "20100101");
-    INSERTTAG("PatientSex", tagPatientSex, "M");
-    INSERTTAG("AccessionNumber", tagAccessionNumber, "1234567");
-    INSERTTAG("ReferringPhysicianName", tagReferringPhysicianName, "Tanner^Willie");
-    INSERTTAG("StudyID", tagStudyID, "243211348");
-    INSERTTAG("SeriesNumber", tagSeriesNumber, "99");
-    INSERTTAG("SOPInstanceUID", tagSOPInstanceUID, "1.2.256.0.7220020.3.1.3.541411159.31.1254476944.91518");
     INSERTTAG("SeriesInstanceUID", tagSeriesInstanceUID, "1.2.256.0.7230020.3.1.3.531431169.31.1254476944.91508");
-    INSERTTAG("StudyInstanceUID", tagStudyInstanceUID, "1.2.226.0.7231010.3.1.2.531431169.31.1554576944.99502");
-    INSERTTAG("SeriesDate", tagSeriesDate, "20190131");
-    INSERTTAG("SeriesTime", tagSeriesTime, "134112.100000");
-    INSERTTAG("AcquisitionDate", tagAcquisitionDate, "20190131");
-    INSERTTAG("AcquisitionTime", tagAcquisitionTime, "134112.100000");
-    INSERTTAG("SequenceName", tagSequenceName, "*se2d1");
-    INSERTTAG("ScanningSequence", tagScanningSequence, "SE");
-    INSERTTAG("SequenceVariant", tagSequenceVariant, "SP\OSP");
-    INSERTTAG("MagneticFieldStrength", tagMagneticFieldStrength, "1.5");
-    INSERTTAG("StationName", tagStationName, "MR20492");
-    INSERTTAG("DeviceSerialNumber", tagDeviceSerialNumber, "12345");
-    INSERTTAG("DeviceUID", tagDeviceUID, "1.2.276.0.7230010.3.1.4.8323329.22517.1564764826.40200");
-    INSERTTAG("SoftwareVersions", tagSoftwareVersions, "mercure MR A10");
-    INSERTTAG("ContrastBolusAgent", tagContrastBolusAgent, "8.0 ML JUICE");
-    INSERTTAG("ImageComments", tagImageComments, "Comment on image");
-    INSERTTAG("SliceThickness", tagSliceThickness, "3");
-    INSERTTAG("InstanceNumber", tagInstanceNumber, "12");
-    INSERTTAG("AcquisitionNumber", tagAcquisitionNumber, "15");
-    INSERTTAG("InstitutionName", tagInstitutionName, "Some institution");
-    INSERTTAG("MediaStorageSOPClassUID", tagMediaStorageSOPClassUID, "1.2.840.10008.5.1.4.1.1.4");
-    INSERTTAG("AcquisitionType", tagAcquisitionType, "SPIRAL");
-    INSERTTAG("ImageType", tagImageType, "ORIGINAL");
-
+    INSERTTAG("SOPInstanceUID", tagSOPInstanceUID, "1.2.256.0.7220020.3.1.3.541411159.31.1254476944.91518");
+    
     INSERTTAG("SenderAET", helperSenderAET, "STORESCU");
     INSERTTAG("ReceiverAET", helperReceiverAET, "ANY-SCP");
 
-    writeExtraTags(additional_tags, fp, dcmFile, conversionBuffer);
+    writeTagsList(main_tags, fp, dcmFile, conversionBuffer);
+    writeTagsList(additional_tags, fp, dcmFile, conversionBuffer);
 
     fprintf(fp, "\"Filename\": \"%s\"\n", originalFile.c_str());
     fprintf(fp, "}\n");
@@ -350,35 +271,6 @@ bool writeTagsFile(OFString dcmFile, OFString originalFile)
     fclose(fp);
     return true;
 }
-
-
-#define READTAG(TAG, SOURCE, VAR)                                                                                             \
-    if ((dcmFile.SOURCE->tagExistsWithValue(TAG)) && (!dcmFile.SOURCE->findAndGetOFStringArray(TAG, VAR).good()))             \
-    {                                                                                                                         \
-        OFString errorStr = "Unable to read tag ";                                                                            \
-        errorStr.append(TAG.toString());                                                                                      \
-        errorStr.append("\nReason: ");                                                                                        \
-        errorStr.append(dcmFile.SOURCE->findAndGetOFStringArray(TAG, VAR).text());                                            \
-        writeErrorInformation(path + origFilename, errorStr);                                                                 \
-        return 1;                                                                                                             \
-    }                                                                                                                         \
-    for (size_t i = 0; i < VAR.length(); i++)                                                                                 \
-    {                                                                                                                         \
-        switch (VAR[i])                                                                                                       \
-        {                                                                                                                     \
-        case 13:                                                                                                              \
-            VAR[i] = ';';                                                                                                     \
-            break;                                                                                                            \
-        case 10:                                                                                                              \
-            VAR[i] = ' ';                                                                                                     \
-            break;                                                                                                            \
-        case 34:                                                                                                              \
-            VAR[i] = 39;                                                                                                      \
-            break;                                                                                                            \
-        default:                                                                                                              \
-            break;                                                                                                            \
-        }                                                                                                                     \
-    }
 
 
 int main(int argc, char *argv[])
@@ -430,68 +322,39 @@ int main(int argc, char *argv[])
         path = origFilename.substr(0, slashPos + 1);
         origFilename.erase(0, slashPos + 1);
     }
-
+    OFString full_path = path + origFilename;
     DcmFileFormat dcmFile;
-    OFCondition status = dcmFile.loadFile(path + origFilename);
+    OFCondition status = dcmFile.loadFile(full_path);
 
     if (!status.good())
     {
         OFString errorString = "Unable to read DICOM file ";
         errorString.append(origFilename);
         errorString.append("\n");
-        writeErrorInformation(path + origFilename, errorString);
+        writeErrorInformation(full_path, errorString);
         return 1;
     }
-    
-    READTAG(DCM_SpecificCharacterSet, getDataset(), tagSpecificCharacterSet);
-    READTAG(DCM_Modality, getDataset(), tagModality);
-    READTAG(DCM_BodyPartExamined, getDataset(), tagBodyPartExamined);
-    READTAG(DCM_ProtocolName, getDataset(), tagProtocolName);
-    READTAG(DCM_RetrieveAETitle, getDataset(), tagRetrieveAETitle);
-    READTAG(DCM_StationAETitle, getDataset(), tagStationAETitle);
-    READTAG(DCM_Manufacturer, getDataset(), tagManufacturer);
-    READTAG(DCM_ManufacturerModelName, getDataset(), tagManufacturerModelName);
-    READTAG(DCM_StudyDescription, getDataset(), tagStudyDescription);
-    READTAG(DCM_CodeValue, getDataset(), tagCodeValue);
-    READTAG(DCM_CodeMeaning, getDataset(), tagCodeMeaning);
-    READTAG(DCM_SeriesDescription, getDataset(), tagSeriesDescription);
-    READTAG(DCM_PatientName, getDataset(), tagPatientName);
-    READTAG(DCM_PatientID, getDataset(), tagPatientID);
-    READTAG(DCM_PatientBirthDate, getDataset(), tagPatientBirthDate);
-    READTAG(DCM_PatientSex, getDataset(), tagPatientSex);
-    READTAG(DCM_AccessionNumber, getDataset(), tagAccessionNumber);
-    READTAG(DCM_ReferringPhysicianName, getDataset(), tagReferringPhysicianName);
-    READTAG(DCM_StudyID, getDataset(), tagStudyID);
-    READTAG(DCM_SeriesNumber, getDataset(), tagSeriesNumber);
-    READTAG(DCM_SOPInstanceUID, getDataset(), tagSOPInstanceUID);
-    READTAG(DCM_SeriesInstanceUID, getDataset(), tagSeriesInstanceUID);
-    READTAG(DCM_StudyInstanceUID, getDataset(), tagStudyInstanceUID);
-    READTAG(DCM_SeriesDate, getDataset(), tagSeriesDate);
-    READTAG(DCM_SeriesTime, getDataset(), tagSeriesTime);
-    READTAG(DCM_AcquisitionDate, getDataset(), tagAcquisitionDate);
-    READTAG(DCM_AcquisitionTime, getDataset(), tagAcquisitionTime);
-    READTAG(DCM_SequenceName, getDataset(), tagSequenceName);
-    READTAG(DCM_ScanningSequence, getDataset(), tagScanningSequence);
-    READTAG(DCM_SequenceVariant, getDataset(), tagSequenceVariant);
-    READTAG(DCM_MagneticFieldStrength, getDataset(), tagMagneticFieldStrength);
-    READTAG(DCM_StationName, getDataset(), tagStationName);
-    READTAG(DCM_DeviceSerialNumber, getDataset(), tagDeviceSerialNumber);
-    READTAG(DCM_DeviceUID, getDataset(), tagDeviceUID);
-    READTAG(DCM_SoftwareVersions, getDataset(), tagSoftwareVersions);
-    READTAG(DCM_ContrastBolusAgent, getDataset(), tagContrastBolusAgent);
-    READTAG(DCM_ImageComments, getDataset(), tagImageComments);
-    READTAG(DCM_SliceThickness, getDataset(), tagSliceThickness);
-    READTAG(DCM_InstanceNumber, getDataset(), tagInstanceNumber);
-    READTAG(DCM_AcquisitionNumber, getDataset(), tagAcquisitionNumber);
-    READTAG(DCM_InstitutionName, getDataset(), tagInstitutionName);
-    READTAG(DCM_MediaStorageSOPClassUID, getMetaInfo(), tagMediaStorageSOPClassUID);
-    READTAG(DCM_AcquisitionType, getDataset(), tagAcquisitionType);
-    READTAG(DCM_ImageType, getDataset(), tagImageType);
+    DcmDataset* dataset = dcmFile.getDataset();
 
+    readTag(DCM_SpecificCharacterSet, dataset, tagSpecificCharacterSet, full_path);
+    readTag(DCM_SOPInstanceUID, dataset, tagSOPInstanceUID, full_path);
+    readTag(DCM_SeriesInstanceUID, dataset, tagSeriesInstanceUID, full_path);
 
-    if (!readExtraTags(dcmFile.getDataset(), path + origFilename)) {
+    OFString tag_read_out = "";
+    for (auto tag: main_tags_list ) {
+        tag_read_out = "";
+        if (!readTag(tag, dataset, tag_read_out, full_path))
+            return 1;
+        main_tags.append(QPair(tag, tag_read_out));
+    }
+    tag_read_out = "";
+    readTag(DCM_MediaStorageSOPClassUID, dcmFile.getMetaInfo(), tag_read_out, full_path);
+    main_tags.append(QPair(DCM_MediaStorageSOPClassUID, tag_read_out));
+
+    if (!readExtraTags(dcmFile.getDataset(), full_path)) {
         return 1;
     }
+
     isConversionNeeded = true;
     if (tagSpecificCharacterSet.compare("ISO_IR 192") == 0)
     {

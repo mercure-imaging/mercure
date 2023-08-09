@@ -20,7 +20,7 @@ INCLUDEPATH += /usr/local/include/dcmtk/config/
 LIBS += -ldcmdata -loflog -lofstd
 LIBS += -lz -ldl -lpthread
 
-SOURCES += main.cpp
+SOURCES += main.cpp tags_list.h
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
