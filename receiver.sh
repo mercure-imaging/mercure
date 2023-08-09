@@ -34,6 +34,8 @@ accept_compressed=$(cat $config | jq -r '.accept_compressed_images')
 
 bookkeeper_api_key=$(cat $config | jq -r '.bookkeeper_api_key')
 
+cat $config | jq -r .dicom_receiver.additional_tags[] > "./dcm_extra_tags"
+
 # Check if incoming folder exists
 if [ ! -d "$incoming" ]; then
     echo "ERROR: Cannot access incoming folder ${incoming}"

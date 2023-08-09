@@ -146,6 +146,10 @@ class ProcessingLogsConfig(BaseModel):
     logs_file_store: Optional[str] = None
 
 
+class DicomReceiverConfig(BaseModel):
+    additional_tags: List[str] = []
+    
+
 class Config(BaseModel, Compat):
     appliance_name: str
     port: int
@@ -167,6 +171,7 @@ class Config(BaseModel, Compat):
     series_complete_trigger: int    # in seconds
     study_complete_trigger: int     # in seconds
     study_forcecomplete_trigger: int  # in seconds
+    dicom_receiver: DicomReceiverConfig = DicomReceiverConfig()
     graphite_ip: str
     graphite_port: int
     bookkeeper: str

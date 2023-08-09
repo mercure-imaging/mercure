@@ -52,6 +52,7 @@ mercure_defaults = {
     "series_complete_trigger": 60,  # in seconds
     "study_complete_trigger": 900,  # in seconds
     "study_forcecomplete_trigger": 5400,  # in seconds
+    "dicom_receiver": {"additional_tags": []},
     "graphite_ip": "",
     "graphite_port": 2003,
     "bookkeeper": "0.0.0.0:8080",
