@@ -1,4 +1,4 @@
-#include "dcmtk/dcmdata/dctk.h"
+#include "dcmtk/dcmdata/dcdeftag.h"
 
 static auto main_tags_list = {
     DCM_Modality,

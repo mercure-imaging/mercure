@@ -27,14 +27,13 @@ if [ ! -f $config ]; then
 fi
 
 # Now read the needed values
-incoming=$(cat $config | jq -r '.incoming_folder')
-port=$(cat $config | jq '.port')
-bookkeeper=$(cat $config | jq -r '.bookkeeper')
-accept_compressed=$(cat $config | jq -r '.accept_compressed_images')
+incoming=$(jq -r '.incoming_folder' $config)
+port=$(jq '.port' $config)
+bookkeeper=$(jq -r '.bookkeeper' $config)
+accept_compressed=$(jq -r '.accept_compressed_images' $config)
+bookkeeper_api_key=$(jq -r '.bookkeeper_api_key' $config)
+jq -r ".dicom_receiver.additional_tags // {} | keys_unsorted[]" $config > "./dcm_extra_tags" || echo "Failed to parse and configure dicom tags to collect." && exit 1
 
-bookkeeper_api_key=$(cat $config | jq -r '.bookkeeper_api_key')
-
-cat $config | jq -r .dicom_receiver.additional_tags[] > "./dcm_extra_tags"
 
 # Check if incoming folder exists
 if [ ! -d "$incoming" ]; then

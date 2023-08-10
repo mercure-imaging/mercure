@@ -147,7 +147,7 @@ class ProcessingLogsConfig(BaseModel):
 
 
 class DicomReceiverConfig(BaseModel):
-    additional_tags: List[str] = []
+    additional_tags: Dict[str,str] = {}
     
 
 class Config(BaseModel, Compat):
