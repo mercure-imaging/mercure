@@ -4,10 +4,10 @@ tagslist.py
 Helper functions for displaying a list of DICOM tags available for routing in the graphical user interface of mercure.
 """
 
-from typing import Dict
+from typing import Dict, List
 
-sortedtags = []
-alltags = []
+alltags: Dict[str, str] = {}
+sortedtags: List[str] = []
 
 default_tags: Dict[str, str] = {
     "SpecificCharacterSet":"ISO_IR 100",
