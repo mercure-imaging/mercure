@@ -21,16 +21,16 @@
                 <table class="table is-narrow is-hoverable is-fullwidth configtable">
                     <col width="230px">
                     <tr>
-                        <td>Operating System:</td>
-                        <td>{{os_string}}</td>
+                        <td>Appliance Name:</td>
+                        <td>{{config['appliance_name']}}</td>
                     </tr>
                     <tr>
                         <td>mercure Version:</td>
                         <td>{{mercure_version}}</td>
                     </tr>
                     <tr>
-                        <td>Appliance Name:</td>
-                        <td>{{config['appliance_name']}}</td>
+                        <td>Operating System:</td>
+                        <td>{{os_string}}</td>
                     </tr>
                     <tr>
                         <td>Process Runner:</td>
@@ -43,7 +43,16 @@
                             <a href="https://mercure-imaging.org/docs/advanced.html#additional-settings" target="_blank" title="This setting is needed for running MONAI modules, but it makes the server more vulnerable. Carefully read the documentation"><i class="fas fa-exclamation-circle has-text-warning" style="margin-left: 1px;"></i></a>
                             {% endif %}
                         </td>
-                    </tr>                    
+                    </tr>
+                </table>
+            </div>
+        </div>              
+        <div class="columns">
+            <div class="column is-full">
+                <h5 class="title is-5 configtitle"><i
+                        class="fas fa-plug has-text-success"></i>&nbsp;&nbsp;DICOM Connectivity</h5>
+                <table class="table is-narrow is-hoverable is-fullwidth configtable">
+                    <col width="230px">
                     <tr>
                         <td>DICOM Port:</td>
                         <td>{{config['port']}}</td>
@@ -56,6 +65,16 @@
                             {% endif %}
                         </td>
                     </tr>
+                    {% if config['dicom_receiver']['additional_tags']|length > 0 %}
+                    <tr>
+                        <td>Additional DICOM Tags:</td>
+                        <td>
+                            {% for item in config['dicom_receiver']['additional_tags'] %}
+                            {{ item }}{% if not loop.last %},{% endif %}
+                            {% endfor %}
+                        </td>
+                    </tr>
+                    {% endif %}
                 </table>
             </div>
         </div>
