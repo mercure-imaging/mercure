@@ -526,6 +526,15 @@
             $('#erroralert').show();
             return false;
         }
+
+        if (($('#action').val() == 'process') || ($('#action').val() == 'both')) {
+            if (bulmaTagsInstances[0].tags.length == 0) {
+                $('#erroralert').html('<i class="fas fa-bug"></i>&nbsp;&nbsp;Processing Steps cannot be empty. Add at least one module.');
+                $('#erroralert').show();
+                return false;
+            }
+        }
+
         return true;
     }
 
