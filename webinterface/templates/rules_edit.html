@@ -26,7 +26,7 @@
                     </a>
                 </li>
                 <li data-tab="processing">
-                    <a>
+                    <a id="processing_id">
                         <span class="icon"><i class="fa fa-microchip"></i></span>
                         <span>Processing</span>
                     </a>
@@ -531,6 +531,9 @@
             if (bulmaTagsInstances[0].tags.length == 0) {
                 $('#erroralert').html('<i class="fas fa-bug"></i>&nbsp;&nbsp;Processing Steps cannot be empty. Add at least one module.');
                 $('#erroralert').show();
+                $('#processing_id').click();
+                $('#modules_list .tagsinput').addClass("is-danger");
+                $('#processing_module').focus();
                 return false;
             }
         }

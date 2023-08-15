@@ -234,5 +234,6 @@ def check_folders() -> bool:
 
 def read_tagslist() -> None:
     """Reads the list of supported DICOM tags with example values, displayed the UI."""
+    global mercure
     tagslist.alltags = {**tagslist.default_tags, **mercure.dicom_receiver.additional_tags}
     tagslist.sortedtags = sorted(tagslist.alltags)
