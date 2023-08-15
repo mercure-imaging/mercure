@@ -49,6 +49,14 @@ common.rule_evaluation
    :undoc-members:
    :show-inheritance:
 
+common.tagslist 
+---------------
+
+.. automodule:: common.tagslist
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 common.types
 ------------
 

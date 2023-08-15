@@ -13,11 +13,10 @@ import daiquiri
 # App-specific includes
 from common import config
 
-
+# Create local logger instance
 logger = config.get_logger()
 
 services_filename = (os.getenv("MERCURE_CONFIG_FOLDER") or "/opt/mercure/config") + "/services.json"
-
 services_list = {}
 
 

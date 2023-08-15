@@ -38,6 +38,7 @@ static std::string bookkeeperToken = "";
 static QVector<QPair<DcmTagKey, OFString>> additional_tags;
 static QVector<QPair<DcmTagKey, OFString>> main_tags;
 
+
 // Escape the JSON values properly to avoid problems if DICOM tags contains invalid characters
 // (see https://stackoverflow.com/questions/7724448/simple-json-string-escape-for-c)
 std::string escapeJSONValue(const OFString &s)
@@ -57,6 +58,7 @@ std::string escapeJSONValue(const OFString &s)
     }
     return o.str();
 }
+
 
 void sendBookkeeperPost(OFString filename, OFString fileUID, OFString seriesUID)
 {
@@ -82,6 +84,7 @@ void sendBookkeeperPost(OFString filename, OFString fileUID, OFString seriesUID)
 
     system(cmd.data());
 }
+
 
 void writeErrorInformation(OFString dcmFile, OFString errorString)
 {
@@ -117,6 +120,7 @@ void writeErrorInformation(OFString dcmFile, OFString errorString)
     std::cout << errorString << std::endl;
 }
 
+
 static DcmSpecificCharacterSet charsetConverter;
 static bool isConversionNeeded = false;
 
@@ -135,7 +139,6 @@ static bool isConversionNeeded = false;
         conversionBuffer = B;                                                           \
     }                                                                                   \
     fprintf(fp, "\"%s\": \"%s\",\n", A, escapeJSONValue(conversionBuffer).c_str())
-
 
 
 static DcmTagKey parseTagKey(const char *tagName)
@@ -160,6 +163,7 @@ static DcmTagKey parseTagKey(const char *tagName)
         return DcmTagKey(OFstatic_cast(Uint16, group),OFstatic_cast(Uint16, elem));
     }
 }
+
 
 bool readTag(DcmTagKey tag, DcmItem* dataset, OFString& out, OFString path_info) {
     if (!dataset->tagExistsWithValue(tag)) {
@@ -193,6 +197,8 @@ bool readTag(DcmTagKey tag, DcmItem* dataset, OFString& out, OFString path_info)
     }
     return true;
 }
+
+
 bool readExtraTags(DcmDataset* dataset, OFString path_info) {
     QString filePath = "./dcm_extra_tags";
     if (!QFileInfo::exists(filePath)) {
@@ -224,6 +230,8 @@ bool readExtraTags(DcmDataset* dataset, OFString path_info) {
     }
     return true;
 }
+
+
 void writeTagsList(QVector<QPair<DcmTagKey, OFString>>& tags, FILE* fp, OFString& dcmFile, OFString& conversionBuffer) {
     
     QVectorIterator<QPair<DcmTagKey, OFString>> iter(tags);
@@ -241,6 +249,8 @@ void writeTagsList(QVector<QPair<DcmTagKey, OFString>>& tags, FILE* fp, OFString
     }
     dcmDataDict.rdunlock();
 }
+
+
 bool writeTagsFile(OFString dcmFile, OFString originalFile)
 {
     OFString filename = dcmFile + ".tags";
@@ -311,7 +321,6 @@ int main(int argc, char *argv[])
     {
         bookkeeperToken = std::string(argv[5]);
     }
-
 
     OFString origFilename = OFString(argv[1]);
     OFString path = "";

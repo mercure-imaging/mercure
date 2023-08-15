@@ -32,8 +32,7 @@ port=$(jq '.port' $config)
 bookkeeper=$(jq -r '.bookkeeper' $config)
 accept_compressed=$(jq -r '.accept_compressed_images' $config)
 bookkeeper_api_key=$(jq -r '.bookkeeper_api_key' $config)
-jq -r ".dicom_receiver.additional_tags // {} | keys_unsorted[]" $config > "./dcm_extra_tags" || echo "Failed to parse and configure dicom tags to collect." && exit 1
-
+jq -r ".dicom_receiver.additional_tags // {} | keys_unsorted[]" $config > "./dcm_extra_tags" || (echo "Failed to parse and configure extra DICOM tags to read." && exit 1)
 
 # Check if incoming folder exists
 if [ ! -d "$incoming" ]; then

@@ -22,7 +22,7 @@ from common.types import Rule
 import common.rule_evaluation as rule_evaluation
 import common.helper as helper
 from webinterface.common import *
-import webinterface.tagslist as tagslist
+import common.tagslist as tagslist
 from decoRouter import Router as decoRouter
 router = decoRouter()
 
@@ -33,9 +33,6 @@ logger = config.get_logger()
 ###################################################################################
 ## Rules endpoints
 ###################################################################################
-
-
-
 
 @router.get("/")
 @requires("authenticated", redirect="login")
@@ -71,7 +68,6 @@ async def add_rule(request) -> Response:
     newrule = form.get("name", "")
     if newrule in config.mercure.rules:
         return PlainTextResponse("Rule already exists.")
-
 
     default_payload_body = """Rule "{{ rule }}" triggered {{ event }}
 {% if details is defined and details|length %}
@@ -188,6 +184,7 @@ async def rules_edit_post(request) -> Response:
             processing_module = ""
     else:
         processing_module = form.get("processing_module", "")
+        
     new_rule: Rule = Rule(
         rule=form.get("rule", "False"),
         target=form.get("target", ""),

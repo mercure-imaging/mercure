@@ -57,7 +57,7 @@ import common.helper as helper
 from common.constants import mercure_defs, mercure_names
 
 import webinterface.users as users
-import webinterface.tagslist as tagslist
+import common.tagslist as tagslist
 import webinterface.services as services
 import webinterface.rules as rules
 import webinterface.targets as targets
@@ -872,12 +872,6 @@ def main(args=sys.argv[1:]) -> None:
         launch_emergency_app()
         logger.info("Going down.")
         sys.exit(1)
-
-    try:
-        tagslist.read_tagslist()
-    except Exception as e:
-        logger.info(e)
-        logger.info("Unable to parse tag list. Rule evaluation will not be available.")
 
     uvicorn.run(app, host=WEBGUI_HOST, port=WEBGUI_PORT)
 

@@ -41,14 +41,6 @@ webinterface.services
    :undoc-members:
    :show-inheritance:
 
-webinterface.tagslist 
----------------------
-
-.. automodule:: webinterface.tagslist
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 webinterface.targets 
 --------------------
 

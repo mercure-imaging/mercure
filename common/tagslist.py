@@ -7,8 +7,9 @@ Helper functions for displaying a list of DICOM tags available for routing in th
 from typing import Dict
 
 sortedtags = []
+alltags = []
 
-alltags: Dict[str, str] = {
+default_tags: Dict[str, str] = {
     "SpecificCharacterSet":"ISO_IR 100",
     "Modality":"MR",
     "BodyPartExamined":"BRAIN",
@@ -54,10 +55,3 @@ alltags: Dict[str, str] = {
     "AcquisitionType":"SPIRAL",
     "ImageType":"ORIGINAL"
 }
-import common.config as config
-
-def read_tagslist() -> None:
-    """Reads the list of supported DICOM tags with example values."""
-    global alltags, sortedtags
-    alltags = {**alltags, **config.mercure.dicom_receiver.additional_tags}
-    sortedtags = sorted(alltags)

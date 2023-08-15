@@ -142,3 +142,6 @@ index.html.*
 /getdcmtags/main.o
 /getdcmtags/getdcmtags
 /getdcmtags/Makefile
+
+# ignore temporary file with custom dicom tags to be read
+dcm_extra_tags

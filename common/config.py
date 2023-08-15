@@ -13,20 +13,17 @@ import daiquiri
 from typing import Dict, cast
 import re
 
-
+# App-specific includes
 import common.monitor as monitor
 import common.helper as helper
 from common.constants import mercure_names
 from common.types import Config
-
-
 from common.log_helpers import get_logger
+import common.tagslist as tagslist
 
-
-logger = get_logger()
 
 # Create local logger instance
-
+logger = get_logger()
 
 configuration_timestamp: float = 0
 configuration_filename = (os.getenv("MERCURE_CONFIG_FOLDER") or "/opt/mercure/config") + "/mercure.json"
@@ -72,7 +69,6 @@ mercure: Config
 
 
 def read_config() -> Config:
-
     """Reads the configuration settings (rules, targets, general settings) from the configuration file. The configuration will
     only be updated if the file has changed compared the the last function call. If the configuration file is locked by
     another process, an exception will be raised."""
@@ -118,6 +114,12 @@ def read_config() -> Config:
             # logger.info("Active configuration: ")
             # logger.info(json.dumps(mercure, indent=4))
             # logger.info("")
+
+            try:
+                read_tagslist()
+            except Exception as e:
+                logger.info(e)
+                logger.info("Unable to parse list of additional tags. Check configuration file.")
 
             configuration_timestamp = timestamp
             monitor.send_event(monitor.m_events.CONFIG_UPDATE, monitor.severity.INFO, "Configuration updated")
@@ -228,3 +230,9 @@ def check_folders() -> bool:
             )
             return False
     return True
+
+
+def read_tagslist() -> None:
+    """Reads the list of supported DICOM tags with example values, displayed the UI."""
+    tagslist.alltags = {**tagslist.default_tags, **mercure.dicom_receiver.additional_tags}
+    tagslist.sortedtags = sorted(tagslist.alltags)
