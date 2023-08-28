@@ -225,7 +225,7 @@ bool readExtraTags(DcmDataset* dataset, OFString path_info) {
             }
             if (!readTag(the_tag, dataset, out, path_info))
                 return false;
-            additional_tags.append(QPair(the_tag, out));
+            additional_tags.append(QPair<DcmTagKey, OFString>(the_tag, out));
         };
     }
     return true;
@@ -354,11 +354,11 @@ int main(int argc, char *argv[])
         tag_read_out = "";
         if (!readTag(tag, dataset, tag_read_out, full_path))
             return 1;
-        main_tags.append(QPair(tag, tag_read_out));
+        main_tags.append(QPair<DcmTagKey, OFString>(tag, tag_read_out));
     }
     tag_read_out = "";
     readTag(DCM_MediaStorageSOPClassUID, dcmFile.getMetaInfo(), tag_read_out, full_path);
-    main_tags.append(QPair(DCM_MediaStorageSOPClassUID, tag_read_out));
+    main_tags.append(QPair<DcmTagKey, OFString>(DCM_MediaStorageSOPClassUID, tag_read_out));
 
     if (!readExtraTags(dcmFile.getDataset(), full_path)) {
         return 1;
