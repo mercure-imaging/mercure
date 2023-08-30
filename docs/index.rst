@@ -1,11 +1,20 @@
+.. image:: header.jpg
+   :align: center
+   :class: headerimage
+
 mercure DICOM Orchestrator
 ==========================
+
+mercure is a flexible open-source DICOM orchestration platform. It offers an intuitive web-based user interface as well as extensive monitoring options, making it suitable for routine applications that require high availability. It can be used for dispatching DICOM studies to different targets based on easily definable routing rules and for processing DICOM series with custom-developed algorithms, such as inference of AI models for medical imaging. Processing algorithms can either be executed directly on a mercure server (as Docker containers) or can be executed on connected cluster nodes, typically located on premise but possibly also running as cloud instances. Implemented processing modules can be shared via Docker Hub.
 
 .. image:: scheme.png
    :width: 550px
    :align: center
+   :class: spacerbottom20
 
-mercure is a flexible open-source DICOM orchestration platform. It offers an intuitive web-based user interface as well as extensive monitoring options, making it suitable for routine applications that require high availability. It can be used for dispatching DICOM studies to different targets based on easily definable routing rules and for processing DICOM series with custom-developed algorithms, such as inference of AI models for medical imaging. Processing algorithms can either be executed directly on a mercure server (as Docker containers) or can be executed on connected cluster nodes, typically located on premise but possibly also running as cloud instances. Implemented processing modules can be shared via Docker Hub.
+.. container:: bullet
+   
+   mercure now supports `MONAI Application Packages (MAP) <https://github.com/Project-MONAI/monai-deploy/blob/main/guidelines/monai-application-package.md/>`_ as processing modules. Therefore, it can be used as lightweight solution for the clinical integration of AI models trained with the `MONAI Open-Source Framework <https://monai.io/>`_.
 
 .. raw:: html
 
@@ -57,7 +66,7 @@ mercure is a flexible open-source DICOM orchestration platform. It offers an int
    :maxdepth: 2
 
    support
-   announcements
+   releases
 
 .. toctree::
    :caption: Developer Information

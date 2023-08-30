@@ -100,7 +100,7 @@
                     <div class="field">
                         <label class="label" for="settings">Settings</label>
                         <div class="control">
-                            <textarea name="settings" id="settings" class="textarea textarea_scroll"
+                            <textarea name="settings" id="settings" class="textarea textarea_scroll monofont"
                                 autocomplete='off' rows="9"
                                 placeholder="Global module settings">{{settings}}</textarea>
                         </div>
@@ -115,7 +115,7 @@
                     <div class="field">
                         <label class="label" for="constraints">Execution Constraints (HCL) <sup><a class="greenlink" href="https://www.nomadproject.io/docs/job-specification/constraint" target="_blank"><i class="fas fa-question-circle"></i></a></sup></label>
                         <div class="control">
-                            <textarea name="constraints" id="constraints" class="textarea textarea_scroll"
+                            <textarea name="constraints" id="constraints" class="textarea textarea_scroll monofont"
                                 autocomplete='off' rows="5"
                                 placeholder='constraint {  attribute = "${attr.os.name}" value = "ubuntu" }&#10;&#10;See https://www.nomadproject.io/docs/job-specification/constraint for examples'>{{module.constraints}}</textarea>
                         </div>
@@ -123,7 +123,7 @@
                     <div class="field">
                         <label class="label" for="resources">Resource Requirements (HCL) <sup><a class="greenlink" href="https://www.nomadproject.io/docs/job-specification/resources" target="_blank"><i class="fas fa-question-circle"></i></a></sup></label>
                         <div class="control">
-                            <textarea name="resources" id="resources" class="textarea textarea_scroll"
+                            <textarea name="resources" id="resources" class="textarea textarea_scroll monofont"
                                 autocomplete='off' rows="5"
                                 placeholder='resources { cpu = 100 memory = 256 }&#10;&#10;See https://www.nomadproject.io/docs/job-specification/resources for examples'>{{module.resources}}</textarea>
                         </div>

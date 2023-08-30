@@ -9,8 +9,8 @@ sys.path.insert(0, os.path.abspath('..'))
 # -- Project information -----------------------------------------------------
 
 project = 'mercure'
-copyright = '2019-2023, Kai Tobias Block, Roy Wiggins, Joshy Cyriac'
-author = 'Kai Tobias Block, Roy Wiggins, Joshy Cyriac'
+copyright = '2019-2023 The "mercure" authors and contributors'
+author = ''
 
 def read_version() -> str:
     current_version = "0.0.0"

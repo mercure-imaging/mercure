@@ -484,3 +484,7 @@ table.dataTable tbody tr.selected th, table.dataTable tbody tr.selected td {
 .radiobuttons_module > input:checked + label {
   background: #2f2f2f !important;
 }
+
+.monofont {
+  font-family: Consolas,Monaco,Lucida Console,Liberation Mono,DejaVu Sans Mono,Bitstream Vera Sans Mono,Courier New, monospace;
+}
