@@ -14,7 +14,7 @@ mercure is a flexible open-source DICOM orchestration platform. It offers an int
 
 .. container:: bullet
    
-   mercure now supports `MONAI Application Packages (MAP) <https://github.com/Project-MONAI/monai-deploy/blob/main/guidelines/monai-application-package.md/>`_ as processing modules. Therefore, it can be used as lightweight solution for the clinical integration of AI models trained with the `MONAI Open-Source Framework <https://monai.io/>`_.
+   mercure now supports `MONAI Application Packages (MAP) <https://github.com/Project-MONAI/monai-deploy/blob/main/guidelines/monai-application-package.md/>`_ as processing modules. Therefore, it can be used as lightweight solution for the clinical integration of AI models developed using the `MONAI Open-Source Framework <https://monai.io/>`_.
 
 .. raw:: html
 
@@ -26,6 +26,7 @@ mercure is a flexible open-source DICOM orchestration platform. It offers an int
    </div>
 
 .. note:: mercure is still under active development. Please report bugs and feature requests via our `GitHub Issue Tracker <https://github.com/mercure-imaging/mercure/issues>`_
+   :class: spacerbottom30
 
 .. toctree::
    :hidden:
@@ -63,7 +64,8 @@ mercure is a flexible open-source DICOM orchestration platform. It offers an int
 
 .. toctree::
    :caption: Support
-   :maxdepth: 2
+   :maxdepth: 1
+   :titlesonly:
 
    support
    releases
