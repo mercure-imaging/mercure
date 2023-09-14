@@ -33,15 +33,17 @@ class XnatTargetHandler(TargetHandler[XnatTarget]):
         try:
             _send_dicom_to_xnat(target=target, folder=source_folder, dispatch_info=dispatch_info)
         except ConnectionError as e:
-            self.handle_error(e, command)
+            self.handle_error(e, '')
             raise
 
         return ""
 
+
     def handle_error(self, e, command) -> None:
         logger.error(e)
 
-    async def test_connection(self, target: XnatTarget, target_name: str) -> str:
+
+    async def test_connection(self, target: XnatTarget, target_name: str):
         url = f"{target.host}/data/auth"
 
         async with aiohttp.ClientSession() as session:
@@ -59,7 +61,7 @@ class XnatTargetHandler(TargetHandler[XnatTarget]):
 
 def _send_dicom_to_xnat(target: XnatTarget, dispatch_info: TaskDispatch, folder: Path):
     logger.info(f"Connecting to {dispatch_info.target_name}({target.host}) XNAT server...")
-    with InterfaceManager(server=target.host, user=target.user, password=target.password).open() as session:
+    with InterfaceManager(server=target.host, user=target.user, password=target.password).open() as session: # type: ignore
         project_id = target.project_id
         dicom_file_path = glob.glob(os.path.join(folder, '*.dcm'))[0]
         dcmFile = dcmread(dicom_file_path, stop_before_pixels=True)
@@ -74,6 +76,7 @@ def _send_dicom_to_xnat(target: XnatTarget, dispatch_info: TaskDispatch, folder:
             experiment_label=experiment_id,
             dicom_path=folder,
             overwrite_dicom=True)
+
 
 def _upload_dicom_session_to_xnat(
         session : pyxnat.Interface,
@@ -94,7 +97,6 @@ def _upload_dicom_session_to_xnat(
     :param overwrite_dicom: if True, it will delete any existing Scan with same ID before uploading
     :return: a list of the uploaded scan_uris
     """
-
     # Create a zip file with the dicom_path in a temporary directory
     with tempfile.TemporaryDirectory() as tmp_path:
         zip_filepath = os.path.join(tmp_path, 'dicom.zip')
@@ -123,9 +125,10 @@ def _upload_dicom_session_to_xnat(
                 data=data)
 
             if resp.status_code != 200:
-                raise ConnectionError(f'Response not 200 OK when uploading dicom with Image Session Import Service API. '
-                                      f'Response code: {resp.status_code}'
-                                      f' Response: {resp}')
+                raise ConnectionError(f'Response not 200 OK while uploading DICOM with Image Session Import Service API. '
+                                      f'Response code: {resp.status_code} '
+                                      f'Response: {resp}')
+
 
 class InterfaceManager(object):
     """Manager for `pyxnat.Interface` that enables the use of the `with` python context.
@@ -150,6 +153,7 @@ class InterfaceManager(object):
         self.user = user
         self.psswd = password
 
+
     @contextmanager
     def open(self):
         try:
@@ -158,5 +162,7 @@ class InterfaceManager(object):
         finally:
             sess.disconnect()
 
+
     def open_persistent(self):
         return pyxnat.Interface(server=self.host, user=self.user, password=self.psswd) 
+    

@@ -67,12 +67,14 @@ class SftpTarget(Target):
     host: str
     password: Optional[str]
 
+
 class XnatTarget(Target):
     target_type: Literal["xnat"] = "xnat"
     project_id: str
-    user: str
     host: str
-    password: Optional[str]
+    user: str
+    password: str
+
 
 class DicomWebTarget(Target):
     target_type: Literal["dicomweb"] = "dicomweb"
