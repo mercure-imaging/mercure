@@ -1,0 +1,31 @@
+<div class="notification is-info" style="margin-top: 30px;">
+    <i class="fas fa-snowplow"></i>&nbsp;&nbsp;Support for XNAT servers is experimental at this time.
+</div>                        
+<div class="field" style="margin-top: 30px;">
+    <label class="label">Host/IP</label>
+    <div class="control">
+        <input name="host" class="input" required='true' autocomplete='off' type="text"
+            placeholder="Host name or IP" value="{{targets[edittarget].host}}" />
+    </div>
+</div>
+<div class="field">
+    <label class="label">Project ID</label>
+    <div class="control">
+        <input name="project_id" class="input" required='true' autocomplete='off' type="text"
+            placeholder="Project ID" value="{{targets[edittarget].project_id}}" />
+    </div>
+</div>
+<div class="field">
+    <label class="label">User</label>
+    <div class="control">
+        <input name="user" class="input" required='true' autocomplete='off' type="text"
+            placeholder="User" value="{{targets[edittarget].user}}" />
+    </div>
+</div>
+<div class="field">
+    <label class="label">Password</label>
+    <div class="control">
+        <input name="password" class="input" autocomplete='off' type="text"
+            placeholder="Password" value="{%if targets[edittarget].password%}{{targets[edittarget].password}}{%endif%}" />
+    </div>
+</div>
