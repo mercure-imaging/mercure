@@ -191,4 +191,5 @@ async def targets_test_post(request) -> Response:
     result = await handler.test_connection(target, testtarget)
     return templates.TemplateResponse(handler.test_template, {"request": request, "result": result})
 
+
 targets_app = Starlette(routes=router)

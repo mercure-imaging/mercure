@@ -1,5 +1,6 @@
 from common.types import Target, TaskDispatch, XnatTarget
 import common.config as config
+from webinterface.common import async_run
 
 from .registry import handler_for
 from .base import TargetHandler
@@ -48,9 +49,14 @@ class XnatTargetHandler(TargetHandler[XnatTarget]):
 
         async with aiohttp.ClientSession() as session:
             ping_ok = False
+
+            if target.host:
+                ping_result, *_ = await async_run(f"ping -w 1 -c 1 {target.host}")
+                if ping_result == 0:
+                    ping_ok = True
+
             try:            
                 async with session.get(url, auth=aiohttp.BasicAuth(target.user, target.password)) as resp:
-                    ping_ok = resp.status != 404
                     response_ok = resp.status == 200
                     text = await resp.text() if not response_ok else ""
                     return dict(ping=ping_ok, loggedin=response_ok, err=text)
