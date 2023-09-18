@@ -3,7 +3,7 @@ Release History
 
 Version 0.3.0-beta.1
 --------------------
-*Release date: TBA*
+*Release date: 9/18/2023*
 
 * Support for MONAI MAP processing modules
 * Support for chaining multiple processing steps
