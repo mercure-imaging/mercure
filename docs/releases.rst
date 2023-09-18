@@ -14,6 +14,8 @@ Version 0.3.0-beta.1
 * Option to extract additional tags from DICOMs, configurable via Configuration page
 * Various UI improvements
 * Reorganization of Configuration page
+* Support of XNAT as dispatching target
+* Switch of Docker containers to Ubuntu 22.04
 
 Version 0.2.2-beta.1
 --------------------

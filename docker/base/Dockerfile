@@ -1,4 +1,4 @@
-FROM ubuntu:20.04
+FROM ubuntu:22.04
 RUN apt-get update && apt-get -y upgrade && \
     DEBIAN_FRONTEND="noninteractive" apt-get -y install \
     tzdata build-essential wget git dcmtk jq inetutils-ping entr sshpass lsb-release lsb-core libpq-dev ca-certificates python3-wheel python3-dev python3 python3-venv --no-install-recommends && \
