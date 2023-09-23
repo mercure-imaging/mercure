@@ -68,23 +68,29 @@
                             <input class="input"
                                 id="environment"
                                 type="text"
-                                placeholder="{foo=&quot;bar&quot;}"
+                                placeholder="{&quot;foo&quot;: &quot;bar&quot;}"
                                 name="environment"
                                 value="{{module['environment']}}">
                         </p>
                     </div>
                     <div class="field">
-                        <label class="label" for="docker_arguments">Other Docker Arguments <sup><a class="greenlink" href="https://docker-py.readthedocs.io/en/stable/containers.html" target="_blank"><i class="fas fa-question-circle"></i></a></sup></label>
-                        <p class="control">
+                        <label class="label" for="docker_arguments">Docker Arguments <sup><a class="greenlink" href="https://docker-py.readthedocs.io/en/stable/containers.html" target="_blank"><i class="fas fa-question-circle"></i></a></sup></label>
+                        <p class="control is-expanded">
                             <input class="input"
                                 id="docker_arguments"
                                 type="text"
                                 placeholder="See https://docker-py.readthedocs.io/en/stable/containers.html for parameters"
                                 name="docker_arguments"
-                                value="{{module['docker_arguments']}}">
+                                value="{{module['docker_arguments']}}"
+                                onkeypress="updateDockerArguments(this)" onkeydown="updateDockerArguments(this)" onchange="updateDockerArguments(this)" oninput="updateDockerArguments(this)">
                         </p>
-                    </div>
+                    </div>             
                     <div class="field" style="margin-top: 30px;">
+                        <input id="gpu_support" name="gpu_support" type="checkbox"
+                            class="switch is-rounded is-dark" onclick="toggleGPUSupport(this);">
+                        <label for="gpu_support" title="This setting requires that the NVIDIA Container Toolkit is installed">Enable NVIDIA GPU Support</label>
+                    </div>
+                    <div class="field" style="">
                         <input id="requires_root" type="checkbox" name="requires_root"
                             class="switch is-rounded is-dark" value="True" {% if
                             module['requires_root']==True %}checked="checked" {% endif%} onclick="toggleRequiresRoot(this);">
@@ -172,6 +178,49 @@
         {% endif %}
     }
 
+    function toggleGPUSupport(cb) {        
+        try {
+            text_value = $( "#docker_arguments" ).val();
+            if (text_value == "") {
+                text_value = "{}";
+            }
+            json_value = JSON.parse(text_value);
+            if (cb.checked) {           
+                json_value["runtime"] = "nvidia";                
+            } else {
+                if ('runtime' in json_value) {
+                    delete json_value.runtime;
+                }
+            }   
+            text_value = JSON.stringify(json_value);
+            if (text_value == "{}") {
+                text_value = "";
+            }
+            $("#docker_arguments").val(text_value);
+        } catch (e) {
+        }      
+    }
+    
+    function updateDockerArguments(value) {  
+        try {        
+            text_value = $( "#docker_arguments" ).val();
+            if (text_value == "") {
+                text_value = "{}";
+            }
+            json_value = JSON.parse(text_value);
+            if ('runtime' in json_value) {
+                if (json_value["runtime"] == "nvidia") {
+                    $("#gpu_support").prop("checked", true);
+                } else {
+                    $("#gpu_support").prop("checked", false);
+                }
+            } else {
+                $("#gpu_support").prop("checked", false);
+            }
+        } catch (e) {
+        }         
+    }
+
     function validate() {
         var field = "";
         try {
@@ -181,12 +230,26 @@
             }
             JSON.parse($('#settings').val());
 
-            field = "Other Docker Arguments";
+            field = "Docker Arguments";
             field_value=$('#docker_arguments').val();
             if (field_value == "") {
                 field_value="{}";
             }
             JSON.parse(field_value);
+
+            field = "Additional Volumes";
+            field_value=$('#additional_volumes').val();
+            if (field_value == "") {
+                field_value="{}";
+            }
+            JSON.parse(field_value);            
+
+            field = "Environment Variables";
+            field_value=$('#environment').val();
+            if (field_value == "") {
+                field_value="{}";
+            }
+            JSON.parse(field_value);             
         } catch (e) {
             $('#erroralert').html('<i class="fas fa-bug"></i>&nbsp;&nbsp;Invalid content in field "' + field + '". Please check for correct syntax.');
             $('#erroralert').show();
@@ -195,10 +258,20 @@
                 $('#settings').addClass("is-danger");
                 $('#settings').focus();
             }
-            if (field == "Other Docker Arguments")
+            if (field == "Docker Arguments")
             {
                 $('#docker_arguments').addClass("is-danger");
                 $('#docker_arguments').focus();
+            }            
+            if (field == "Additional Volumes")
+            {
+                $('#additional_volumes').addClass("is-danger");
+                $('#additional_volumes').focus();
+            }            
+            if (field == "Environment Variables")
+            {
+                $('#environment').addClass("is-danger");
+                $('#environment').focus();
             }            
             return false;
         }
@@ -223,6 +296,8 @@
             $('#tab-content div.panel').removeClass('is-active');
             $('div.panel[data-content="' + tab + '"]').addClass('is-active');
         });
+
+        updateDockerArguments();
     });
 
 </script>
