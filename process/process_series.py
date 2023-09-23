@@ -109,10 +109,10 @@ async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_p
         try:
             return json.loads(json_string)
         except json.decoder.JSONDecodeError:
+            logger.error(f"Unable to convert JSON string {json_string}")
             return {}
 
     real_folder = folder    
-
 
     if helper.get_runner() == "docker":
         # We want to bind the correct path into the processor, but if we're inside docker we need to use the host path

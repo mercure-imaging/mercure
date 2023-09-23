@@ -180,6 +180,13 @@
                 $('#settings').val("{}");
             }
             JSON.parse($('#settings').val());
+
+            field = "Other Docker Arguments";
+            field_value=$('#docker_arguments').val();
+            if (field_value == "") {
+                field_value="{}";
+            }
+            JSON.parse(field_value);
         } catch (e) {
             $('#erroralert').html('<i class="fas fa-bug"></i>&nbsp;&nbsp;Invalid content in field "' + field + '". Please check for correct syntax.');
             $('#erroralert').show();
@@ -188,6 +195,11 @@
                 $('#settings').addClass("is-danger");
                 $('#settings').focus();
             }
+            if (field == "Other Docker Arguments")
+            {
+                $('#docker_arguments').addClass("is-danger");
+                $('#docker_arguments').focus();
+            }            
             return false;
         }
         console.log("PASSED");
