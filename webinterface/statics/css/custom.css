@@ -167,8 +167,8 @@ body {
 }
 
 ::selection {
-  color: none;
-  background: none;
+  background-color: hsl(141, 71%, 48%);
+  color: #fff;
 }
 
 .textarea::selection,
