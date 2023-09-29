@@ -146,7 +146,8 @@ async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_p
     additional_volumes: Dict[str, Dict[str, str]] = decode_task_json(module.additional_volumes)
     module_environment = decode_task_json(module.environment)
     mercure_environment = dict(MERCURE_IN_DIR=container_in_dir, MERCURE_OUT_DIR=container_out_dir)
-    monai_environment = dict(MONAI_INPUTPATH=container_in_dir, MONAI_OUTPUTPATH=container_out_dir)
+    monai_environment = dict(MONAI_INPUTPATH=container_in_dir, MONAI_OUTPUTPATH=container_out_dir,
+                             HOLOSCAN_INPUT_PATH=container_in_dir, HOLOSCAN_OUTPUT_PATH=container_out_dir)
 
     environment = {**module_environment, **mercure_environment, **monai_environment}
     arguments = decode_task_json(module.docker_arguments)
