@@ -8,7 +8,7 @@ echo "Installing Python runtime environment..."
 python3 -m venv "$MERCURE_BASE/env"
 
 echo "Installing required Python packages..."
-$MERCURE_BASE/env/bin/pip install wheel
+# $MERCURE_BASE/env/bin/pip install wheel
 $MERCURE_BASE/env/bin/pip install --isolated --quiet -r "$MERCURE_BASE/app/requirements.txt"
 
 echo "Creating default configuration files..."

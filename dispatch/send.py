@@ -21,7 +21,9 @@ from common.monitor import task_event, m_events, severity
 from dispatch.retry import increase_retry
 from dispatch.status import is_ready_for_sending
 from common.constants import mercure_names
-from common.types import DicomTarget, EmptyDict, SftpTarget, Task, TaskDispatch, TaskInfo, Rule
+from common.types import (
+    DicomTarget, DicomTLSTarget, EmptyDict, SftpTarget,
+    Task, TaskDispatch, TaskInfo, Rule)
 import common.config as config
 import common.monitor as monitor
 import common.notification as notification
@@ -47,6 +49,17 @@ def _create_command(task_id: str, dispatch_info: TaskDispatch, folder: Path) -> 
         target_aet_target = target_dicom.aet_target or ""
         target_aet_source = target_dicom.aet_source or ""
         dcmsend_status_file = Path(folder) / mercure_names.SENDLOG
+        command = f"""dcmsend {target_ip} {target_port} +sd {folder} -aet {target_aet_source} -aec {target_aet_target} -nuc +sp '*.dcm' -to 60 +crf {dcmsend_status_file}"""
+        return command, {}, True
+
+    if isinstance(config.mercure.targets.get(target_name, ""), DicomTLSTarget):
+        # Read the connection information from the configuration
+        target_dicom = cast(DicomTLSTarget, config.mercure.targets.get(target_name))
+        target_ip = target_dicom.ip
+        target_port = target_dicom.port or 104
+        target_aet_target = target_dicom.aet_target or ""
+        target_aet_source = target_dicom.aet_source or ""
+
         command = f"""dcmsend {target_ip} {target_port} +sd {folder} -aet {target_aet_source} -aec {target_aet_target} -nuc +sp '*.dcm' -to 60 +crf {dcmsend_status_file}"""
         return command, {}, True
 
