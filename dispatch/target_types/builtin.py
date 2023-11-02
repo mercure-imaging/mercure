@@ -120,7 +120,6 @@ class DicomTLSTargetHandler(SubprocessTargetHandler[DicomTLSTarget]):
             if ping_result == 0:
                 ping_response = True
 
-            # cecho_command = f"echoscu -to 2 -aec {target_aec} -aet {target_aet} {target_ip} {target_port} +tls {client_key} {client_cert} +cf {server_cert}"
             cecho_command = f"echoscu -to 2 -aec {target_aec} -aet {target_aet} {target_ip} {target_port} +tla +cf {server_cert}"
             logger.info('Running %s' % cecho_command)
             cecho_result, *_ = await async_run(cecho_command)
