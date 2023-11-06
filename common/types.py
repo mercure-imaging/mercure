@@ -66,9 +66,9 @@ class DicomTLSTarget(Target):
     port: str
     aet_target: str
     aet_source: Optional[str] = ""
-    client_key: str
-    client_cert: str
-    server_cert: str
+    tls_key: str
+    tls_cert: str
+    ca_cert: str
 
 
 class SftpTarget(Target):

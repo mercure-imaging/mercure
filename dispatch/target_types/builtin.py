@@ -92,7 +92,7 @@ class DicomTLSTargetHandler(SubprocessTargetHandler[DicomTLSTarget]):
         target_aet_source = target.aet_source or ""
 
         command = split(
-            f"""storescu +tla +cf {target.server_cert} {target_ip} {target_port} +sd {source_folder} -aet {target_aet_source} -aec {target_aet_target} +sp '*.dcm' -to 60"""
+            f"""storescu +tls {target.tls_key} {target.tls_cert} +cf {target.ca_cert} {target_ip} {target_port} +sd {source_folder} -aet {target_aet_source} -aec {target_aet_target} +sp '*.dcm' -to 60"""
         )
         return command, {}
 
@@ -109,9 +109,9 @@ class DicomTLSTargetHandler(SubprocessTargetHandler[DicomTLSTarget]):
         target_port = target.port or ""
         target_aec = target.aet_target or "ANY-SCP"
         target_aet = target.aet_source or "ECHOSCU"
-        client_key = target.client_key
-        client_cert = target.client_cert
-        server_cert = target.server_cert
+        tls_key = target.tls_key
+        tls_cert = target.tls_cert
+        ca_cert = target.ca_cert
 
         logger.info(f"Testing TLS target {target_name}")
 
@@ -120,7 +120,7 @@ class DicomTLSTargetHandler(SubprocessTargetHandler[DicomTLSTarget]):
             if ping_result == 0:
                 ping_response = True
 
-            cecho_command = f"echoscu -to 2 -aec {target_aec} -aet {target_aet} {target_ip} {target_port} +tla +cf {server_cert}"
+            cecho_command = f"echoscu -to 2 -aec {target_aec} -aet {target_aet} {target_ip} {target_port} +tls {tls_key} {tls_cert} +cf {ca_cert}"
             logger.info('Running %s' % cecho_command)
             cecho_result, *_ = await async_run(cecho_command)
             if cecho_result == 0:

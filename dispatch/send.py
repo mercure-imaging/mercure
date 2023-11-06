@@ -60,7 +60,7 @@ def _create_command(task_id: str, dispatch_info: TaskDispatch, folder: Path) -> 
         target_aet_target = target_dicom.aet_target or ""
         target_aet_source = target_dicom.aet_source or ""
 
-        command = f"""storescu +tla +cf {target_dicom.server_cert} {target_ip} {target_port} +sd {folder} -aet {target_aet_source} -aec {target_aet_target} +sp '*.dcm' -to 60"""
+        command = f"""storescu +tls {target_dicom.tls_key} {target_dicom.tls_cert} +cf {target_dicom.ca_cert} {target_ip} {target_port} +sd {folder} -aet {target_aet_source} -aec {target_aet_target} +sp '*.dcm' -to 60"""
         return command, {}, True
 
     elif isinstance(config.mercure.targets.get(target_name, ""), SftpTarget):
