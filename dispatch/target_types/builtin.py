@@ -2,10 +2,8 @@ from common.types import DicomTarget, DicomTLSTarget, SftpTarget, DummyTarget
 import common.config as config
 from common.constants import mercure_names
 from webinterface.common import async_run
-from uuid import uuid4
 
 import json
-import os
 
 from pathlib import Path
 from shlex import split
