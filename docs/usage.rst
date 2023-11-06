@@ -60,7 +60,7 @@ You can start, stop, and restart services by clicking the "Service Control" butt
 Configuring targets
 -------------------
 
-Target nodes that should receive processed and routed DICOM series (via DICOM or SFTP connection) can be defined and configured on the "Targets" page. The first page shows an overview of the currently configured targets. By clicking on an individual item, you can see the target details (e.g., IP address and port). You can test if the target can be reached by clicking the "Test" button, which will try to ping the server and open a connection (via C-Echo or SFTP). 
+Target nodes that should receive processed and routed DICOM series (via DICOM, DICOM+TLS or SFTP connection) can be defined and configured on the "Targets" page. The first page shows an overview of the currently configured targets. By clicking on an individual item, you can see the target details (e.g., IP address and port). You can test if the target can be reached by clicking the "Test" button, which will try to ping the server and open a connection (via C-Echo or SFTP).
 
 .. image:: ui_targets.png
    :width: 550px
@@ -84,7 +84,11 @@ For SFTP targets, enter the hostname or IP, target folder on the server, usernam
 
 .. tip:: It is recommended to create a restricted user account for the SFTP uploads. Never use the credentials of an account with access to sensitive information, as the SFTP credentials are stored in the configuration file.
 
-.. important:: Support for SFTP transfers is still experimental and should be used with care. 
+.. important:: Support for SFTP transfers is still experimental and should be used with care.
+
+For DICOM+TLS targets, enter the TLS client key path, TLS client certificate path, and the path to the Cetificate Authority (CA) certificate path. You will have to add these files to your Mercure instance in e.g. `/opt/mercure/certs`.
+
+.. important:: Support for DICOM+TLS transfers is still experimental and should be used with care.
 
 On the "Information" tab, you can add information for documentation purpose, including a contact e-mail address (so that it can be looked up who should be contacted if problems with the target occur) and a description of the target.
 
