@@ -22,12 +22,12 @@ from urllib.parse import urlparse
 logger = config.get_logger()
 
 
-def get_domain(url):
+def get_domain(url: str) -> str:
     parsed_url = urlparse(url)
     if parsed_url.scheme and parsed_url.netloc:
         return parsed_url.netloc
     else:
-        return None
+        return ""
 
 
 @handler_for(XnatTarget)
