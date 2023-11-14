@@ -69,7 +69,7 @@ DICOM Reception over TLS Connection
 
 .. important:: Due to an incompatibility in DICOM toolkit v3.6.4 and OpenSSL v1.1.1, the dcmtk and openssl versions supported by Ubuntu 20.04, only Ubuntu 22.04 mercure installs support TLS reception.
 
-The following environment variables must be defined to run mercure in DICOM TLS receiver mode. This can be done, for example, by adding the to the /etc/environment file. First, set `MERCURE_TLS_ENABLED` to `1`. Next, specify the paths to your server TLS key, certificate, and CA certificate, as shown in the below example configuration.
+The following environment variables must be defined to run mercure in DICOM TLS receiver mode. This can be done, for example, by adding the values to the /etc/environment file. First, set `MERCURE_TLS_ENABLED` to `1`. Next, specify the paths to your server TLS key, certificate, and CA certificate, as shown in the below sample configuration.
 
 ========================================= =====================================
 Environment Variable                      Example Value
@@ -80,7 +80,7 @@ MERCURE_TLS_CERT                          /opt/mercure/tls/certificate.pem
 MERCURE_TLS_CA_CERT                       /opt/mercure/tls/CA_certificate.pem
 ========================================= =====================================
 
-.. note:: The following example shows how to create your own Certificate Authority (CA) to self-sign your own certificates. In production, you will likely use your organization's certificate authority to sign the TLS receiver certificate, or create your CA as an intermediate CA from your organizational CA.
+.. note:: The following example shows how to create your own Certificate Authority (CA) to self-sign your own certificates. In production, you will likely use your organization's certificate authority to sign the TLS receiver certificate, or create an intermediate CA from your organizational CA to sign CSR when generating certificates.
 
 Here are some example steps to create a self-signed certificate authority and TLS key/certificate that can be utilized for use mercure in DICOM TLS receiver mode.
 
