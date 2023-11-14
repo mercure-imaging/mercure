@@ -9,8 +9,6 @@ from pathlib import Path
 import aiohttp
 import pyxnat
 from contextlib import contextmanager
-import json
-import argparse
 import tempfile
 import os
 import zipfile
