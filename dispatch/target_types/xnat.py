@@ -17,8 +17,18 @@ import zipfile
 import datetime
 import glob
 from pydicom import dcmread
+from urllib.parse import urlparse
 
 logger = config.get_logger()
+
+
+def get_domain(url: str) -> str:
+    parsed_url = urlparse(url)
+    if parsed_url.scheme and parsed_url.netloc:
+        return parsed_url.netloc
+    else:
+        return ""
+
 
 @handler_for(XnatTarget)
 class XnatTargetHandler(TargetHandler[XnatTarget]):
@@ -29,20 +39,24 @@ class XnatTargetHandler(TargetHandler[XnatTarget]):
     display_name = "XNAT"
 
     def send_to_target(
-        self, task_id: str, target: XnatTarget, dispatch_info: TaskDispatch, source_folder: Path
+        self,
+        task_id: str,
+        target: XnatTarget,
+        dispatch_info: TaskDispatch,
+        source_folder: Path,
     ) -> str:
         try:
-            _send_dicom_to_xnat(target=target, folder=source_folder, dispatch_info=dispatch_info)
+            _send_dicom_to_xnat(
+                target=target, folder=source_folder, dispatch_info=dispatch_info
+            )
         except ConnectionError as e:
-            self.handle_error(e, '')
+            self.handle_error(e, "")
             raise
 
         return ""
 
-
     def handle_error(self, e, command) -> None:
         logger.error(e)
-
 
     async def test_connection(self, target: XnatTarget, target_name: str):
         url = f"{target.host}/data/auth"
@@ -51,12 +65,16 @@ class XnatTargetHandler(TargetHandler[XnatTarget]):
             ping_ok = False
 
             if target.host:
-                ping_result, *_ = await async_run(f"ping -w 1 -c 1 {target.host}")
+                ping_result, *_ = await async_run(
+                    f"ping -w 1 -c 1 {get_domain(target.host)}"
+                )
                 if ping_result == 0:
                     ping_ok = True
 
-            try:            
-                async with session.get(url, auth=aiohttp.BasicAuth(target.user, target.password)) as resp:
+            try:
+                async with session.get(
+                    url, auth=aiohttp.BasicAuth(target.user, target.password)
+                ) as resp:
                     response_ok = resp.status == 200
                     text = await resp.text() if not response_ok else ""
                     return dict(ping=ping_ok, loggedin=response_ok, err=text)
@@ -66,31 +84,35 @@ class XnatTargetHandler(TargetHandler[XnatTarget]):
 
 
 def _send_dicom_to_xnat(target: XnatTarget, dispatch_info: TaskDispatch, folder: Path):
-    logger.info(f"Connecting to {dispatch_info.target_name}({target.host}) XNAT server...")
-    with InterfaceManager(server=target.host, user=target.user, password=target.password).open() as session: # type: ignore
+    logger.info(
+        f"Connecting to {dispatch_info.target_name}({target.host}) XNAT server..."
+    )
+    with InterfaceManager(server=target.host, user=target.user, password=target.password).open() as session:  # type: ignore
         project_id = target.project_id
-        dicom_file_path = glob.glob(os.path.join(folder, '*.dcm'))[0]
+        dicom_file_path = glob.glob(os.path.join(folder, "*.dcm"))[0]
         dcmFile = dcmread(dicom_file_path, stop_before_pixels=True)
-        subject_id = f'{dcmFile.PatientID}'
-        experiment_id = f"{subject_id}_{datetime.datetime.strptime(dcmFile.StudyDate, '%Y%m%d').strftime('%Y-%m-%d')}" # TODO make it more generic.
+        subject_id = f"{dcmFile.PatientID}"
+        experiment_id = f"{subject_id}_{datetime.datetime.strptime(dcmFile.StudyDate, '%Y%m%d').strftime('%Y-%m-%d')}"  # TODO make it more generic.
 
-        logger.info(f'Uploading {folder} to {dispatch_info.target_name} ...')
+        logger.info(f"Uploading {folder} to {dispatch_info.target_name} ...")
         _upload_dicom_session_to_xnat(
             session=session,
             project_id=project_id,
             subject_id=subject_id,
             experiment_label=experiment_id,
             dicom_path=folder,
-            overwrite_dicom=True)
+            overwrite_dicom=True,
+        )
 
 
 def _upload_dicom_session_to_xnat(
-        session : pyxnat.Interface,
-        project_id,
-        subject_id,
-        experiment_label,
-        dicom_path,
-        overwrite_dicom=True):
+    session: pyxnat.Interface,
+    project_id,
+    subject_id,
+    experiment_label,
+    dicom_path,
+    overwrite_dicom=True,
+):
     """
     Uploads the dicoms from the given path to an XNAT server using the Image Session Import Service API.
     If the dicom_path contains more than one scan, all will be uploaded to the session.
@@ -105,35 +127,38 @@ def _upload_dicom_session_to_xnat(
     """
     # Create a zip file with the dicom_path in a temporary directory
     with tempfile.TemporaryDirectory() as tmp_path:
-        zip_filepath = os.path.join(tmp_path, 'dicom.zip')
+        zip_filepath = os.path.join(tmp_path, "dicom.zip")
         # rename *.dcm files of dicom_path incrementaly and zip them
-        with zipfile.ZipFile(zip_filepath, 'w') as zip_file:
+        with zipfile.ZipFile(zip_filepath, "w") as zip_file:
             i = 0
             for root, dirs, files in os.walk(dicom_path):
                 for file in files:
-                    if file.endswith('.dcm'):
-                        zip_file.write(os.path.join(root, file), f'{i}.dcm')
+                    if file.endswith(".dcm"):
+                        zip_file.write(os.path.join(root, file), f"{i}.dcm")
                         i += 1
 
         # Upload zip file to XNAT server using the Image Session Import API
-        with open(zip_filepath, 'rb') as data:
+        with open(zip_filepath, "rb") as data:
             resp = session.post(
-                uri='/data/services/import',
+                uri="/data/services/import",
                 params={
-                    'PROJECT_ID': project_id,
-                    'SUBJECT_ID': subject_id,
-                    'EXPT_LABEL': experiment_label,
-                    'rename': 'true',
-                    'overwrite': 'delete' if overwrite_dicom else 'append',
-                    'inbody': 'true'},
-                headers={
-                    'Content-Type': 'application/zip'},
-                data=data)
+                    "PROJECT_ID": project_id,
+                    "SUBJECT_ID": subject_id,
+                    "EXPT_LABEL": experiment_label,
+                    "rename": "true",
+                    "overwrite": "delete" if overwrite_dicom else "append",
+                    "inbody": "true",
+                },
+                headers={"Content-Type": "application/zip"},
+                data=data,
+            )
 
             if resp.status_code != 200:
-                raise ConnectionError(f'Response not 200 OK while uploading DICOM with Image Session Import Service API. '
-                                      f'Response code: {resp.status_code} '
-                                      f'Response: {resp}')
+                raise ConnectionError(
+                    f"Response not 200 OK while uploading DICOM with Image Session Import Service API. "
+                    f"Response code: {resp.status_code} "
+                    f"Response: {resp}"
+                )
 
 
 class InterfaceManager(object):
@@ -154,21 +179,21 @@ class InterfaceManager(object):
     session.disconnect()
     ```
     """
+
     def __init__(self, server, user, password):
         self.host = server
         self.user = user
         self.psswd = password
 
-
     @contextmanager
     def open(self):
         try:
-            sess = pyxnat.Interface(server=self.host, user=self.user, password=self.psswd)
+            sess = pyxnat.Interface(
+                server=self.host, user=self.user, password=self.psswd
+            )
             yield sess
         finally:
             sess.disconnect()
 
-
     def open_persistent(self):
-        return pyxnat.Interface(server=self.host, user=self.user, password=self.psswd) 
-    
+        return pyxnat.Interface(server=self.host, user=self.user, password=self.psswd)
