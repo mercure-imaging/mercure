@@ -67,20 +67,22 @@ DICOM Reception over TLS Connection
 
 .. important:: Support for the DICOM TLS receiver mode is still experimental and should be used with care.
 
-The following environment variables must be defined to run mercure in DICOM TLS receiver mode. First, set `MERCURE_TLS_ENABLED` to `1`. Next, specify the paths to your server TLS key, certificate, and CA certificate, as shown in the below example configuration.
+.. important:: Due to an incompatibility in DICOM toolkit v3.6.4 and OpenSSL v1.1.1, the dcmtk and openssl versions supported by Ubuntu 20.04, only Ubuntu 22.04 mercure installs support TLS reception.
+
+The following environment variables must be defined to run mercure in DICOM TLS receiver mode. This can be done, for example, by adding the to the /etc/environment file. First, set `MERCURE_TLS_ENABLED` to `1`. Next, specify the paths to your server TLS key, certificate, and CA certificate, as shown in the below example configuration.
 
 ========================================= =====================================
 Environment Variable                      Example Value
 ========================================= =====================================
 MERCURE_TLS_ENABLED                       1
-MERCURE_TLS_KEY                           /opt/mercure/certs/private_key.pem
-MERCURE_TLS_CERT                          /opt/mercure/certs/certificate.pem
-MERCURE_TLS_CA_CERT                       /opt/mercure/certs/CA_certificate.pem
+MERCURE_TLS_KEY                           /opt/mercure/tls/private_key.pem
+MERCURE_TLS_CERT                          /opt/mercure/tls/certificate.pem
+MERCURE_TLS_CA_CERT                       /opt/mercure/tls/CA_certificate.pem
 ========================================= =====================================
 
-.. important:: The following example shows how to create your own Certificate Authority (CA) to self-sign your own certificates. In production, it makes sense to use your organization's certificate authority to sign your TLS receiver certificates instead, or create your CA as an intermediate CA from your organizational CA.
+.. note:: The following example shows how to create your own Certificate Authority (CA) to self-sign your own certificates. In production, you will likely use your organization's certificate authority to sign the TLS receiver certificate, or create your CA as an intermediate CA from your organizational CA.
 
-Here are the steps required to create a self-signed certificate authority and TLS key/certificate keypair that can be used to use mercure in DICOM TLS receiver mode.
+Here are some example steps to create a self-signed certificate authority and TLS key/certificate that can be utilized for use mercure in DICOM TLS receiver mode.
 
 * Step 1: Generate the CA key: `openssl genrsa -out CA_key.pem 4096`
 * Step 2: Create the CA certificate: `openssl req -new -x509 -days 3650 -key CA_key.pem -out CA_certificate.pem`
