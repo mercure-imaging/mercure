@@ -86,9 +86,9 @@ For SFTP targets, enter the hostname or IP, target folder on the server, usernam
 
 .. important:: Support for SFTP transfers is still experimental and should be used with care.
 
-For DICOM+TLS targets, enter the TLS client key path, TLS client certificate path, and the path to the Cetificate Authority (CA) certificate path. You will have to add these files to your Mercure instance in e.g. `/opt/mercure/certs`.
+For DICOM TLS targets, enter the TLS client key path, TLS client certificate path, and the path to the Certificate Authority (CA) certificate file. You will need to add these files to your mercure installation, e.g. in `/opt/mercure/certs`.
 
-.. important:: Support for DICOM+TLS transfers is still experimental and should be used with care.
+.. important:: Support for DICOM TLS transfers is still experimental and should be used with care.
 
 On the "Information" tab, you can add information for documentation purpose, including a contact e-mail address (so that it can be looked up who should be contacted if problems with the target occur) and a description of the target.
 

@@ -62,12 +62,12 @@ Folder                                    Content
 
 .. tip:: The source code located in the /app folder is directly executed only for systemd-type installations. Docker and Nomad installations execute container images instead. By default, these images are downloaded from Docker Hub. If you want to modify the mercure source code, you need to rebuild the container images for the changes to go into effect. This can be done with the script build-docker.sh.
 
-DICOM over TLS Receiver Mode
-----------------------------
+DICOM Reception over TLS Connection
+-----------------------------------
 
-.. important:: Support for DICOM+TLS receiver mode is still experimental and should be used with care.
+.. important:: Support for the DICOM TLS receiver mode is still experimental and should be used with care.
 
-The following environment variables must be defined to run Mercure in TLS receiver mode. First, set `MERCURE_TLS_ENABLED` to `1` in order to tell Mercure to run the receiver in TLS mode. Next, specify the paths to your server TLS key, certificate and CA certificate, as shown in the below example configuration.
+The following environment variables must be defined to run mercure in DICOM TLS receiver mode. First, set `MERCURE_TLS_ENABLED` to `1`. Next, specify the paths to your server TLS key, certificate, and CA certificate, as shown in the below example configuration.
 
 ========================================= =====================================
 Environment Variable                      Example Value
@@ -78,9 +78,9 @@ MERCURE_TLS_CERT                          /opt/mercure/certs/certificate.pem
 MERCURE_TLS_CA_CERT                       /opt/mercure/certs/CA_certificate.pem
 ========================================= =====================================
 
-.. important:: The following example shows how to create your own Certificate Authority (CA) to self-sign your own certificates. In production, it may make sense to utilize your organization's certificate authority to sign your TLS receiver certificates instead, or create your CA as an intermediate CA from your organizational CA.
+.. important:: The following example shows how to create your own Certificate Authority (CA) to self-sign your own certificates. In production, it makes sense to use your organization's certificate authority to sign your TLS receiver certificates instead, or create your CA as an intermediate CA from your organizational CA.
 
-Here are some steps to create a simple, self-signed certificate authority and TLS key/certificate keypair that can be used to start Mercure in TLS receiver mode.
+Here are the steps required to create a self-signed certificate authority and TLS key/certificate keypair that can be used to use mercure in DICOM TLS receiver mode.
 
 * Step 1: Generate the CA key: `openssl genrsa -out CA_key.pem 4096`
 * Step 2: Create the CA certificate: `openssl req -new -x509 -days 3650 -key CA_key.pem -out CA_certificate.pem`
@@ -89,9 +89,9 @@ Here are some steps to create a simple, self-signed certificate authority and TL
 * Step 5: Sign the CSR with the CA private key and certificate to generate the TLS certificate: `openssl x509 -req -days 3650 -in receiver_csr.pem -CA CA_certificate.pem -CAkey CA_key.pem -CAcreateserial -out certificate.pem`
 * Step 6: Verify that the generated TLS certificate is valid against the CA certificate: `openssl verify -CAfile CA_certificate.pem certificate.pem`
 
-.. tip:: When creating the CSR, ensure that the CSR common name is NOT the same as the CA common name. If so, the openssl certificate validation will fail and you will not be able to receive DICOM over TLS.
+.. tip:: When creating the CSR, ensure that the CSR common name is NOT the same as the CA common name. If so, the openssl certificate validation will fail and you will not be able to receive DICOM data over TLS.
 
-.. note:: Remember to add both your TLS receiver private key (private_key.pem), certificate file (certificate.pem) and CA certificate file (CA_certificate.pem) to the file system of your Mercure installation and specify the above environment variables to enable TLS receiver mode.
+.. note:: Remember to add both your TLS receiver private key (private_key.pem), certificate file (certificate.pem), and CA certificate file (CA_certificate.pem) to the file system of your mercure installation and specify the above environment variables to enable TLS receiver mode.
 
 Congratulations
 ---------------
