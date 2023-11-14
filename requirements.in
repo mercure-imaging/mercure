@@ -52,7 +52,7 @@ python-nomad
 # other
 pydicom ~= 2.4.1
 pydantic >= 1.10.9, <2.0.0
-pillow >= 9.2.0
+pillow >= 10.0.1
 dicomweb-client
 boto3
 freezegun
@@ -60,3 +60,4 @@ certifi>=2023.07.22
 future>=0.18.3
 lxml>=4.9.1
 pyxnat
+urllib3>=1.26.18
