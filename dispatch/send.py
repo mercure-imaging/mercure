@@ -21,7 +21,9 @@ from common.monitor import task_event, m_events, severity
 from dispatch.retry import increase_retry
 from dispatch.status import is_ready_for_sending
 from common.constants import mercure_names
-from common.types import DicomTarget, EmptyDict, SftpTarget, Task, TaskDispatch, TaskInfo, Rule
+from common.types import (
+    DicomTarget, DicomTLSTarget, EmptyDict, SftpTarget,
+    Task, TaskDispatch, TaskInfo, Rule)
 import common.config as config
 import common.monitor as monitor
 import common.notification as notification
@@ -48,6 +50,20 @@ def _create_command(task_id: str, dispatch_info: TaskDispatch, folder: Path) -> 
         target_aet_source = target_dicom.aet_source or ""
         dcmsend_status_file = Path(folder) / mercure_names.SENDLOG
         command = f"""dcmsend {target_ip} {target_port} +sd {folder} -aet {target_aet_source} -aec {target_aet_target} -nuc +sp '*.dcm' -to 60 +crf {dcmsend_status_file}"""
+        return command, {}, True
+
+    elif isinstance(config.mercure.targets.get(target_name, ""), DicomTLSTarget):
+        # Read the connection information from the configuration
+        tls_dicom: DicomTLSTarget = cast(DicomTLSTarget, config.mercure.targets.get(target_name))
+        target_ip = tls_dicom.ip
+        target_port = tls_dicom.port or 104
+        target_aet_target = tls_dicom.aet_target or ""
+        target_aet_source = tls_dicom.aet_source or ""
+        tls_key = tls_dicom.tls_key
+        tls_cert = tls_dicom.tls_cert
+        ca_cert = tls_dicom.ca_cert
+
+        command = f"""storescu +tls {tls_key} {tls_cert} +cf {ca_cert} {target_ip} {target_port} +sd {folder} -aet {target_aet_source} -aec {target_aet_target} +sp '*.dcm' -to 60"""
         return command, {}, True
 
     elif isinstance(config.mercure.targets.get(target_name, ""), SftpTarget):

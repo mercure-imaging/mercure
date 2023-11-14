@@ -60,6 +60,17 @@ class DicomTarget(Target):
     aet_source: Optional[str] = ""
 
 
+class DicomTLSTarget(Target):
+    target_type: Literal["dicomtls"] = "dicomtls"
+    ip: str
+    port: str
+    aet_target: str
+    aet_source: Optional[str] = ""
+    tls_key: str
+    tls_cert: str
+    ca_cert: str
+
+
 class SftpTarget(Target):
     target_type: Literal["sftp"] = "sftp"
     folder: str

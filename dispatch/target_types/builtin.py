@@ -1,9 +1,10 @@
-from common.types import DicomTarget, SftpTarget, DummyTarget
+from common.types import DicomTarget, DicomTLSTarget, SftpTarget, DummyTarget
 import common.config as config
 from common.constants import mercure_names
 from webinterface.common import async_run
 
 import json
+
 from pathlib import Path
 from shlex import split
 
@@ -68,6 +69,58 @@ class DicomTargetHandler(SubprocessTargetHandler[DicomTarget]):
             cecho_result, *_ = await async_run(
                 f"echoscu -to 2 -aec {target_aec} -aet {target_aet} {target_ip} {target_port}"
             )
+            if cecho_result == 0:
+                cecho_response = True
+
+        return {"ping": ping_response, "c-echo": cecho_response}
+
+
+@handler_for(DicomTLSTarget)
+class DicomTLSTargetHandler(SubprocessTargetHandler[DicomTLSTarget]):
+    view_template = "targets/dicom-tls.html"
+    edit_template = "targets/dicom-tls-edit.html"
+    test_template = "targets/dicom-test.html"
+    icon = "fa-database"
+    display_name = "DICOM+TLS"
+
+    def _create_command(self, target: DicomTLSTarget, source_folder: Path):
+        target_ip = target.ip
+        target_port = target.port or 104
+        target_aet_target = target.aet_target or ""
+        target_aet_source = target.aet_source or ""
+
+        command = split(
+            f"""storescu +tls {target.tls_key} {target.tls_cert} +cf {target.ca_cert} {target_ip} {target_port} +sd {source_folder} -aet {target_aet_source} -aec {target_aet_target} +sp '*.dcm' -to 60"""
+        )
+        return command, {}
+
+    def handle_error(self, e, command):
+        dcmsend_error_message = DCMSEND_ERROR_CODES.get(e.returncode, None)
+        logger.exception(f"Failed command:\n {command} \nbecause of {dcmsend_error_message}")
+        raise RuntimeError(f"{dcmsend_error_message}")
+
+
+    async def test_connection(self, target: DicomTLSTarget, target_name: str):
+        cecho_response = False
+        ping_response = False
+        target_ip = target.ip or ""
+        target_port = target.port or ""
+        target_aec = target.aet_target or "ANY-SCP"
+        target_aet = target.aet_source or "ECHOSCU"
+        tls_key = target.tls_key
+        tls_cert = target.tls_cert
+        ca_cert = target.ca_cert
+
+        logger.info(f"Testing TLS target {target_name}")
+
+        if target_ip and target_port:
+            ping_result, *_ = await async_run(f"ping -w 1 -c 1 {target_ip}")
+            if ping_result == 0:
+                ping_response = True
+
+            cecho_command = f"echoscu -to 2 -aec {target_aec} -aet {target_aet} {target_ip} {target_port} +tls {tls_key} {tls_cert} +cf {ca_cert}"
+            logger.info('Running %s' % cecho_command)
+            cecho_result, *_ = await async_run(cecho_command)
             if cecho_result == 0:
                 cecho_response = True
 
