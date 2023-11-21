@@ -52,7 +52,7 @@ mercure_defaults = {
     "dicom_receiver": {"additional_tags": []},
     "graphite_ip": "",
     "graphite_port": 2003,
-    "inluxdb_host": "",
+    "influxdb_host": "",
     "influxdb_org": "",
     "influxdb_token": "",
     "inflluxdb_bucket": "",
@@ -127,6 +127,7 @@ def read_config() -> Config:
 
             configuration_timestamp = timestamp
             monitor.send_event(monitor.m_events.CONFIG_UPDATE, monitor.severity.INFO, "Configuration updated")
+            logger.info("Config", mercure.dict())
             return mercure
     else:
         raise FileNotFoundError(f"Configuration file not found: {configuration_file}")
