@@ -14,6 +14,7 @@ $MERCURE_BASE/env/bin/pip install --isolated --quiet -r "$MERCURE_BASE/app/requi
 echo "Creating default configuration files..."
 mkdir $MERCURE_BASE/config
 cp $MERCURE_BASE/app/configuration/default_bookkeeper.env $MERCURE_BASE/config/bookkeeper.env
+cp $MERCURE_BASE/app/configuration/default_receiver.env $MERCURE_BASE/config/receiver.env
 cp $MERCURE_BASE/app/configuration/default_mercure.json $MERCURE_BASE/config/mercure.json
 cp $MERCURE_BASE/app/configuration/default_services.json $MERCURE_BASE/config/services.json
 cp $MERCURE_BASE/app/configuration/default_webgui.env $MERCURE_BASE/config/webgui.env
