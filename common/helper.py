@@ -23,17 +23,6 @@ terminate = False
 
 loop = asyncio.get_event_loop()
 
-# Initialize InfluxDB client
-if len(config.mercure.influxdb_host) > 0:
-    client = InfluxDBClient(
-        url=config.mercure.influxdb_host,
-        token=config.mercure.influxdb_token,
-        org=config.mercure.influxdb_org,
-    )
-    write_api = client.write_api(write_options=ASYNCHRONOUS)
-else:
-    client = None
-
 
 def get_runner() -> str:
     """Returns the name of the mechanism that is used for running mercure in the current installation (systemd, docker, nomad)."""
@@ -58,11 +47,9 @@ def send_to_graphite(*args, **kwargs) -> None:
     graphyte.default_sender.send(*args, **kwargs)
 
 
-def send_to_influxdb(data_point) -> None:
+def send_to_influxdb(data_point, bucket, write_api) -> None:
     """Wrapper for asynchronous InfluxDB call to avoid wait time of main loop."""
-    if client == None:
-        return
-    write_api.write(bucket=config.mercure.influxdb_bucket, record=data_point)
+    write_api.write(bucket=bucket, record=data_point)
 
 
 def g_log(*args, **kwargs) -> None:
@@ -75,14 +62,25 @@ def g_log(*args, **kwargs) -> None:
         send_to_graphite(*args, **kwargs)
 
 
-def g_log_influxdb(data_point) -> None:
+def g_log_influxdb(data_point, host, token, org, bucket) -> None:
     global loop
     """Sends diagnostic information to graphite (if configured)."""
+    # Initialize InfluxDB client
+    if len(host) > 0:
+        client = InfluxDBClient(
+            url=host,
+            token=token,
+            org=org,
+        )
+        write_api = client.write_api(write_options=ASYNCHRONOUS)
+    else:
+        return
+    
     try:
         loop = asyncio.get_running_loop()
         loop.call_soon(send_to_influxdb, data_point)
     except:
-        send_to_influxdb(data_point)
+        send_to_influxdb(data_point, bucket, write_api)
 
 
 class AsyncTimer(object):
