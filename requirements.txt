@@ -89,6 +89,8 @@ idna==3.4
     #   yarl
 imagesize==1.4.1
     # via sphinx
+influxdb_client==1.38.0
+    # via -r requirements.in
 iniconfig==2.0.0
     # via pytest
 itsdangerous==2.1.2
