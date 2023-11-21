@@ -11,6 +11,9 @@ from pathlib import Path
 import threading
 from typing import Callable, Optional
 import graphyte
+from influxdb_client import InfluxDBClient
+from influxdb_client.client.write_api import ASYNCHRONOUS
+import common.config as config
 import aiohttp
 import os
 
@@ -19,6 +22,17 @@ terminate = False
 
 
 loop = asyncio.get_event_loop()
+
+# Initialize InfluxDB client
+if len(config.mercure.influxdb_host) > 0:
+    client = InfluxDBClient(
+        url=config.mercure.influxdb_host,
+        token=config.mercure.influxdb_token,
+        org=config.mercure.influxdb_org,
+    )
+    write_api = client.write_api(write_options=ASYNCHRONOUS)
+else:
+    client = None
 
 
 def get_runner() -> str:
@@ -44,6 +58,13 @@ def send_to_graphite(*args, **kwargs) -> None:
     graphyte.default_sender.send(*args, **kwargs)
 
 
+def send_to_influxdb(data_point) -> None:
+    """Wrapper for asynchronous InfluxDB call to avoid wait time of main loop."""
+    if client == None:
+        return
+    write_api.write(bucket=config.mercure.influxdb_bucket, record=data_point)
+
+
 def g_log(*args, **kwargs) -> None:
     global loop
     """Sends diagnostic information to graphite (if configured)."""
@@ -52,6 +73,16 @@ def g_log(*args, **kwargs) -> None:
         loop.call_soon(send_to_graphite, *args, **kwargs)
     except:
         send_to_graphite(*args, **kwargs)
+
+
+def g_log_influxdb(data_point) -> None:
+    global loop
+    """Sends diagnostic information to graphite (if configured)."""
+    try:
+        loop = asyncio.get_running_loop()
+        loop.call_soon(send_to_influxdb, data_point)
+    except:
+        send_to_influxdb(data_point)
 
 
 class AsyncTimer(object):
@@ -98,7 +129,14 @@ class RepeatedTimer(object):
 
     _timer: Optional[threading.Timer]
 
-    def __init__(self, interval: float, function: Callable, exit_function: Callable, *args, **kwargs):
+    def __init__(
+        self,
+        interval: float,
+        function: Callable,
+        exit_function: Callable,
+        *args,
+        **kwargs,
+    ):
         self._timer = None
         self.interval = interval
         self.function = function
