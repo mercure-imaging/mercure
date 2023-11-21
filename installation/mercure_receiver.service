@@ -12,6 +12,7 @@ ExecStart=/opt/mercure/app/receiver.sh
 Restart=on-failure
 RestartSec=3
 User=mercure
+EnvironmentFile=/opt/mercure/config/receiver.env
 
 [Install]
 WantedBy=multi-user.target
