@@ -12,6 +12,7 @@ import os
 import sys
 import uuid
 import graphyte
+from influxdb_client import Point
 import daiquiri
 import hupper
 from typing import Dict
@@ -35,6 +36,7 @@ async def terminate_process(signalNumber, frame) -> None:
     Triggers the shutdown of the service
     """
     helper.g_log("events.shutdown", 1)
+    helper.g_log_influxdb(Point("mercure." + config.mercure.appliance_name + ".router." + "main" +"events.shutdown").field("value", 1))
     logger.info("Shutdown requested")
     monitor.send_event(monitor.m_events.SHUTDOWN_REQUEST, monitor.severity.INFO)
     # Note: main_loop can be read here because it has been declared as global variable
@@ -51,6 +53,7 @@ def run_router() -> None:
         return
 
     helper.g_log("events.run", 1)
+    helper.g_log_influxdb(Point("mercure." + config.mercure.appliance_name + ".router." + "main" +"events.run").field("value", 1))
     # logger.info('')
     # logger.info('Processing incoming folder...')
 
@@ -98,7 +101,9 @@ def run_router() -> None:
     # logger.info(f'Series found    = {len(series)}')
     # logger.info(f'Complete series = {len(complete_series)}')
     helper.g_log("incoming.files", filecount)
+    helper.g_log_influxdb(Point("mercure." + config.mercure.appliance_name + ".router." + "main" +"incoming.files").field("value", filecount))
     helper.g_log("incoming.series", len(series))
+    helper.g_log_influxdb(Point("mercure." + config.mercure.appliance_name + ".router." + "main" +"incoming.series").field("value", len(series)))
 
     # Process all complete series
     for series_uid in sorted(complete_series):
@@ -181,6 +186,7 @@ def main(args=sys.argv[1:]) -> None:
     main_loop = helper.AsyncTimer(config.mercure.router_scan_interval, run_router)
 
     helper.g_log("events.boot", 1)
+    helper.g_log_influxdb(Point("mercure." + config.mercure.appliance_name + ".router." + "main" +"events.boot").field("value", 1))        
 
     try:
         main_loop.run_until_complete(helper.loop)
