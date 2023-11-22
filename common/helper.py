@@ -74,10 +74,10 @@ def g_log_influxdb(data_point, host, token, org, bucket) -> None:
         write_api = client.write_api(write_options=ASYNCHRONOUS)
     else:
         return
-    
+
     try:
         loop = asyncio.get_running_loop()
-        loop.call_soon(send_to_influxdb, data_point)
+        loop.call_soon(send_to_influxdb, data_point, bucket, write_api)
     except:
         send_to_influxdb(data_point, bucket, write_api)
 
