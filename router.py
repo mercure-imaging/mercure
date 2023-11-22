@@ -214,9 +214,6 @@ def main(args=sys.argv[1:]) -> None:
     logger.info(f"Instance  PID  = {os.getpid()}")
     logger.info(sys.version)
 
-    logger.info(f"Configuration : {config}")
-    logger.info(f"Config.mercure : {config.mercure}")
-
     monitor.configure("router", instance_name, config.mercure.bookkeeper)
     monitor.send_event(monitor.m_events.BOOT, monitor.severity.INFO, f"PID = {os.getpid()}")
 
