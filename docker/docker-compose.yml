@@ -19,7 +19,7 @@ x-docker-user: &docker-user
   
 services:
   ui:
-    <<: *docker-user
+    <<: [*docker-user, *volumes-docker, *env]
     depends_on:
       db:
         condition: service_healthy
@@ -27,8 +27,7 @@ services:
     restart: always
     ports:
       - "8000:8000"
-    <<: *volumes-docker
-    <<: *env
+  
   db:
     image: library/postgres:alpine
     restart: always
@@ -53,8 +52,7 @@ services:
         condition: service_healthy
     ports:
       - "11112:11112"
-    <<: *volumes
-    <<: *env
+    <<: [*volumes, *env]
 
   cleaner:
     image: mercureimaging/mercure-cleaner${IMAGE_TAG}
@@ -62,8 +60,7 @@ services:
     depends_on:
       bookkeeper:
         condition: service_healthy
-    <<: *volumes
-    <<: *env
+    <<: [*volumes, *env]
 
   dispatcher:
     image: mercureimaging/mercure-dispatcher${IMAGE_TAG}
@@ -71,18 +68,15 @@ services:
     depends_on:
       bookkeeper:
         condition: service_healthy
-    <<: *volumes
-    <<: *env
-
+    <<: [*volumes, *env]
+  
   processor:
-    <<: *docker-user
+    <<: [*docker-user, *volumes-docker, *env]
     image: mercureimaging/mercure-processor${IMAGE_TAG}
     restart: always
     depends_on:
       bookkeeper:
         condition: service_healthy
-    <<: *volumes-docker
-    <<: *env
 
   router:
     image: mercureimaging/mercure-router${IMAGE_TAG}
@@ -90,8 +84,7 @@ services:
     depends_on:
       bookkeeper:
         condition: service_healthy
-    <<: *volumes
-    <<: *env
+    <<: [*volumes, *env]
 
   bookkeeper:
     image: mercureimaging/mercure-bookkeeper${IMAGE_TAG}
@@ -99,8 +92,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    <<: *volumes
-    <<: *env
+    <<: [*volumes, *env]
 
 volumes:
   db-data:

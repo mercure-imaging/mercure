@@ -330,7 +330,7 @@ build_docker () {
 
 start_docker () {
   echo "## Starting docker compose..."  
-  cd /opt/mercure
+  cd "$MERCURE_BASE"
   sudo docker-compose up -d
 }
 

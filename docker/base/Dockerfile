@@ -1,7 +1,16 @@
 FROM ubuntu:22.04
-RUN apt-get update && apt-get -y upgrade && \
-    DEBIAN_FRONTEND="noninteractive" apt-get -y install \
-    tzdata build-essential wget git dcmtk jq inetutils-ping entr sshpass lsb-release lsb-core libpq-dev ca-certificates python3-wheel python3-dev python3 python3-venv libqt5core5a --no-install-recommends && \
+
+# timezone
+ENV TZ=Asia/Shanghai
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+ENV DEBIAN_FRONTEND="noninteractive" 
+
+# install necessary packages
+RUN apt-get -y update && \
+    apt-get -y upgrade && \
+    apt-get -y install tzdata build-essential wget git dcmtk jq inetutils-ping entr sshpass lsb-release lsb-core \
+    libpq-dev ca-certificates python3-wheel python3-dev python3 python3-venv libqt5core5a --no-install-recommends && \
     rm -rf /var/lib/apt/lists/* && \
     useradd -ms /bin/bash mercure && \
     mkdir -p /opt/mercure/app/installation /opt/mercure/app/configuration
@@ -33,6 +42,7 @@ RUN chmod -R o+rx /opt/mercure/app && \
           /opt/mercure/data/discard \
           /opt/mercure/data/processing && \
     chown -R mercure /opt/mercure/data
+
 # Export the configuration and data folder as a volume, as multiple scripts will have to read/write there
 VOLUME /opt/mercure/config
 VOLUME /opt/mercure/data
