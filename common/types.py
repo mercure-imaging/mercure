@@ -37,7 +37,9 @@ class Target(BaseModel, Compat):
     def validate(cls, v):
         """Parse the target as any of the known target types."""
 
-        subclass_dict: typing.Dict[str, Type[Target]] = {sbc.__name__: sbc for sbc in cls.__subclasses__()}
+        subclass_dict: typing.Dict[str, Type[Target]] = {
+            sbc.__name__: sbc for sbc in cls.__subclasses__()
+        }
 
         for k in subclass_dict:
             try:
@@ -45,7 +47,9 @@ class Target(BaseModel, Compat):
             except:
                 pass
 
-        raise ValueError("Couldn't validate target as any of", list(subclass_dict.keys()))
+        raise ValueError(
+            "Couldn't validate target as any of", list(subclass_dict.keys())
+        )
 
     @classmethod
     def get_name(cls) -> str:
@@ -117,6 +121,7 @@ class Module(BaseModel, Compat):
     resources: Optional[str] = ""
     requires_root: Optional[bool] = False
 
+
 class UnsetRule(TypedDict):
     rule: str
 
@@ -134,8 +139,8 @@ class Rule(BaseModel, Compat):
     study_trigger_condition: Literal["timeout", "received_series"] = "timeout"
     study_trigger_series: str = ""
     priority: Literal["normal", "urgent", "offpeak"] = "normal"
-    processing_module: Union[str,List[str]] = ""
-    processing_settings: Union[List[Dict[str, Any]],Dict[str, Any]] = {}
+    processing_module: Union[str, List[str]] = ""
+    processing_settings: Union[List[Dict[str, Any]], Dict[str, Any]] = {}
     processing_retain_images: bool = False
     notification_email: str = ""
     notification_webhook: str = ""
@@ -155,8 +160,8 @@ class ProcessingLogsConfig(BaseModel):
 
 
 class DicomReceiverConfig(BaseModel):
-    additional_tags: Dict[str,str] = {}
-    
+    additional_tags: Dict[str, str] = {}
+
 
 class Config(BaseModel, Compat):
     appliance_name: str
@@ -169,19 +174,23 @@ class Config(BaseModel, Compat):
     error_folder: str
     discard_folder: str
     processing_folder: str
-    router_scan_interval: int       # in seconds
-    dispatcher_scan_interval: int   # in seconds
-    cleaner_scan_interval: int      # in seconds
-    retention: int                  # in seconds (3 days)
-    emergency_clean_percentage: int # in % of disk space
-    retry_delay: int                # in seconds (15 min)
+    router_scan_interval: int  # in seconds
+    dispatcher_scan_interval: int  # in seconds
+    cleaner_scan_interval: int  # in seconds
+    retention: int  # in seconds (3 days)
+    emergency_clean_percentage: int  # in % of disk space
+    retry_delay: int  # in seconds (15 min)
     retry_max: int
-    series_complete_trigger: int    # in seconds
-    study_complete_trigger: int     # in seconds
+    series_complete_trigger: int  # in seconds
+    study_complete_trigger: int  # in seconds
     study_forcecomplete_trigger: int  # in seconds
     dicom_receiver: DicomReceiverConfig = DicomReceiverConfig()
     graphite_ip: str
     graphite_port: int
+    influxdb_host: str
+    influxdb_token: str
+    influxdb_org: str
+    influxdb_bucket: str
     bookkeeper: str
     offpeak_start: str
     offpeak_end: str
@@ -236,6 +245,7 @@ class TaskProcessing(BaseModel, Compat):
     retain_input_images: bool
     output: Optional[Dict]
 
+
 # class PydanticFile(object):
 #     def __init__(self, klass, file_name):
 #         self.Klass = klass
@@ -266,7 +276,9 @@ class Task(BaseModel, Compat):
     info: TaskInfo
     id: str
     dispatch: Union[TaskDispatch, EmptyDict] = cast(EmptyDict, {})
-    process: Union[TaskProcessing, EmptyDict,List[TaskProcessing]] = cast(EmptyDict, {})
+    process: Union[TaskProcessing, EmptyDict, List[TaskProcessing]] = cast(
+        EmptyDict, {}
+    )
     study: Union[TaskStudy, EmptyDict] = cast(EmptyDict, {})
     nomad_info: Optional[Any]
 
