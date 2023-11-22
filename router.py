@@ -35,8 +35,6 @@ async def terminate_process(signalNumber, frame) -> None:
     """
     Triggers the shutdown of the service
     """
-    print("Print config: ", config)
-    print("Config.mercure: ", config.mercure)
     helper.g_log("events.shutdown", 1)
     helper.g_log_influxdb(
         Point(
@@ -215,6 +213,9 @@ def main(args=sys.argv[1:]) -> None:
     logger.info(f"Instance  name = {instance_name}")
     logger.info(f"Instance  PID  = {os.getpid()}")
     logger.info(sys.version)
+
+    logger.info(f"Configuration : {config}")
+    logger.info(f"Config.mercure : {config.mercure}")
 
     monitor.configure("router", instance_name, config.mercure.bookkeeper)
     monitor.send_event(monitor.m_events.BOOT, monitor.severity.INFO, f"PID = {os.getpid()}")
