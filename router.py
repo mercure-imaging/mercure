@@ -35,6 +35,8 @@ async def terminate_process(signalNumber, frame) -> None:
     """
     Triggers the shutdown of the service
     """
+    print("Print config: ", config)
+    print("Config.mercure: ", config.mercure)
     helper.g_log("events.shutdown", 1)
     helper.g_log_influxdb(
         Point(
