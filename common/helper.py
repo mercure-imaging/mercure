@@ -13,7 +13,6 @@ from typing import Callable, Optional
 import graphyte
 from influxdb_client import InfluxDBClient
 from influxdb_client.client.write_api import ASYNCHRONOUS
-import common.config as config
 import aiohttp
 import os
 
