@@ -93,18 +93,19 @@ def run_router() -> None:
     # series in the folder with the timestamp of the latest DICOM file as value
 
     for root, _, files in os.walk(config.mercure.processing_folder):
-        for file in files:
-            if file.endswith(".dcm"):
-                filecount += 1
-                seriesString = file.split("#", 1)[0]
-                file_path = os.path.join(root, file)
-                modificationTime = os.stat(file_path).st_mtime
+        if "in" in os.path.normpath(root).split(os.sep):
+            for file in files:
+                if file.endswith(".dcm"):
+                    filecount += 1
+                    seriesString = file.split("#", 1)[0]
+                    file_path = os.path.join(root, file)
+                    modificationTime = os.stat(file_path).st_mtime
 
-                if seriesString in series:
-                    if modificationTime > series[seriesString]:
+                    if seriesString in series:
+                        if modificationTime > series[seriesString]:
+                            series[seriesString] = modificationTime
+                    else:
                         series[seriesString] = modificationTime
-                else:
-                    series[seriesString] = modificationTime
 
     helper.g_log("processing.files", filecount)
     helper.g_log_influxdb(
