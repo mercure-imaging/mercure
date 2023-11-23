@@ -40,9 +40,7 @@ async def terminate_process(signalNumber, frame) -> None:
         Point(
             "mercure."
             + config.mercure.appliance_name
-            + ".router."
-            + "main"
-            + "events.shutdown"
+            + ".router.main.events.shutdown"
         ).field("value", 1),
         config.mercure.influxdb_host,
         config.mercure.influxdb_token,
@@ -69,9 +67,7 @@ def run_router() -> None:
         Point(
             "mercure."
             + config.mercure.appliance_name
-            + ".router."
-            + "main"
-            + "events.run"
+            + ".router.main.events.run"
         ).field("value", 1),
         config.mercure.influxdb_host,
         config.mercure.influxdb_token,
@@ -129,9 +125,7 @@ def run_router() -> None:
         Point(
             "mercure."
             + config.mercure.appliance_name
-            + ".router."
-            + "main"
-            + "incoming.files"
+            + ".router.main.incoming.files"
         ).field("value", filecount),
         config.mercure.influxdb_host,
         config.mercure.influxdb_token,
@@ -143,9 +137,7 @@ def run_router() -> None:
         Point(
             "mercure."
             + config.mercure.appliance_name
-            + ".router."
-            + "main"
-            + "incoming.series"
+            + ".router.main.incoming.series"
         ).field("value", len(series)),
         config.mercure.influxdb_host,
         config.mercure.influxdb_token,
@@ -235,11 +227,16 @@ def main(args=sys.argv[1:]) -> None:
     main_loop = helper.AsyncTimer(config.mercure.router_scan_interval, run_router)
 
     helper.g_log("events.boot", 1)
-    helper.g_log_influxdb(Point("mercure." + config.mercure.appliance_name + ".router." + "main" + "events.boot").field("value", 1),
-                          config.mercure.influxdb_host,
-                          config.mercure.influxdb_token,
-                          config.mercure.influxdb_org,
-                          config.mercure.influxdb_bucket)
+    helper.g_log_influxdb(
+        Point(
+            "mercure."
+            + config.mercure.appliance_name
+            + ".router.main.events.boot").field("value", 1
+            ),
+            config.mercure.influxdb_host,
+            config.mercure.influxdb_token,
+            config.mercure.influxdb_org,
+            config.mercure.influxdb_bucket)
 
     try:
         main_loop.run_until_complete(helper.loop)

@@ -15,6 +15,7 @@ import json
 from typing import Dict
 import threading
 import graphyte
+from influxdb_client import Point
 import daiquiri
 import nomad
 from pathlib import Path
@@ -46,7 +47,7 @@ processor_lockfile = None
 processor_is_locked = False
 
 try:
-    nomad_connection = nomad.Nomad(host="172.17.0.1", timeout=5) # type: ignore
+    nomad_connection = nomad.Nomad(host="172.17.0.1", timeout=5)  # type: ignore
     logger.info("Connected to Nomad")
 except:
     nomad_connection = None
@@ -57,6 +58,14 @@ async def search_folder(counter) -> bool:
     global processor_is_locked
     global nomad_connection
     helper.g_log("events.run", 1)
+    helper.g_log_influxdb(
+        Point(
+            "mercure." + config.mercure.appliance_name + ".processor.main.events.run"
+        ).field("value", 1),
+        config.mercure.influxdb_host,
+        config.mercure.influxdb_token,
+        config.mercure.influxdb_org,
+    )
 
     tasks: Dict[str, float] = {}
 
@@ -71,7 +80,9 @@ async def search_folder(counter) -> bool:
                 continue
 
             # Some tasks are actually currently processing
-            if (Path(entry.path) / ".processing").exists() and (Path(entry.path) / "nomad_job.json").exists():
+            if (Path(entry.path) / ".processing").exists() and (
+                Path(entry.path) / "nomad_job.json"
+            ).exists():
                 logger.debug(f"{entry.name} currently processing")
                 with open(Path(entry.path) / "nomad_job.json", "r") as f:
                     id = json.load(f).get("DispatchedJobID")
@@ -89,7 +100,9 @@ async def search_folder(counter) -> bool:
 
                         logger.debug("========== logs ==========")
                         for s in ("stdout", "stderr"):
-                            result = nomad_connection.client.stream_logs.stream(alloc, "process", s)
+                            result = nomad_connection.client.stream_logs.stream(
+                                alloc, "process", s
+                            )
                             if len(result):
                                 data = json.loads(result).get("Data")
                                 result = base64.b64decode(data).decode(encoding="utf-8")
@@ -103,8 +116,12 @@ async def search_folder(counter) -> bool:
                         task_path = Path(entry.path) / "in" / "task.json"
                         task = Task(**json.loads(task_path.read_text()))
                         assert isinstance(task.process, TaskProcessing)
-                        monitor.send_process_logs(task.id, task.process.module_name, "\n".join(logs))
-                    complete.append(dict(path=Path(entry.path)))  # , info=job_info, allocations=job_allocations))
+                        monitor.send_process_logs(
+                            task.id, task.process.module_name, "\n".join(logs)
+                        )
+                    complete.append(
+                        dict(path=Path(entry.path))
+                    )  # , info=job_info, allocations=job_allocations))
                 else:
                     logger.debug(f"Status: {status}")
 
@@ -130,7 +147,9 @@ async def search_folder(counter) -> bool:
             json.dump(task.dict(), f)
 
         # Copy input images if configured in rule
-        task_processing = (task.process[0] if isinstance(task.process,list) else task.process)
+        task_processing = (
+            task.process[0] if isinstance(task.process, list) else task.process
+        )
         if not task_processing:
             continue
         if task_processing.retain_input_images == True:
@@ -154,12 +173,18 @@ async def search_folder(counter) -> bool:
         (p_folder / ".processing").unlink()
         p_folder.rmdir()
         monitor.send_task_event(
-            monitor.task_event.PROCESS_COMPLETE, task.id, file_count_complete, "", "Processing complete"
+            monitor.task_event.PROCESS_COMPLETE,
+            task.id,
+            file_count_complete,
+            "",
+            "Processing complete",
         )
         # If dispatching not needed, then trigger the completion notification (for Nomad)
         if not needs_dispatching:
             trigger_notification(task, mercure_events.COMPLETED)
-            monitor.send_task_event(monitor.task_event.COMPLETE, task.id, 0, "", "Task complete")
+            monitor.send_task_event(
+                monitor.task_event.COMPLETE, task.id, 0, "", "Task complete"
+            )
 
     # Check if processing has been suspended via the UI
     if processor_lockfile and processor_lockfile.exists():
@@ -235,6 +260,14 @@ def exit_processor() -> None:
 async def terminate_process(signalNumber, loop) -> None:
     """Triggers the shutdown of the service."""
     helper.g_log("events.shutdown", 1)
+    helper.g_log_influxdb(
+        Point(
+            "mercure." + config.mercure.appliance_name + ".processor.main.events.shutdown"
+        ).field("value", 1),
+        config.mercure.influxdb_host,
+        config.mercure.influxdb_token,
+        config.mercure.influxdb_org,
+    )
     logger.info("Shutdown requested")
     monitor.send_event(monitor.m_events.SHUTDOWN_REQUEST, monitor.severity.INFO)
     # Note: processing_loop can be read here because it has been declared as global variable
@@ -260,7 +293,9 @@ def main(args=sys.argv[1:]) -> None:
     # Register system signals to be caught
     signals = (signal.SIGTERM, signal.SIGINT)
     for s in signals:
-        helper.loop.add_signal_handler(s, lambda s=s: asyncio.create_task(terminate_process(s, helper.loop)))
+        helper.loop.add_signal_handler(
+            s, lambda s=s: asyncio.create_task(terminate_process(s, helper.loop))
+        )
 
     instance_name = "main"
 
@@ -283,21 +318,39 @@ def main(args=sys.argv[1:]) -> None:
     logger.info(sys.version)
 
     monitor.configure("processor", instance_name, config.mercure.bookkeeper)
-    monitor.send_event(monitor.m_events.BOOT, monitor.severity.INFO, f"PID = {os.getpid()}")
+    monitor.send_event(
+        monitor.m_events.BOOT, monitor.severity.INFO, f"PID = {os.getpid()}"
+    )
 
     if len(config.mercure.graphite_ip) > 0:
         logger.info(f"Sending events to graphite server: {config.mercure.graphite_ip}")
         graphite_prefix = "mercure." + appliance_name + ".processor." + instance_name
-        graphyte.init(config.mercure.graphite_ip, config.mercure.graphite_port, prefix=graphite_prefix)
+        graphyte.init(
+            config.mercure.graphite_ip,
+            config.mercure.graphite_port,
+            prefix=graphite_prefix,
+        )
 
     logger.info(f"Processing folder: {config.mercure.processing_folder}")
-    processor_lockfile = Path(config.mercure.processing_folder + "/" + mercure_names.HALT)
+    processor_lockfile = Path(
+        config.mercure.processing_folder + "/" + mercure_names.HALT
+    )
 
     # Start the timer that will periodically trigger the scan of the incoming folder
     global processing_loop
-    processing_loop = helper.AsyncTimer(config.mercure.dispatcher_scan_interval, run_processor)  # , exit_processor)
+    processing_loop = helper.AsyncTimer(
+        config.mercure.dispatcher_scan_interval, run_processor
+    )  # , exit_processor)
 
     helper.g_log("events.boot", 1)
+    helper.g_log_influxdb(
+        Point(
+            "mercure." + config.mercure.appliance_name + ".processor.main.events.boot"
+        ).field("value", 1),
+        config.mercure.influxdb_host,
+        config.mercure.influxdb_token,
+        config.mercure.influxdb_org,
+    )
 
     try:
         processing_loop.run_until_complete(helper.loop)

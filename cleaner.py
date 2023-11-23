@@ -19,6 +19,7 @@ from datetime import time as _time
 from pathlib import Path
 from shutil import rmtree, disk_usage
 import graphyte
+from influxdb_client import Point
 import hupper
 
 # App-specific includes
@@ -39,6 +40,16 @@ main_loop = None  # type: helper.AsyncTimer # type: ignore
 async def terminate_process(signalNumber, frame) -> None:
     """Triggers the shutdown of the service."""
     helper.g_log("events.shutdown", 1)
+    helper.g_log_influxdb(
+        Point(
+            "mercure." + config.mercure.appliance_name + ".cleaner.main.events.shutdown"
+        ).field("value", 1),
+        config.mercure.influxdb_host,
+        config.mercure.influxdb_token,
+        config.mercure.influxdb_org,
+        config.mercure.influxdb_bucket,
+    )
+
     logger.info("Shutdown requested")
     monitor.send_event(monitor.m_events.SHUTDOWN_REQUEST, monitor.severity.INFO)
     # Note: main_loop can be read here because it has been declared as global variable
@@ -53,6 +64,15 @@ def clean() -> None:
         return
 
     helper.g_log("events.run", 1)
+    helper.g_log_influxdb(
+        Point(
+            "mercure." + config.mercure.appliance_name + ".cleaner.main.events.run"
+        ).field("value", 1),
+        config.mercure.influxdb_host,
+        config.mercure.influxdb_token,
+        config.mercure.influxdb_org,
+        config.mercure.influxdb_bucket,
+    )
 
     try:
         config.read_config()
@@ -121,7 +141,9 @@ def _is_offpeak(offpeak_start: str, offpeak_end: str, current_time: _time) -> bo
         start_time = datetime.strptime(offpeak_start, "%H:%M").time()
         end_time = datetime.strptime(offpeak_end, "%H:%M").time()
     except Exception as e:
-        logger.error(f"Unable to parse offpeak time: {offpeak_start}, {offpeak_end}", None)  # handle_error
+        logger.error(
+            f"Unable to parse offpeak time: {offpeak_start}, {offpeak_end}", None
+        )  # handle_error
         return True
 
     if start_time < end_time:
@@ -137,7 +159,8 @@ def clean_dir(folder, retention) -> None:
     candidates = [
         (f, f.stat().st_mtime)
         for f in Path(folder).iterdir()
-        if f.is_dir() and retention < timedelta(seconds=(time.time() - f.stat().st_mtime))
+        if f.is_dir()
+        and retention < timedelta(seconds=(time.time() - f.stat().st_mtime))
     ]
 
     for entry in candidates:
@@ -151,7 +174,9 @@ def delete_folder(entry) -> None:
     try:
         rmtree(delete_path)
         logger.info(f"Deleted folder {delete_path} from {series_uid}")
-        monitor.send_task_event(task_event.CLEAN, Path(delete_path).stem, 0, delete_path, "Deleted folder")
+        monitor.send_task_event(
+            task_event.CLEAN, Path(delete_path).stem, 0, delete_path, "Deleted folder"
+        )
     except Exception as e:
         logger.error(
             f"Unable to delete folder {delete_path}",
@@ -192,7 +217,9 @@ def main(args=sys.argv[1:]) -> None:
     # Register system signals to be caught
     signals = (signal.SIGTERM, signal.SIGINT)
     for s in signals:
-        helper.loop.add_signal_handler(s, lambda s=s: asyncio.create_task(terminate_process(s, helper.loop)))
+        helper.loop.add_signal_handler(
+            s, lambda s=s: asyncio.create_task(terminate_process(s, helper.loop))
+        )
 
     instance_name = "main"
 
@@ -213,7 +240,9 @@ def main(args=sys.argv[1:]) -> None:
     logger.info(sys.version)
 
     monitor.configure("cleaner", instance_name, config.mercure.bookkeeper)
-    monitor.send_event(monitor.m_events.BOOT, monitor.severity.INFO, f"PID = {os.getpid()}")
+    monitor.send_event(
+        monitor.m_events.BOOT, monitor.severity.INFO, f"PID = {os.getpid()}"
+    )
 
     if len(config.mercure.graphite_ip) > 0:
         logger.info(f"Sending events to graphite server: {config.mercure.graphite_ip}")
@@ -229,6 +258,15 @@ def main(args=sys.argv[1:]) -> None:
     main_loop.start()
 
     helper.g_log("events.boot", 1)
+    helper.g_log_influxdb(
+        Point(
+            "mercure." + config.mercure.appliance_name + ".cleaner.main.events.boot"
+        ).field("value", 1),
+        config.mercure.influxdb_host,
+        config.mercure.influxdb_token,
+        config.mercure.influxdb_org,
+        config.mercure.influxdb_bucket,
+    )
 
     try:
         # Start the asyncio event loop for asynchronous function calls
