@@ -91,17 +91,20 @@ def run_router() -> None:
 
     # Check the processing folder for completed series. To this end, generate a map of all
     # series in the folder with the timestamp of the latest DICOM file as value
-    for entry in os.scandir(config.mercure.processing_folder):
-        if entry.name.endswith(mercure_names.TAGS) and not entry.is_dir():
-            filecount += 1
-            seriesString = entry.name.split(mercure_defs.SEPARATOR, 1)[0]
-            modificationTime = entry.stat().st_mtime
 
-            if seriesString in series.keys():
-                if modificationTime > series[seriesString]:
+    for root, _, files in os.walk(config.mercure.processing_folder):
+        for file in files:
+            if file.endswith(".dcm"):
+                filecount += 1
+                seriesString = file.split("#", 1)[0]
+                file_path = os.path.join(root, file)
+                modificationTime = os.stat(file_path).st_mtime
+
+                if seriesString in series:
+                    if modificationTime > series[seriesString]:
+                        series[seriesString] = modificationTime
+                else:
                     series[seriesString] = modificationTime
-            else:
-                series[seriesString] = modificationTime
 
     helper.g_log("processing.files", filecount)
     helper.g_log_influxdb(
@@ -131,17 +134,19 @@ def run_router() -> None:
 
     # Check the outgoing folder for completed series. To this end, generate a map of all
     # series in the folder with the timestamp of the latest DICOM file as value
-    for entry in os.scandir(config.mercure.outgoing_folder):
-        if entry.name.endswith(mercure_names.TAGS) and not entry.is_dir():
-            filecount += 1
-            seriesString = entry.name.split(mercure_defs.SEPARATOR, 1)[0]
-            modificationTime = entry.stat().st_mtime
+    for root, _, files in os.walk(config.mercure.outgoing_folder):
+        for file in files:
+            if file.endswith(".dcm"):
+                filecount += 1
+                seriesString = file.split("#", 1)[0]
+                file_path = os.path.join(root, file)
+                modificationTime = os.stat(file_path).st_mtime
 
-            if seriesString in series.keys():
-                if modificationTime > series[seriesString]:
+                if seriesString in series:
+                    if modificationTime > series[seriesString]:
+                        series[seriesString] = modificationTime
+                else:
                     series[seriesString] = modificationTime
-            else:
-                series[seriesString] = modificationTime
 
     helper.g_log("outgoing.files", filecount)
     helper.g_log_influxdb(
@@ -169,17 +174,19 @@ def run_router() -> None:
 
     # Check the success folder for completed series. To this end, generate a map of all
     # series in the folder with the timestamp of the latest DICOM file as value
-    for entry in os.scandir(config.mercure.success_folder):
-        if entry.name.endswith(mercure_names.TAGS) and not entry.is_dir():
-            filecount += 1
-            seriesString = entry.name.split(mercure_defs.SEPARATOR, 1)[0]
-            modificationTime = entry.stat().st_mtime
+    for root, _, files in os.walk(config.mercure.success_folder):
+        for file in files:
+            if file.endswith(".dcm"):
+                filecount += 1
+                seriesString = file.split("#", 1)[0]
+                file_path = os.path.join(root, file)
+                modificationTime = os.stat(file_path).st_mtime
 
-            if seriesString in series.keys():
-                if modificationTime > series[seriesString]:
+                if seriesString in series:
+                    if modificationTime > series[seriesString]:
+                        series[seriesString] = modificationTime
+                else:
                     series[seriesString] = modificationTime
-            else:
-                series[seriesString] = modificationTime
 
     helper.g_log("success.files", filecount)
     helper.g_log_influxdb(
@@ -207,17 +214,19 @@ def run_router() -> None:
 
     # Check the error folder for completed series. To this end, generate a map of all
     # series in the folder with the timestamp of the latest DICOM file as value
-    for entry in os.scandir(config.mercure.error_folder):
-        if entry.name.endswith(mercure_names.TAGS) and not entry.is_dir():
-            filecount += 1
-            seriesString = entry.name.split(mercure_defs.SEPARATOR, 1)[0]
-            modificationTime = entry.stat().st_mtime
+    for root, _, files in os.walk(config.mercure.error_folder):
+        for file in files:
+            if file.endswith(".dcm"):
+                filecount += 1
+                seriesString = file.split("#", 1)[0]
+                file_path = os.path.join(root, file)
+                modificationTime = os.stat(file_path).st_mtime
 
-            if seriesString in series.keys():
-                if modificationTime > series[seriesString]:
+                if seriesString in series:
+                    if modificationTime > series[seriesString]:
+                        series[seriesString] = modificationTime
+                else:
                     series[seriesString] = modificationTime
-            else:
-                series[seriesString] = modificationTime
 
     helper.g_log("error.files", filecount)
     helper.g_log_influxdb(
@@ -245,17 +254,19 @@ def run_router() -> None:
 
     # Check the discard folder for completed series. To this end, generate a map of all
     # series in the folder with the timestamp of the latest DICOM file as value
-    for entry in os.scandir(config.mercure.discard_folder):
-        if entry.name.endswith(mercure_names.TAGS) and not entry.is_dir():
-            filecount += 1
-            seriesString = entry.name.split(mercure_defs.SEPARATOR, 1)[0]
-            modificationTime = entry.stat().st_mtime
+    for root, _, files in os.walk(config.mercure.discard_folder):
+        for file in files:
+            if file.endswith(".dcm"):
+                filecount += 1
+                seriesString = file.split("#", 1)[0]
+                file_path = os.path.join(root, file)
+                modificationTime = os.stat(file_path).st_mtime
 
-            if seriesString in series.keys():
-                if modificationTime > series[seriesString]:
+                if seriesString in series:
+                    if modificationTime > series[seriesString]:
+                        series[seriesString] = modificationTime
+                else:
                     series[seriesString] = modificationTime
-            else:
-                series[seriesString] = modificationTime
 
     helper.g_log("discard.files", filecount)
     helper.g_log_influxdb(
