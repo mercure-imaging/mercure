@@ -65,6 +65,7 @@ async def search_folder(counter) -> bool:
         config.mercure.influxdb_host,
         config.mercure.influxdb_token,
         config.mercure.influxdb_org,
+        config.mercure.influxdb_bucket,
     )
 
     tasks: Dict[str, float] = {}
@@ -262,11 +263,14 @@ async def terminate_process(signalNumber, loop) -> None:
     helper.g_log("events.shutdown", 1)
     helper.g_log_influxdb(
         Point(
-            "mercure." + config.mercure.appliance_name + ".processor.main.events.shutdown"
+            "mercure."
+            + config.mercure.appliance_name
+            + ".processor.main.events.shutdown"
         ).field("value", 1),
         config.mercure.influxdb_host,
         config.mercure.influxdb_token,
         config.mercure.influxdb_org,
+        config.mercure.influxdb_bucket,
     )
     logger.info("Shutdown requested")
     monitor.send_event(monitor.m_events.SHUTDOWN_REQUEST, monitor.severity.INFO)
@@ -350,6 +354,7 @@ def main(args=sys.argv[1:]) -> None:
         config.mercure.influxdb_host,
         config.mercure.influxdb_token,
         config.mercure.influxdb_org,
+        config.mercure.influxdb_bucket,
     )
 
     try:
