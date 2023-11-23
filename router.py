@@ -38,9 +38,7 @@ async def terminate_process(signalNumber, frame) -> None:
     helper.g_log("events.shutdown", 1)
     helper.g_log_influxdb(
         Point(
-            "mercure."
-            + config.mercure.appliance_name
-            + ".router.main.events.shutdown"
+            "mercure." + config.mercure.appliance_name + ".router.main.events.shutdown"
         ).field("value", 1),
         config.mercure.influxdb_host,
         config.mercure.influxdb_token,
@@ -65,9 +63,7 @@ def run_router() -> None:
     helper.g_log("events.run", 1)
     helper.g_log_influxdb(
         Point(
-            "mercure."
-            + config.mercure.appliance_name
-            + ".router.main.events.run"
+            "mercure." + config.mercure.appliance_name + ".router.main.events.run"
         ).field("value", 1),
         config.mercure.influxdb_host,
         config.mercure.influxdb_token,
@@ -93,6 +89,198 @@ def run_router() -> None:
     pending_series: Dict[str, float] = {}  # Every series that hasn't timed out yet
     error_files_found = False
 
+    # Check the processing folder for completed series. To this end, generate a map of all
+    # series in the folder with the timestamp of the latest DICOM file as value
+    for entry in os.scandir(config.mercure.processing_folder):
+        if entry.name.endswith(mercure_names.TAGS) and not entry.is_dir():
+            filecount += 1
+            seriesString = entry.name.split(mercure_defs.SEPARATOR, 1)[0]
+            modificationTime = entry.stat().st_mtime
+
+            if seriesString in series.keys():
+                if modificationTime > series[seriesString]:
+                    series[seriesString] = modificationTime
+            else:
+                series[seriesString] = modificationTime
+
+    helper.g_log("processing.files", filecount)
+    helper.g_log_influxdb(
+        Point(
+            "mercure." + config.mercure.appliance_name + ".router.main.processing.files"
+        ).field("value", filecount),
+        config.mercure.influxdb_host,
+        config.mercure.influxdb_token,
+        config.mercure.influxdb_org,
+        config.mercure.influxdb_bucket,
+    )
+    helper.g_log("processing.series", len(series))
+    helper.g_log_influxdb(
+        Point(
+            "mercure."
+            + config.mercure.appliance_name
+            + ".router.main.processing.series"
+        ).field("value", len(series)),
+        config.mercure.influxdb_host,
+        config.mercure.influxdb_token,
+        config.mercure.influxdb_org,
+        config.mercure.influxdb_bucket,
+    )
+
+    filecount = 0
+    series: Dict[str, float] = {}
+
+    # Check the outgoing folder for completed series. To this end, generate a map of all
+    # series in the folder with the timestamp of the latest DICOM file as value
+    for entry in os.scandir(config.mercure.outgoing_folder):
+        if entry.name.endswith(mercure_names.TAGS) and not entry.is_dir():
+            filecount += 1
+            seriesString = entry.name.split(mercure_defs.SEPARATOR, 1)[0]
+            modificationTime = entry.stat().st_mtime
+
+            if seriesString in series.keys():
+                if modificationTime > series[seriesString]:
+                    series[seriesString] = modificationTime
+            else:
+                series[seriesString] = modificationTime
+
+    helper.g_log("outgoing.files", filecount)
+    helper.g_log_influxdb(
+        Point(
+            "mercure." + config.mercure.appliance_name + ".router.main.outgoing.files"
+        ).field("value", filecount),
+        config.mercure.influxdb_host,
+        config.mercure.influxdb_token,
+        config.mercure.influxdb_org,
+        config.mercure.influxdb_bucket,
+    )
+    helper.g_log("outgoing.series", len(series))
+    helper.g_log_influxdb(
+        Point(
+            "mercure." + config.mercure.appliance_name + ".router.main.outgoing.series"
+        ).field("value", len(series)),
+        config.mercure.influxdb_host,
+        config.mercure.influxdb_token,
+        config.mercure.influxdb_org,
+        config.mercure.influxdb_bucket,
+    )
+
+    filecount = 0
+    series: Dict[str, float] = {}
+
+    # Check the success folder for completed series. To this end, generate a map of all
+    # series in the folder with the timestamp of the latest DICOM file as value
+    for entry in os.scandir(config.mercure.success_folder):
+        if entry.name.endswith(mercure_names.TAGS) and not entry.is_dir():
+            filecount += 1
+            seriesString = entry.name.split(mercure_defs.SEPARATOR, 1)[0]
+            modificationTime = entry.stat().st_mtime
+
+            if seriesString in series.keys():
+                if modificationTime > series[seriesString]:
+                    series[seriesString] = modificationTime
+            else:
+                series[seriesString] = modificationTime
+
+    helper.g_log("success.files", filecount)
+    helper.g_log_influxdb(
+        Point(
+            "mercure." + config.mercure.appliance_name + ".router.main.success.files"
+        ).field("value", filecount),
+        config.mercure.influxdb_host,
+        config.mercure.influxdb_token,
+        config.mercure.influxdb_org,
+        config.mercure.influxdb_bucket,
+    )
+    helper.g_log("success.series", len(series))
+    helper.g_log_influxdb(
+        Point(
+            "mercure." + config.mercure.appliance_name + ".router.main.success.series"
+        ).field("value", len(series)),
+        config.mercure.influxdb_host,
+        config.mercure.influxdb_token,
+        config.mercure.influxdb_org,
+        config.mercure.influxdb_bucket,
+    )
+
+    filecount = 0
+    series: Dict[str, float] = {}
+
+    # Check the error folder for completed series. To this end, generate a map of all
+    # series in the folder with the timestamp of the latest DICOM file as value
+    for entry in os.scandir(config.mercure.error_folder):
+        if entry.name.endswith(mercure_names.TAGS) and not entry.is_dir():
+            filecount += 1
+            seriesString = entry.name.split(mercure_defs.SEPARATOR, 1)[0]
+            modificationTime = entry.stat().st_mtime
+
+            if seriesString in series.keys():
+                if modificationTime > series[seriesString]:
+                    series[seriesString] = modificationTime
+            else:
+                series[seriesString] = modificationTime
+
+    helper.g_log("error.files", filecount)
+    helper.g_log_influxdb(
+        Point(
+            "mercure." + config.mercure.appliance_name + ".router.main.error.files"
+        ).field("value", filecount),
+        config.mercure.influxdb_host,
+        config.mercure.influxdb_token,
+        config.mercure.influxdb_org,
+        config.mercure.influxdb_bucket,
+    )
+    helper.g_log("error.series", len(series))
+    helper.g_log_influxdb(
+        Point(
+            "mercure." + config.mercure.appliance_name + ".router.main.error.series"
+        ).field("value", len(series)),
+        config.mercure.influxdb_host,
+        config.mercure.influxdb_token,
+        config.mercure.influxdb_org,
+        config.mercure.influxdb_bucket,
+    )
+
+    filecount = 0
+    series: Dict[str, float] = {}
+
+    # Check the discard folder for completed series. To this end, generate a map of all
+    # series in the folder with the timestamp of the latest DICOM file as value
+    for entry in os.scandir(config.mercure.discard_folder):
+        if entry.name.endswith(mercure_names.TAGS) and not entry.is_dir():
+            filecount += 1
+            seriesString = entry.name.split(mercure_defs.SEPARATOR, 1)[0]
+            modificationTime = entry.stat().st_mtime
+
+            if seriesString in series.keys():
+                if modificationTime > series[seriesString]:
+                    series[seriesString] = modificationTime
+            else:
+                series[seriesString] = modificationTime
+
+    helper.g_log("discard.files", filecount)
+    helper.g_log_influxdb(
+        Point(
+            "mercure." + config.mercure.appliance_name + ".router.main.discard.files"
+        ).field("value", filecount),
+        config.mercure.influxdb_host,
+        config.mercure.influxdb_token,
+        config.mercure.influxdb_org,
+        config.mercure.influxdb_bucket,
+    )
+    helper.g_log("discard.series", len(series))
+    helper.g_log_influxdb(
+        Point(
+            "mercure." + config.mercure.appliance_name + ".router.main.discard.series"
+        ).field("value", len(series)),
+        config.mercure.influxdb_host,
+        config.mercure.influxdb_token,
+        config.mercure.influxdb_org,
+        config.mercure.influxdb_bucket,
+    )
+
+    filecount = 0
+    series: Dict[str, float] = {}
+
     # Check the incoming folder for completed series. To this end, generate a map of all
     # series in the folder with the timestamp of the latest DICOM file as value
     for entry in os.scandir(config.mercure.incoming_folder):
@@ -113,7 +301,9 @@ def run_router() -> None:
 
     # Check if any of the series exceeds the "series complete" threshold
     for series_entry in series:
-        if (time.time() - series[series_entry]) > config.mercure.series_complete_trigger:
+        if (
+            time.time() - series[series_entry]
+        ) > config.mercure.series_complete_trigger:
             complete_series[series_entry] = series[series_entry]
         else:
             pending_series[series_entry] = series[series_entry]
@@ -123,9 +313,7 @@ def run_router() -> None:
     helper.g_log("incoming.files", filecount)
     helper.g_log_influxdb(
         Point(
-            "mercure."
-            + config.mercure.appliance_name
-            + ".router.main.incoming.files"
+            "mercure." + config.mercure.appliance_name + ".router.main.incoming.files"
         ).field("value", filecount),
         config.mercure.influxdb_host,
         config.mercure.influxdb_token,
@@ -135,9 +323,7 @@ def run_router() -> None:
     helper.g_log("incoming.series", len(series))
     helper.g_log_influxdb(
         Point(
-            "mercure."
-            + config.mercure.appliance_name
-            + ".router.main.incoming.series"
+            "mercure." + config.mercure.appliance_name + ".router.main.incoming.series"
         ).field("value", len(series)),
         config.mercure.influxdb_host,
         config.mercure.influxdb_token,
@@ -151,7 +337,9 @@ def run_router() -> None:
         try:
             route_series(task_id, series_uid)
         except Exception:
-            logger.error(f"Problems while processing series {series_uid}", task_id)  # handle_error
+            logger.error(
+                f"Problems while processing series {series_uid}", task_id
+            )  # handle_error
         # If termination is requested, stop processing series after the active one has been completed
         if helper.is_terminated():
             return
@@ -184,7 +372,9 @@ def main(args=sys.argv[1:]) -> None:
     # Register system signals to be caught
     signals = (signal.SIGTERM, signal.SIGINT)
     for s in signals:
-        helper.loop.add_signal_handler(s, lambda s=s: asyncio.create_task(terminate_process(s, helper.loop)))
+        helper.loop.add_signal_handler(
+            s, lambda s=s: asyncio.create_task(terminate_process(s, helper.loop))
+        )
 
     instance_name = "main"
 
@@ -208,12 +398,18 @@ def main(args=sys.argv[1:]) -> None:
     logger.info(f"Mercure Config = {config.mercure}")
 
     monitor.configure("router", instance_name, config.mercure.bookkeeper)
-    monitor.send_event(monitor.m_events.BOOT, monitor.severity.INFO, f"PID = {os.getpid()}")
+    monitor.send_event(
+        monitor.m_events.BOOT, monitor.severity.INFO, f"PID = {os.getpid()}"
+    )
 
     if len(config.mercure.graphite_ip) > 0:
         logger.info(f"Sending events to graphite server: {config.mercure.graphite_ip}")
         graphite_prefix = "mercure." + appliance_name + ".router." + instance_name
-        graphyte.init(config.mercure.graphite_ip, config.mercure.graphite_port, prefix=graphite_prefix)
+        graphyte.init(
+            config.mercure.graphite_ip,
+            config.mercure.graphite_port,
+            prefix=graphite_prefix,
+        )
 
     logger.info(
         f"""Incoming folder: {config.mercure.incoming_folder}
@@ -229,14 +425,13 @@ def main(args=sys.argv[1:]) -> None:
     helper.g_log("events.boot", 1)
     helper.g_log_influxdb(
         Point(
-            "mercure."
-            + config.mercure.appliance_name
-            + ".router.main.events.boot").field("value", 1
-            ),
-            config.mercure.influxdb_host,
-            config.mercure.influxdb_token,
-            config.mercure.influxdb_org,
-            config.mercure.influxdb_bucket)
+            "mercure." + config.mercure.appliance_name + ".router.main.events.boot"
+        ).field("value", 1),
+        config.mercure.influxdb_host,
+        config.mercure.influxdb_token,
+        config.mercure.influxdb_org,
+        config.mercure.influxdb_bucket,
+    )
 
     try:
         main_loop.run_until_complete(helper.loop)
