@@ -35,15 +35,16 @@ async def terminate_process(signalNumber, frame) -> None:
     """
     Triggers the shutdown of the service
     """
-    helper.g_log("events.shutdown", 1)
-    helper.g_log_influxdb(
-        Point(
+    helper.g_log(
+        "events.shutdown",
+        1,
+        data_point=Point(
             "mercure." + config.mercure.appliance_name + ".router.main.events.shutdown"
         ).field("value", 1),
-        config.mercure.influxdb_host,
-        config.mercure.influxdb_token,
-        config.mercure.influxdb_org,
-        config.mercure.influxdb_bucket,
+        host=config.mercure.influxdb_host,
+        token=config.mercure.influxdb_token,
+        org=config.mercure.influxdb_org,
+        bucket=config.mercure.influxdb_bucket,
     )
     logger.info("Shutdown requested")
     monitor.send_event(monitor.m_events.SHUTDOWN_REQUEST, monitor.severity.INFO)
@@ -59,16 +60,16 @@ def run_router() -> None:
     """
     if helper.is_terminated():
         return
-
-    helper.g_log("events.run", 1)
-    helper.g_log_influxdb(
-        Point(
+    helper.g_log(
+        "events.run",
+        1,
+        data_point=Point(
             "mercure." + config.mercure.appliance_name + ".router.main.events.run"
         ).field("value", 1),
-        config.mercure.influxdb_host,
-        config.mercure.influxdb_token,
-        config.mercure.influxdb_org,
-        config.mercure.influxdb_bucket,
+        host=config.mercure.influxdb_host,
+        token=config.mercure.influxdb_token,
+        org=config.mercure.influxdb_org,
+        bucket=config.mercure.influxdb_bucket,
     )
     # logger.info('')
     # logger.info('Processing incoming folder...')
@@ -106,28 +107,29 @@ def run_router() -> None:
                             series[seriesString] = modificationTime
                     else:
                         series[seriesString] = modificationTime
-
-    helper.g_log("processing.files", filecount)
-    helper.g_log_influxdb(
-        Point(
+    helper.g_log(
+        "processing.files",
+        filecount,
+        data_point=Point(
             "mercure." + config.mercure.appliance_name + ".router.main.processing.files"
         ).field("value", filecount),
-        config.mercure.influxdb_host,
-        config.mercure.influxdb_token,
-        config.mercure.influxdb_org,
-        config.mercure.influxdb_bucket,
+        host=config.mercure.influxdb_host,
+        token=config.mercure.influxdb_token,
+        org=config.mercure.influxdb_org,
+        bucket=config.mercure.influxdb_bucket,
     )
-    helper.g_log("processing.series", len(series))
-    helper.g_log_influxdb(
-        Point(
+    helper.g_log(
+        "processing.series",
+        len(series),
+        data_point=Point(
             "mercure."
             + config.mercure.appliance_name
             + ".router.main.processing.series"
         ).field("value", len(series)),
-        config.mercure.influxdb_host,
-        config.mercure.influxdb_token,
-        config.mercure.influxdb_org,
-        config.mercure.influxdb_bucket,
+        host=config.mercure.influxdb_host,
+        token=config.mercure.influxdb_token,
+        org=config.mercure.influxdb_org,
+        bucket=config.mercure.influxdb_bucket,
     )
 
     filecount = 0
@@ -148,26 +150,27 @@ def run_router() -> None:
                         series[seriesString] = modificationTime
                 else:
                     series[seriesString] = modificationTime
-
-    helper.g_log("outgoing.files", filecount)
-    helper.g_log_influxdb(
-        Point(
+    helper.g_log(
+        "outgoing.files",
+        filecount,
+        data_point=Point(
             "mercure." + config.mercure.appliance_name + ".router.main.outgoing.files"
         ).field("value", filecount),
-        config.mercure.influxdb_host,
-        config.mercure.influxdb_token,
-        config.mercure.influxdb_org,
-        config.mercure.influxdb_bucket,
+        host=config.mercure.influxdb_host,
+        token=config.mercure.influxdb_token,
+        org=config.mercure.influxdb_org,
+        bucket=config.mercure.influxdb_bucket,
     )
-    helper.g_log("outgoing.series", len(series))
-    helper.g_log_influxdb(
-        Point(
+    helper.g_log(
+        "outgoing.series",
+        len(series),
+        data_point=Point(
             "mercure." + config.mercure.appliance_name + ".router.main.outgoing.series"
         ).field("value", len(series)),
-        config.mercure.influxdb_host,
-        config.mercure.influxdb_token,
-        config.mercure.influxdb_org,
-        config.mercure.influxdb_bucket,
+        host=config.mercure.influxdb_host,
+        token=config.mercure.influxdb_token,
+        org=config.mercure.influxdb_org,
+        bucket=config.mercure.influxdb_bucket,
     )
 
     filecount = 0
@@ -189,25 +192,27 @@ def run_router() -> None:
                 else:
                     series[seriesString] = modificationTime
 
-    helper.g_log("success.files", filecount)
-    helper.g_log_influxdb(
-        Point(
+    helper.g_log(
+        "success.files",
+        filecount,
+        data_point=Point(
             "mercure." + config.mercure.appliance_name + ".router.main.success.files"
         ).field("value", filecount),
-        config.mercure.influxdb_host,
-        config.mercure.influxdb_token,
-        config.mercure.influxdb_org,
-        config.mercure.influxdb_bucket,
+        host=config.mercure.influxdb_host,
+        token=config.mercure.influxdb_token,
+        org=config.mercure.influxdb_org,
+        bucket=config.mercure.influxdb_bucket,
     )
-    helper.g_log("success.series", len(series))
-    helper.g_log_influxdb(
-        Point(
+    helper.g_log(
+        "success.series",
+        len(series),
+        data_point=Point(
             "mercure." + config.mercure.appliance_name + ".router.main.success.series"
         ).field("value", len(series)),
-        config.mercure.influxdb_host,
-        config.mercure.influxdb_token,
-        config.mercure.influxdb_org,
-        config.mercure.influxdb_bucket,
+        host=config.mercure.influxdb_host,
+        token=config.mercure.influxdb_token,
+        org=config.mercure.influxdb_org,
+        bucket=config.mercure.influxdb_bucket,
     )
 
     filecount = 0
@@ -229,25 +234,27 @@ def run_router() -> None:
                 else:
                     series[seriesString] = modificationTime
 
-    helper.g_log("error.files", filecount)
-    helper.g_log_influxdb(
-        Point(
+    helper.g_log(
+        "error.files",
+        filecount,
+        data_point=Point(
             "mercure." + config.mercure.appliance_name + ".router.main.error.files"
         ).field("value", filecount),
-        config.mercure.influxdb_host,
-        config.mercure.influxdb_token,
-        config.mercure.influxdb_org,
-        config.mercure.influxdb_bucket,
+        host=config.mercure.influxdb_host,
+        token=config.mercure.influxdb_token,
+        org=config.mercure.influxdb_org,
+        bucket=config.mercure.influxdb_bucket,
     )
-    helper.g_log("error.series", len(series))
-    helper.g_log_influxdb(
-        Point(
+    helper.g_log(
+        "error.series",
+        len(series),
+        data_point=Point(
             "mercure." + config.mercure.appliance_name + ".router.main.error.series"
         ).field("value", len(series)),
-        config.mercure.influxdb_host,
-        config.mercure.influxdb_token,
-        config.mercure.influxdb_org,
-        config.mercure.influxdb_bucket,
+        host=config.mercure.influxdb_host,
+        token=config.mercure.influxdb_token,
+        org=config.mercure.influxdb_org,
+        bucket=config.mercure.influxdb_bucket,
     )
 
     filecount = 0
@@ -269,25 +276,27 @@ def run_router() -> None:
                 else:
                     series[seriesString] = modificationTime
 
-    helper.g_log("discard.files", filecount)
-    helper.g_log_influxdb(
-        Point(
+    helper.g_log(
+        "discard.files",
+        filecount,
+        data_point=Point(
             "mercure." + config.mercure.appliance_name + ".router.main.discard.files"
         ).field("value", filecount),
-        config.mercure.influxdb_host,
-        config.mercure.influxdb_token,
-        config.mercure.influxdb_org,
-        config.mercure.influxdb_bucket,
+        host=config.mercure.influxdb_host,
+        token=config.mercure.influxdb_token,
+        org=config.mercure.influxdb_org,
+        bucket=config.mercure.influxdb_bucket,
     )
-    helper.g_log("discard.series", len(series))
-    helper.g_log_influxdb(
-        Point(
+    helper.g_log(
+        "discard.series",
+        len(series),
+        data_point=Point(
             "mercure." + config.mercure.appliance_name + ".router.main.discard.series"
         ).field("value", len(series)),
-        config.mercure.influxdb_host,
-        config.mercure.influxdb_token,
-        config.mercure.influxdb_org,
-        config.mercure.influxdb_bucket,
+        host=config.mercure.influxdb_host,
+        token=config.mercure.influxdb_token,
+        org=config.mercure.influxdb_org,
+        bucket=config.mercure.influxdb_bucket,
     )
 
     filecount = 0
@@ -322,25 +331,27 @@ def run_router() -> None:
     # logger.info(f'Files found     = {filecount}')
     # logger.info(f'Series found    = {len(series)}')
     # logger.info(f'Complete series = {len(complete_series)}')
-    helper.g_log("incoming.files", filecount)
-    helper.g_log_influxdb(
-        Point(
+    helper.g_log(
+        "incoming.files",
+        filecount,
+        data_point=Point(
             "mercure." + config.mercure.appliance_name + ".router.main.incoming.files"
         ).field("value", filecount),
-        config.mercure.influxdb_host,
-        config.mercure.influxdb_token,
-        config.mercure.influxdb_org,
-        config.mercure.influxdb_bucket,
+        host=config.mercure.influxdb_host,
+        token=config.mercure.influxdb_token,
+        org=config.mercure.influxdb_org,
+        bucket=config.mercure.influxdb_bucket,
     )
-    helper.g_log("incoming.series", len(series))
-    helper.g_log_influxdb(
-        Point(
+    helper.g_log(
+        "incoming.series",
+        len(series),
+        data_point=Point(
             "mercure." + config.mercure.appliance_name + ".router.main.incoming.series"
         ).field("value", len(series)),
-        config.mercure.influxdb_host,
-        config.mercure.influxdb_token,
-        config.mercure.influxdb_org,
-        config.mercure.influxdb_bucket,
+        host=config.mercure.influxdb_host,
+        token=config.mercure.influxdb_token,
+        org=config.mercure.influxdb_org,
+        bucket=config.mercure.influxdb_bucket,
     )
 
     # Process all complete series
@@ -433,16 +444,16 @@ def main(args=sys.argv[1:]) -> None:
     # Start the timer that will periodically trigger the scan of the incoming folder
     global main_loop
     main_loop = helper.AsyncTimer(config.mercure.router_scan_interval, run_router)
-
-    helper.g_log("events.boot", 1)
-    helper.g_log_influxdb(
-        Point(
+    helper.g_log(
+        "events.boot",
+        1,
+        data_point=Point(
             "mercure." + config.mercure.appliance_name + ".router.main.events.boot"
         ).field("value", 1),
-        config.mercure.influxdb_host,
-        config.mercure.influxdb_token,
-        config.mercure.influxdb_org,
-        config.mercure.influxdb_bucket,
+        host=config.mercure.influxdb_host,
+        token=config.mercure.influxdb_token,
+        org=config.mercure.influxdb_org,
+        bucket=config.mercure.influxdb_bucket,
     )
 
     try:

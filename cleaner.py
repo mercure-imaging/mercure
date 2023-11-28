@@ -39,15 +39,16 @@ main_loop = None  # type: helper.AsyncTimer # type: ignore
 
 async def terminate_process(signalNumber, frame) -> None:
     """Triggers the shutdown of the service."""
-    helper.g_log("events.shutdown", 1)
-    helper.g_log_influxdb(
-        Point(
+    helper.g_log(
+        "events.shutdown",
+        1,
+        data_point=Point(
             "mercure." + config.mercure.appliance_name + ".cleaner.main.events.shutdown"
         ).field("value", 1),
-        config.mercure.influxdb_host,
-        config.mercure.influxdb_token,
-        config.mercure.influxdb_org,
-        config.mercure.influxdb_bucket,
+        host=config.mercure.influxdb_host,
+        token=config.mercure.influxdb_token,
+        org=config.mercure.influxdb_org,
+        bucket=config.mercure.influxdb_bucket,
     )
 
     logger.info("Shutdown requested")
@@ -62,16 +63,16 @@ def clean() -> None:
     """Main entry function."""
     if helper.is_terminated():
         return
-
-    helper.g_log("events.run", 1)
-    helper.g_log_influxdb(
-        Point(
+    helper.g_log(
+        "events.run",
+        1,
+        data_point=Point(
             "mercure." + config.mercure.appliance_name + ".cleaner.main.events.run"
         ).field("value", 1),
-        config.mercure.influxdb_host,
-        config.mercure.influxdb_token,
-        config.mercure.influxdb_org,
-        config.mercure.influxdb_bucket,
+        host=config.mercure.influxdb_host,
+        token=config.mercure.influxdb_token,
+        org=config.mercure.influxdb_org,
+        bucket=config.mercure.influxdb_bucket,
     )
 
     try:
@@ -256,16 +257,18 @@ def main(args=sys.argv[1:]) -> None:
     global main_loop
     main_loop = helper.AsyncTimer(config.mercure.cleaner_scan_interval, clean)
     main_loop.start()
-
-    helper.g_log("events.boot", 1)
-    helper.g_log_influxdb(
-        Point(
-            "mercure." + config.mercure.appliance_name + ".cleaner.main.events.boot"
+    helper.g_log(
+        "events.boot",
+        1,
+        data_point=Point(
+            "mercure."
+            + config.mercure.appliance_name
+            + ".cleaner.main.events.boot"
         ).field("value", 1),
-        config.mercure.influxdb_host,
-        config.mercure.influxdb_token,
-        config.mercure.influxdb_org,
-        config.mercure.influxdb_bucket,
+        host=config.mercure.influxdb_host,
+        token=config.mercure.influxdb_token,
+        org=config.mercure.influxdb_org,
+        bucket=config.mercure.influxdb_bucket,
     )
 
     try:

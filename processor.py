@@ -57,15 +57,18 @@ async def search_folder(counter) -> bool:
     global processor_lockfile
     global processor_is_locked
     global nomad_connection
-    helper.g_log("events.run", 1)
-    helper.g_log_influxdb(
-        Point(
-            "mercure." + config.mercure.appliance_name + ".processor.main.events.run"
+    helper.g_log(
+        "events.run",
+        1,
+        data_point=Point(
+            "mercure."
+            + config.mercure.appliance_name
+            + ".processor.main.events.run"
         ).field("value", 1),
-        config.mercure.influxdb_host,
-        config.mercure.influxdb_token,
-        config.mercure.influxdb_org,
-        config.mercure.influxdb_bucket,
+        host=config.mercure.influxdb_host,
+        token=config.mercure.influxdb_token,
+        org=config.mercure.influxdb_org,
+        bucket=config.mercure.influxdb_bucket,
     )
 
     tasks: Dict[str, float] = {}
@@ -260,17 +263,18 @@ def exit_processor() -> None:
 
 async def terminate_process(signalNumber, loop) -> None:
     """Triggers the shutdown of the service."""
-    helper.g_log("events.shutdown", 1)
-    helper.g_log_influxdb(
-        Point(
+    helper.g_log(
+        "events.shutdown",
+        1,
+        data_point=Point(
             "mercure."
             + config.mercure.appliance_name
             + ".processor.main.events.shutdown"
         ).field("value", 1),
-        config.mercure.influxdb_host,
-        config.mercure.influxdb_token,
-        config.mercure.influxdb_org,
-        config.mercure.influxdb_bucket,
+        host=config.mercure.influxdb_host,
+        token=config.mercure.influxdb_token,
+        org=config.mercure.influxdb_org,
+        bucket=config.mercure.influxdb_bucket,
     )
     logger.info("Shutdown requested")
     monitor.send_event(monitor.m_events.SHUTDOWN_REQUEST, monitor.severity.INFO)
@@ -346,15 +350,16 @@ def main(args=sys.argv[1:]) -> None:
         config.mercure.dispatcher_scan_interval, run_processor
     )  # , exit_processor)
 
-    helper.g_log("events.boot", 1)
-    helper.g_log_influxdb(
-        Point(
+    helper.g_log(
+        "events.boot",
+        1,
+        data_point=Point(
             "mercure." + config.mercure.appliance_name + ".processor.main.events.boot"
         ).field("value", 1),
-        config.mercure.influxdb_host,
-        config.mercure.influxdb_token,
-        config.mercure.influxdb_org,
-        config.mercure.influxdb_bucket,
+        host=config.mercure.influxdb_host,
+        token=config.mercure.influxdb_token,
+        org=config.mercure.influxdb_org,
+        bucket=config.mercure.influxdb_bucket,
     )
 
     try:
