@@ -46,19 +46,29 @@ def send_to_graphite(*args, **kwargs) -> None:
     graphyte.default_sender.send(*args, **kwargs)
 
 
-def send_to_influxdb(data_point, bucket, write_api) -> None:
+def send_to_influxdb(data_point, host, token, org, bucket) -> None:
     """Wrapper for asynchronous InfluxDB call to avoid wait time of main loop."""
+    if len(host) == 0:
+        return
+    client = InfluxDBClient(
+        url=host,
+        token=token,
+        org=org,
+    )
+    write_api = client.write_api(write_options=ASYNCHRONOUS)
     write_api.write(bucket=bucket, record=data_point)
 
 
-def g_log(*args, **kwargs) -> None:
+def g_log(*args, data_point=None, host=None, token=None, org=None, bucket=None, **kwargs) -> None:
     global loop
     """Sends diagnostic information to graphite (if configured)."""
     try:
         loop = asyncio.get_running_loop()
         loop.call_soon(send_to_graphite, *args, **kwargs)
+        loop.call_soon(send_to_influxdb, data_point, host, token, org, bucket)
     except:
         send_to_graphite(*args, **kwargs)
+        send_to_influxdb(data_point, host, token, org, bucket)
 
 
 def g_log_influxdb(data_point, host, token, org, bucket) -> None:
