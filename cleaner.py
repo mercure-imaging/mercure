@@ -28,7 +28,7 @@ import common.helper as helper
 import common.monitor as monitor
 from common.monitor import task_event
 from common.constants import mercure_defs
-
+import common.influxdb
 
 # Setup daiquiri logger
 logger = config.get_logger()
@@ -222,6 +222,16 @@ def main(args=sys.argv[1:]) -> None:
             config.mercure.graphite_ip,
             config.mercure.graphite_port,
             prefix=graphite_prefix,
+        )
+
+    if len(config.mercure.influxdb_host) > 0:
+        logger.info(f"Sending events to influxdb server: {config.mercure.influxdb_host}")
+        common.influxdb.init(
+            config.mercure.influxdb_host,
+            config.mercure.influxdb_token,
+            config.mercure.influxdb_org,
+            config.mercure.influxdb_bucket,
+            "mercure." + appliance_name + ".cleaner." + instance_name
         )
 
     global main_loop

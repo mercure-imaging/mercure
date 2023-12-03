@@ -23,6 +23,7 @@ from common.constants import mercure_names
 from dispatch.status import is_ready_for_sending
 from dispatch.send import execute
 from common.constants import mercure_defs
+import common.influxdb
 
 
 # Create local logger instance
@@ -148,6 +149,16 @@ def main(args=sys.argv[1:]) -> None:
             prefix=graphite_prefix,
         )
 
+    if len(config.mercure.influxdb_host) > 0:
+        logger.info(f"Sending events to influxdb server: {config.mercure.influxdb_host}")
+        common.influxdb.init(
+            config.mercure.influxdb_host,
+            config.mercure.influxdb_token,
+            config.mercure.influxdb_org,
+            config.mercure.influxdb_bucket,
+            "mercure." + appliance_name + ".dispatcher." + instance_name
+        )
+    
     logger.info(f"Dispatching folder: {config.mercure.outgoing_folder}")
     dispatcher_lockfile = Path(config.mercure.outgoing_folder + "/" + mercure_names.HALT)
 
