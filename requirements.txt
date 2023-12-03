@@ -92,6 +92,8 @@ imagesize==1.4.1
     # via sphinx
 iniconfig==2.0.0
     # via pytest
+influxdb_client==1.38.0
+    # via -r requirements.in
 itsdangerous==2.1.2
     # via -r requirements.in
 jinja2==3.1.2
