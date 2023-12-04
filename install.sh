@@ -34,7 +34,7 @@ echo ""
 OWNER=$USER
 if [ $OWNER = "root" ]
 then
-  OWNER=$(logname)
+  OWNER=$LOGNAME
   echo "Running as root, but setting $OWNER as owner."
 fi
 
@@ -214,9 +214,9 @@ EOFA
 
 setup_nomad_keys() {
   if [ ! -f "$MERCURE_BASE"/processor-keys/id_rsa ]; then
-    sudo mkdir /opt/mercure/processor-keys/
+    sudo mkdir "$MERCURE_BASE"/processor-keys/
     echo "Generating SSH key..."
-    sudo ssh-keygen -t rsa -N '' -f /opt/mercure/processor-keys/id_rsa
+    sudo ssh-keygen -t rsa -N '' -f "$MERCURE_BASE"/processor-keys/id_rsa
     sudo chown -R $OWNER:$OWNER "$MERCURE_BASE/processor-keys"
   fi
 }
@@ -229,7 +229,7 @@ setup_nomad() {
     sudo cp $MERCURE_SRC/nomad/mercure.nomad $MERCURE_BASE
     sudo cp $MERCURE_SRC/nomad/mercure-ui.nomad $MERCURE_BASE
     sudo cp $MERCURE_SRC/nomad/policies/anonymous-strict.policy.hcl $MERCURE_BASE
-    sudo sed -i "s#SSHPUBKEY#$(cat /opt/mercure/processor-keys/id_rsa.pub)#g"  $MERCURE_BASE/mercure.nomad
+    sudo sed -i "s#SSHPUBKEY#$(cat $MERCURE_BASE/processor-keys/id_rsa.pub)#g"  $MERCURE_BASE/mercure.nomad
     sudo sed -i "s/\\\${IMAGE_TAG}/$IMAGE_TAG/g" $MERCURE_BASE/mercure.nomad
     sudo sed -i "s/\\\${IMAGE_TAG}/$IMAGE_TAG/g" $MERCURE_BASE/mercure-ui.nomad
 
