@@ -76,7 +76,7 @@ class Sender:
                 logger.info('sent message {!r} to ({}, {}, {}, {}, {}) in {:.03f} seconds'.format(
                         message.to_line_protocol(), self.host, self.token, self.org, self.bucket, self.type, elapsed_time))
 
-def init(*args, **kwargs):
+def init(*args, **kwargs) -> None:
     """Initialize default Sender instance with given args."""
     global default_sender
     default_sender = Sender(*args, **kwargs)

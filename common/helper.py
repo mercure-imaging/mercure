@@ -47,7 +47,7 @@ def send_to_graphite(*args, **kwargs) -> None:
 
 def send_to_influxdb(*args, **kwargs) -> None:
     """Wrapper for asynchronous influxdb call to avoid wait time of main loop."""
-    if common.influxdb.default_sender == None:
+    if common.influxdb.default_sender is None:
         return
     common.influxdb.default_sender.send(*args, **kwargs)
 
