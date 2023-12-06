@@ -112,6 +112,9 @@ async def add_module(request):
     form = dict(await request.form())
     name = form.get("name", "")
 
+    if "/" in name:
+        return PlainTextResponse("Invalid module name provided.")
+
     if name in config.mercure.modules:
         return PlainTextResponse("A module with this name already exists.")
 
