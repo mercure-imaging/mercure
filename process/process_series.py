@@ -236,13 +236,13 @@ async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_p
             logger.debug("Executing module as mercure.")
 
         # We might be operating in a user-remapped namespace. This makes sure that the user inside the container can read and write the files.
-        ( real_folder / "in" ).chmod(0o777)
+        ( folder / "in" ).chmod(0o777)
         try:
             for k in ( real_folder / "in" ).glob("**/*"):
                 k.chmod(0o666)
         except PermissionError:
             raise Exception("Unable to prepare input files for processor. The receiver may be running as root, which is no longer supported. ")
-        ( real_folder / "out" ).chmod(0o777)
+        ( folder / "out" ).chmod(0o777)
 
         container  = docker_client.containers.run(
             docker_tag,
@@ -261,7 +261,10 @@ async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_p
 
         # In lieu of making mercure a sudoer...
         logger.debug("Changing the ownership of the output directory...")
-        docker_client.images.pull("busybox:stable-musl")
+        try:
+            docker_client.images.pull("busybox:stable-musl")
+        except:
+            logger.exception("could not pull busybox")
 
         if helper.get_runner() != "docker":
             # We need to set the owner to the "real", unremapped mercure user that lives outside of the container, ie our actual uid.
@@ -280,8 +283,8 @@ async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_p
         )
 
         # Reset the permissions to owner rwx, world readonly. 
-        ( real_folder / "out" ).chmod(0o755)
-        for k in ( real_folder / "out" ).glob("**/*"):
+        ( folder / "out" ).chmod(0o755)
+        for k in ( folder / "out" ).glob("**/*"):
             k.chmod(0o644)
         # Print the log out of the module
         logger.info("=== MODULE OUTPUT - BEGIN ========================================")
