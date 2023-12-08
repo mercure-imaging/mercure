@@ -126,7 +126,7 @@ WEBGUI_HOST = webgui_config("HOST", default="0.0.0.0")
 DEBUG_MODE = webgui_config("DEBUG", cast=bool, default=True)
 
 
-def startup():
+def startup() -> None:
     monitor.configure("webgui", "main", config.mercure.bookkeeper)
     monitor.send_event(monitor.m_events.BOOT, monitor.severity.INFO, f"PID = {os.getpid()}")
 

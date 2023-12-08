@@ -7,7 +7,7 @@ services.read_services()
 config.read_config()
 users.read_users()
 
-def run_test():
+def run_test() -> None:
     config.read_config()
     config.mercure.study_complete_trigger = 2
     config.mercure.series_complete_trigger = 1
