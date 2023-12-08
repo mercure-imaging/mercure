@@ -289,6 +289,9 @@ async def show_log(request) -> Response:
         if start_date or end_date:
             log_content = log_content + "<br /><br />Are the From/To settings valid?"
 
+    if request.headers["accept"] == 'application/json':
+        if return_code == 0:
+            return JSONResponse({"logs":str(raw_logs.decode())})
     template = "logs.html"
     context = {
         "request": request,
@@ -513,10 +516,10 @@ async def self_test(request) -> Response:
         )
         if test_type == "process":
             config.mercure.modules[test_rule + "_self_test_module"] = Module(
-                docker_tag=f"mercureimaging/mercure-dummy-processor:{mercure_defs.VERSION}",
+                docker_tag=f"mercureimaging/mercure-dummy-processor:latest",
             )
             config.mercure.modules[test_rule + "_self_test_module_2"] = Module(
-                docker_tag="mercureimaging/mercure-dummy-processor:0.2.0-beta.7",
+                docker_tag="mercureimaging/mercure-dummy-processor:latest",
             )
             config.mercure.rules[test_rule + "_begin"].action = "both"
             config.mercure.rules[test_rule + "_begin"].processing_module = [test_rule + "_self_test_module", test_rule + "_self_test_module_2"]
@@ -543,7 +546,7 @@ async def self_test(request) -> Response:
             generate_series(tmpdir, 10, series_description="self_test_series " + test_id)
 
     except Exception as e:
-        return PlainTextResponse(f"Error initializing test: {traceback.format_exc()}")
+        return PlainTextResponse(f"Error initializing test: {traceback.format_exc()}", status_code=500)
 
     # shutil.copytree("./test_series", tmpdir)
     command = f"""dcmsend {receiver_host} {receiver_port} +r +sd {tmpdir} -aet "mercure" -aec "{test_id}_begin" -nuc +sp '*.dcm' -to 60"""
@@ -555,7 +558,7 @@ async def self_test(request) -> Response:
 
     await monitor.do_post("test-begin", dict(json=dict(id=test_id, type=test_type, rule_type=rule_type)))
     # logger.info(f"self_test: {output.decode('utf-8')}")
-    return PlainTextResponse("Test submitted.")
+    return JSONResponse({"success":"true", "test_id":test_id})
 
 
 @router.post("/login")
