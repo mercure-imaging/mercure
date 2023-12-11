@@ -1,0 +1,5 @@
+[codespell]
+skip = .git,*.pdf,*.svg,go.sum,*.css,*.min.*,.codespellrc,statics,.npm,.cache
+check-hidden = true
+# ignore-regex = 
+ignore-words-list = ans,statics
