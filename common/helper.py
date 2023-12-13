@@ -138,7 +138,7 @@ class RepeatedTimer(object):
 class FileLock:
     """Helper class that implements a file lock. The lock file will be removed also from the destructor so that
     no spurious lock files remain if exceptions are raised."""
-
+    lockCreated = False
     def __init__(self, path_for_lockfile: Path):
         self.lockfile = path_for_lockfile
         # TODO: Handle case if lock file cannot be created
