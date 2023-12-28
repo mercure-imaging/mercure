@@ -1,7 +1,8 @@
 
 ![mercure](mercure.png)
 
-![Python application](https://github.com/mercure-imaging/mercure/workflows/Python%20application/badge.svg)&nbsp; ![GitHub](https://img.shields.io/github/license/mercure-imaging/mercure?color=%233273dc)&nbsp; [![Join the chat at https://gitter.im/mercure-imaging/Support](https://badges.gitter.im/mercure-imaging/Support.svg)](https://gitter.im/mercure-imaging/Support?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+![Python application](https://github.com/mercure-imaging/mercure/workflows/Python%20application/badge.svg)&nbsp; ![GitHub]
+(https://badges.gitter.im/mercure-imaging/Support.svg)](https://gitter.im/mercure-imaging/Support?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 
 # mercure DICOM Orchestrator
