@@ -86,7 +86,7 @@ else
 fi
 
 echo ""
-echo "Starting receiver process on port $port, folder $incoming, bookeeper $bookkeeper"
+echo "Starting receiver process on port $port, folder $incoming, bookkeeper $bookkeeper"
 
 if [ $MERCURE_TLS_ENABLED ]
 then
