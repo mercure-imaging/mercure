@@ -1,4 +1,4 @@
-from common.types import TaskDispatch, TaskInfo, Rule, Target
+from common.types import Task, TaskDispatch, TaskInfo, Rule, Target
 import common.config as config
 from subprocess import CalledProcessError, check_output
 from starlette.responses import JSONResponse
@@ -19,7 +19,7 @@ class TargetHandler(Generic[TargetTypeVar]):
         pass
 
     def send_to_target(
-        self, task_id: str, target: TargetTypeVar, dispatch_info: TaskDispatch, source_folder: Path
+        self, task_id: str, target: TargetTypeVar, dispatch_info: TaskDispatch, source_folder: Path, task: Task
     ) -> str:
         return ""
 
@@ -34,13 +34,13 @@ class TargetHandler(Generic[TargetTypeVar]):
 
 
 class SubprocessTargetHandler(TargetHandler[TargetTypeVar]):
-    def _create_command(self, target: TargetTypeVar, source_folder: Path):
+    def _create_command(self, target: TargetTypeVar, source_folder: Path, task: Task):
         return ("",{})
 
     def send_to_target(
-        self, task_id: str, target: TargetTypeVar, dispatch_info: TaskDispatch, source_folder: Path
+        self, task_id: str, target: TargetTypeVar, dispatch_info: TaskDispatch, source_folder: Path, task: Task
     ) -> str:
-        command, opts = self._create_command(target, source_folder)
+        command, opts = self._create_command(target, source_folder, task)
         try:
             logger.debug(f"Running command {command}")
             logger.info(f"Sending {source_folder} to target {dispatch_info.target_name}")

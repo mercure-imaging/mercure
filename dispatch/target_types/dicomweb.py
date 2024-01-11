@@ -2,7 +2,7 @@ from pathlib import Path
 from requests.exceptions import HTTPError
 
 import pydicom
-from common.types import DicomWebTarget, TaskDispatch
+from common.types import DicomWebTarget, TaskDispatch, Task
 from .base import TargetHandler
 from .registry import handler_for
 
@@ -42,7 +42,7 @@ class DicomWebTargetHandler(TargetHandler[DicomWebTarget]):
         return client
 
     def send_to_target(
-        self, task_id: str, target: DicomWebTarget, dispatch_info: TaskDispatch, source_folder: Path
+        self, task_id: str, target: DicomWebTarget, dispatch_info: TaskDispatch, source_folder: Path, task: Task
     ) -> str:
         client = self.create_client(target)
         datasets = [pydicom.dcmread(str(k)) for k in source_folder.glob("**/*.dcm")]

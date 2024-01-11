@@ -2,7 +2,7 @@ from pathlib import Path
 from requests.exceptions import HTTPError
 
 import pydicom
-from common.types import S3Target, TaskDispatch
+from common.types import S3Target, TaskDispatch, Task
 from .base import TargetHandler
 from .registry import handler_for
 
@@ -32,7 +32,7 @@ class S3TargetHandler(TargetHandler[S3Target]):
             aws_secret_access_key=target.secret_access_key,
         )
 
-    def send_to_target(self, task_id: str, target: S3Target, dispatch_info: TaskDispatch, source_folder: Path) -> str:
+    def send_to_target(self, task_id: str, target: S3Target, dispatch_info: TaskDispatch, source_folder: Path, task: Task) -> str:
         # send dicoms in source-folder to s3 bucket
         s3_client = self.create_client(target)
 

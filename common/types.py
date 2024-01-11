@@ -217,6 +217,7 @@ class TaskInfo(BaseModel, Compat):
     patient_name: Optional[str]
     mrn: str
     acc: str
+    sender_address: str
     mercure_version: str
     mercure_appliance: str
     mercure_server: str

@@ -10,6 +10,11 @@ alltags: Dict[str, str] = {}
 sortedtags: List[str] = []
 
 default_tags: Dict[str, str] = {
+    # Add special tags that are obtained from the command-line arguments
+    "SenderAddress":"127.0.0.1",
+    "SenderAET":"STORESCU",
+    "ReceiverAET":"ANY-SCP",
+    # Add common DICOM tags
     "SpecificCharacterSet":"ISO_IR 100",
     "Modality":"MR",
     "BodyPartExamined":"BRAIN",

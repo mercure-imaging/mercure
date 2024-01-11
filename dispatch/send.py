@@ -37,60 +37,60 @@ import dispatch.target_types as target_types
 logger = config.get_logger()
 
 
-def _create_command(task_id: str, dispatch_info: TaskDispatch, folder: Path) -> Tuple[str, dict, bool]:
-    """Composes the command for calling the dcmsend tool from DCMTK, which is used for sending out the DICOMS."""
-    target_name: str = dispatch_info.get("target_name", "")
+# def _create_command(task_id: str, dispatch_info: TaskDispatch, folder: Path) -> Tuple[str, dict, bool]:
+#     """Composes the command for calling the dcmsend tool from DCMTK, which is used for sending out the DICOMS."""
+#     target_name: str = dispatch_info.get("target_name", "")
 
-    if isinstance(config.mercure.targets.get(target_name, ""), DicomTarget):
-        # Read the connection information from the configuration
-        target_dicom = cast(DicomTarget, config.mercure.targets.get(target_name))
-        target_ip = target_dicom.ip
-        target_port = target_dicom.port or 104
-        target_aet_target = target_dicom.aet_target or ""
-        target_aet_source = target_dicom.aet_source or ""
-        dcmsend_status_file = Path(folder) / mercure_names.SENDLOG
-        command = f"""dcmsend {target_ip} {target_port} +sd {folder} -aet {target_aet_source} -aec {target_aet_target} -nuc +sp '*.dcm' -to 60 +crf {dcmsend_status_file}"""
-        return command, {}, True
+#     if isinstance(config.mercure.targets.get(target_name, ""), DicomTarget):
+#         # Read the connection information from the configuration
+#         target_dicom = cast(DicomTarget, config.mercure.targets.get(target_name))
+#         target_ip = target_dicom.ip
+#         target_port = target_dicom.port or 104
+#         target_aet_target = target_dicom.aet_target or ""
+#         target_aet_source = target_dicom.aet_source or ""
+#         dcmsend_status_file = Path(folder) / mercure_names.SENDLOG
+#         command = f"""dcmsend {target_ip} {target_port} +sd {folder} -aet {target_aet_source} -aec {target_aet_target} -nuc +sp '*.dcm' -to 60 +crf {dcmsend_status_file}"""
+#         return command, {}, True
 
-    elif isinstance(config.mercure.targets.get(target_name, ""), DicomTLSTarget):
-        # Read the connection information from the configuration
-        tls_dicom: DicomTLSTarget = cast(DicomTLSTarget, config.mercure.targets.get(target_name))
-        target_ip = tls_dicom.ip
-        target_port = tls_dicom.port or 104
-        target_aet_target = tls_dicom.aet_target or ""
-        target_aet_source = tls_dicom.aet_source or ""
-        tls_key = tls_dicom.tls_key
-        tls_cert = tls_dicom.tls_cert
-        ca_cert = tls_dicom.ca_cert
+#     elif isinstance(config.mercure.targets.get(target_name, ""), DicomTLSTarget):
+#         # Read the connection information from the configuration
+#         tls_dicom: DicomTLSTarget = cast(DicomTLSTarget, config.mercure.targets.get(target_name))
+#         target_ip = tls_dicom.ip
+#         target_port = tls_dicom.port or 104
+#         target_aet_target = tls_dicom.aet_target or ""
+#         target_aet_source = tls_dicom.aet_source or ""
+#         tls_key = tls_dicom.tls_key
+#         tls_cert = tls_dicom.tls_cert
+#         ca_cert = tls_dicom.ca_cert
 
-        command = f"""storescu +tls {tls_key} {tls_cert} +cf {ca_cert} {target_ip} {target_port} +sd {folder} -aet {target_aet_source} -aec {target_aet_target} +sp '*.dcm' -to 60"""
-        return command, {}, True
+#         command = f"""storescu +tls {tls_key} {tls_cert} +cf {ca_cert} {target_ip} {target_port} +sd {folder} -aet {target_aet_source} -aec {target_aet_target} +sp '*.dcm' -to 60"""
+#         return command, {}, True
 
-    elif isinstance(config.mercure.targets.get(target_name, ""), SftpTarget):
-        # Read the connection information from the configuration
-        target_sftp: SftpTarget = cast(SftpTarget, config.mercure.targets.get(target_name))
+#     elif isinstance(config.mercure.targets.get(target_name, ""), SftpTarget):
+#         # Read the connection information from the configuration
+#         target_sftp: SftpTarget = cast(SftpTarget, config.mercure.targets.get(target_name))
 
-        # TODO: Use newly created UUID instead of folder.stem? Would avoid collission during repeated transfer
-        # TODO: is this entirely safe?
+#         # TODO: Use newly created UUID instead of folder.stem? Would avoid collision during repeated transfer
+#         # TODO: is this entirely safe?
 
-        # After the transfer, create file named ".complete" to indicate that the transfer is complete
-        command = (
-            "sftp -o StrictHostKeyChecking=no "
-            + f""" "{target_sftp.user}@{target_sftp.host}:{target_sftp.folder}" """
-            + f""" <<- EOF
-                    mkdir "{target_sftp.folder}/{folder.stem}"
-                    put -f -r "{folder}"
-                    !touch "/tmp/.complete"
-                    put -f "/tmp/.complete" "{target_sftp.folder}/{folder.stem}/.complete"
-EOF"""
-        )
-        if target_sftp.password:
-            command = f"sshpass -p {target_sftp.password} " + command
-        return command, dict(shell=True, executable="/bin/bash"), False
+#         # After the transfer, create file named ".complete" to indicate that the transfer is complete
+#         command = (
+#             "sftp -o StrictHostKeyChecking=no "
+#             + f""" "{target_sftp.user}@{target_sftp.host}:{target_sftp.folder}" """
+#             + f""" <<- EOF
+#                     mkdir "{target_sftp.folder}/{folder.stem}"
+#                     put -f -r "{folder}"
+#                     !touch "/tmp/.complete"
+#                     put -f "/tmp/.complete" "{target_sftp.folder}/{folder.stem}/.complete"
+# EOF"""
+#         )
+#         if target_sftp.password:
+#             command = f"sshpass -p {target_sftp.password} " + command
+#         return command, dict(shell=True, executable="/bin/bash"), False
 
-    else:
-        logger.error(f"Target in task file does not exist {target_name}", task_id)  # handle_error
-        return "", {}, False
+#     else:
+#         logger.error(f"Target in task file does not exist {target_name}", task_id)  # handle_error
+#         return "", {}, False
 
 
 @log_helpers.clear_task_decorator
@@ -182,7 +182,7 @@ def execute(
             target_name,
             "Routing job running",
         )
-        result = handler.send_to_target(task_content.id, target, cast(TaskDispatch,dispatch_info), source_folder)
+        result = handler.send_to_target(task_content.id, target, cast(TaskDispatch,dispatch_info), source_folder, task_content)
         monitor.send_task_event(
             task_event.DISPATCH_COMPLETE,
             task_content.id,

@@ -225,6 +225,7 @@ def add_info(
         patient_name=tags_list.get("PatientName", mercure_options.MISSING),
         mrn=tags_list.get("PatientID", mercure_options.MISSING),
         acc=tags_list.get("AccessionNumber", mercure_options.MISSING),
+        sender_address=tags_list.get("SenderAddress", mercure_options.MISSING),
         mercure_version=mercure_defs.VERSION,
         mercure_appliance=config.mercure.appliance_name,
         mercure_server=socket.gethostname(),

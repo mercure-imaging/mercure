@@ -22,13 +22,14 @@
 
 #include "tags_list.h"
 
-#define VERSION "0.6"
+#define VERSION "0.7"
 
 
 static OFString tagSpecificCharacterSet = "";
 static OFString tagSeriesInstanceUID = "";
 static OFString tagSOPInstanceUID = "";
 
+static OFString helperSenderAddress = "";
 static OFString helperSenderAET = "";
 static OFString helperReceiverAET = "";
 
@@ -269,6 +270,7 @@ bool writeTagsFile(OFString dcmFile, OFString originalFile)
     INSERTTAG("SeriesInstanceUID", tagSeriesInstanceUID, "1.2.256.0.7230020.3.1.3.531431169.31.1254476944.91508");
     INSERTTAG("SOPInstanceUID", tagSOPInstanceUID, "1.2.256.0.7220020.3.1.3.541411159.31.1254476944.91518");
     
+    INSERTTAG("SenderAddress", helperSenderAddress, "");
     INSERTTAG("SenderAET", helperSenderAET, "STORESCU");
     INSERTTAG("ReceiverAET", helperReceiverAET, "ANY-SCP");
 
@@ -298,28 +300,29 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    if (argc < 4)
+    if (argc < 5)
     {
         std::cout << std::endl;
         std::cout << "getdcmtags Version " << VERSION << std::endl;
         std::cout << "------------------------" << std::endl
                   << std::endl;
-        std::cout << "Usage: [dcm file to analyze] [sending AET] [receiving AET] [ip:port of bookkeeper] [api key for bookkeeper]" << std::endl
+        std::cout << "Usage: [dcm file to analyze] [sender address] [sender AET] [receiver AET] [ip:port of bookkeeper] [api key for bookkeeper]" << std::endl
                   << std::endl;
         return 0;
     }
 
-    helperSenderAET = OFString(argv[2]);
-    helperReceiverAET = OFString(argv[3]);
-
-    if (argc > 4)
-    {
-        bookkeeperAddress = std::string(argv[4]);
-    }
+    helperSenderAddress = OFString(argv[2]);
+    helperSenderAET = OFString(argv[3]);
+    helperReceiverAET = OFString(argv[4]);
 
     if (argc > 5)
     {
-        bookkeeperToken = std::string(argv[5]);
+        bookkeeperAddress = std::string(argv[5]);
+    }
+
+    if (argc > 6)
+    {
+        bookkeeperToken = std::string(argv[6]);
     }
 
     OFString origFilename = OFString(argv[1]);

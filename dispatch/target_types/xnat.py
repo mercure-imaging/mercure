@@ -1,4 +1,4 @@
-from common.types import Target, TaskDispatch, XnatTarget
+from common.types import Target, TaskDispatch, XnatTarget, Task
 import common.config as config
 from webinterface.common import async_run
 
@@ -42,6 +42,7 @@ class XnatTargetHandler(TargetHandler[XnatTarget]):
         target: XnatTarget,
         dispatch_info: TaskDispatch,
         source_folder: Path,
+        task: Task
     ) -> str:
         try:
             _send_dicom_to_xnat(

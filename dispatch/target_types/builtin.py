@@ -1,4 +1,4 @@
-from common.types import DicomTarget, DicomTLSTarget, SftpTarget, DummyTarget
+from common.types import DicomTarget, DicomTLSTarget, SftpTarget, DummyTarget, Task
 import common.config as config
 from common.constants import mercure_names
 from webinterface.common import async_run
@@ -35,8 +35,16 @@ class DicomTargetHandler(SubprocessTargetHandler[DicomTarget]):
     icon = "fa-database"
     display_name = "DICOM"
 
-    def _create_command(self, target: DicomTarget, source_folder: Path):
+    def _create_command(self, target: DicomTarget, source_folder: Path, task: Task):
         target_ip = target.ip
+        if target_ip == "sender":
+            # If results should be looped back to the original sender of the task, insert
+            # the IP/address obtained from the DICOM receiver
+            target_ip = task.info.sender_address        
+        if not target_ip:
+            # If not target ip has been provided, insert a value that allows identifying the issue
+            target_ip = "target_missing"
+
         target_port = target.port or 104
         target_aet_target = target.aet_target or ""
         target_aet_source = target.aet_source or ""
@@ -54,14 +62,19 @@ class DicomTargetHandler(SubprocessTargetHandler[DicomTarget]):
     async def test_connection(self, target: DicomTarget, target_name: str):
         cecho_response = False
         ping_response = False
+        loopback_mode = False
+
         target_ip = target.ip or ""
         target_port = target.port or ""
         target_aec = target.aet_target or "ANY-SCP"
         target_aet = target.aet_source or "ECHOSCU"
 
+        if target_ip == "sender":
+            loopback_mode = True
+
         logger.info(f"Testing target {target_name}")
 
-        if target_ip and target_port:
+        if target_ip and target_port and not loopback_mode:
             ping_result, *_ = await async_run(f"ping -w 1 -c 1 {target_ip}")
             if ping_result == 0:
                 ping_response = True
@@ -72,7 +85,7 @@ class DicomTargetHandler(SubprocessTargetHandler[DicomTarget]):
             if cecho_result == 0:
                 cecho_response = True
 
-        return {"ping": ping_response, "c-echo": cecho_response}
+        return {"ping": ping_response, "c-echo": cecho_response, "loopback_mode": loopback_mode}
 
 
 @handler_for(DicomTLSTarget)
@@ -83,7 +96,7 @@ class DicomTLSTargetHandler(SubprocessTargetHandler[DicomTLSTarget]):
     icon = "fa-database"
     display_name = "DICOM+TLS"
 
-    def _create_command(self, target: DicomTLSTarget, source_folder: Path):
+    def _create_command(self, target: DicomTLSTarget, source_folder: Path, task: Task):
         target_ip = target.ip
         target_port = target.port or 104
         target_aet_target = target.aet_target or ""
@@ -135,7 +148,7 @@ class SftpTargetHandler(SubprocessTargetHandler[SftpTarget]):
     icon = "fa-server"
     display_name = "SFTP"
 
-    def _create_command(self, target: SftpTarget, source_folder: Path):
+    def _create_command(self, target: SftpTarget, source_folder: Path, task: Task):
         command = (
             "sftp -o StrictHostKeyChecking=no "
             + f""" "{target.user}@{target.host}:{target.folder}" """

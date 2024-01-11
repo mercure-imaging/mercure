@@ -1,3 +1,10 @@
+{% if result.loopback_mode %}
+<div style="margin-bottom: 8px;">
+    <div id="testmode-pingfalse"><i
+            class="fas fa-exclamation-circle fa-lg"></i>&nbsp;&nbsp;Unable to test connection in loop-back mode
+    </div>
+</div>
+{% else %}
 <div style="margin-bottom: 8px;">
     {% if result.ping %}
     <div id="testmode-pingtrue"><i
@@ -20,3 +27,4 @@
     </div>
     {% endif %}
 </div>
+{% endif %}
