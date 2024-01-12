@@ -17,6 +17,7 @@ dummy_info = {
     "triggered_rules": "",
     "mrn": "",
     "acc": "",
+    "sender_address": "localhost",
     "mercure_version": "",
     "mercure_appliance": "",
     "mercure_server": "",
