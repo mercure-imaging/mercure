@@ -34,7 +34,6 @@ def is_ready_for_sending(folder) -> Optional[Task]:
         not (path / mercure_names.LOCK).exists()
         and not (path / mercure_names.ERROR).exists()
         and not (path / mercure_names.PROCESSING).exists()
-        and len(list(path.glob(mercure_names.DCMFILTER))) > 0
     )
     content = is_target_json_valid(folder)
 
