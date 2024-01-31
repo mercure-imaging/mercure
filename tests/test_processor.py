@@ -63,6 +63,8 @@ expected_task_info = {
             "mercure_version": mercure_version.get_version_string(),
             "mercure_appliance": "master",
             "mercure_server": socket.gethostname(),
+            "device_serial_number": None,
+            "sender_address": "MISSING"
         }
 
 def create_and_route(fs, mocked, task_id, uid="TESTFAKEUID") -> Tuple[List[str], str]:
@@ -247,7 +249,7 @@ async def test_process_series(fs, mercure_config: Callable[[Dict], Config], mock
             call('busybox:stable', command='cat /etc/monai/app.json', entrypoint=''),
             call(
         config.modules["test_module"].docker_tag,
-        environment={"MERCURE_IN_DIR": "/tmp/data", "MERCURE_OUT_DIR": "/tmp/output",  'MONAI_INPUTPATH': '/tmp/data', 'MONAI_OUTPUTPATH': '/tmp/output'},
+        environment={'HOLOSCAN_INPUT_PATH': '/tmp/data', 'HOLOSCAN_OUTPUT_PATH': '/tmp/output', "MERCURE_IN_DIR": "/tmp/data", "MERCURE_OUT_DIR": "/tmp/output",  'MONAI_INPUTPATH': '/tmp/data', 'MONAI_OUTPUTPATH': '/tmp/output'},
         user=uid_string,
         group_add=[os.getegid()],
         volumes=unittest.mock.ANY,
@@ -328,7 +330,7 @@ async def test_multi_process_series(fs, mercure_config: Callable[[Dict], Config]
     for m in partial["rules"]["catchall"]["processing_module"]:
         fake_run.assert_any_call(
                 config.modules[m].docker_tag,
-                environment={"MERCURE_IN_DIR": "/tmp/data", "MERCURE_OUT_DIR": "/tmp/output",  'MONAI_INPUTPATH': '/tmp/data', 'MONAI_OUTPUTPATH': '/tmp/output'},
+                environment={'HOLOSCAN_INPUT_PATH': '/tmp/data', 'HOLOSCAN_OUTPUT_PATH': '/tmp/output', "MERCURE_IN_DIR": "/tmp/data", "MERCURE_OUT_DIR": "/tmp/output",  'MONAI_INPUTPATH': '/tmp/data', 'MONAI_OUTPUTPATH': '/tmp/output'},
                 user=uid_string,
                 group_add=[os.getegid()],
                 runtime="runc",

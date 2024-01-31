@@ -256,4 +256,11 @@ def _trigger_notification(task: Task, event: mercure_events) -> None:
         if (the_rule := config.mercure.rules.get(current_rule)) and the_rule.notification_trigger_completion_on_request:
             if notification.get_task_requested_notification(task):
                 request_do_send = True
-        notification.trigger_notification_for_rule(current_rule, task.id, event, notification.get_task_custom_notification(task), task, request_do_send)
+        notification.trigger_notification_for_rule(
+            current_rule,
+            task.id,
+            event,
+            task=task,
+            details=notification.get_task_custom_notification(task),
+            send_always=request_do_send,
+        )

@@ -6,7 +6,8 @@ Helper functions for triggering webhook calls.
 
 # Standard python includes
 import json
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
+import typing
 import aiohttp
 import daiquiri
 import json
@@ -47,13 +48,32 @@ def post(url: str, payload: Any) -> None:
     asyncio.ensure_future(do_post(url, payload), loop=loop)
 
 
-def parse_payload(payload: str, event: mercure_events, rule_name: str, task_id: str, details: str ="", context: dict={}) -> str:
+
+def parse_payload(
+    payload: str,
+    event: mercure_events,
+    rule_name: str,
+    task_id: str,
+    details: str = "",
+    context: dict = {},
+    *,
+    task: Optional[Task] = None,
+    tags_list: Optional[Dict[str, str]] = None,
+) -> str:
     payload_parsed = payload
     payload_parsed = payload_parsed.replace("@rule@", rule_name)
     payload_parsed = payload_parsed.replace("@task_id@", task_id)
     payload_parsed = payload_parsed.replace("@event@", event.name)
-    context = {**dict(rule=rule_name, task_id=task_id, event=event.name, details=details),**context}
-    
+
+    if task is not None:
+        context["DeviceSerialNumber"] = task.info.device_serial_number
+    elif tags_list is not None:
+        context["DeviceSerialNumber"] = tags_list["DeviceSerialNumber"]
+
+    context = {
+        **dict(rule=rule_name, task_id=task_id, event=event.name, details=details),
+        **context,
+    }
     return Template(payload_parsed).render(context)
     
 
@@ -133,40 +153,90 @@ def get_task_custom_notification(task:Task) -> Optional[str]:
     str_results = [ f"{module_name}: {text}" for module_name, text in results]
     return "\n".join(str_results)
 
+@typing.overload
+def trigger_notification_for_rule(
+    rule_name: str,
+    task_id: str,
+    event: mercure_events,
+    *,
+    task: Task,
+    details: Optional[str] = "",
+    send_always: bool=False,
+):
+    ...
 
-def trigger_notification_for_rule(rule_name: str, task_id: str, event: mercure_events, details: Optional[str]="", task: Optional[Task] = None, send_always = False):
+
+@typing.overload
+def trigger_notification_for_rule(
+    rule_name: str,
+    task_id: str,
+    event: mercure_events,
+    *,
+    tags_list: Dict[str, str],
+    details: Optional[str] = "",
+    send_always: bool = False,
+):
+    ...
+
+
+def trigger_notification_for_rule(
+    rule_name: str,
+    task_id: str,
+    event: mercure_events,
+    *,
+    task: Optional[Task] = None,
+    tags_list: Optional[Dict[str, str]] = {},
+    details: Optional[str] = "",
+    send_always: bool = False,
+):
     # logger.warning(f"TRIGGER NOTIFICATION FOR RULE {rule_name} {event=} {details=}\n {task=}")
     details = details if details is not None else ""
     current_rule = config.mercure.rules.get(rule_name)
     # Check if the rule is available
     if not current_rule or not isinstance(current_rule, Rule):
-        logger.error(f"Rule {rule_name} does not exist in mercure configuration", task_id)  # handle_error
+        logger.error(
+            f"Rule {rule_name} does not exist in mercure configuration", task_id
+        )  # handle_error
         return False
 
-
-    do_send = send_always # default false
+    do_send = send_always  # default false
     # Now fire the webhook if configured
-    if event == mercure_events.RECEIVED and current_rule.notification_trigger_reception == True:
+    if (
+        event == mercure_events.RECEIVED
+        and current_rule.notification_trigger_reception == True
+    ):
         do_send = True
-    elif event == mercure_events.COMPLETED and current_rule.notification_trigger_completion == True:
+    elif (
+        event == mercure_events.COMPLETED
+        and current_rule.notification_trigger_completion == True
+    ):
         do_send = True
-    elif event == mercure_events.ERROR and current_rule.notification_trigger_error == True:
+    elif (
+        event == mercure_events.ERROR
+        and current_rule.notification_trigger_error == True
+    ):
         do_send = True
-    
+
     if not do_send:
         return False
 
     webhook_url = current_rule.get("notification_webhook")
-    
+
     if webhook_url:
         body = current_rule.get("notification_payload_body", "")
-        context = dict(body=jinja2.utils.htmlsafe_json_dumps(parse_payload(body,event, rule_name, task_id, details))[1:-1]) # type: ignore
+        context = dict(body=jinja2.utils.htmlsafe_json_dumps(parse_payload(body, event, rule_name, task_id, details, {}, task=task, tags_list=tags_list))[1:-1])  # type: ignore
 
-        webhook_payload = parse_payload(current_rule.get("notification_payload", ""),event, rule_name, task_id, details, context)
-        send_webhook(
-            webhook_url,
-            webhook_payload
+        webhook_payload = parse_payload(
+            current_rule.get("notification_payload", ""),
+            event,
+            rule_name,
+            task_id,
+            details,
+            context,
+            task=task,
+            tags_list=tags_list,
         )
+        send_webhook(webhook_url, webhook_payload)
         monitor.send_task_event(
             monitor.task_event.NOTIFICATION,
             task_id,
@@ -178,10 +248,23 @@ def trigger_notification_for_rule(rule_name: str, task_id: str, event: mercure_e
     email_address = current_rule.get("notification_email")
     if email_address:
         if task:
-            context = dict(acc=task.info.acc, mrn=task.info.mrn, patient_name=task.info.patient_name)
+            context = dict(
+                acc=task.info.acc,
+                mrn=task.info.mrn,
+                patient_name=task.info.patient_name,
+            )
         else:
             context = {}
-        email_payload = parse_payload(current_rule.get("notification_email_body", ""), event, rule_name, task_id, details, context)
+        email_payload = parse_payload(
+            current_rule.get("notification_email_body", ""),
+            event,
+            rule_name,
+            task_id,
+            details,
+            context,
+            task=task,
+            tags_list=tags_list,
+        )
         send_email(
             email_address,
             email_payload,

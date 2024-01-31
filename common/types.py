@@ -221,7 +221,7 @@ class TaskInfo(BaseModel, Compat):
     mercure_version: str
     mercure_appliance: str
     mercure_server: str
-
+    device_serial_number: Optional[str] = None
 
 class TaskDispatch(BaseModel, Compat):
     target_name: str

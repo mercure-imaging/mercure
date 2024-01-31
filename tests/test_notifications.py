@@ -121,16 +121,16 @@ async def test_notifications(fs, mercure_config: Callable[[Dict], Config], mocke
     )
     router.run_router()
     if action=="notification":
-        notification.trigger_notification_for_rule.assert_has_calls( 
+        notification.trigger_notification_for_rule.assert_has_calls(  # type: ignore
             [
-                call("catchall", task_id, mercure_events.RECEIVED),
-                call("catchall", task_id, mercure_events.COMPLETED)
+                call("catchall", task_id, mercure_events.RECEIVED, tags_list=unittest.mock.ANY),
+                call("catchall", task_id, mercure_events.COMPLETED, tags_list=unittest.mock.ANY)
             ])
-        assert notification.trigger_notification_for_rule.spy_return == on_completion
+        assert notification.trigger_notification_for_rule.spy_return == on_completion  # type: ignore
         return
     else:
-        notification.trigger_notification_for_rule.assert_called_with("catchall", task_id, mercure_events.RECEIVED)
-    assert notification.trigger_notification_for_rule.spy_return == on_reception
+        notification.trigger_notification_for_rule.assert_called_with("catchall", task_id, mercure_events.RECEIVED, tags_list=unittest.mock.ANY)  # type: ignore
+    assert notification.trigger_notification_for_rule.spy_return == on_reception  # type: ignore
 
     fake_run = mocked.Mock(return_value=FakeDockerContainer(), side_effect=make_fake_processor(fs, mocked, do_error))  # type: ignore
     mocked.patch.object(ContainerCollection, "run", new=fake_run)
@@ -140,10 +140,10 @@ async def test_notifications(fs, mercure_config: Callable[[Dict], Config], mocke
     # logger.info(notification.trigger_notification_for_rule.call_args_list)  # type: ignore
     dispatcher.dispatch()
     if not do_error:
-        notification.trigger_notification_for_rule.assert_called_with( 
-            "catchall",new_task_id, mercure_events.COMPLETED, "test_module_1: notification" if action in ("process","both") else None, unittest.mock.ANY, on_request and do_request if action in ("process","both") else False)
-        assert notification.trigger_notification_for_rule.spy_return == on_completion or (on_request and do_request)
+        notification.trigger_notification_for_rule.assert_called_with(   # type: ignore
+            "catchall",new_task_id, mercure_events.COMPLETED, details = "test_module_1: notification" if action in ("process","both") else None, task=unittest.mock.ANY, send_always=on_request and do_request if action in ("process","both") else False)
+        assert notification.trigger_notification_for_rule.spy_return == on_completion or (on_request and do_request)  # type: ignore
     else:
-        notification.trigger_notification_for_rule.assert_called_with( 
-            "catchall",new_task_id, mercure_events.ERROR,NoneOrEmptyString(), unittest.mock.ANY, False)
-        assert notification.trigger_notification_for_rule.spy_return == on_error
+        notification.trigger_notification_for_rule.assert_called_with(   # type: ignore
+            "catchall",new_task_id, mercure_events.ERROR, details=NoneOrEmptyString(), task=unittest.mock.ANY, send_always=False)
+        assert notification.trigger_notification_for_rule.spy_return == on_error  # type: ignore

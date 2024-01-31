@@ -615,4 +615,11 @@ def trigger_notification(task: Task, event: mercure_events, details: str="", sen
         logger.error(f"Missing applied_rule in task file in task {task.id}", task.id)  # handle_error
         return
 
-    notification.trigger_notification_for_rule(current_rule_name, task.id, event, details, task, send_always)
+    notification.trigger_notification_for_rule(
+        current_rule_name,
+        task.id,
+        event,
+        task=task,
+        details=details,
+        send_always=send_always,
+    )
