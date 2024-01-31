@@ -6,6 +6,7 @@ Helper functions for triggering webhook calls.
 
 # Standard python includes
 import json
+import ssl
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
 import typing
 import aiohttp
@@ -31,14 +32,19 @@ from common.constants import (
 # Create local logger instance
 logger = config.get_logger()
 
+ssl_context = ssl.create_default_context()
+if config.mercure.webhook_certificate_location:
+    ssl_context.load_verify_locations(config.mercure.webhook_certificate_location)
 
 def post(url: str, payload: Any) -> None:
     async def do_post(url, payload) -> None:
         async with aiohttp.ClientSession() as session:
             try:
-                async with session.post(url, json=payload) as resp:
+                async with session.post(url, json=payload, ssl=ssl_context) as resp:
                     if resp.status not in (200, 204):
-                        logger.warning(f"Webhook notification failed {url}, status: {resp.status}")
+                        logger.warning(
+                            f"Webhook notification failed {url}, status: {resp.status}"
+                        )
                         logger.warning(payload)
                     # logger.warning(f"{await resp.text()}")
             except Exception as e:
@@ -46,8 +52,6 @@ def post(url: str, payload: Any) -> None:
                 logger.warning(traceback.format_exc())
 
     asyncio.ensure_future(do_post(url, payload), loop=loop)
-
-
 
 def parse_payload(
     payload: str,

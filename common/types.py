@@ -206,6 +206,7 @@ class Config(BaseModel, Compat):
     processing_logs: ProcessingLogsConfig = ProcessingLogsConfig()
     email_notification_from: str = "mercure@mercure.mercure"
     support_root_modules: Optional[bool] = False
+    webhook_certificate_location: Optional[str] = None
 
 
 class TaskInfo(BaseModel, Compat):
