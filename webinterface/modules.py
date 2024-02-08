@@ -25,6 +25,7 @@ from webinterface.common import templates
 import docker
 
 from decoRouter import Router as decoRouter
+
 router = decoRouter()
 logger = config.get_logger()
 
@@ -34,7 +35,19 @@ logger = config.get_logger()
 ###################################################################################
 
 
-async def save_module(form, name) -> Response:
+class ServerErrorResponse(PlainTextResponse):
+    def __init__(self, *args) -> None:
+        super().__init__(*args)
+        self.status_code = 500
+
+
+class BadRequestResponse(PlainTextResponse):
+    def __init__(self, *args) -> None:
+        super().__init__(*args)
+        self.status_code = 400
+
+
+async def save_module(form, name) -> None:
     """Save the settings for the module with the given name."""
 
     # Ensure that the module settings are valid. Should happen on the client side too, but can't hurt to check again.
@@ -53,20 +66,15 @@ async def save_module(form, name) -> Response:
         comment=form.get("comment", ""),
         constraints=form.get("constraints", ""),
         resources=form.get("resources", ""),
-        requires_root=form.get("requires_root",False) or form.get("container_type","mercure") == "monai"
+        requires_root=form.get("requires_root", False)
+        or form.get("container_type", "mercure") == "monai",
     )
-    try:
-        config.save_config()
-    except:
-        return PlainTextResponse("ERROR: Unable to write configuration. Try again.")
-
-    return RedirectResponse(url="/modules/", status_code=303)
+    config.save_config()
 
 
 ###################################################################################
 ## Modules endpoints
 ###################################################################################
-
 
 
 @router.get("/")
@@ -77,12 +85,14 @@ async def show_modules(request):
     try:
         config.read_config()
     except:
-        return PlainTextResponse("Configuration is being updated. Try again in a minute.")
+        return PlainTextResponse(
+            "Configuration is being updated. Try again in a minute."
+        )
 
     used_modules = {}
     for rule in config.mercure.rules:
         used_module = config.mercure.rules[rule].get("processing_module", "NONE")
-        if isinstance(used_module,list):
+        if isinstance(used_module, list):
             for m in used_module:
                 used_modules[m] = rule
         else:
@@ -107,35 +117,66 @@ async def add_module(request):
     try:
         config.read_config()
     except:
-        return PlainTextResponse("Configuration is being updated. Try again in a minute.")
+        return PlainTextResponse(
+            "Configuration is being updated. Try again in a minute."
+        )
 
     form = dict(await request.form())
     name = form.get("name", "")
 
     if "/" in name:
-        return PlainTextResponse("Invalid module name provided.")
+        return BadRequestResponse("Invalid module name provided.")
 
     if name in config.mercure.modules:
-        return PlainTextResponse("A module with this name already exists.")
+        return BadRequestResponse("A module with this name already exists.")
 
-    client = docker.from_env() # type: ignore
+    client = docker.from_env()  # type: ignore
     try:
         client.images.get(form["docker_tag"])
-    except docker.errors.ImageNotFound: 
+    except docker.errors.ImageNotFound:
         try:
             client.images.get_registry_data(form["docker_tag"])
-        except:
-            return PlainTextResponse(f"A Docker container with this tag does not exist locally or in the Docker Hub registry.")
-    except:
-        return PlainTextResponse(f"Unable read container list. Check Docker installation and firewall settings.")
-
-    if form["container_type"] == "monai" and config.mercure.support_root_modules != True:
-        return PlainTextResponse(f"MONAI modules must run as root user, but the setting 'Support Root Modules' is disabled in the mercure configuration. Enable it on the Configuration page before installing MONAI modules.")
+        except docker.errors.APIError as e:
+            if e.response.status_code == 403:
+                return ServerErrorResponse(
+                    f"A Docker container with this tag does not exist locally or in the Docker Hub registry."
+                )
+            else:
+                logger.exception(e)
+                return ServerErrorResponse(
+                    f"Failed to retrieve Docker Registry data about this docker tag: {e}"
+                )
+        except Exception as e:
+            logger.exception(e)
+            return ServerErrorResponse(
+                f"Unexpected error retrieving Docker Registry data about this docker tag: {e}"
+            )
+    except docker.errors.APIError as e:
+        logger.exception(e)
+        return ServerErrorResponse(
+            f"Unable to read container list: {e}. \n Check server logs, Docker installation, and any firewall settings."
+        )
+    except Exception as e:
+        logger.exception(e)
+        return ServerErrorResponse(
+            f"Unexpected error: {e}. \n Check server logs, Docker installation, and any firewall settings."
+        )
+    if (
+        form["container_type"] == "monai"
+        and config.mercure.support_root_modules != True
+    ):
+        return BadRequestResponse(
+            f"MONAI modules must run as root user, but the setting 'Support Root Modules' is disabled in the mercure configuration. Enable it on the Configuration page before installing MONAI modules."
+        )
     # logger.info(f'Created rule {name}')
     # monitor.send_webgui_event(monitor.w_events.RULE_CREATE, request.user.display_name, name)
+    try:
+        await save_module(form, name)
+    except Exception as e:
+        logger.exception(e)
+        return ServerErrorResponse(f"Unexpected error while saving new module. {e}")
 
-    await save_module(form, name)
-    return PlainTextResponse(headers={"HX-Refresh":"true"})
+    return PlainTextResponse(headers={"HX-Refresh": "true"})
 
 
 @router.get("/edit/{module}")
@@ -146,11 +187,15 @@ async def edit_module(request):
     try:
         config.read_config()
     except:
-        return PlainTextResponse("Configuration is being updated. Try again in a minute.")
+        return PlainTextResponse(
+            "Configuration is being updated. Try again in a minute."
+        )
 
     settings_string = ""
     if config.mercure.modules[module].settings:
-        settings_string = json.dumps(config.mercure.modules[module].settings, indent=4, sort_keys=False)
+        settings_string = json.dumps(
+            config.mercure.modules[module].settings, indent=4, sort_keys=False
+        )
 
     runtime = helper.get_runner()
 
@@ -163,7 +208,7 @@ async def edit_module(request):
         "module_name": module,
         "settings": settings_string,
         "runtime": runtime,
-        "support_root_modules": config.mercure.support_root_modules
+        "support_root_modules": config.mercure.support_root_modules,
     }
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
@@ -176,7 +221,9 @@ async def edit_module_POST(request):
     try:
         config.read_config()
     except:
-        return PlainTextResponse("Configuration is being updated. Try again in a minute.")
+        return PlainTextResponse(
+            "Configuration is being updated. Try again in a minute."
+        )
 
     form = dict(await request.form())
 
@@ -184,7 +231,13 @@ async def edit_module_POST(request):
     if name not in config.mercure.modules:
         return PlainTextResponse("Invalid module name - perhaps it was deleted?")
 
-    return await save_module(form, name)
+    try:
+        await save_module(form, name)
+    except Exception as e:
+        logger.exception(e)
+        return PlainTextResponse("ERROR: Unable to write configuration. Try again.")
+
+    return RedirectResponse(url="/modules/", status_code=303)
 
 
 @router.post("/delete/{module}")
@@ -194,7 +247,9 @@ async def delete_module(request):
     try:
         config.read_config()
     except:
-        return PlainTextResponse("Configuration is being updated. Try again in a minute.")
+        return PlainTextResponse(
+            "Configuration is being updated. Try again in a minute."
+        )
 
     name = request.path_params["module"]
     if name in config.mercure.modules:
@@ -207,5 +262,6 @@ async def delete_module(request):
     # logger.info(f'Created rule {newrule}')
     # monitor.send_webgui_event(monitor.w_events.RULE_CREATE, request.user.display_name, newrule)
     return RedirectResponse(url="/modules", status_code=303)
+
 
 modules_app = Starlette(routes=router)

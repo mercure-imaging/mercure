@@ -116,7 +116,42 @@
         $(".navbar-burger").toggleClass("is-active");
         $(".navbar-menu").toggleClass("is-active");
       });
+      document.body.addEventListener('htmx:targetError', function (evt) {
+        alert("Unexpected error: HTML target missing!")
+      });
+
+        document.body.addEventListener('htmx:afterRequest', function (evt) {
+          if (evt.detail.xhr.status != 200) {
+            if ( evt.detail.xhr.responseText == "Internal Server Error" ) {
+              message = "Unexpected server error, please check server logs.";
+              console.error(message);
+            } else {
+              message = evt.detail.xhr.responseText;
+            }
+            let target = evt.target.attributes.getNamedItem('hx-target');
+            let el = null;
+            if (target) {
+              el = document.querySelector(target.value);
+            }
+            if (el) {
+              el.innerHTML = message;
+            } else {
+              alert(message);
+            }
+          }
+          // const targetError = evt.target.attributes.getNamedItem('hx-target-error')
+          // if (evt.detail.failed && targetError) {
+          //   document.getElementById(targetError.value).style.display = "inline";
+          // }
+        });
+        // document.body.addEventListener('htmx:beforeRequest', function (evt) {
+        //   const targetError = evt.target.attributes.getNamedItem('hx-target-error')
+        //   if (targetError) {
+        //     document.getElementById(targetError.value).style.display = "none";
+        //   }
+        // });
     });        
+    
   </script>
 </body>
 </html>
