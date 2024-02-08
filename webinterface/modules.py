@@ -57,7 +57,7 @@ async def save_module(form, name) -> None:
         new_settings = {}
 
     config.mercure.modules[name] = Module(
-        docker_tag=form.get("docker_tag", ""),
+        docker_tag=form.get("docker_tag", "").strip(),
         additional_volumes=form.get("additional_volumes", ""),
         environment=form.get("environment", ""),
         docker_arguments=form.get("docker_arguments", ""),
@@ -123,6 +123,8 @@ async def add_module(request):
 
     form = dict(await request.form())
     name = form.get("name", "")
+    form["name"] = form["name"].strip()
+    form["docker_tag"] = form["docker_tag"].strip()
 
     if "/" in name:
         return BadRequestResponse("Invalid module name provided.")
