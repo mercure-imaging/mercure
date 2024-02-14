@@ -193,6 +193,10 @@ class Config(BaseModel, Compat):
     dicom_receiver: DicomReceiverConfig = DicomReceiverConfig()
     graphite_ip: str
     graphite_port: int
+    influxdb_host: str
+    influxdb_token: str
+    influxdb_org: str
+    influxdb_bucket: str
     bookkeeper: str
     offpeak_start: str
     offpeak_end: str
