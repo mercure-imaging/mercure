@@ -79,6 +79,15 @@ class SftpTarget(Target):
     password: Optional[str]
 
 
+class RsyncTarget(Target):
+    target_type: Literal["rsync"] = "rsync"
+    folder: str
+    user: str
+    host: str
+    password: Optional[str]
+    run_on_complete: bool = False
+
+
 class XnatTarget(Target):
     target_type: Literal["xnat"] = "xnat"
     project_id: str

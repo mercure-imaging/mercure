@@ -1,0 +1,44 @@
+    <div class="notification is-info" style="margin-top: 30px;">
+        <i class="fas fa-snowplow"></i>&nbsp;&nbsp;Support for rsync is experimental at this time.
+    </div>                        
+    <div class="field" style="margin-top: 30px;">
+        <label class="label">Host/IP</label>
+        <div class="control">
+            <input name="host" class="input" required='true' autocomplete='off' type="text"
+                placeholder="Host name or IP" value="{{targets[edittarget].host}}" />
+        </div>
+    </div>
+    <div class="field">
+        <label class="label">Folder</label>
+        <div class="control">
+            <input name="folder" class="input" required='true' autocomplete='off' type="text"
+                placeholder="Folder" value="{{targets[edittarget].folder}}" />
+        </div>
+    </div>
+    <div class="field">
+        <label class="label">User</label>
+        <div class="control">
+            <input name="user" class="input" required='true' autocomplete='off' type="text"
+                placeholder="User" value="{{targets[edittarget].user}}" />
+        </div>
+    </div>
+    <div class="field">
+        <label class="label">Password</label>
+        <div class="control">
+            <input name="password" class="input" autocomplete='off' type="text"
+                placeholder="Password" value="{%if targets[edittarget].password%}{{targets[edittarget].password}}{%endif%}" />
+        </div>
+    </div>
+
+    <div class="field">
+        <div class="control">
+                <input id="run_on_complete" type="checkbox" name="run_on_complete"
+                    class="switch is-rounded is-dark" value="True" {% if
+                        targets[edittarget].run_on_complete==True %}checked="checked" {% endif%} />
+                        <label for="run_on_complete">Execute command on complete</label>
+
+            <!-- <input name="on_complete" class="input" required='false' autocomplete='off' type="text"
+                placeholder="On Complete" value="{% if targets[edittarget].run_on_complete %}{{targets[edittarget].run_on_complete}}{%endif%}" /> -->
+        </div>
+        
+    </div>

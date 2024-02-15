@@ -19,7 +19,12 @@ class TargetHandler(Generic[TargetTypeVar]):
         pass
 
     def send_to_target(
-        self, task_id: str, target: TargetTypeVar, dispatch_info: TaskDispatch, source_folder: Path, task: Task
+        self,
+        task_id: str,
+        target: TargetTypeVar,
+        dispatch_info: TaskDispatch,
+        source_folder: Path,
+        task: Task,
     ) -> str:
         return ""
 
@@ -35,20 +40,35 @@ class TargetHandler(Generic[TargetTypeVar]):
 
 class SubprocessTargetHandler(TargetHandler[TargetTypeVar]):
     def _create_command(self, target: TargetTypeVar, source_folder: Path, task: Task):
-        return ("",{})
+        return ("", {})
 
     def send_to_target(
-        self, task_id: str, target: TargetTypeVar, dispatch_info: TaskDispatch, source_folder: Path, task: Task
+        self,
+        task_id: str,
+        target: TargetTypeVar,
+        dispatch_info: TaskDispatch,
+        source_folder: Path,
+        task: Task,
     ) -> str:
-        command, opts = self._create_command(target, source_folder, task)
-        try:
-            logger.debug(f"Running command {command}")
-            logger.info(f"Sending {source_folder} to target {dispatch_info.target_name}")
-            result = check_output(command, encoding="utf-8", stderr=subprocess.STDOUT, **opts)
-            return result  # type: ignore  # Mypy doesn't know that check_output returns a string here?
-        except CalledProcessError as e:
-            self.handle_error(e, command)
-            raise
+        commands, opts = self._create_command(target, source_folder, task)
+        if not isinstance(commands[0], list):
+            commands = [commands]
+        result = ""
+        logger.info(f"Sending {source_folder} to target {dispatch_info.target_name}")
+        for command in commands:
+            try:
+                logger.info(f"Running command {' '.join(command)}")
+                output = check_output(
+                    command, encoding="utf-8", stderr=subprocess.STDOUT, **opts
+                )
+                result += output
+                logger.info(output)
+            # return result  # type: ignore  # Mypy doesn't know that check_output returns a string here?
+            except CalledProcessError as e:
+                self.handle_error(e, command)
+                raise
+        return result
 
-    def handle_error(self, e, command) -> None:
+    def handle_error(self, e: CalledProcessError, command) -> None:
+        logger.error(e.output)
         logger.error(f"Failed. Command exited with value {e.returncode}: \n {command}")

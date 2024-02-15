@@ -32,3 +32,13 @@ async def async_run(cmd, **params) -> Tuple[Optional[int], bytes, bytes]:
 
     stdout, stderr = await proc.communicate()
     return proc.returncode, stdout, stderr
+
+
+async def async_run_exec(*args, **params) -> Tuple[Optional[int], bytes, bytes]:
+    """Executes the given command in a way compatible with ayncio."""
+    proc = await asyncio.create_subprocess_exec(
+        *args, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, **params
+    )
+
+    stdout, stderr = await proc.communicate()
+    return proc.returncode, stdout, stderr
