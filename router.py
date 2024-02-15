@@ -25,6 +25,8 @@ from routing.route_series import route_series, route_error_files
 from routing.route_studies import route_studies
 from routing.common import generate_task_id
 import common.influxdb
+import common.notification as notification
+
 
 # Create local logger instance
 logger = config.get_logger()
@@ -162,6 +164,7 @@ def main(args=sys.argv[1:]) -> None:
     logger.info(f"Instance  PID  = {os.getpid()}")
     logger.info(sys.version)
 
+    notification.setup()
     monitor.configure("router", instance_name, config.mercure.bookkeeper)
     monitor.send_event(monitor.m_events.BOOT, monitor.severity.INFO, f"PID = {os.getpid()}")
 

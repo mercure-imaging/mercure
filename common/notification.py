@@ -33,8 +33,15 @@ from common.constants import (
 logger = config.get_logger()
 
 ssl_context = ssl.create_default_context()
-if config.mercure.webhook_certificate_location:
-    ssl_context.load_verify_locations(config.mercure.webhook_certificate_location)
+
+
+def setup() -> bool:   
+    """Load the SSL certificate if it is configured (after the configuration has been read)."""
+    global ssl_context
+    if config.mercure.webhook_certificate_location:
+        ssl_context.load_verify_locations(config.mercure.webhook_certificate_location)
+    return True
+
 
 def post(url: str, payload: Any) -> None:
     async def do_post(url, payload) -> None:

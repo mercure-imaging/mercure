@@ -36,6 +36,8 @@ from process.process_series import (
 )
 from common.types import Task, TaskProcessing
 import common.influxdb
+import common.notification as notification
+
 
 # Create local logger instance
 logger = config.get_logger()
@@ -282,6 +284,7 @@ def main(args=sys.argv[1:]) -> None:
     logger.info(f"Thread ID  = {threading.get_native_id()}")
     logger.info(sys.version)
 
+    notification.setup()
     monitor.configure("processor", instance_name, config.mercure.bookkeeper)
     monitor.send_event(monitor.m_events.BOOT, monitor.severity.INFO, f"PID = {os.getpid()}")
 

@@ -29,6 +29,8 @@ import common.monitor as monitor
 from common.monitor import task_event
 from common.constants import mercure_defs
 import common.influxdb
+import common.notification as notification
+
 
 # Setup daiquiri logger
 logger = config.get_logger()
@@ -212,6 +214,7 @@ def main(args=sys.argv[1:]) -> None:
     logger.info(f"Instance  PID  = {os.getpid()}")
     logger.info(sys.version)
 
+    notification.setup()
     monitor.configure("cleaner", instance_name, config.mercure.bookkeeper)
     monitor.send_event(monitor.m_events.BOOT, monitor.severity.INFO, f"PID = {os.getpid()}")
 

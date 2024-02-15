@@ -24,6 +24,7 @@ from dispatch.status import is_ready_for_sending
 from dispatch.send import execute
 from common.constants import mercure_defs
 import common.influxdb
+import common.notification as notification
 
 
 # Create local logger instance
@@ -137,6 +138,7 @@ def main(args=sys.argv[1:]) -> None:
     logger.info(f"Instance  PID  = {os.getpid()}")
     logger.info(sys.version)
 
+    notification.setup()
     monitor.configure("dispatcher", instance_name, config.mercure.bookkeeper)
     monitor.send_event(monitor.m_events.BOOT, monitor.severity.INFO, f"PID = {os.getpid()}")
 
