@@ -41,7 +41,7 @@ def test_execute_successful_case(fs, mocked):
     }
     fs.create_file("/var/data/source/a/" + mercure_names.TASKFILE, contents=json.dumps(target))
 
-    mocked.patch("dispatch.target_types.base.check_output", return_value=b"Success")
+    mocked.patch("dispatch.target_types.base.check_output", return_value="Success")
     execute(Path(source), Path(success), Path(error), 1, 1)
 
     assert not Path(source).exists()
