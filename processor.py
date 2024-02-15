@@ -35,6 +35,8 @@ from process.process_series import (
     handle_processor_output,
 )
 from common.types import Task, TaskProcessing
+import common.influxdb
+import common.notification as notification
 
 
 # Create local logger instance
@@ -282,6 +284,7 @@ def main(args=sys.argv[1:]) -> None:
     logger.info(f"Thread ID  = {threading.get_native_id()}")
     logger.info(sys.version)
 
+    notification.setup()
     monitor.configure("processor", instance_name, config.mercure.bookkeeper)
     monitor.send_event(monitor.m_events.BOOT, monitor.severity.INFO, f"PID = {os.getpid()}")
 
@@ -289,6 +292,16 @@ def main(args=sys.argv[1:]) -> None:
         logger.info(f"Sending events to graphite server: {config.mercure.graphite_ip}")
         graphite_prefix = "mercure." + appliance_name + ".processor." + instance_name
         graphyte.init(config.mercure.graphite_ip, config.mercure.graphite_port, prefix=graphite_prefix)
+
+    if len(config.mercure.influxdb_host) > 0:
+        logger.info(f"Sending events to influxdb server: {config.mercure.influxdb_host}")
+        common.influxdb.init(
+            config.mercure.influxdb_host,
+            config.mercure.influxdb_token,
+            config.mercure.influxdb_org,
+            config.mercure.influxdb_bucket,
+            "mercure." + appliance_name + ".processor." + instance_name
+        )
 
     logger.info(f"Processing folder: {config.mercure.processing_folder}")
     processor_lockfile = Path(config.mercure.processing_folder + "/" + mercure_names.HALT)

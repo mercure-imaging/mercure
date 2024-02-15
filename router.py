@@ -24,6 +24,9 @@ import common.monitor as monitor
 from routing.route_series import route_series, route_error_files
 from routing.route_studies import route_studies
 from routing.common import generate_task_id
+import common.influxdb
+import common.notification as notification
+
 
 # Create local logger instance
 logger = config.get_logger()
@@ -161,6 +164,7 @@ def main(args=sys.argv[1:]) -> None:
     logger.info(f"Instance  PID  = {os.getpid()}")
     logger.info(sys.version)
 
+    notification.setup()
     monitor.configure("router", instance_name, config.mercure.bookkeeper)
     monitor.send_event(monitor.m_events.BOOT, monitor.severity.INFO, f"PID = {os.getpid()}")
 
@@ -168,6 +172,16 @@ def main(args=sys.argv[1:]) -> None:
         logger.info(f"Sending events to graphite server: {config.mercure.graphite_ip}")
         graphite_prefix = "mercure." + appliance_name + ".router." + instance_name
         graphyte.init(config.mercure.graphite_ip, config.mercure.graphite_port, prefix=graphite_prefix)
+
+    if len(config.mercure.influxdb_host) > 0:
+        logger.info(f"Sending events to influxdb server: {config.mercure.influxdb_host}")
+        common.influxdb.init(
+            config.mercure.influxdb_host,
+            config.mercure.influxdb_token,
+            config.mercure.influxdb_org,
+            config.mercure.influxdb_bucket,
+            "mercure." + appliance_name + ".router." + instance_name
+        )
 
     logger.info(
         f"""Incoming folder: {config.mercure.incoming_folder}

@@ -10,6 +10,7 @@ wheel>=0.38.1
 
 # logging / monitoring
 graphyte
+influxdb_client
 daiquiri
 aiohttp>=3.8.5
 types-requests
