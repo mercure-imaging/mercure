@@ -226,8 +226,6 @@ starlette-auth-toolkit==0.5.0
     # via -r requirements.in
 starlette-decorouter==1.0.0
     # via -r requirements.in
-sysrsync==1.1.1
-    # via -r requirements.in
 tomli==2.0.1
     # via
     #   mypy

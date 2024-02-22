@@ -2,7 +2,6 @@ from typing import Any, Dict, List, Union
 from common.types import RsyncTarget, Task, TaskDispatch
 import common.config as config
 from webinterface.common import async_run, async_run_exec
-import sysrsync
 
 from pathlib import Path
 import shlex
