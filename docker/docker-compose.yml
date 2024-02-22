@@ -30,7 +30,7 @@ services:
     <<: *volumes-docker
     <<: *env
   db:
-    image: library/postgres:alpine
+    image: library/postgres:14-alpine
     restart: always
     env_file:
       - /opt/mercure/config/db.env
