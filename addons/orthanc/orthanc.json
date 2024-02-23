@@ -390,6 +390,8 @@
     //  "LocalAet" : "HELLO"               // new in 1.9.0
     //  "Timeout" : 60                     // new in 1.9.1
     //}
+
+    "mercure" : [ "orthanc", "172.17.0.1", 11112 ]
   },
 
   // Whether to store the DICOM modalities in the Orthanc database
@@ -828,5 +830,9 @@
   // disk space and might lead to HTTP timeouts on large archives). If
   // set to "true", the chunks of the ZIP file are progressively sent
   // as soon as one DICOM file gets compressed (new in Orthanc 1.9.4)
-  "SynchronousZipStream" : true
+  "SynchronousZipStream" : true,
+
+  "Tcia" : {
+    "Enable" : true
+  }  
 }
