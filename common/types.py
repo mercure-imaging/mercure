@@ -79,6 +79,15 @@ class SftpTarget(Target):
     password: Optional[str]
 
 
+class RsyncTarget(Target):
+    target_type: Literal["rsync"] = "rsync"
+    folder: str
+    user: str
+    host: str
+    password: Optional[str]
+    run_on_complete: bool = False
+
+
 class XnatTarget(Target):
     target_type: Literal["xnat"] = "xnat"
     project_id: str
@@ -222,7 +231,7 @@ class TaskInfo(BaseModel, Compat):
     patient_name: Optional[str]
     mrn: str
     acc: str
-    sender_address: str
+    sender_address: str = "MISSING"
     mercure_version: str
     mercure_appliance: str
     mercure_server: str

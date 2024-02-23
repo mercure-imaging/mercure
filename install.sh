@@ -346,7 +346,7 @@ install_app_files() {
 install_packages() {
   echo "## Installing Linux packages..."
   sudo apt-get update
-  sudo apt-get install -y build-essential wget git dcmtk jq inetutils-ping sshpass postgresql postgresql-contrib libpq-dev git-lfs python3-wheel python3-dev python3 python3-venv sendmail libqt5core5a
+  sudo apt-get install -y build-essential wget git dcmtk jq inetutils-ping sshpass rsync postgresql postgresql-contrib libpq-dev git-lfs python3-wheel python3-dev python3 python3-venv sendmail libqt5core5a
 }
 
 install_dependencies() {

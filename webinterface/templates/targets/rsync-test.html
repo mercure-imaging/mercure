@@ -1,0 +1,49 @@
+<div style="margin-bottom: 8px;">
+    {% if result.ping %}
+    <div id="testmode-pingtrue"><i
+            class="fas fa-check-circle fa-lg has-text-success"></i>&nbsp;&nbsp;Responded to Ping
+    </div>
+    {% else %}
+    <div id="testmode-pingfalse"><i
+            class="fas fa-times-circle fa-lg has-text-danger"></i>&nbsp;&nbsp;No Ping Response
+    </div>
+    {% endif %}
+</div>
+<div style="margin-bottom: 8px;">
+    {% if result.ssh_connected == True %}
+    <div id="testmode-login-true"><i
+    class="fas fa-check-circle fa-lg has-text-success"></i>&nbsp;&nbsp;Logged in</div>
+    {% elif result.ssh_connected == False %}
+    <div id="testmode-login-false"><i
+    class="fas fa-times-circle fa-lg has-text-danger"></i>&nbsp;&nbsp;Connection failed</div>
+    {% else %}
+    <div id="testmode-login-none"><i
+        class="fas fa-times-circle fa-lg"></i>&nbsp;&nbsp;Connection skipped</div>
+
+    {% endif %}
+
+    {% if result.folder_exists == True %}
+    <div id="testmode-folder-true"><i
+    class="fas fa-check-circle fa-lg has-text-success"></i>&nbsp;&nbsp;Destination folder exists</div>
+    {% elif result.folder_exists == False %}
+    <div id="testmode-folder-false"><i
+    class="fas fa-times-circle fa-lg has-text-danger"></i>&nbsp;&nbsp;Destination folder not available</div>
+    {% else %}
+    <div id="testmode-folder-false"><i
+        class="fas fa-times-circle fa-lg"></i>&nbsp;&nbsp;Folder check skipped</div>
+    {% endif %}
+
+    {% if result.exec_script_exists == True %}
+    <div id="testmode-script-true"><i
+    class="fas fa-check-circle fa-lg has-text-success"></i>&nbsp;&nbsp;mercure_complete.sh exists</div>
+    {% elif result.exec_script_exists == False %}
+    <div id="testmode-script-false"><i
+    class="fas fa-times-circle fa-lg has-text-danger"></i>&nbsp;&nbsp;mercure_complete.sh does not exist or isn't executable</div>
+    {% else %}
+    <div id="testmode-folder-false"><i
+        class="fas fa-times-circle fa-lg"></i>&nbsp;&nbsp;mercure_complete.sh check skipped</div>
+    {% endif %}
+    
+
+    <div id="testmode-errtext" style="margin-top: 10px;"><pre>{{result.err}}</pre></div>
+</div>
