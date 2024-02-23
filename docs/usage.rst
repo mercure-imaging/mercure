@@ -90,7 +90,7 @@ For DICOM TLS targets, enter the TLS client key path, TLS client certificate pat
 
 .. important:: Support for DICOM TLS transfers is still experimental and should be used with care.
 
-.. important:: Due to an incompatibility in DICOM toolkit v3.6.4 and OpenSSL v1.1.1, the dcmtk and openssl versions supported by Ubuntu 20.04, only Ubuntu 22.04 mercure installs support DICOM+TLS targets.
+.. important:: Due to an incompatibility in DICOM toolkit v3.6.4 and OpenSSL v1.1.1, the dcmtk and openssl versions supported by Ubuntu 20.04, only Ubuntu 22.04 mercure installs support for DICOM+TLS targets.
 
 On the "Information" tab, you can add information for documentation purpose, including a contact e-mail address (so that it can be looked up who should be contacted if problems with the target occur) and a description of the target.
 
