@@ -259,6 +259,15 @@ async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_p
         docker_result = container.wait()
         logger.info(docker_result)
 
+        # Print the log out of the module
+        logger.info("=== MODULE OUTPUT - BEGIN ========================================")
+        if container.logs() is not None:
+            logs = container.logs().decode("utf-8")
+            if not config.mercure.processing_logs.discard_logs:
+                monitor.send_process_logs(task.id, task_processing.module_name, logs)
+            logger.info(logs)
+        logger.info("=== MODULE OUTPUT - END ==========================================")
+
         # In lieu of making mercure a sudoer...
         logger.debug("Changing the ownership of the output directory...")
         try:
@@ -285,15 +294,12 @@ async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_p
         # Reset the permissions to owner rwx, world readonly. 
         ( folder / "out" ).chmod(0o755)
         for k in ( folder / "out" ).glob("**/*"):
-            k.chmod(0o644)
-        # Print the log out of the module
-        logger.info("=== MODULE OUTPUT - BEGIN ========================================")
-        if container.logs() is not None:
-            logs = container.logs().decode("utf-8")
-            if not config.mercure.processing_logs.discard_logs:
-                monitor.send_process_logs(task.id, task_processing.module_name, logs)
-            logger.info(logs)
-        logger.info("=== MODULE OUTPUT - END ==========================================")
+            if k.is_dir():
+                k.chmod(0o755)
+
+        for k in ( folder / "out" ).glob("**/*"):
+            if k.is_file():
+               k.chmod(0o644)
 
         await monitor.async_send_task_event(
             monitor.task_event.PROCESS_MODULE_COMPLETE,
