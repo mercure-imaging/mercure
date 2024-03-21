@@ -7,20 +7,20 @@
     <div class="container">
         <h1 class="title">Configuration</h1>
         <form method="post" onsubmit="return validate()">
-            <div class="notification is-danger" id="erroralert" style="display: none;">
-                <i class="fas fa-bug"></i>&nbsp;&nbsp;Error in configuration detected. Please check input for correct
-                JSON syntax.
-            </div>
+            
             <div class="columns">
                 <div class="column is-full">
-                    <div class="field">
-                        <div class="control">
-                            <textarea class="textarea textarea_scroll" cols="50" rows="25" wrap="off" id="editor" name="editor"
+                    <div id="jsoneditor" style="    --jse-theme-color: #383e42; --jse-theme-color-highlight: #687177;"></div>
+                            <textarea class="textarea textarea_scroll hidden" style="display: none;" cols="50" rows="1" wrap="off" id="edit_field" name="editor"
                                 style="font-family:Consolas,Monaco,Lucida Console,Liberation Mono,DejaVu Sans Mono,Bitstream Vera Sans Mono,Courier New, monospace;"
-                                spellcheck="false">{{config_content}}</textarea>
+                                spellcheck="false"></textarea>
                         </div>
                     </div>
                 </div>
+            </div>
+            <div class="notification is-danger" id="erroralert" style="display: none;">
+                <i class="fas fa-bug"></i>&nbsp;&nbsp;Error in configuration detected. Please check input for correct
+                JSON syntax.
             </div>
             {% if is_admin %}
             <div class="columns">
@@ -39,15 +39,54 @@
 </main>
 <script>
     function validate() {
-        var str = $('#editor').val();
-        try {
-            JSON.parse(str);
-        } catch (e) {
+        $('#edit_field').val(window.editor.get().text);
+        if (window.editor.validate() == null) {
+            return true
+        } else {
             $('#erroralert').show();
-            $('#editor').focus();
             return false;
         }
-        return true;
     }
 </script>
+
+<script type="text" id="config_content">{{ config_content|safe }}</script>
+
+<script type="module">
+    let config_text = document.getElementById('config_content').textContent;
+    import { JSONEditor } from "{{ url_for('static', path='/js/svelte-jsoneditor.js') }}"
+
+    let content = {
+      text: config_text,
+    }
+
+    const editor = new JSONEditor({
+      target: document.getElementById('jsoneditor'),
+      props: {
+        mode: "tree",
+        // mainMenuBar: false,
+        navigationBar: false,
+        content,
+        onChange: (updatedContent, previousContent, { contentErrors, patchResult }) => {
+          // content is an object { json: JSONValue } | { text: string }
+          console.log('onChange', { updatedContent, previousContent, contentErrors, patchResult })
+          content = updatedContent
+        },
+        onChangeMode: (mode) => {
+            if (mode == 'tree') {
+                window.editor.expand((els)=>["rules","modules", "targets"].indexOf(els[0])==-1) 
+            } 
+        },
+        onRenderMenu(items, context) {
+            console.info(items);
+            items = items.filter((i)=>["jse-sort", "jse-transform","jse-collapse-all"].indexOf(i.className) == -1 && i.text!="table");
+            items[1].className += " jse-last";
+            return items;
+        }
+      }
+    })
+    window.editor = editor;
+    window.editor.expand((els)=>["rules","modules", "targets"].indexOf(els[0])==-1) 
+    // use methods get, set, update, and onChange to get data in or out of the editor.
+    // Use updateProps to update properties.
+  </script>
 {% endblock %}
