@@ -68,7 +68,6 @@
         content,
         onChange: (updatedContent, previousContent, { contentErrors, patchResult }) => {
           // content is an object { json: JSONValue } | { text: string }
-          console.log('onChange', { updatedContent, previousContent, contentErrors, patchResult })
           content = updatedContent
         },
         onChangeMode: (mode) => {
@@ -77,7 +76,6 @@
             } 
         },
         onRenderMenu(items, context) {
-            console.info(items);
             items = items.filter((i)=>["jse-sort", "jse-transform","jse-collapse-all"].indexOf(i.className) == -1 && i.text!="table");
             items[1].className += " jse-last";
             return items;

@@ -89,6 +89,7 @@
                                             <label class="label">Test Values:</label>
                                             <div class="control">
                                                 <textarea class="textarea testinclude textarea_scroll monofont" rows="8" placeholder="Testing tags" id="testvalues"
+                                                    data-json
                                                     name="testvalues" spellcheck="false">{{alltags|tojson(indent=4)}}</textarea>
                                             </div>
                                         </div>
@@ -334,7 +335,10 @@
                         <div class="control">
                             <textarea name="notification_payload" id="notification_payload" class="textarea textarea_scroll"
                                 autocomplete="off" rows="6"
-                                placeholder="JSON Payload for REST call">{{rules[rule]['notification_payload']}}</textarea>
+                                data-json
+                                placeholder="JSON Payload for REST call">{
+{{rules[rule]['notification_payload']}} 
+}</textarea>
                         </div>
                     </div>                    
                     <div class="field is-grouped is-grouped-right">
@@ -519,7 +523,7 @@
             field = "Processing > Settings";
             JSON.parse($('#processing_settings').val());
             field = "Notification > Payload";
-            str = '{' + $('#notification_payload').val() + '}';
+            str = $('#notification_payload').val();
             JSON.parse(str);
         } catch (e) {
             $('#erroralert').html('<i class="fas fa-bug"></i>&nbsp;&nbsp;Invalid content in field "' + field + '". Please check for correct syntax.');
@@ -668,11 +672,13 @@
         {% raw %}
         var body_template = "Rule {{ rule }} triggered {{ event }}\n{% if details is defined and details|length %}\nDetails:\n{{ details }}\n{%endif%}"
         $('#template_slack').click(function () {
-            $('#notification_payload').val('"text": "{{ body }}",\n"channel": "YOUR_CHANNEL_ID"');
+            $('#notification_payload').val('{\n  "text": "{{ body }}",\n  "channel": "YOUR_CHANNEL_ID"\n}');
+            $('#notification_payload').trigger("input");
         });
 
         $('#template_webex').click(function () {
-            $('#notification_payload').val('"text": "{{ body }}"');
+            $('#notification_payload').val('{\n  "text": "{{ body }}"\n}');
+            $('#notification_payload').trigger("input");
         });
         {% endraw %}
 

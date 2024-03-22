@@ -185,6 +185,8 @@ async def rules_edit_post(request) -> Response:
     else:
         processing_module = form.get("processing_module", "")
         
+    notification_payload = form.get("notification_payload", "")
+    notification_payload = notification_payload.strip().lstrip("{").rstrip("}")
     new_rule: Rule = Rule(
         rule=form.get("rule", "False"),
         target=form.get("target", ""),
@@ -203,7 +205,7 @@ async def rules_edit_post(request) -> Response:
         processing_retain_images=form.get("processing_retain_images", "False"),
         notification_webhook=form.get("notification_webhook", ""),
         notification_email=form.get("notification_email", ""),
-        notification_payload=form.get("notification_payload", ""),
+        notification_payload=notification_payload,
         notification_payload_body=form.get("notification_payload_body", ""),
         notification_email_body=form.get("notification_email_body", ""),
         notification_email_type="html" if form.get("notification_email_html",False) else "plain",

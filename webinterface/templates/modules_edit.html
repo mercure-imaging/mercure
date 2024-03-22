@@ -57,6 +57,7 @@
                             <input class="input"
                                 id="additional_volumes"
                                 type="text"
+                                data-json
                                 placeholder="{&quot;/host&quot;: {&quot;bind&quot;: &quot;/config&quot;, &quot;mode&quot;: &quot;r&quot;}}"
                                 name="additional_volumes"
                                 value="{{module['additional_volumes']}}">
@@ -68,6 +69,7 @@
                             <input class="input"
                                 id="environment"
                                 type="text"
+                                data-json
                                 placeholder="{&quot;foo&quot;: &quot;bar&quot;}"
                                 name="environment"
                                 value="{{module['environment']}}">
@@ -79,6 +81,7 @@
                             <input class="input"
                                 id="docker_arguments"
                                 type="text"
+                                data-json
                                 placeholder="See https://docker-py.readthedocs.io/en/stable/containers.html for parameters"
                                 name="docker_arguments"
                                 value="{{module['docker_arguments']}}"
@@ -108,6 +111,7 @@
                         <div class="control">
                             <textarea name="settings" id="settings" class="textarea textarea_scroll monofont"
                                 autocomplete='off' rows="9"
+                                data-json
                                 placeholder="Global module settings">{{settings}}</textarea>
                         </div>
                     </div>                   

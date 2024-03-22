@@ -108,7 +108,8 @@
     </div>
   </footer>
 
-  <script>
+  <script type="module">
+    import { JSONEditor } from "{{ url_for('static', path='/js/svelte-jsoneditor.js') }}"
     $(document).ready(function () {
       // Check for click events on the navbar burger icon
       $(".navbar-burger").click(function () {
@@ -150,8 +151,37 @@
         //     document.getElementById(targetError.value).style.display = "none";
         //   }
         // });
-    });        
-    
-  </script>
+        $("[data-json]").map(((i,el)=>{
+            let new_div = document.createElement("div")
+            // new_div.style = "height: 50px;"
+            el = $(el)
+            el.hide(0)
+            el.after(new_div);
+            
+            let ed = new JSONEditor({
+                target: new_div,
+                props: {
+                    mode: "text",
+                    mainMenuBar: false,
+                    statusBar: false,
+                    navigationBar: false,
+                    askToFormat: false,
+                    onChange: (updatedContent, previousContent, { contentErrors, patchResult }) => {
+                        if (contentErrors) {
+                            return;
+                        }
+                        el.val(updatedContent.text);
+                    },
+                    }})
+                    el.on("input", (evt)=> {
+                      ed.set({"text":el.val()});
+                    })
+                    ed.set({"text":el.val()})
+        }))
+
+      });        
+
+
+</script>
 </body>
 </html>
