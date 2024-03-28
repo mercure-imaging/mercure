@@ -187,6 +187,7 @@ async def rules_edit_post(request) -> Response:
         
     notification_payload = form.get("notification_payload", "")
     notification_payload = notification_payload.strip().lstrip("{").rstrip("}")
+
     new_rule: Rule = Rule(
         rule=form.get("rule", "False"),
         target=form.get("target", ""),
