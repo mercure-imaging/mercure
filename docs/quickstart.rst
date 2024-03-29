@@ -1,9 +1,12 @@
 Quick Start
 ===========
 
-If you want to try out mercure or setup a development environment, you can easily install mercure on your computer via Vagrant, which is an open-source tool for automatically creating and provisioning virtual machines. First, install `VirtualBox <https://virtualbox.org/>`_ on your computer. Afterwards, download `Vagrant <https://vagrantup.com/>`_ and install it. This should work on Windows, Mac, and Linux systems.
+If you want to try out mercure or setup a development environment, you can easily install mercure on your computer via Vagrant, which is an open-source tool for automatically creating and provisioning virtual machines. First, install `VirtualBox <https://virtualbox.org/>`_ on your computer. Afterwards, download `Vagrant <https://vagrantup.com/>`_ and install it. This should work on Windows, Intel-based Mac, and Linux systems.
 
 .. important:: This way of installing mercure is only suited for testing or development purpose. If you want to install mercure for production use, follow the instructions in the Installation section.
+
+.. note:: These instructions work for Apple Mac computers with Intel CPUs, but not for the newer Macs with M1/M2/M3 (ARM) processors. The :doc:`Advanced Topics <../advanced>` section contains instructions for running mercure on ARM-based Macs.
+
 
 Open a terminal shell and checkout the mercure repository by calling
 ::
