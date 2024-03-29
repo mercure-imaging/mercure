@@ -48,7 +48,8 @@ def attach_spies(mocker) -> None:
             "common.monitor.async_send_task_event",
             "common.monitor.send_processor_output",
             "common.monitor.send_update_task",
-            "common.notification.trigger_notification_for_rule"
+            "common.notification.trigger_notification_for_rule",
+            "common.notification.send_email"
         ],
     )
     # mocker.patch("processor.process_series", new=mocker.spy(process.process_series, "process_series"))

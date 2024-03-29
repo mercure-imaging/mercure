@@ -33,6 +33,8 @@ from nomad.api.job import Job
 from nomad.api.jobs import Jobs
 import socket
 
+from typing import Callable
+
 logger = config.get_logger()
 
 processor_path = Path()

@@ -79,7 +79,7 @@ def parse_payload(
     if task is not None:
         context["DeviceSerialNumber"] = task.info.device_serial_number
     elif tags_list is not None:
-        context["DeviceSerialNumber"] = tags_list["DeviceSerialNumber"]
+        context["DeviceSerialNumber"] = tags_list.get("DeviceSerialNumber")
 
     context = {
         **dict(rule=rule_name, task_id=task_id, event=event.name, details=details),
@@ -256,26 +256,31 @@ def trigger_notification_for_rule(
             "Announced " + event.name,
         )
 
-    email_address = current_rule.get("notification_email")
-    if email_address:
-        if task:
-            context = dict(
-                acc=task.info.acc,
-                mrn=task.info.mrn,
-                patient_name=task.info.patient_name,
-            )
-        else:
-            context = {}
-        email_payload = parse_payload(
-            current_rule.get("notification_email_body", ""),
-            event,
-            rule_name,
-            task_id,
-            details,
-            context,
-            task=task,
-            tags_list=tags_list,
+    email_addresses = current_rule.get("notification_email")
+    if not email_addresses:
+        return True
+
+    if task:
+        context = dict(
+            acc=task.info.acc,
+            mrn=task.info.mrn,
+            patient_name=task.info.patient_name,
         )
+    else:
+        context = {}
+
+    email_payload = parse_payload(
+        current_rule.get("notification_email_body", ""),
+        event,
+        rule_name,
+        task_id,
+        details,
+        context,
+        task=task,
+        tags_list=tags_list,
+    )
+
+    for email_address in email_addresses.split(", "):
         send_email(
             email_address,
             email_payload,

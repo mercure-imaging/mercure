@@ -17,6 +17,7 @@ from testing_common import *
 from docker.models.containers import ContainerCollection
 import unittest.mock
 import itertools
+from typing import Iterator, Callable
 
 logger = config.get_logger()
 
@@ -42,6 +43,7 @@ def make_config(action, trigger_reception, trigger_completion, trigger_completio
                 action_trigger="series",
                 study_trigger_condition="timeout",
                 notification_webhook="",
+                notification_email="test@localhost, test2@localhost",
                 processing_module=["test_module_1", "test_module_2"],
                 processing_settings=[{"foo":"bar"},{"bar":"baz"}],
                 processing_retain_images=True,
@@ -143,6 +145,11 @@ async def test_notifications(fs, mercure_config: Callable[[Dict], Config], mocke
         notification.trigger_notification_for_rule.assert_called_with(   # type: ignore
             "catchall",new_task_id, mercure_events.COMPLETED, details = "test_module_1: notification" if action in ("process","both") else None, task=unittest.mock.ANY, send_always=on_request and do_request if action in ("process","both") else False)
         assert notification.trigger_notification_for_rule.spy_return == on_completion or (on_request and do_request)  # type: ignore
+        if on_completion or (on_request and do_request):
+            notification.send_email.assert_has_calls([    # type: ignore
+                call("test@localhost", '', mercure_events.COMPLETED, 'catchall', 'plain'),
+                call("test2@localhost", '', mercure_events.COMPLETED, 'catchall', 'plain')
+            ])
     else:
         notification.trigger_notification_for_rule.assert_called_with(   # type: ignore
             "catchall",new_task_id, mercure_events.ERROR, details=NoneOrEmptyString(), task=unittest.mock.ANY, send_always=False)
