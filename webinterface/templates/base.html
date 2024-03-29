@@ -199,7 +199,11 @@
           // if (el.val() == "") {
           //   ed.set({"text": el.attr("placeholder")})
           // } else {
-          ed.set({"text":el.val()})
+          let val = el.val();
+          try {
+            val = JSON.stringify(JSON.parse(val),null,4);
+          } catch {}
+          ed.set({"text":val})
           if (!el.val()) {
             setTimeout(()=>$(new_div).find(".cm-line").attr("placeholder",el.attr("placeholder")), 500);
           }

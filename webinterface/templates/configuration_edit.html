@@ -39,7 +39,7 @@
 </main>
 <script>
     function validate() {
-        $('#edit_field').val(window.editor.get().text);
+        $('#edit_field').val(window.editor.get().text || JSON.stringify(window.editor.get().json, undefined, 4));
         if (window.editor.validate() == null) {
             return true
         } else {
