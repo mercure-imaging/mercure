@@ -82,11 +82,18 @@ def route_series(task_id: str, series_UID: str) -> None:
         logger.error(f"Missing file! {tagsMasterFile.name}", task_id)  # handle_error
         return
 
+    tagsList_encoding_error = False
     try:
-        with open(tagsMasterFile, "r") as json_file:
-            tagsList: Dict[str, str] = json.load(json_file)
+        try:
+            with open(tagsMasterFile, "r", encoding="utf-8", errors="strict") as json_file:
+                tagsList: Dict[str, str] = json.load(json_file)
+        except UnicodeDecodeError:
+            with open(tagsMasterFile, "r", encoding="utf-8", errors="surrogateescape") as json_file:
+                tagsList: Dict[str, str] = json.load(json_file)
+                tagsList_encoding_error = True
+
     except Exception:
-        logger.error(f"Invalid tag for series {series_UID}", task_id)  # handle_error
+        logger.exception(f"Invalid tag for series {series_UID}", task_id)  # handle_error
         return
 
     monitor.send_register_series(tagsList)
@@ -102,7 +109,7 @@ def route_series(task_id: str, series_UID: str) -> None:
 
     if (len(triggered_rules) == 0) or (discard_series):
         # If no routing rule has triggered or discarding has been enforced, discard the series
-        push_series_complete(task_id, fileList, series_UID, "DISCARD", discard_series, False)
+        push_series_complete(task_id, fileList, series_UID, "DISCARD", discard_series, False, tagsList_encoding_error = tagsList_encoding_error)
     else:
         # File handling strategy: If only one triggered rule, move files (faster than copying). If multiple rules, copy files
         push_series_studylevel(task_id, triggered_rules, fileList, series_UID, tagsList)
@@ -166,7 +173,7 @@ def get_triggered_rules(
 
 
 def push_series_complete(
-    task_id: str, file_list: List[str], series_UID: str, destination: str, discard_rule: str, copy_files: bool
+    task_id: str, file_list: List[str], series_UID: str, destination: str, discard_rule: str, copy_files: bool, *, tagsList_encoding_error
 ) -> None:
     """
     Moves all files of the series into either the "discard" or "success" folders, which both are periodically cleared.
@@ -204,6 +211,9 @@ def push_series_complete(
             info_text = "Discard by rule " + discard_rule
         else:
             info_text = "Discard by default."
+            if tagsList_encoding_error:
+                info_text += " Decoding error detected: some tags were not properly decoded, likely due to a malformed DICOM file. The expected rule may therefore not have been triggered."
+                logger.warning(info_text)
         monitor.send_task_event(monitor.task_event.DISCARD, task_id, len(file_list), discard_rule or "", info_text)
 
     if not push_files(task_id, file_list, destination_path, copy_files):

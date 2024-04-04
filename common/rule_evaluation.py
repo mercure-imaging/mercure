@@ -11,6 +11,7 @@ import daiquiri
 # App-specific includes
 import common.monitor as monitor
 from common import config
+from common.tags_rule_interface import Tags
 
 # Create local logger instance
 logger = config.get_logger()
@@ -38,7 +39,7 @@ def replace_tags(rule: str, tags: Dict[str, str]) -> Any:
         i = closing + 1
 
     for tag in tags_found:
-        rule = rule.replace("@" + tag + "@", "'" + tags[tag] + "'")
+        rule = rule.replace("@" + tag + "@", f"tags.{tag}")
 
     return rule
 
@@ -54,7 +55,8 @@ def parse_rule(rule: str, tags: Dict[str, str]) -> Union[Any, bool]:
         logger.info(f"Rule: {rule}")
         rule = replace_tags(rule, tags)
         logger.info(f"Evaluated: {rule}")
-        result = eval(rule, {"__builtins__": {}}, safe_eval_cmds)
+        
+        result = eval(rule, {"__builtins__": {}}, {**safe_eval_cmds,"tags":Tags(tags)})
         logger.info(f"Result: {result}")
         return result
     except Exception as e:
@@ -73,7 +75,8 @@ def test_rule(rule: str, tags: Dict[str, str]) -> str:
         logger.info(f"Evaluated: {rule}")
         if "MissingTag" in rule:
             return "Rule contains invalid tag"
-        result = eval(rule, {"__builtins__": {}}, safe_eval_cmds)
+        result = eval(rule, {"__builtins__": {}}, {**safe_eval_cmds,"tags":Tags(tags)})
+
         logger.info(f"Result: {result}")
         if result:
             return "True"
