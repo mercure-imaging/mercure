@@ -100,3 +100,55 @@ Afterwards, the .service files of the scaled service modules need to be duplicat
   sudo systemctl start mercure_dispatcher2.service
 
 As last step, it is necessary to authorize the mercure system user to control the duplicated services. This is done by editing the file **/etc/sudoers.d/mercure** (using a user account with sudo permission) and adding a line for each duplicated service (according to the name specified above). When copying an existing line from the file, make sure to change every occurrence of the service name in the line.
+
+
+Installation on Apple Macs with ARM processors
+----------------------------------------------
+
+Because the modern Apple Mac computers with M1/M2/M3 processors use a different architecture (ARM) than the older Intel-based Macs, it is not possible to directly run virtual machines with x86 architecture. Therefore, the installation instructions described in the Quickstart section do not work. It is still possible to run mercure on these Macs by using a software-based virtualization software called QEMU. However, this is VERY slow and may only be useful for initial testing purposes. 
+
+The following steps describe how to install and run mercure on a Mac with an Mx processor:
+
+* Download and install  `VirtualBox <https://virtualbox.org/>`_. **Note:** The latest version currently does not support ARM Macs. Go to download page, go to older builds, Version 7.0.8 supports ARM Mac (Developer Preview)
+
+* Make sure that Homebrew is installed
+
+* Run the following commands to install Qemu and Vagrant
+
+::
+
+    brew install qemu
+    brew install --cask vagrant
+    vagrant plugin install vagrant-qemu
+
+* Make sure that rosetta is installed:
+
+::
+
+    sudo softwareupdate --install-rosetta
+
+* Clone the mercure repository and navigate to the vagrant folder for Macs:
+
+::
+
+    /addons/vagrant/systemd_m1
+
+* Start the mercure VM as usual with:    
+
+::
+    
+    vagrant --orthanc up
+
+* To increase speed, try the following provider setup in the Vagrantfile:
+
+::
+    
+    config.vm.provider "qemu" do |qe|
+        qe.arch = "x86_64"
+        qe.machine = "q35"
+        qe.cpu = "max"
+        qe.smp = "cpus=2,sockets=1,cores=2,threads=1"
+        qe.net_device = "virtio-net-pci"
+        qe.extra_qemu_args = %w(-accel tcg,thread=multi,tb-size=512)
+        qe.qemu_dir = "/usr/local/share/qemu"
+    end    

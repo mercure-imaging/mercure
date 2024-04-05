@@ -1,0 +1,92 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+require 'getoptlong'
+
+orthanc=''
+branch='--branch latest-stable'
+use_default_disk=false
+
+opts = GetoptLong.new(
+  [ '--orthanc', GetoptLong::OPTIONAL_ARGUMENT ],
+  [ '--dev', GetoptLong::OPTIONAL_ARGUMENT ],
+  [ '--smaller-disk', GetoptLong::OPTIONAL_ARGUMENT ]
+)
+opts.each do |opt, arg|
+  case opt
+    when '--orthanc'
+      orthanc='yes'
+    when '--dev'
+      branch=''
+    when '--smaller-disk'
+      use_default_disk=true
+  end
+end
+if !use_default_disk then
+  # Install vagrant-disksize to allow resizing the vagrant box disk.
+  unless Vagrant.has_plugin?("vagrant-disksize")
+    raise  Vagrant::Errors::VagrantError.new, "vagrant-disksize plugin is missing. Either use --smaller-disk, or install it using 'vagrant plugin install vagrant-disksize' and rerun 'vagrant up'"
+  end
+end
+
+$script = <<-SCRIPT
+echo "#### mercure installation in systemd mode"
+echo Cloning mercure and calling install script...
+cd ~
+git clone --depth 1 #{branch} https://github.com/mercure-imaging/mercure.git
+cd mercure
+./install.sh -y systemd
+SCRIPT
+
+$script_orthanc = <<-SCRIPT
+echo "#### mercure installation in systemd mode with Orthanc"
+echo Cloning mercure and calling install script...
+cd ~
+git clone --depth 1 #{branch} https://github.com/mercure-imaging/mercure.git
+cd mercure
+./install.sh -y systemd
+cd addons/orthanc
+docker network create mercure_default
+docker-compose up -d
+SCRIPT
+
+Vagrant.configure(2) do |config|
+  config.vm.box = "generic/ubuntu2004" # 20.04 LTS
+  config.vm.network "forwarded_port", guest: 8000, host: 8000, auto_correct: true, host_ip: "127.0.0.1"
+  config.vm.network "forwarded_port", guest: 11112, host: 11112, auto_correct: true, host_ip: "127.0.0.1"
+
+  if use_default_disk == false then
+    config.disksize.size = "70GB"
+  end
+  if orthanc == "yes" then
+    config.vm.network "forwarded_port", guest: 8008, host: 8008, auto_correct: true, host_ip: "127.0.0.1"
+    config.vm.network "forwarded_port", guest: 8042, host: 8042, auto_correct: true, host_ip: "127.0.0.1"
+    config.vm.network "forwarded_port", guest: 4242, host: 4242, auto_correct: true, host_ip: "127.0.0.1"	
+    config.vm.provision "shell", inline: $script_orthanc
+  else
+    config.vm.provision "shell", inline: $script
+  end
+
+  # Increase memory for Parallels Desktop
+  config.vm.provider "qemu" do |qe|
+    qe.memory = "4096"
+  end
+
+  config.vm.provider "qemu" do |qe|
+    qe.arch = "x86_64"
+    qe.machine = "q35"
+    qe.cpu = "qemu64"
+    qe.net_device = "virtio-net-pci"
+  end
+
+  # Increase memory for Virtualbox
+  config.vm.provider "virtualbox" do |vb|
+        vb.memory = "4096"
+  end
+
+  # Increase memory for VMware
+  ["vmware_fusion", "vmware_workstation"].each do |p|
+    config.vm.provider p do |v|
+      v.vmx["memsize"] = "4096"
+    end
+  end
+end

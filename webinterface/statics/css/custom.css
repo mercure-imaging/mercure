@@ -488,3 +488,64 @@ table.dataTable tbody tr.selected th, table.dataTable tbody tr.selected td {
 .monofont {
   font-family: Consolas,Monaco,Lucida Console,Liberation Mono,DejaVu Sans Mono,Bitstream Vera Sans Mono,Courier New, monospace;
 }
+
+.jse-menu, .jse-contextmenu, .jse-absolute-popup-content, .jse-open-dropdown, .jse-dropdown-items, .jse-context-menu-button {
+  background-color: #2f2f2f !important;
+}
+
+.jse-context-menu-pointer {
+  /*background-color: #4d4d4d !important;  */
+}
+
+.jse-context-menu-pointer.jse-selected {
+  background-color: #3273dc !important; 
+}
+
+.jse-context-menu-pointer:hover {
+  background-color: #2f2f2f !important;    
+}
+
+.jse-insert-area {
+  /*outline-color: #0a0a0a !important;*/
+}
+
+.jse-dropdown-items {
+  border: 1px solid #7a7a7a !important;
+}
+
+.jse-context-menu-button:hover, .jse-dropdown-button:hover, .jse-dropdown-item:hover {
+  background-color: #7a7a7a !important;
+}
+
+.jse-open-dropdown:hover {
+  background-color: #7a7a7a !important;
+}
+
+.jse-message.jse-success {
+  background-color: #22c65b !important;
+}
+
+.jse-message.jse-error {
+  background-color: #ff3860 !important;  
+}
+
+.cm-gutters {
+  background-color: #f5f5f5 !important;
+}
+
+body {
+  --jse-font-size: 16px;
+  --jse-font-size-mono: 16px;
+}
+
+.cm-line::before {
+  color: #cdcdcd !important;
+}
+
+.cm-activeLine {
+  background-color: rgba(0, 0, 0, 0.0) !important;
+}
+
+.cm-activeLineGutter {
+  background-color: rgba(0, 0, 0, 0.0) !important;
+}

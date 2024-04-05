@@ -115,6 +115,7 @@
   
   <script type="module">
     import { JSONEditor } from "{{ url_for('static', path='/js/svelte-jsoneditor.js') }}"
+
     $(document).ready(function () {
       // Check for click events on the navbar burger icon
       $(".navbar-burger").click(function () {
@@ -176,17 +177,17 @@
                           return;
                       }
                       if (!updatedContent.text) {
-                       setTimeout(()=>$(new_div).find(".cm-line").attr("placeholder",el.attr("placeholder")), 100);
+                       setTimeout(()=>$(new_div).find(".cm-line").attr("placeholder",el.attr("placeholder")), 10);
                       }
                       el.val(updatedContent.text);
                   },
                   onFocus: (content) => {
                     if (!$(new_div).find(".cm-line").text()) 
-                      setTimeout(()=>$(new_div).find(".cm-line").attr("placeholder",el.attr("placeholder")), 100);
+                      setTimeout(()=>$(new_div).find(".cm-line").attr("placeholder",el.attr("placeholder")), 10);
                   },
                   onBlur: (content) => {
                     if (!$(new_div).find(".cm-line").text()) 
-                      setTimeout(()=>$(new_div).find(".cm-line").attr("placeholder",el.attr("placeholder")), 100);
+                      setTimeout(()=>$(new_div).find(".cm-line").attr("placeholder",el.attr("placeholder")), 10);
                   }
                   }});
           el.on("input", (evt)=> {
@@ -205,14 +206,11 @@
           } catch {}
           ed.set({"text":val})
           if (!el.val()) {
-            setTimeout(()=>$(new_div).find(".cm-line").attr("placeholder",el.attr("placeholder")), 500);
-          }
+            setTimeout(()=>$(new_div).find(".cm-line").attr("placeholder",el.attr("placeholder")), 1000);
+          }          
           // }
-        }))
-        
+        }))        
       });        
-
-
 </script>
 </body>
 </html>

@@ -274,6 +274,7 @@
                         <div class="control">
                             <textarea name="processing_settings" id="processing_settings" class="textarea monofont"
                                 autocomplete='off' rows="10"
+                                data-json
                                 placeholder="Rule-specific module settings">{{processing_settings}}</textarea>
                         </div>
                     </div>
@@ -337,9 +338,7 @@
                             <textarea name="notification_payload" id="notification_payload" class="textarea textarea_scroll"
                                 autocomplete="off" rows="6"
                                 data-json
-                                placeholder="JSON Payload for REST call">{
-{{rules[rule]['notification_payload']}} 
-}</textarea>
+                                placeholder="JSON Payload for REST call">{{rules[rule]['notification_payload']}}</textarea>
                         </div>
                     </div>                    
                     <div class="field is-grouped is-grouped-right">
@@ -518,14 +517,16 @@
     function validate() {
         var field = "";
         try {
+            field = "Processing > Settings";
             if ($('#processing_settings').val() == "") {
                 $('#processing_settings').val("{}");
             }
-            field = "Processing > Settings";
             JSON.parse($('#processing_settings').val());
             field = "Notification > Payload";
-            str = $('#notification_payload').val();
-            JSON.parse(str);
+            if ($('#notification_payload').val() == "") {
+                $('#notification_payload').val("{}");
+            }
+            JSON.parse($('#notification_payload').val());
         } catch (e) {
             $('#erroralert').html('<i class="fas fa-bug"></i>&nbsp;&nbsp;Invalid content in field "' + field + '". Please check for correct syntax.');
             $('#erroralert').show();
