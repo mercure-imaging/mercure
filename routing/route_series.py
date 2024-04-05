@@ -150,7 +150,7 @@ def get_triggered_rules(
                 fallback_rule = current_rule
 
             # Check if the current rule is triggered for the provided tag set
-            if rule_evaluation.parse_rule(rule.get("rule", "False"), tagList):
+            if rule_evaluation.parse_rule(rule.get("rule", "False"), tagList)[0]:
                 triggered_rules[current_rule] = True
                 if rule.get(mercure_rule.ACTION, "") == mercure_actions.DISCARD:
                     discard_rule = current_rule

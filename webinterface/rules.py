@@ -18,6 +18,7 @@ from starlette.authentication import requires
 import common.config as config
 import common.monitor as monitor
 from common.constants import mercure_defs
+from common.tags_rule_interface import TagNotFoundException
 from common.types import Rule
 import common.rule_evaluation as rule_evaluation
 import common.helper as helper
@@ -262,23 +263,24 @@ async def rules_test(request) -> Response:
         return PlainTextResponse(
             '<span class="tag is-warning is-medium ruleresult"><i class="fas fa-bug"></i>&nbsp;Error</span>&nbsp;&nbsp;Invalid test values'
         )
-
-    result = rule_evaluation.test_rule(testrule, testvalues)
-
-    if result == "True":
-        return PlainTextResponse(
-            '<span class="tag is-success is-medium ruleresult"><i class="fas fa-thumbs-up"></i>&nbsp;Trigger</span>'
-        )
-    else:
-        if result == "False":
+    try:
+        result = rule_evaluation.eval_rule(testrule, testvalues)
+        if result:
             return PlainTextResponse(
-                '<span class="tag is-info is-medium ruleresult"><i class="fas fa-thumbs-down"></i>&nbsp;Reject</span>'
+                f'<span class="tag is-success is-medium ruleresult"><i class="fas fa-thumbs-up"></i>&nbsp;Trigger</span>' + (f'<pre style="display:inline; margin-left: 1em">{result}</pre>' if result is not True else '')
             )
         else:
             return PlainTextResponse(
-                '<span class="tag is-danger is-medium ruleresult"><i class="fas fa-bug"></i>&nbsp;Error</span>&nbsp;&nbsp;Invalid rule: '
-                + result
+                f'<span class="tag is-info is-medium ruleresult"><i class="fas fa-thumbs-down"></i>&nbsp;Reject</span>' + (f'<pre style="display:inline; margin-left: 1em">{result}</pre>' if result is not False else '')
             )
+    except TagNotFoundException as e:
+        return PlainTextResponse(
+                f'<span class="tag is-info is-medium ruleresult"><i class="fas fa-thumbs-down"></i>&nbsp;Reject</span><span>{e}</span>'
+            )
+    except Exception as e:
+        return PlainTextResponse(
+            f'<span class="tag is-danger is-medium ruleresult"><i class="fas fa-bug"></i>&nbsp;Error</span>&nbsp;&nbsp;Invalid rule: <pre style="display:inline; margin-left: 1em">{e}</pre>'
+        )
 
 
 @router.post("/test_completionseries")

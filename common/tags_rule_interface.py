@@ -10,10 +10,13 @@ class Tags:
             for k in self._dict:
                 if k.lower() == lowered_name:
                     return self._dict[k]
-            raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
+            raise TagNotFoundException(f"No such tag '{name}' in tags list.")
 
-    def __getitem__(self, key):
-        return self._dict[key]
+    def __getitem__(self, name):
+        if name in self._dict:
+            return self._dict[name]
+        else:
+            raise TagNotFoundException(f"No such tag '{name}' in tags list.")
 
     def __len__(self):
         return len(self._dict)
@@ -21,6 +24,8 @@ class Tags:
     def __iter__(self):
         return iter(self._dict)
 
-    def __contains__(self, key):
-        return key in self._dict
-    
+    def __contains__(self, name):
+        return name in self._dict
+
+class TagNotFoundException(Exception):
+    pass

@@ -257,8 +257,6 @@ async def test_route_series(fs: FakeFilesystem, mercure_config, mocked, fake_pro
 
     common.monitor.send_task_event.assert_has_calls(  # type: ignore
         [
-            call(task_event.ERROR, task_id, 0, "", 'Invalid rule encountered: @StudyDescription@ == "foo" '),
-            call(task_event.ERROR, task_id, 0, "", 'Invalid rule encountered: "Garbage" in tags.BADTAG '),
             call(task_event.ERROR, task_id, 0, "", "Invalid rule encountered:  1/0 "),
             call(task_event.REGISTER, task_id, 1, "route_series", "Registered series"),
             call(task_event.DELEGATE, task_id, 1, new_task_id, "route_series"),

@@ -5,13 +5,13 @@ Helper functions for evaluating routing rules and study-completion conditions.
 """
 
 # Standard python includes
-from typing import Any, Dict, Union
+from typing import Any, Dict, Optional, Union
 import daiquiri
 
 # App-specific includes
 import common.monitor as monitor
 from common import config
-from common.tags_rule_interface import Tags
+from common.tags_rule_interface import Tags, TagNotFoundException
 
 # Create local logger instance
 logger = config.get_logger()
@@ -43,48 +43,49 @@ def replace_tags(rule: str, tags: Dict[str, str]) -> Any:
 
     return rule
 
-
+# def eval_rule(rule, tags):
 # Allow typecasting the DICOM tags during evaluation of routing rules
 safe_eval_cmds = {"float": float, "int": int, "str": str}
 
 
-def parse_rule(rule: str, tags: Dict[str, str]) -> Union[Any, bool]:
+def eval_rule(rule: str, tags: Dict[str, str]) -> Any:
     """Parses the given rule, replaces all tag variables with values from the given tags dictionary, and
     evaluates the rule. If the rule is invalid, an exception will be raised."""
+    logger.info(f"Rule: {rule}")
+    rule = replace_tags(rule, tags)
+    logger.info(f"Evaluated: {rule}")
     try:
-        logger.info(f"Rule: {rule}")
-        rule = replace_tags(rule, tags)
-        logger.info(f"Evaluated: {rule}")
-        
         result = eval(rule, {"__builtins__": {}}, {**safe_eval_cmds,"tags":Tags(tags)})
-        logger.info(f"Result: {result}")
-        return result
+    except SyntaxError as e:
+        opening = rule.find("@")
+        closing = rule.find("@",opening+1)
+        if opening >-1 and closing>1:
+            raise TagNotFoundException(f"No such tag '{rule[opening+1:closing]}' in tags list.")
+        raise
+    logger.info(f"Result: {result}")
+    return result
+
+def parse_rule(rule: str, tags: Dict[str, str]) -> tuple[bool,Optional[str], Optional[str]]:
+    try: 
+        result = eval_rule(rule, tags)
+        return True if result else False, result, None
+    except TagNotFoundException:
+        return False, None, None
     except Exception as e:
         logger.error(
             f"Invalid rule encountered: {rule}", None, event_type=monitor.m_events.CONFIG_UPDATE
         )  # handle_error
-        return False
+        return False, None, str(e)
 
 
 def test_rule(rule: str, tags: Dict[str, str]) -> str:
     """Tests the given rule for validity using the given tags dictionary. Similar to parse_rule but with
     more diagnostic output format for the testing dialog. Also warns about invalid tags."""
     try:
-        logger.info(f"Rule: {rule}")
-        rule = replace_tags(rule, tags)
-        logger.info(f"Evaluated: {rule}")
-        if "MissingTag" in rule:
-            return "Rule contains invalid tag"
-        result = eval(rule, {"__builtins__": {}}, {**safe_eval_cmds,"tags":Tags(tags)})
-
-        logger.info(f"Result: {result}")
-        if result:
-            return "True"
-        else:
-            return "False"
-    except Exception as e:
+        result = eval_rule(rule, tags)
+        return result
+    except TagNotFoundException as e:
         return str(e)
-
 
 def test_completion_series(value: str) -> str:
     """Tests if the given string with the list of series required for study completion has valid format. If so, True

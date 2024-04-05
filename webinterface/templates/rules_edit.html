@@ -65,7 +65,7 @@
                             </div>
                             <div class="control is-expanded">
                                 <textarea rows="1" name="rule" id="rule" class="textarea testinclude textarea_scroll" autocomplete='off'
-                                    onkeyup="this.value = this.value.replace(/[{}\x22\n]/g, '')" type="text"
+                                    onkeyup="this.value = this.value.replace(/[{}\n]/g, '')" type="text"
                                     placeholder="Routing rule"
                                     style="border-top-left-radius: 0px; border-bottom-left-radius: 0px; padding-top: 5px; padding-bottom: 5px; min-height: 36px; height: 36px;">{{rules[rule]['rule']}}</textarea>
                             </div>
@@ -83,8 +83,14 @@
                                     <div class="container">
                                         <div class="field">
                                             <label class="label">Result:</label>
-                                            <div id="testresult" style="height: 3em;"></div>
+                                            <div id="testresult" style="min-height: 3em;"></div>
                                         </div>
+                                        <div class="buttons">
+                                            <button class="button is-dark" default autofocus id="evaltestrule" hx-post="/rules/test"
+                                                hx-include=".testinclude"  hx-target="#testresult"><i class="fas fa-play"></i>&nbsp;Run Test</button>
+                                            <button class="button" type="button" onclick="resetTestRule()"><i class="fas fa-undo-alt"></i>&nbsp;Reset</button>
+                                        </div>
+    
                                         <div class="field">
                                             <label class="label">Test Values:</label>
                                             <div class="control">
@@ -116,11 +122,6 @@
                                             This testing tool does not support the character set and may behave differently from the rule evaluator on the mercure server.
                                         </div>
                                     </article>
-                                    <div class="buttons">
-                                        <button class="button is-dark" default autofocus id="evaltestrule" hx-post="/rules/test"
-                                            hx-include=".testinclude"  hx-target="#testresult"><i class="fas fa-play"></i>&nbsp;Run Test</button>
-                                        <button class="button" type="button" onclick="resetTestRule()"><i class="fas fa-undo-alt"></i>&nbsp;Reset</button>
-                                    </div>
                                 </div>
                             </div>            
                         </div>
@@ -487,10 +488,10 @@
                 <label class="label">Examples:</label>
                 <table class="table is-fullwidth is-hoverable is-bordered">
                     <tr>
-                        <td>(@Modality@ == 'MR') and ('GRASP' in @StudyDescription@)</td>
+                        <td>(tags.Modality == 'MR') and ('GRASP' in tags.StudyDescription)</td>
                     </tr>
                     <tr>
-                        <td>(float(@SeriesNumber@) > 100) or (@ScanningSequence@.lower()=='gr')</td>
+                        <td>(float(tags.SeriesNumber) > 100) or (tags.ScanningSequence.lower()=='gr')</td>
                     </tr>
                 </table>
             </div>
@@ -499,8 +500,8 @@
                 <table class="table is-fullwidth is-hoverable is-bordered">
                     {% for tag in sortedtags %}
                     <tr>
-                        <td><button class="button is-small is-dark" value="@{{tag}}@"
-                                onclick="copyTag(this.value)">Copy</button> &nbsp;&nbsp;@{{tag}}@</td>
+                        <td><button class="button is-small is-dark" value="tags.{{tag}}"
+                                onclick="copyTag(this.value)">Copy</button> &nbsp;&nbsp;tags.{{tag}}</td>
                     </tr>
                     {% endfor %}
                 </table>
@@ -587,14 +588,20 @@
 
     $(function () {
         $('#rule').keypress(function (e) {
+            if (e.which == 13) {
+                $("#evaltestrule").click();
+                return false;
+            }
             var chr = String.fromCharCode(e.which);
-            if ("{}\"".indexOf(chr) >= 0)
+            if ("{}".indexOf(chr) >= 0)
                 return false;
         });
     });
 
-    $('#rule').on('input', function () {
-        $(this).outerHeight(36).outerHeight(this.scrollHeight + 1);
+    $('#rule').on('input', function (e) {
+        if (e.target.value.indexOf("\n") < 0) {
+            $(this).outerHeight(36).outerHeight(this.scrollHeight + 1);
+        }
     });
 
     $(document).ready(function () {
