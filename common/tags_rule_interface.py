@@ -1,5 +1,5 @@
 class Tags:
-    def __init__(self, input_dict):
+    def __init__(self, input_dict) -> None:
         self._dict = input_dict
 
     def __getattr__(self, name):

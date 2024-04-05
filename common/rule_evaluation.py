@@ -5,7 +5,7 @@ Helper functions for evaluating routing rules and study-completion conditions.
 """
 
 # Standard python includes
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional, Tuple, Union
 import daiquiri
 
 # App-specific includes
@@ -65,7 +65,7 @@ def eval_rule(rule: str, tags: Dict[str, str]) -> Any:
     logger.info(f"Result: {result}")
     return result
 
-def parse_rule(rule: str, tags: Dict[str, str]) -> tuple[bool,Optional[str], Optional[str]]:
+def parse_rule(rule: str, tags: Dict[str, str]) -> Tuple[bool,Optional[str], Optional[str]]:
     try: 
         result = eval_rule(rule, tags)
         return True if result else False, result, None
@@ -76,16 +76,6 @@ def parse_rule(rule: str, tags: Dict[str, str]) -> tuple[bool,Optional[str], Opt
             f"Invalid rule encountered: {rule}", None, event_type=monitor.m_events.CONFIG_UPDATE
         )  # handle_error
         return False, None, str(e)
-
-
-def test_rule(rule: str, tags: Dict[str, str]) -> str:
-    """Tests the given rule for validity using the given tags dictionary. Similar to parse_rule but with
-    more diagnostic output format for the testing dialog. Also warns about invalid tags."""
-    try:
-        result = eval_rule(rule, tags)
-        return result
-    except TagNotFoundException as e:
-        return str(e)
 
 def test_completion_series(value: str) -> str:
     """Tests if the given string with the list of series required for study completion has valid format. If so, True

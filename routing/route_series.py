@@ -84,12 +84,13 @@ def route_series(task_id: str, series_UID: str) -> None:
 
     tagsList_encoding_error = False
     try:
+        tagsList: Dict[str, str] = {}
         try:
             with open(tagsMasterFile, "r", encoding="utf-8", errors="strict") as json_file:
-                tagsList: Dict[str, str] = json.load(json_file)
+                tagsList = json.load(json_file)
         except UnicodeDecodeError:
             with open(tagsMasterFile, "r", encoding="utf-8", errors="surrogateescape") as json_file:
-                tagsList: Dict[str, str] = json.load(json_file)
+                tagsList = json.load(json_file)
                 tagsList_encoding_error = True
 
     except Exception:
@@ -173,7 +174,7 @@ def get_triggered_rules(
 
 
 def push_series_complete(
-    task_id: str, file_list: List[str], series_UID: str, destination: str, discard_rule: str, copy_files: bool, *, tagsList_encoding_error
+    task_id: str, file_list: List[str], series_UID: str, destination: str, discard_rule: str, copy_files: bool, *, tagsList_encoding_error=False
 ) -> None:
     """
     Moves all files of the series into either the "discard" or "success" folders, which both are periodically cleared.
