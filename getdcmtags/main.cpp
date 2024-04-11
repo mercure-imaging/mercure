@@ -284,11 +284,48 @@ bool writeTagsFile(OFString dcmFile, OFString originalFile)
     return true;
 }
 
+#include <QFile>
+#include <QDir>
+#include <QFileInfo>
+#include <QDebug>
+#include <QDateTime>
+
+bool copyFileTime(const QString& sourceFilePath, const QString& destFilePath) {
+    // Get the last modified time of the source file
+    QFileInfo sourceInfo(sourceFilePath);
+    QDateTime lastModified = sourceInfo.lastModified();
+
+    // Set the last modified time of the destination file to match the source file
+    QFile destFile(destFilePath);
+    if (!destFile.open(QIODevice::ReadWrite)) {
+        qInfo() << "Failed to open destination file:" << destFile.errorString();
+        return false;
+    }
+
+    if (!destFile.setFileTime(lastModified, QFileDevice::FileModificationTime)) {
+        qInfo() << "Failed to set file time:" << destFile.errorString();
+        destFile.close();
+        return false;
+    }
+    qInfo() << "set" << destFilePath;
+    destFile.close();
+    return true;
+}
+
+void updateIndicatorFile(OFString basePath, OFString sourceFileName, OFString destFileName, bool isError = false) {
+    OFString indicatorFileName;
+    if (isError) {
+        indicatorFileName = destFileName + ".error";
+    } else {
+        indicatorFileName = destFileName + ".received";
+    }
+    copyFileTime(QString((basePath + sourceFileName).c_str()), QString( (basePath + "receiver_info/" + indicatorFileName).c_str()));
+}
 
 int main(int argc, char *argv[])
 {
     QCoreApplication app( argc, argv );
-    
+
     if (!charsetConverter.isConversionAvailable())
     {
         std::cout << std::endl;
@@ -334,6 +371,8 @@ int main(int argc, char *argv[])
         path = origFilename.substr(0, slashPos + 1);
         origFilename.erase(0, slashPos + 1);
     }
+    // QDir().mkdir((path + "/receiver_info").c_str());
+
     OFString full_path = path + origFilename;
     DcmFileFormat dcmFile;
     OFCondition status = dcmFile.loadFile(full_path);
@@ -344,6 +383,7 @@ int main(int argc, char *argv[])
         errorString.append(origFilename);
         errorString.append("\n");
         writeErrorInformation(full_path, errorString);
+        updateIndicatorFile(path, origFilename, origFilename, true);
         return 1;
     }
     DcmDataset* dataset = dcmFile.getDataset();
@@ -389,6 +429,7 @@ int main(int argc, char *argv[])
         errorString.append(newFilename);
         errorString.append("\n");
         writeErrorInformation(path + origFilename, errorString);
+        updateIndicatorFile(path, origFilename, tagSeriesInstanceUID, true);
         return 1;
     }
 
@@ -398,12 +439,13 @@ int main(int argc, char *argv[])
         errorString.append(newFilename);
         errorString.append("\n");
         writeErrorInformation(path + origFilename, errorString);
+        updateIndicatorFile(path, newFilename + ".dcm", tagSeriesInstanceUID, true);
 
         // Rename DICOM file back to original name, so that the name matches to
         // the .error file and can be moved to the error folder by the router
         rename((path + newFilename + ".dcm").c_str(), (path + origFilename).c_str());
         return 1;
     }
-
+    updateIndicatorFile(path, newFilename + ".dcm", tagSeriesInstanceUID);
     sendBookkeeperPost(newFilename, tagSOPInstanceUID, tagSeriesInstanceUID);
 }

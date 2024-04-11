@@ -90,7 +90,7 @@ def mercure_config(fs) -> Callable[[Dict], Config]:
     fs.add_real_file(config_path, target_path=config.configuration_filename, read_only=False)
     for k in ["incoming", "studies", "outgoing", "success", "error", "discard", "processing"]:
         fs.create_dir(f"/var/{k}")
-
+    fs.create_dir(f"/var/incoming/receiver_info")
     def set_config(extra: Dict[Any, Any] = {}) -> Config:
         config.read_config()
         config.mercure = Config(**{**config.mercure.dict(), **extra})  #   # type: ignore

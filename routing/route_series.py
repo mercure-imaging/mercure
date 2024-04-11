@@ -580,33 +580,35 @@ def route_error_files() -> None:
     error_files_found = 0
 
     for entry in os.scandir(config.mercure.incoming_folder):
-        if entry.name.endswith(mercure_names.ERROR) and not entry.is_dir():
-            # Check if a lock file exists. If not, create one.
-            lock_file = Path(config.mercure.incoming_folder + "/" + entry.name + mercure_names.LOCK)
-            if lock_file.exists():
-                continue
-            try:
-                lock = helper.FileLock(lock_file)
-            except:
-                continue
+        if not entry.name.endswith(mercure_names.ERROR) or entry.is_dir():
+            continue
 
-            logger.error(f"Found incoming error file {entry.name}")
-            error_files_found += 1
+        # Check if a lock file exists. If not, create one.
+        lock_file = Path(config.mercure.incoming_folder + "/" + entry.name + mercure_names.LOCK)
+        if lock_file.exists():
+            continue
+        try:
+            lock = helper.FileLock(lock_file)
+        except:
+            continue
 
+        logger.error(f"Found incoming error file {entry.name}")
+        error_files_found += 1
+
+        shutil.move(
+            config.mercure.incoming_folder + "/" + entry.name,
+            config.mercure.error_folder + "/" + entry.name,
+        )
+
+        dicom_filename = entry.name[:-6]
+        dicom_file = Path(config.mercure.incoming_folder + "/" + dicom_filename)
+        if dicom_file.exists():
             shutil.move(
-                config.mercure.incoming_folder + "/" + entry.name,
-                config.mercure.error_folder + "/" + entry.name,
+                config.mercure.incoming_folder + "/" + dicom_filename,
+                config.mercure.error_folder + "/" + dicom_filename,
             )
 
-            dicom_filename = entry.name[:-6]
-            dicom_file = Path(config.mercure.incoming_folder + "/" + dicom_filename)
-            if dicom_file.exists():
-                shutil.move(
-                    config.mercure.incoming_folder + "/" + dicom_filename,
-                    config.mercure.error_folder + "/" + dicom_filename,
-                )
-
-            lock.free()
+        lock.free()
 
     if error_files_found > 0:
         monitor.send_event(

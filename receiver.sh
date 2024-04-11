@@ -41,6 +41,7 @@ if [ ! -d "$incoming" ]; then
     exit 1
 fi
 echo "Incoming: $incoming"
+mkdir "$incoming/receiver_info"
 
 # Make sure that the port has been set (value could be missing or empty)
 if [ $port = '""' ]

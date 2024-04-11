@@ -26,6 +26,7 @@ class mercure_names:
     DCM = ".dcm"
     DCMFILTER = "*.dcm"
     FORCE_COMPLETE = ".force-complete"
+    RECEIVED = ".received"
 
 
 class mercure_sections:

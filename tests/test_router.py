@@ -63,6 +63,7 @@ def create_series(mocked, fs, config, tags) -> Tuple[str, str]:
 
     fs.create_file(f"{config.incoming_folder}/{series_uid}#baz.dcm", contents="asdfasdfafd")
     fs.create_file(f"{config.incoming_folder}/{series_uid}#baz.tags", contents=tags)
+    fs.create_file(f"{config.incoming_folder}/receiver_info/{series_uid}.received", contents=tags)
     return task_id, series_uid
 
 @pytest.mark.asyncio
@@ -245,6 +246,7 @@ async def test_route_series(fs: FakeFilesystem, mercure_config, mocked, fake_pro
     tags = {"SeriesInstanceUID": "foo"}
     fs.create_file(f"/var/incoming/{series_uid}#bar.dcm", contents="asdfasdfafd")
     fs.create_file(f"/var/incoming/{series_uid}#bar.tags", contents=json.dumps(tags))
+    fs.create_file(f"/var/incoming/receiver_info/{series_uid}.received", contents=json.dumps(tags))
 
     common.monitor.configure("router", "test", config.bookkeeper)
     router.run_router()

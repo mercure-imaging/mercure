@@ -71,25 +71,21 @@ def run_router() -> None:
     series: Dict[str, float] = {}
     complete_series: Dict[str, float] = {}
     pending_series: Dict[str, float] = {}  # Every series that hasn't timed out yet
-    error_files_found = False
+    error_series: set[str] = set()
 
-    # Check the incoming folder for completed series. To this end, generate a map of all
-    # series in the folder with the timestamp of the latest DICOM file as value
-    for entry in os.scandir(config.mercure.incoming_folder):
-        if entry.name.endswith(mercure_names.TAGS) and not entry.is_dir():
-            filecount += 1
-            seriesString = entry.name.split(mercure_defs.SEPARATOR, 1)[0]
-            modificationTime = entry.stat().st_mtime
-
-            if seriesString in series.keys():
-                if modificationTime > series[seriesString]:
-                    series[seriesString] = modificationTime
-            else:
-                series[seriesString] = modificationTime
-        # Check if at least one .error file exists. In that case, the incoming folder should
-        # be searched for .error files at the end of the update run
-        if (not error_files_found) and entry.name.endswith(mercure_names.ERROR):
-            error_files_found = True
+    if not os.path.exists(config.mercure.incoming_folder + "/receiver_info"):
+        logger.warning(config.mercure.incoming_folder + "/receiver_info" + " folder does not exist, waiting until it does...")
+        return
+    for entry in os.scandir(config.mercure.incoming_folder + "/receiver_info"):
+        match os.path.splitext(entry.name):
+            case (series_uid, mercure_names.RECEIVED):
+                mtime = entry.stat().st_mtime
+                if series_uid not in series:
+                    series[series_uid] = mtime
+                elif mtime > series[series_uid]:
+                    series[series_uid].modification_time = mtime
+            case (series_uid, mercure_names.ERROR):
+                error_series.add(series_uid)
 
     # Check if any of the series exceeds the "series complete" threshold
     for series_entry in series:
@@ -108,14 +104,18 @@ def run_router() -> None:
         task_id = generate_task_id()
         try:
             route_series(task_id, series_uid)
+            os.unlink(config.mercure.incoming_folder + f"/receiver_info/{series_uid}{mercure_names.RECEIVED}")
         except Exception:
             logger.error(f"Problems while processing series {series_uid}", task_id)  # handle_error
         # If termination is requested, stop processing series after the active one has been completed
         if helper.is_terminated():
             return
 
-    if error_files_found:
+    if len(error_series):
         route_error_files()
+        for series_uid in error_series:
+            os.unlink(config.mercure.incoming_folder + f"/receiver_info/{series_uid}{mercure_names.ERROR}")
+
 
     # Now, check if studies in the studies folder are ready for routing/processing
     route_studies(pending_series)
@@ -201,6 +201,7 @@ def main(args=sys.argv[1:]) -> None:
         # Process will exit here once the asyncio loop has been stopped
         monitor.send_event(monitor.m_events.SHUTDOWN, monitor.severity.INFO)
     except Exception as e:
+        logger.exception(e)
         monitor.send_event(monitor.m_events.SHUTDOWN, monitor.severity.ERROR, str(e))
     finally:
         # Finish all asyncio tasks that might be still pending

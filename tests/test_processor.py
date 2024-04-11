@@ -79,7 +79,7 @@ def create_and_route(fs, mocked, task_id, uid="TESTFAKEUID") -> Tuple[List[str],
 
     fs.create_file(f"/var/incoming/{uid}#bar.dcm", contents="asdfasdfafd")
     fs.create_file(f"/var/incoming/{uid}#bar.tags", contents="{}")
-
+    fs.create_file(f"/var/incoming/receiver_info/{uid}.received", contents="{}")
     router.run_router()
 
     router.route_series.assert_called_once_with(task_id, uid)  # type: ignore

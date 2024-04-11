@@ -115,7 +115,8 @@ async def test_notifications(fs, mercure_config: Callable[[Dict], Config], mocke
     uid = "TESTFAKEUID"
     fs.create_file(f"/var/incoming/{uid}#bar.dcm", contents="asdfasdfafd")
     fs.create_file(f"/var/incoming/{uid}#bar.tags", contents="{}")
-
+    fs.create_file(f"/var/incoming/receiver_info/{uid}.received", contents="")
+    
     config = mercure_config(
         {"process_runner": "docker", 
             **make_config(action=action, trigger_reception=on_reception, trigger_completion=on_completion, trigger_completion_on_request=on_request,
