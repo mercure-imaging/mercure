@@ -176,6 +176,7 @@ async def test_process_series_nomad(fs, mercure_config: Callable[[Dict], Config]
 
     fs.create_file(f"/var/incoming/FAILEDFAILED#bar.dcm", contents="asdfasdfafd")
     fs.create_file(f"/var/incoming/FAILEDFAILED#bar.tags", contents="{}")
+    fs.create_file(f"/var/incoming/receiver_info/FAILEDFAILED.received", contents="{}")
 
     def process_failed(self, tag, meta):
         return {
