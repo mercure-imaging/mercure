@@ -18,7 +18,11 @@ from docker.models.containers import ContainerCollection
 import unittest.mock
 import itertools
 from typing import Iterator, Callable
+from typing import TYPE_CHECKING
 
+if TYPE_CHECKING:
+    import pytest
+    from testing_common import config
 logger = config.get_logger()
 
 processor_path = Path()

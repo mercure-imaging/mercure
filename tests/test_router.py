@@ -24,7 +24,12 @@ import router, dispatcher
 from pathlib import Path
 
 from testing_common import *
+logger = config.get_logger()
+from typing import TYPE_CHECKING
 
+if TYPE_CHECKING:
+    import pytest
+    from testing_common import config,mock_task_ids
 # import common.config as config
 
 rules = {
@@ -63,7 +68,7 @@ def create_series(mocked, fs, config, tags) -> Tuple[str, str]:
 
     fs.create_file(f"{config.incoming_folder}/{series_uid}#baz.dcm", contents="asdfasdfafd")
     fs.create_file(f"{config.incoming_folder}/{series_uid}#baz.tags", contents=tags)
-    fs.create_file(f"{config.incoming_folder}/receiver_info/{series_uid}.received", contents=tags)
+    fs.create_file(f"{config.incoming_folder}/receiver_info/{series_uid}.received", contents="")
     return task_id, series_uid
 
 @pytest.mark.asyncio
@@ -106,10 +111,13 @@ def test_route_series_fail3(fs: FakeFilesystem, mercure_config, mocked):
 
     tags = {"SeriesInstanceUID": "foo"}
     task_id, series_uid = create_series(mocked, fs, config, json.dumps(tags))
+    logger.warning(list(Path(f"/var/incoming").glob("**/*")))
 
     real_mkdir = os.mkdir
 
     def no_create_destination(dest):
+        logger.warning(f"no_create_destination {dest}, {config.outgoing_folder}" )
+
         if config.outgoing_folder in dest:
             raise Exception("no")
         else:
@@ -117,6 +125,7 @@ def test_route_series_fail3(fs: FakeFilesystem, mercure_config, mocked):
 
     mocked.patch("os.mkdir", new=no_create_destination)
     router.run_router()
+    assert(Path(f"/var/incoming/receiver_info/{series_uid}.received").exists())    
     common.monitor.send_task_event.assert_any_call(  # type: ignore
         task_event.ERROR,
         task_id,
@@ -124,14 +133,15 @@ def test_route_series_fail3(fs: FakeFilesystem, mercure_config, mocked):
         "",
         f"Unable to create outgoing folder {config.outgoing_folder}/{task_id}",
     )
-
     def fake_create_destination(dest):
+        logger.warning(f"fake_create_destination {dest}, {config.outgoing_folder}" )
         if config.outgoing_folder in dest:
             pass
         else:
             real_mkdir(dest)
 
     mocked.patch("os.mkdir", new=fake_create_destination)
+
     router.run_router()
     common.monitor.send_task_event.assert_any_call(  # type: ignore
         task_event.ERROR,
@@ -140,7 +150,7 @@ def test_route_series_fail3(fs: FakeFilesystem, mercure_config, mocked):
         "",
         f"Creating folder not possible {config.outgoing_folder}/{task_id}",
     )
-
+    assert(Path(f"/var/incoming/receiver_info/{series_uid}.received").exists())
 
 def test_route_series_fail4(fs: FakeFilesystem, mercure_config, mocked):
     config = mercure_config(rules)

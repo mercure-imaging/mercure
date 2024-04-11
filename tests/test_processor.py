@@ -34,7 +34,11 @@ from nomad.api.jobs import Jobs
 import socket
 
 from typing import Callable
+from typing import TYPE_CHECKING
 
+if TYPE_CHECKING:
+    import pytest
+    from testing_common import config, mock_task_ids
 logger = config.get_logger()
 
 processor_path = Path()

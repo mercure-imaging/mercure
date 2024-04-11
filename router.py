@@ -6,6 +6,7 @@ mercure's central router module that evaluates the routing rules and decides whi
 
 # Standard python includes
 import asyncio
+from pathlib import Path
 import time
 import signal
 import os
@@ -14,7 +15,7 @@ import uuid
 import graphyte
 import daiquiri
 import hupper
-from typing import Dict
+from typing import Dict, Set
 
 # App-specific includes
 from common.constants import mercure_defs, mercure_names
@@ -71,20 +72,21 @@ def run_router() -> None:
     series: Dict[str, float] = {}
     complete_series: Dict[str, float] = {}
     pending_series: Dict[str, float] = {}  # Every series that hasn't timed out yet
-    error_series: set[str] = set()
+    error_series: Set[str] = set()
 
     if not os.path.exists(config.mercure.incoming_folder + "/receiver_info"):
         logger.warning(config.mercure.incoming_folder + "/receiver_info" + " folder does not exist, waiting until it does...")
         return
     for entry in os.scandir(config.mercure.incoming_folder + "/receiver_info"):
-        match os.path.splitext(entry.name):
-            case (series_uid, mercure_names.RECEIVED):
-                mtime = entry.stat().st_mtime
-                if series_uid not in series:
-                    series[series_uid] = mtime
-                elif mtime > series[series_uid]:
-                    series[series_uid].modification_time = mtime
-            case (series_uid, mercure_names.ERROR):
+        series_uid, series_status = os.path.splitext(entry.name)
+        # match os.path.splitext(entry.name):
+            # case (series_uid, mercure_names.RECEIVED):
+        if series_status == mercure_names.RECEIVED: 
+            mtime = entry.stat().st_mtime
+            if series_uid not in series or mtime > series[series_uid]:
+                series[series_uid] = mtime
+        elif series_status == mercure_names.ERROR:
+            # case (series_uid, mercure_names.ERROR):
                 error_series.add(series_uid)
 
     # Check if any of the series exceeds the "series complete" threshold
@@ -104,7 +106,10 @@ def run_router() -> None:
         task_id = generate_task_id()
         try:
             route_series(task_id, series_uid)
-            os.unlink(config.mercure.incoming_folder + f"/receiver_info/{series_uid}{mercure_names.RECEIVED}")
+            try: # make sure the series got routed. TODO: make this faster
+                next(Path(config.mercure.incoming_folder).glob(f"{series_uid}#*"))
+            except StopIteration:
+                os.unlink(config.mercure.incoming_folder + f"/receiver_info/{series_uid}{mercure_names.RECEIVED}")
         except Exception:
             logger.error(f"Problems while processing series {series_uid}", task_id)  # handle_error
         # If termination is requested, stop processing series after the active one has been completed
