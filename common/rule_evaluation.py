@@ -39,7 +39,7 @@ def replace_tags(rule: str, tags: Dict[str, str]) -> Any:
         i = closing + 1
 
     for tag in tags_found:
-        rule = rule.replace("@" + tag + "@", f"tags.{tag}")
+        rule = rule.replace("@" + tag + "@", f"tags[\"{tag}\"]")
 
     return rule
 
