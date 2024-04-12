@@ -271,7 +271,9 @@ async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_p
         # In lieu of making mercure a sudoer...
         logger.debug("Changing the ownership of the output directory...")
         try:
-            docker_client.images.pull("busybox:stable-musl")
+            if (datetime.now() - docker_pull_throttle.get("busybox:stable-musl",datetime.fromisocalendar(1,1,1))).total_seconds() > 86400:
+                docker_client.images.pull("busybox:stable-musl")
+                docker_pull_throttle["busybox:stable_musl"] = datetime.now()
         except:
             logger.exception("could not pull busybox")
 
