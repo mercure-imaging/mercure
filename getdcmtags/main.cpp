@@ -367,6 +367,26 @@ int main(int argc, char *argv[])
         return 1;
     }
 
+    // Check if SpecificCharacterSet needs workaround
+    if (tagSpecificCharacterSet.compare("ISO 2022 IR 100") == 0)
+    {
+        // To prevent issues with incorrect charset, reset to empty string
+        tagSpecificCharacterSet = "";
+    }
+
+    // Try to select character set for conversion
+    if (!charsetConverter.selectCharacterSet(tagSpecificCharacterSet).good())
+    {
+        // If the first attempt fails, try with "ISO_IR 100"
+        tagSpecificCharacterSet = "ISO_IR 100";
+        if (!charsetConverter.selectCharacterSet(tagSpecificCharacterSet).good())
+        {
+            std::cout << "ERROR: Unable to perform character set conversion with both character sets! " << std::endl;
+            std::cout << "ERROR: Incoming charset is " << tagSpecificCharacterSet << std::endl;
+            return 1;
+        }
+    }
+
     isConversionNeeded = true;
     if (tagSpecificCharacterSet.compare("ISO_IR 192") == 0)
     {
