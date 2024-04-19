@@ -51,3 +51,52 @@ monitoring the server.
 
 ## Bookkeeper
 The bookkeeper module acts as central monitoring instance for all mercure services. The individual modules communicate with the bookkeeper via a TCP/IP connection. The submitted information is stored in a Postgres database.
+
+# How to compile getdcmtags binary with DCMTK-libiconv support in Linux
+
+0. `cmake` and `ccmake` must be installed in your system
+
+1. Obtain `libiconv` 1.16 source code from DCMTK official website annd compile it.
+
+```bash
+cd /tmp
+wget https://dicom.offis.de/download/dcmtk/dcmtk367/support/libiconv-1.16.tar.gz
+tar -zxvf libiconv-1.16.tar.gz
+cd ./libiconv-1.16
+sudo ./configure --prefix=/usr
+sudo make
+sudo make install
+sudo ldconfig
+```
+
+2. Obtain `DCMTK` 3.6.7 source code from DCMTK official website and compile it.
+
+```bash
+# Compile DCMTK 3.6.7
+cd /tmp
+wget https://dicom.offis.de/download/dcmtk/dcmtk367/dcmtk-3.6.7.tar.gz
+tar -zxvf dcmtk-3.6.7.tar.gz 
+cd ./dcmtk-3.6.7
+cmake .
+sudo make && sudo make install
+```
+
+3. Compile `getdcmtags`.
+    - Ubuntu:
+
+        ```bash
+        ## Install required libraries
+        sudo apt-get install qt5-qmake qtbase5-dev -y
+
+        cd getdcmtags
+        sudo g++ -fPIC -o getdcmtags main.cpp -I/usr/local/include/dcmtk -I/usr/include/x86_64-linux-gnu/qt5 -I/usr/include/x86_64-linux-gnu/qt5/QtCore -ldcmdata -loflog -lofstd -lz -ldl -lpthread -liconv -lcharset -lQt5Core -lQt5Gui
+        ```
+    - RHEL:
+    
+        ```bash
+        ## Install required libraries
+        sudo dnf install qt5-qtbase qt5-qtbase-devel -y
+
+        cd getdcmtags
+        sudo g++ -fPIC -o getdcmtags main.cpp -I/usr/local/include/dcmtk -I/usr/include/qt5 -I/usr/include/qt5/QtCore -ldcmdata -loflog -lofstd -lz -ldl -lpthread -liconv -lcharset -lQt5Core -lQt5Gui
+        ```
