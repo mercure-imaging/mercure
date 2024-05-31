@@ -1,4 +1,6 @@
 
+from pathlib import Path
+import shutil
 from webinterface.query import SimpleDicomClient
 # Standard python includes
 from datetime import datetime
@@ -34,7 +36,8 @@ def query_job(*,accession, node):
         job.save_meta()
     return "Complete"
 
-def dummy_job(*,accession, node):
+def dummy_job(*,accession, node, path):
+    Path(path).mkdir(parents=True, exist_ok=True)
     total_time = 3  # Total time for the job in seconds (1 minute)
     update_interval = 1  # Interval between updates in seconds
 
@@ -58,6 +61,7 @@ def dummy_job(*,accession, node):
     job.save_meta()
     while (time.monotonic() - start_time) < total_time:
         time.sleep(update_interval)  # Sleep for the interval duration
+        (Path(path) / f"dummy{completed}_{job.id}.dcm").touch()
         remaining -= 1
         completed += 1
 
@@ -75,8 +79,10 @@ def dummy_job(*,accession, node):
         job_parent.save_meta()
     return "Job complete"
 
-def batch_job(*, accessions, subjobs):
-    print(subjobs)
+def batch_job(*, accessions, subjobs, path):
+    for p in Path(path).glob("**/*.dcm"):
+        shutil.move(p, "/opt/mercure/data/incoming")
+    shutil.rmtree(path)
     return "Batch complete"
 
 def monitor_job():
@@ -123,6 +129,9 @@ async def query_post_batch(request):
         full_job = Job.create(batch_job, kwargs=dict(accessions=random_accessions, subjobs=[j.id for j in jobs]), timeout=-1, result_ttl=-1, meta=dict(type="batch", started=0, completed=0, total=len(jobs)), depends_on=[j.id for j in jobs])
         for j in jobs:
             j.meta["parent"] = full_job.id
+            j.kwargs["path"] = f"/opt/mercure/data/query/job_dirs/{full_job.id}/{j.kwargs['accession']}"
+        full_job.kwargs["path"] = Path(f"/opt/mercure/data/query/job_dirs/{full_job.id}")
+
 
     for j in jobs:
         worker_queue.enqueue_job(j)
