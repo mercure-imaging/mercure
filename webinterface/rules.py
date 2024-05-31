@@ -47,11 +47,9 @@ async def show_rules(request) -> Response:
     template = "rules.html"
     context = {
         "request": request,
-        "mercure_version": mercure_defs.VERSION,
         "page": "rules",
         "rules": config.mercure.rules,
     }
-    context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
 
 
@@ -112,7 +110,6 @@ async def rules_edit(request) -> Response:
 
     context = {
         "request": request,
-        "mercure_version": mercure_defs.VERSION,
         "page": "rules",
         "rules": config.mercure.rules,
         "targets": config.mercure.targets,
@@ -123,7 +120,6 @@ async def rules_edit(request) -> Response:
         "processing_settings": settings_string,
         "process_runner": config.mercure.process_runner
     }
-    context.update(get_user_information(request))
 
     template = "rules_edit.html"
     return templates.TemplateResponse(template, context)

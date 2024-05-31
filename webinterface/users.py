@@ -187,8 +187,7 @@ async def show_users(request) -> Response:
         return PlainTextResponse("Configuration is being updated. Try again in a minute.")
 
     template = "users.html"
-    context = {"request": request, "mercure_version": mercure_defs.VERSION, "page": "users", "users": users_list}
-    context.update(get_user_information(request))
+    context = {"request": request,  "page": "users", "users": users_list}
     return templates.TemplateResponse(template, context)
 
 
@@ -237,12 +236,10 @@ async def users_edit(request) -> Response:
     template = "users_edit.html"
     context = {
         "request": request,
-        "mercure_version": mercure_defs.VERSION,
         "page": "users",
         "edituser": edituser,
         "edituser_info": users_list[edituser],
     }
-    context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
 
 

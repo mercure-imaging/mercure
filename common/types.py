@@ -178,6 +178,16 @@ class DicomReceiverConfig(BaseModel):
     additional_tags: Dict[str,str] = {}
     
 
+class DicomNode(BaseModel):
+    name: str
+    ip: str
+    port: int
+    aet_target: str
+    aet_source: Optional[str] = ""
+
+class DicomRetrieveConfig(BaseModel):
+    dicom_nodes: List[DicomNode] = []
+
 class Config(BaseModel, Compat):
     appliance_name: str
     port: int
@@ -220,7 +230,7 @@ class Config(BaseModel, Compat):
     email_notification_from: str = "mercure@mercure.mercure"
     support_root_modules: Optional[bool] = False
     webhook_certificate_location: Optional[str] = None
-
+    dicom_retrieve: DicomRetrieveConfig = DicomRetrieveConfig()
 
 class TaskInfo(BaseModel, Compat):
     action: Literal["route", "both", "process", "discard", "notification"]

@@ -295,7 +295,7 @@ async def show_log(request) -> Response:
     template = "logs.html"
     context = {
         "request": request,
-        "mercure_version": mercure_defs.VERSION,
+        
         "page": "logs",
         "service_logs": service_logs,
         "log_id": requested_service,
@@ -307,7 +307,6 @@ async def show_log(request) -> Response:
         "end_time_available": runtime == "systemd",
         "start_time_available": runtime in ("docker", "systemd"),
     }
-    context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
 
 
@@ -330,14 +329,13 @@ async def configuration(request) -> Response:
     runtime = helper.get_runner()
     context = {
         "request": request,
-        "mercure_version": mercure_defs.VERSION,
+        
         "page": "configuration",
         "config": config.mercure,
         "os_string": os_string,
         "config_edited": config_edited,
         "runtime": runtime,
     }
-    context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
 
 
@@ -363,11 +361,10 @@ async def configuration_edit(request) -> Response:
     template = "configuration_edit.html"
     context = {
         "request": request,
-        "mercure_version": mercure_defs.VERSION,
+        
         "page": "configuration",
         "config_content": config_content,
     }
-    context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
 
 
@@ -411,7 +408,7 @@ async def login(request) -> Response:
     template = "login.html"
     context = {
         "request": request,
-        "mercure_version": mercure_defs.VERSION,
+        
         "appliance_name": config.mercure.get("appliance_name", "master"),
     }
     return templates.TemplateResponse(template, context)
@@ -599,7 +596,7 @@ async def login_post(request) -> Response:
         context = {
             "request": request,
             "invalid_password": 1,
-            "mercure_version": mercure_defs.VERSION,
+            
             "appliance_name": config.mercure.get("appliance_name", "mercure Router"),
         }
         return templates.TemplateResponse(template, context)
@@ -627,14 +624,13 @@ async def settings_edit(request) -> Response:
     template = "users_edit.html"
     context = {
         "request": request,
-        "mercure_version": mercure_defs.VERSION,
+        
         "page": "settings",
         "edituser": own_name,
         "edituser_info": users.users_list[own_name],
         "own_settings": "True",
         "change_password": users.users_list[own_name].get("change_password", "False"),
     }
-    context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
 
 
@@ -710,7 +706,7 @@ async def homepage(request) -> Response:
     template = "index.html"
     context = {
         "request": request,
-        "mercure_version": mercure_defs.VERSION,
+        
         "page": "homepage",
         "used_space": used_space,
         "free_space": free_space,
@@ -718,7 +714,6 @@ async def homepage(request) -> Response:
         "service_status": service_status,
         "runtime": runtime,
     }
-    context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
 
 
