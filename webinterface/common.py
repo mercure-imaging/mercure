@@ -14,10 +14,11 @@ from rq import Queue, Connection
 from starlette.templating import Jinja2Templates
 
 from common.constants import mercure_defs
+from rq_scheduler import Scheduler
 
-
-
-worker_queue = Queue(connection=Redis())
+redis = Redis()
+worker_queue = Queue(connection=redis)
+worker_scheduler = Scheduler(queue=worker_queue, connection=worker_queue.connection) 
 
 def get_user_information(request) -> dict:
     """Returns dictionary of values that should always be passed to the templates when the user is logged in."""
