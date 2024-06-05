@@ -30,12 +30,13 @@
         </div>
     </div>
 
-    <div class="field">
-        <div class="control">
+    <div class="field" style="margin-top: 14px;">
+        <label class="label">Options</label>
+        <div class="control" style="margin-top: 11px;">
                 <input id="run_on_complete" type="checkbox" name="run_on_complete"
                     class="switch is-rounded is-dark" value="True" {% if
                         targets[edittarget].run_on_complete==True %}checked="checked" {% endif%} />
-                        <label for="run_on_complete">Execute command on complete</label>
+                        <label for="run_on_complete">Execute Shell Command After Transfer</label>
 
             <!-- <input name="on_complete" class="input" required='false' autocomplete='off' type="text"
                 placeholder="On Complete" value="{% if targets[edittarget].run_on_complete %}{{targets[edittarget].run_on_complete}}{%endif%}" /> -->
