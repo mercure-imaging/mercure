@@ -185,9 +185,14 @@ class DicomNode(BaseModel):
     aet_target: str
     aet_source: Optional[str] = ""
 
+class DicomDestination(BaseModel):
+    name: str
+    path: str
+
 class DicomRetrieveConfig(BaseModel):
     dicom_nodes: List[DicomNode] = []
-
+    destination_folders: List[DicomDestination] = []
+    
 class Config(BaseModel, Compat):
     appliance_name: str
     port: int
