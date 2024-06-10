@@ -49,7 +49,7 @@ docker-compose up -d
 SCRIPT
 
 Vagrant.configure(2) do |config|
-  config.vm.box = "bento/ubuntu-20.04" # 20.04 LTS
+  config.vm.box = "bento/ubuntu-22.04" # 20.04 LTS
   config.vm.network "forwarded_port", guest: 8000, host: 8000, auto_correct: true, host_ip: "127.0.0.1"
   config.vm.network "forwarded_port", guest: 11112, host: 11112, auto_correct: true, host_ip: "127.0.0.1"
 
