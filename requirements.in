@@ -1,5 +1,5 @@
 # base
-mypy 
+mypy<1.9.0
 typing_extensions
 hupper
 watchdog
