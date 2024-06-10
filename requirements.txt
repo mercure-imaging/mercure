@@ -6,7 +6,7 @@
 #
 aiofiles==23.2.1
     # via -r requirements.in
-aiohttp==3.9.3
+aiohttp==3.9.5
     # via -r requirements.in
 aiopg==1.4.0
     # via databases
@@ -16,9 +16,9 @@ alabaster==0.7.16
     # via sphinx
 alembic==1.13.1
     # via -r requirements.in
-anyio==4.2.0
+anyio==4.4.0
     # via starlette
-asgiref==3.7.2
+asgiref==3.8.1
     # via uvicorn
 async-timeout==4.0.3
     # via
@@ -29,17 +29,18 @@ asyncpg==0.29.0
     # via -r requirements.in
 attrs==23.2.0
     # via aiohttp
-babel==2.14.0
+babel==2.15.0
     # via sphinx
-boto3==1.34.40
+boto3==1.34.122
     # via -r requirements.in
-botocore==1.34.40
+botocore==1.34.122
     # via
     #   boto3
     #   s3transfer
-certifi==2024.2.2
+certifi==2024.6.2
     # via
     #   -r requirements.in
+    #   influxdb-client
     #   requests
 charset-normalizer==3.3.2
     # via requests
@@ -47,29 +48,29 @@ click==8.1.7
     # via uvicorn
 daiquiri==3.2.5.1
     # via -r requirements.in
-databases[aiopg]==0.8.0
+databases[aiopg]==0.9.0
     # via -r requirements.in
 dicomweb-client==0.59.1
     # via -r requirements.in
 distro==1.9.0
     # via -r requirements.in
-docker==7.0.0
+docker==7.1.0
     # via -r requirements.in
 docutils==0.18.1
     # via
     #   sphinx
     #   sphinx-rtd-theme
-exceptiongroup==1.2.0
+exceptiongroup==1.2.1
     # via
     #   anyio
     #   pytest
-freezegun==1.4.0
+freezegun==1.5.1
     # via -r requirements.in
 frozenlist==1.4.1
     # via
     #   aiohttp
     #   aiosignal
-future==0.18.3
+future==1.0.0
     # via -r requirements.in
 graphyte==1.7.1
     # via -r requirements.in
@@ -79,20 +80,20 @@ h11==0.14.0
     # via uvicorn
 hupper==1.12.1
     # via -r requirements.in
-idna==3.6
+idna==3.7
     # via
     #   anyio
     #   requests
     #   yarl
 imagesize==1.4.1
     # via sphinx
+influxdb-client==1.43.0
+    # via -r requirements.in
 iniconfig==2.0.0
     # via pytest
-influxdb_client==1.38.0
+itsdangerous==2.2.0
     # via -r requirements.in
-itsdangerous==2.1.2
-    # via -r requirements.in
-jinja2==3.1.3
+jinja2==3.1.4
     # via
     #   -r requirements.in
     #   sphinx
@@ -100,11 +101,11 @@ jmespath==1.0.1
     # via
     #   boto3
     #   botocore
-lxml==5.1.0
+lxml==5.2.2
     # via
     #   -r requirements.in
     #   pyxnat
-mako==1.3.2
+mako==1.3.5
     # via
     #   -r requirements.in
     #   alembic
@@ -116,32 +117,31 @@ multidict==6.0.5
     # via
     #   aiohttp
     #   yarl
-mypy==1.8.0
+mypy==1.10.0
     # via -r requirements.in
 mypy-extensions==1.0.0
     # via mypy
 numpy==1.26.4
     # via dicomweb-client
-packaging==23.2
+packaging==24.1
     # via
-    #   docker
     #   pytest
     #   sphinx
 passlib==1.7.4
     # via -r requirements.in
 pathlib==1.0.1
     # via pyxnat
-pillow==10.2.0
+pillow==10.3.0
     # via
     #   -r requirements.in
     #   dicomweb-client
-pluggy==1.4.0
+pluggy==1.5.0
     # via pytest
 psycopg2==2.9.9
     # via -r requirements.in
 psycopg2-binary==2.9.9
     # via aiopg
-pydantic==1.10.14
+pydantic==1.10.15
     # via -r requirements.in
 pydicom==2.4.4
     # via
@@ -149,30 +149,33 @@ pydicom==2.4.4
     #   dicomweb-client
 pyfakefs==4.5.6
     # via -r requirements.in
-pygments==2.17.2
+pygments==2.18.0
     # via sphinx
-pytest==8.0.0
+pytest==8.2.2
     # via
     #   -r requirements.in
     #   pytest-mock
     #   pytest-subprocess
-pytest-mock==3.12.0
+pytest-mock==3.14.0
     # via -r requirements.in
 pytest-subprocess==1.5.0
     # via -r requirements.in
-python-dateutil==2.8.2
+python-dateutil==2.9.0.post0
     # via
     #   botocore
     #   freezegun
+    #   influxdb-client
 python-json-logger==2.0.7
     # via daiquiri
 python-multipart==0.0.9
     # via -r requirements.in
-python-nomad==2.0.0
+python-nomad==2.0.1
     # via -r requirements.in
 pyxnat==1.6.2
     # via -r requirements.in
-requests==2.31.0
+reactivex==4.0.4
+    # via influxdb-client
+requests==2.32.3
     # via
     #   dicomweb-client
     #   docker
@@ -181,13 +184,13 @@ requests==2.31.0
     #   sphinx
 retrying==1.3.4
     # via dicomweb-client
-s3transfer==0.10.0
+s3transfer==0.10.1
     # via boto3
 six==1.16.0
     # via
     #   python-dateutil
     #   retrying
-sniffio==1.3.0
+sniffio==1.3.1
     # via anyio
 snowballstemmer==2.2.0
     # via sphinx
@@ -212,12 +215,12 @@ sphinxcontrib-qthelp==1.0.7
     # via sphinx
 sphinxcontrib-serializinghtml==1.1.10
     # via sphinx
-sqlalchemy==1.4.51
+sqlalchemy==2.0.30
     # via
     #   -r requirements.in
     #   alembic
     #   databases
-starlette==0.37.1
+starlette==0.37.2
     # via
     #   -r requirements.in
     #   starlette-auth-toolkit
@@ -234,9 +237,9 @@ types-jinja2==2.11.9
     # via -r requirements.in
 types-markupsafe==1.1.10
     # via types-jinja2
-types-requests==2.31.0.20240125
+types-requests==2.32.0.20240602
     # via -r requirements.in
-typing-extensions==4.9.0
+typing-extensions==4.12.2
     # via
     #   -r requirements.in
     #   alembic
@@ -244,18 +247,24 @@ typing-extensions==4.9.0
     #   asgiref
     #   mypy
     #   pydantic
-urllib3==2.0.7
+    #   reactivex
+    #   sqlalchemy
+urllib3==2.2.1
     # via
     #   -r requirements.in
     #   botocore
     #   docker
+    #   influxdb-client
     #   requests
     #   types-requests
 uvicorn==0.16.0
     # via -r requirements.in
-watchdog==4.0.0
+watchdog==4.0.1
     # via -r requirements.in
-wheel==0.42.0
+wheel==0.43.0
     # via -r requirements.in
 yarl==1.9.4
     # via aiohttp
+
+# The following packages are considered to be unsafe in a requirements file:
+# setuptools
