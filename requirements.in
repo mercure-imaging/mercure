@@ -38,10 +38,10 @@ itsdangerous
 python-multipart
 distro
 passlib
-sqlalchemy
+sqlalchemy<=1.4.52
 databases
 # databases[postgresql]
-databases[aiopg]
+databases[aiopg]<=0.8.0
 psycopg2
 asyncpg
 starlette-decoRouter

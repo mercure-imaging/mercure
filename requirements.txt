@@ -48,7 +48,7 @@ click==8.1.7
     # via uvicorn
 daiquiri==3.2.5.1
     # via -r requirements.in
-databases[aiopg]==0.9.0
+databases[aiopg]==0.8.0
     # via -r requirements.in
 dicomweb-client==0.59.1
     # via -r requirements.in
@@ -215,7 +215,7 @@ sphinxcontrib-qthelp==1.0.7
     # via sphinx
 sphinxcontrib-serializinghtml==1.1.10
     # via sphinx
-sqlalchemy==2.0.30
+sqlalchemy==1.4.52
     # via
     #   -r requirements.in
     #   alembic
@@ -248,7 +248,6 @@ typing-extensions==4.12.2
     #   mypy
     #   pydantic
     #   reactivex
-    #   sqlalchemy
 urllib3==2.2.1
     # via
     #   -r requirements.in
