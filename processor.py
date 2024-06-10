@@ -233,36 +233,25 @@ def _is_offpeak(offpeak_start: str, offpeak_end: str, current_time: _time) -> bo
 
 def prioritize_tasks(sorted_tasks: list, counter: int) -> Optional[Path]:
     """Returns the prioritized task based on the priority in the task file."""
-    selected_task_folder = None
-    if _is_offpeak(config.mercure.offpeak_start, config.mercure.offpeak_end, datetime.now().time()):
-        selected_task_folder = Path(sorted_tasks[0])
-    else:
-        normal_task, urgent_task = None, None
-        for task in sorted_tasks:
-            task_folder = Path(task)
-            taskfile_path = task_folder / mercure_names.TASKFILE
-            with open(taskfile_path, "r") as f:
-                task_instance = Task(**json.load(f))
-            applied_rule = config.mercure.rules.get(task_instance.info.get("applied_rule"))
-            priority = applied_rule.get('priority')
-            if priority == "urgent":
-                urgent_task = task_folder
-            elif priority == "normal":
-                normal_task = task_folder
-            if (urgent_task is not None) and (normal_task is not None):
-                break
-        # Prioritize urgent task over normal task but reverse the order every third run
-        if (counter + 1) % 3:
-            if (urgent_task is not None):
-                selected_task_folder = urgent_task
-            else:
-                selected_task_folder = normal_task
-        else:
-            if (normal_task is not None):
-                selected_task_folder = normal_task
-            else:
-                selected_task_folder = urgent_task
-    return selected_task_folder
+    is_offpeak = _is_offpeak(config.mercure.offpeak_start, config.mercure.offpeak_end, datetime.now().time())
+    normal_task, urgent_task = None, None
+    for task in sorted_tasks:
+        task_folder = Path(task)
+        taskfile_path = task_folder / mercure_names.TASKFILE
+        with open(taskfile_path, "r") as f:
+            task_instance = Task(**json.load(f))
+        applied_rule = config.mercure.rules.get(task_instance.info.get("applied_rule"))
+        priority = applied_rule.get('priority')
+        if priority == "urgent" and urgent_task is None:
+            urgent_task = task_folder
+        elif (priority == "normal" or (priority == "offpeak" and is_offpeak)) and normal_task is None:
+            normal_task = task_folder
+        if (urgent_task is not None) and (normal_task is not None):
+            break
+    # Prioritize urgent task over normal task but reverse the order every third run
+    if (counter % 3) < 2:
+        return urgent_task or normal_task
+    return normal_task or urgent_task
 
 async def run_processor() -> None:
     """Main processing function that is called every second."""
