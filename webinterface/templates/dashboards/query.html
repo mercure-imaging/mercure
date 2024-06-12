@@ -187,7 +187,7 @@ $(document).ready(function () {
         buttons: [
         {
                     extend: "customEnable",
-                    text: '<i class="fas fa-sync"></i>',
+                    text: '<i class="fas fa-sync"></i>&nbsp;Retry',
                     titleAttr: 'test',
                     enabled: function(dt, node, config) {
                       let data = dt.row({selected: true}).data();
@@ -207,7 +207,7 @@ $(document).ready(function () {
           },
           {
                     extend: "customEnable",
-                    text: '<i class="fas fa-pause"></i>',
+                    text: '<i class="fas fa-pause"></i>&nbsp;Pause',
                     titleAttr: 'Pause/Resume',
                     enabled: function(dt, node, config) {
                       let data = dt.row({selected: true}).data();
@@ -215,9 +215,9 @@ $(document).ready(function () {
                           return false;
                       }
                       if (data.status == "paused") {
-                        node.html('<i class="fas fa-play"></i>')
+                        node.html('<i class="fas fa-play"></i>&nbsp;Resume')
                       } else {
-                        node.html('<i class="fas fa-pause"></i>')
+                        node.html('<i class="fas fa-pause"></i>&nbsp;Pause')
                       }
                       return (data.status == "paused" || data.status == "deferred" || data.status == "queued" || data.status == "running");
                     },
