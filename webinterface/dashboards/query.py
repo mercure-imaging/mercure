@@ -14,7 +14,8 @@ from webinterface.common import templates
 import common.config as config
 from starlette.responses import PlainTextResponse, JSONResponse
 from webinterface.common import worker_queue, redis
-from rq import Connection
+from rq import Connection 
+from rq.job import Dependency
 from rq import get_current_job
 from rq.job import Job
 from .common import router
@@ -40,57 +41,81 @@ def query_job(*,accession, node):
 
 
 def dummy_job(*,accession, node, path):
-    Path(path).mkdir(parents=True, exist_ok=True)
-    total_time = 10  # Total time for the job in seconds (1 minute)
-    update_interval = 1  # Interval between updates in seconds
-
-    start_time = time.monotonic()
+    print(f"Getting {accession}")
     job = get_current_job()
-    if job.meta.get('parent'):
-        job_parent = worker_queue.fetch_job(job.meta['parent'])
-    else:
-        job_parent = None
-    # failed = 0
-    remaining = total_time // update_interval
-    completed = 0
-    print(accession)
-    if job_parent:
-        job_parent.meta['started'] = job_parent.meta.get('started',0) + 1
-        job_parent.save_meta()
+    try:
+        Path(path).mkdir(parents=True, exist_ok=True)
+        total_time = 10  # Total time for the job in seconds (1 minute)
+        update_interval = 1  # Interval between updates in seconds
 
-    job.meta['started'] = 1
-    job.meta['total'] = remaining
-    job.meta['progress'] = f"0 / {job.meta['total']}"
-    job.save_meta()
-    while (time.monotonic() - start_time) < total_time:
-        time.sleep(update_interval)  # Sleep for the interval duration
-        out_file = (Path(path) / f"dummy{completed}_{job.id}.dcm")
-        if out_file.exists():
-            raise Exception(f"{out_file} exists already")
-        out_file.touch()
-        remaining -= 1
-        completed += 1
+        start_time = time.monotonic()
+        if job.meta.get('parent'):
+            job_parent = worker_queue.fetch_job(job.meta['parent'])
+        else:
+            job_parent = None
+        # failed = 0
+        remaining = total_time // update_interval
+        completed = 0
 
-        # job.meta['failed'] = failed
-        job.meta['remaining'] = remaining
-        job.meta['completed'] = completed
-        job.meta['progress'] = f"{completed} / {job.meta['total']}"
-        print(job.meta['progress'])
-        job.save_meta()  # Save the updated meta data to the job
-    
-    if job_parent:
-        job_parent.get_meta() # there is technically a race condition here...
-        job_parent.meta['completed'] += 1
-        job_parent.meta['progress'] = f"{job_parent.meta['started'] } / {job_parent.meta['completed'] } / {job_parent.meta['total']}"
+        if job_parent:
+            job_parent.meta['started'] = job_parent.meta.get('started',0) + 1
+            job_parent.save_meta()
 
-        job_parent.save_meta()
+        job.meta['started'] = 1
+        job.meta['total'] = remaining
+        job.meta['progress'] = f"0 / {job.meta['total']}"
+        job.save_meta()
+        while (time.monotonic() - start_time) < total_time:
+            time.sleep(update_interval)  # Sleep for the interval duration
+            out_file = (Path(path) / f"dummy{completed}_{job.id}.dcm")
+            if out_file.exists():
+                raise Exception(f"{out_file} exists already")
+            out_file.touch()
+            remaining -= 1
+            completed += 1
+
+            # job.meta['failed'] = failed
+            job.meta['remaining'] = remaining
+            job.meta['completed'] = completed
+            job.meta['progress'] = f"{completed} / {job.meta['total']}"
+            print(job.meta['progress'])
+            job.save_meta()  # Save the updated meta data to the job
+        
+        if job_parent:
+            job_parent.get_meta() # there is technically a race condition here...
+            job_parent.meta['completed'] += 1
+            job_parent.meta['progress'] = f"{job_parent.meta['started'] } / {job_parent.meta['completed'] } / {job_parent.meta['total']}"
+
+            job_parent.save_meta()
+    except:
+        if not job_parent:
+            raise
+        # Cancel remaining sibling jobs
+        logger.info("Cancelling sibling jobs.")
+        for subjob_id in job_parent.kwargs.get('subjobs',[]):
+            if subjob_id == job.id:
+                continue
+            subjob = worker_queue.fetch_job(subjob_id)
+            if subjob.get_status() not in ('finished', 'canceled','failed'):
+                subjob.cancel()
+        job_parent.get_meta() 
+        logger.info("Cancelled sibling jobs.")
+        worker_queue._enqueue_job(job_parent) # Force the parent job to run and fail itself
+        raise
+
     return "Job complete"
 
 def batch_job(*, accessions, subjobs, path, destination):
     job = get_current_job()
-    job.save_meta()
+    job.get_meta()
+    for job_id in job.kwargs.get('subjobs',[]):
+        subjob = worker_queue.fetch_job(job_id)
+        if (status := subjob.get_status()) != 'finished':
+            raise Exception(f"Subjob {subjob.id} is {status}")
+
     logger.info(f"Job completing {job.id}")
     logger.info(path)
+    config.read_config()
     if destination is None:
         for p in Path(path).glob("**/*"):
             if p.is_file():
@@ -111,48 +136,147 @@ def batch_job(*, accessions, subjobs, path, destination):
 def monitor_job():
     print("monitoring")
 
-@router.post("/query/pause_job")
-@requires(["authenticated", "admin"], redirect="login")
-async def pause_job(request):
-    job = worker_queue.fetch_job(request.query_params['id'])
-    if not job:
-        return JSONResponse({'error': 'Job not found'}, status_code=404)
-    if job.is_finished or job.is_failed:
-        return JSONResponse({'error': 'Job is already finished'}, status_code=400)
-
+def pause_job(job: Job):
     for job_id in job.kwargs.get('subjobs',[]):
         subjob = worker_queue.fetch_job(job_id)
         if subjob and (subjob.is_deferred or subjob.is_queued):
             subjob.meta['paused'] = True
             subjob.save_meta()
             subjob.cancel()
+    job.get_meta()
     job.meta['paused'] = True
     job.save_meta()
-    return JSONResponse({'status': 'success'}, status_code=200)
 
-@router.post("/query/resume_job")
-@requires(["authenticated", "admin"], redirect="login")
-async def resume_job(request):
-    job = worker_queue.fetch_job(request.query_params['id'])
-    if not job:
-        return JSONResponse({'error': 'Job not found'}, status_code=404)
-    if job.is_finished or job.is_failed:
-        return JSONResponse({'error': 'Job is already finished'}, status_code=400)
-    # if not job.meta.get('paused', False):
-    #     return JSONResponse({'error': 'Job is not paused'}, status_code=400)
-
+def resume_job(job: Job):
     for subjob_id in job.kwargs.get('subjobs',[]):
         subjob = worker_queue.fetch_job(subjob_id)
         if subjob and subjob.meta.get('paused', None):
             subjob.meta['paused'] = False
             subjob.save_meta()
             worker_queue.canceled_job_registry.requeue(subjob_id)
-            # worker_queue.canceled_job_registry.remove(subjob_id)
     job.get_meta()
     job.meta['paused'] = False
     job.save_meta()
-    # worker_queue.canceled_job_registry.requeue(job.id)
-    # worker_queue.canceled_job_registry.remove(job.id)
+
+def create_job(accessions, dicom_node, destination_path, offpeak=False) -> Job:
+    with Connection(redis):
+        jobs = []
+        for accession in accessions:
+            job = Job.create(dummy_job, kwargs=dict(accession=accession, node=dicom_node), timeout='30m', result_ttl=-1, meta=dict(type="get_accession_batch",parent=None, paused=False, offpeak=offpeak))
+            jobs.append(job)
+        depends = Dependency(
+            jobs=jobs,
+            allow_failure=True,    # allow_failure defaults to False
+        )
+        full_job = Job.create(batch_job, kwargs=dict(accessions=accessions, subjobs=[j.id for j in jobs], destination=destination_path), timeout=-1, result_ttl=-1, meta=dict(type="batch", started=0, paused=False,completed=0, total=len(jobs), offpeak=offpeak), depends_on=depends)
+        for j in jobs:
+            j.meta["parent"] = full_job.id
+            j.kwargs["path"] = f"/opt/mercure/data/query/job_dirs/{full_job.id}/{j.kwargs['accession']}"
+        full_job.kwargs["path"] = Path(f"/opt/mercure/data/query/job_dirs/{full_job.id}")
+        full_job.kwargs["path"].mkdir(parents=True)
+    for j in jobs:
+        worker_queue.enqueue_job(j)
+    worker_queue.enqueue_job(full_job)
+
+    if offpeak and not _is_offpeak(config.mercure.offpeak_start, config.mercure.offpeak_end, datetime.now().time()):
+        pause_job(full_job)
+
+    return full_job
+
+def retry_job(job):
+    # job.meta["retries"] = job.meta.get("retries", 0) + 1
+    # if job.meta["retries"] > 3:
+    #     return False
+    logger.info(f"Retrying {job}")
+    for subjob in get_subjobs(job):
+        if (status:=job.get_status()) in ("failed", "canceled"):
+            logger.info(f"Retrying {subjob}")
+            if status == "failed" and (job_path:=Path(subjob.kwargs['path'])).exists():
+                shutil.rmtree(job_path) # Clean up after a failed job
+            worker_queue.enqueue_job(subjob)
+    worker_queue.enqueue_job(job)
+def get_subjobs(job):
+    return (worker_queue.fetch_job(job) for job in job.kwargs.get('subjobs', []))
+
+def get_all_jobs(type):
+    registries = [
+        worker_queue.started_job_registry,  # Returns StartedJobRegistry
+        worker_queue.deferred_job_registry,   # Returns DeferredJobRegistry
+        worker_queue.finished_job_registry,  # Returns FinishedJobRegistry
+        worker_queue.failed_job_registry,  # Returns FailedJobRegistry 
+        worker_queue.scheduled_job_registry,  # Returns ScheduledJobRegistry
+        worker_queue.canceled_job_registry,   # Returns CanceledJobRegistry
+    ]
+    job_ids = set()
+    for registry in registries:
+        for j_id in registry.get_job_ids():
+            job_ids.add(j_id)
+    for j_id in worker_queue.job_ids:
+        job_ids.add(j_id)
+    jobs = (worker_queue.fetch_job(j_id) for j_id in job_ids)
+
+    return (j for j in jobs if j.get_meta().get("type") == type)
+
+def _is_offpeak(offpeak_start: str, offpeak_end: str, current_time) -> bool:
+    try:
+        start_time = datetime.strptime(offpeak_start, "%H:%M").time()
+        end_time = datetime.strptime(offpeak_end, "%H:%M").time()
+    except Exception as e:
+        logger.error(f"Unable to parse offpeak time: {offpeak_start}, {offpeak_end}", None)  # handle_error
+        return True
+
+    if start_time < end_time:
+        return current_time >= start_time and current_time <= end_time
+    # End time is after midnight
+    return current_time >= start_time or current_time <= end_time
+
+def update_jobs_offpeak():
+    config.read_config()
+    is_offpeak = _is_offpeak(config.mercure.offpeak_start, config.mercure.offpeak_end, datetime.now().time())
+    logger.info(f"is_offpeak {is_offpeak}")
+    for job in get_all_jobs("batch"):
+        if not job.meta.get("offpeak"):
+            continue
+        if job.get_status() not in ("waiting", "running", "queued", "deferred"):
+            continue
+
+        if is_offpeak:
+            logger.info(f"{job.meta}, {job.get_status()}")
+            if job.meta.get("paused", False):
+                logger.info("Resuming")
+                resume_job(job)
+        else:
+            if not job.meta.get("paused", False):
+                logger.info("Pausing")
+                pause_job(job)
+
+@router.post("/query/retry_job")
+@requires(["authenticated", "admin"], redirect="login")
+async def test_offpeak(request):
+    job = worker_queue.fetch_job(request.query_params['id'])
+    retry_job(job)
+    return JSONResponse({})
+@router.post("/query/pause_job")
+@requires(["authenticated", "admin"], redirect="login")
+async def post_pause_job(request):
+    job = worker_queue.fetch_job(request.query_params['id'])
+    if not job:
+        return JSONResponse({'error': 'Job not found'}, status_code=404)
+    if job.is_finished or job.is_failed:
+        return JSONResponse({'error': 'Job is already finished'}, status_code=400)
+    pause_job(job)
+    return JSONResponse({'status': 'success'}, status_code=200)
+
+@router.post("/query/resume_job")
+@requires(["authenticated", "admin"], redirect="login")
+async def post_resume_job(request):
+    job = worker_queue.fetch_job(request.query_params['id'])
+    if not job:
+        return JSONResponse({'error': 'Job not found'}, status_code=404)
+    if job.is_finished or job.is_failed:
+        return JSONResponse({'error': 'Job is already finished'}, status_code=400)
+    
+    resume_job(job)
     return JSONResponse({'status': 'success'}, status_code=200)
 
 @router.get("/query/job_info")
@@ -166,7 +290,8 @@ async def get_job_info(request):
     subjob_info = []
     subjobs = (worker_queue.fetch_job(job) for job in job.kwargs.get('subjobs', []))
     for subjob in subjobs:
-        info = {'id': subjob.get_id(),
+        info = {
+                'id': subjob.get_id(),
                 'ended_at': subjob.ended_at.isoformat().split('.')[0] if subjob.ended_at else "", 
                 'created_at_dt':subjob.created_at,
                 'accession': subjob.kwargs['accession'],
@@ -180,6 +305,8 @@ async def get_job_info(request):
     subjob_info = sorted(subjob_info, key=lambda x:x['created_at_dt'])
     return templates.TemplateResponse("dashboards/query_job_fragment.html", {"request":request,"job":job,"subjob_info":subjob_info})
 
+
+
 @router.post("/query")
 @requires(["authenticated", "admin"], redirect="login")
 async def query_post_batch(request):
@@ -192,26 +319,15 @@ async def query_post_batch(request):
             node = n
             break
     destination = form.get("destination")
+    dest_path = None
     for d in config.mercure.dicom_retrieve.destination_folders:
         if d.name == destination:
-            destination_path = d.path
-    random_accessions = ["".join(random.choices([str(i) for i in range(10)], k=5)) for _ in range(3)]
-    jobs = []
-    with Connection(redis):
-        for accession in random_accessions:
-            job = Job.create(dummy_job, kwargs=dict(accession=accession, node=node), timeout='30m', result_ttl=-1, meta=dict(type="get_accession_batch",parent=None, paused=False))
-            jobs.append(job)
-        full_job = Job.create(batch_job, kwargs=dict(accessions=random_accessions, subjobs=[j.id for j in jobs], destination=destination_path), timeout=-1, result_ttl=-1, meta=dict(type="batch", started=0, paused=False,completed=0, total=len(jobs)), depends_on=[j.id for j in jobs])
-        for j in jobs:
-            j.meta["parent"] = full_job.id
-            j.kwargs["path"] = f"/opt/mercure/data/query/job_dirs/{full_job.id}/{j.kwargs['accession']}"
-        full_job.kwargs["path"] = Path(f"/opt/mercure/data/query/job_dirs/{full_job.id}")
-        full_job.kwargs["path"].mkdir(parents=True)
+            dest_path = d.path
+            break
 
-    for j in jobs:
-        worker_queue.enqueue_job(j)
-    worker_queue.enqueue_job(full_job)
-
+    random_accessions = ["".join(random.choices([str(i) for i in range(10)], k=10)) for _ in range(3)]
+    offpeak = 'offpeak' in form
+    create_job(random_accessions, node, dest_path, offpeak=offpeak)
     # worker_scheduler.schedule(scheduled_time=datetime.utcnow(), func=monitor_job, interval=10, repeat=10, result_ttl=-1)
     return PlainTextResponse()
 
@@ -230,46 +346,26 @@ async def query_post(request):
     worker_queue.enqueue_call(query_job, kwargs=dict(accession=form.get("accession"), node=node), timeout='30m', result_ttl=-1, meta=dict(type="get_accession_single"))
     return PlainTextResponse()
 
+
 @router.get("/query/jobs")
 @requires(["authenticated", "admin"], redirect="login")
 async def query_jobs(request):
-    registries = [
-        worker_queue.started_job_registry,  # Returns StartedJobRegistry
-        worker_queue.deferred_job_registry,   # Returns DeferredJobRegistry
-        worker_queue.finished_job_registry,  # Returns FinishedJobRegistry
-        worker_queue.failed_job_registry,  # Returns FailedJobRegistry 
-        worker_queue.scheduled_job_registry,  # Returns ScheduledJobRegistry
-        worker_queue.canceled_job_registry,   # Returns CanceledJobRegistry
-    ]
     job_info = []
-    # logger.info(worker_queue.job_ids)
-    # for registry in registries:
-    job_ids = set()
-    for registry in registries:
-        for j_id in registry.get_job_ids():
-            job_ids.add(j_id)
-    for j_id in worker_queue.job_ids:
-        job_ids.add(j_id)
-
-    for j_id in job_ids:
-        job = worker_queue.fetch_job(j_id)
-        job_meta = job.get_meta()
-        if job_meta.get('type') != 'batch':
-            continue
-        job_dict = dict(id=j_id, 
+    for job in get_all_jobs("batch"):
+        job_dict = dict(id=job.id, 
                                 status=job.get_status(), 
                                 parameters=dict(accession=job.kwargs.get('accession','')), 
                                 created_at=1000*datetime.timestamp(job.created_at) if job.created_at else "",
                                 enqueued_at=1000*datetime.timestamp(job.enqueued_at) if job.enqueued_at else "", 
                                 result=job.result, 
-                                meta=job_meta,
+                                meta=job.meta,
                                 progress="")
         # if job.meta.get('completed') and job.meta.get('remaining'):
         #     job_dict["progress"] = f"{job.meta.get('completed')} / {job.meta.get('completed') + job.meta.get('remaining')}"
         # if job.meta.get('type',None) == "batch":
-        n_started = job_meta.get('started',0)
-        n_completed = job_meta.get('completed',0)
-        n_total = job_meta.get('total',0)
+        n_started = job.meta.get('started',0)
+        n_completed = job.meta.get('completed',0)
+        n_total = job.meta.get('total',0)
 
         if job_dict["status"] == "finished":
             job_dict["progress"] = f"{n_total} / {n_total}"
@@ -277,19 +373,19 @@ async def query_jobs(request):
             job_dict["progress"] = f"{n_completed} / {n_total}"
         
         # if job_dict["status"] == "canceled" and 
-        if job_dict["meta"].get('paused', False):
+        if job_dict["meta"].get('paused', False) and job_dict["status"] not in ("finished", "failed"):
             if n_started < n_completed: # TODO: this does not work
                 job_dict["status"] = "pausing"
             else:
                 job_dict["status"] = "paused"
 
-        if job_dict["status"] in ("deferred", "started"):
-            if n_started == 0:
-                job_dict["status"] = "waiting"
-            elif n_completed < n_total:
-                job_dict["status"] = "running"
-            elif n_completed == n_total:
-                job_dict["status"] = "finishing"
+        # if job_dict["status"] in ("deferred", "started"):
+            # if n_started == 0:
+            #     job_dict["status"] = "waiting"
+            # elif n_completed < n_total:
+            #     job_dict["status"] = "running"
+            # elif n_completed == n_total:
+            #     job_dict["status"] = "finishing"
 
         job_info.append(job_dict)
     return JSONResponse(dict(data=job_info))

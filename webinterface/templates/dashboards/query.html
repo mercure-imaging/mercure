@@ -64,6 +64,22 @@
                 </div>
               </div>
             </div>
+
+            <div class="field is-horizontal">
+              <div class="field-label is-normal">
+                <label class="label">Offpeak</label>
+              </div>
+              <div class="field-body">
+                <div class="field">
+                  <div class="control is-expanded">
+                    <label class="checkbox">
+                      <input type="checkbox" id="offpeak" name="offpeak" value="">
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div class="field is-horizontal">
               <div class="field-label">
                 <!-- Left empty for spacing -->
@@ -153,7 +169,7 @@ $(document).ready(function () {
                 defaultContent: ''
             },
             { data: 'id' },
-            { data: 'meta', render: data => data["type"]? data["type"]:"" },
+            { data: 'meta', render: data => (data["type"]? data["type"]:"") + (data["offpeak"]? " (offpeak)":"")},
             { data: 'status' },
             { data: 'created_at', render: data => `<span style="display:none;">${data || Date.now()  }</span>`+(data? new Date(data).toLocaleString("en-US"):"")},
             { data: 'parameters', render: data => data["accession"] || ""},
@@ -169,13 +185,32 @@ $(document).ready(function () {
         },
         // filter: true,
         buttons: [
+        {
+                    extend: "customEnable",
+                    text: '<i class="fas fa-sync"></i>',
+                    titleAttr: 'test',
+                    enabled: function(dt, node, config) {
+                      let data = dt.row({selected: true}).data();
+                      if (!data) {
+                          return false;
+                      }
+                      return data.status == "failed"
+                    },
+                    action: function ( e, dt, node, config ) {
+                      let data = dt.row({selected: true}).data();
+                      fetch(`query/retry_job?id=${data.id}`, {method:"POST"}).then(()=>{
+                            dt.ajax.reload()
+                        }).catch((err)=>{
+                            console.log("Error: ", err)
+                        })
+                    }
+          },
           {
                     extend: "customEnable",
                     text: '<i class="fas fa-pause"></i>',
                     titleAttr: 'Pause/Resume',
                     enabled: function(dt, node, config) {
                       let data = dt.row({selected: true}).data();
-                      console.log(node);
                       if (!data) {
                           return false;
                       }

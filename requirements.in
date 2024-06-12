@@ -31,7 +31,7 @@ aiofiles
 jinja2
 types-Jinja2
 # 0.15.0 breaks session management; the next commit after 0.18 will include the fix
-starlette ~= 0.28; 
+starlette ~= 0.28
 starlette-auth-toolkit
 uvicorn == 0.16.0
 itsdangerous
