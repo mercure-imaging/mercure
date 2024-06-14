@@ -308,7 +308,10 @@ setup_docker () {
   if [ ! -f "$MERCURE_BASE"/docker-compose.yml ]; then
     echo "## Copying docker-compose.yml..."
     sudo cp $MERCURE_SRC/docker/docker-compose.yml $MERCURE_BASE
-    sudo sed -i -e "s/\\\${GID}/$(getent group docker | cut -d: -f3)/g" $MERCURE_BASE/docker-compose.yml
+    sudo sed -i -e "s/\\\${DOCKER_GID}/$(getent group docker | cut -d: -f3)/g" $MERCURE_BASE/docker-compose.yml
+    sudo sed -i -e "s/\\\${UID}/$(getent passwd mercure | cut -d: -f3)/g" $MERCURE_BASE/docker-compose.yml
+    sudo sed -i -e "s/\\\${GID}/$(getent passwd mercure | cut -d: -f4)/g" $MERCURE_BASE/docker-compose.yml
+
     sudo sed -i "s/\\\${IMAGE_TAG}/$IMAGE_TAG/g" $MERCURE_BASE/docker-compose.yml
     sudo chown $OWNER:$OWNER "$MERCURE_BASE"/docker-compose.yml
   fi
@@ -396,6 +399,7 @@ systemd_install () {
 
 docker_install () {
   echo "## Performing docker-type mercure installation..."
+  create_user
   create_folders
   install_configuration
   install_docker

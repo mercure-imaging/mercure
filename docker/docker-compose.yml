@@ -15,8 +15,9 @@ x-volumes-docker: &volumes-docker
     - /var/run/docker.sock:/var/run/docker.sock
 
 x-docker-user: &docker-user
-  user: "mercure:${GID}"
-  
+  user: "${UID}:${DOCKER_GID}"
+x-user: &user
+  user: "${UID}:${GID}"
 services:
   ui:
     <<: *docker-user
@@ -46,6 +47,7 @@ services:
       test: [ "CMD-SHELL", "pg_isready -U mercure" ]
 
   receiver:
+    <<: *user
     image: mercureimaging/mercure-receiver${IMAGE_TAG}
     restart: always
     depends_on:
@@ -57,6 +59,7 @@ services:
     <<: *env
 
   cleaner:
+    <<: *user
     image: mercureimaging/mercure-cleaner${IMAGE_TAG}
     restart: always
     depends_on:
@@ -66,6 +69,7 @@ services:
     <<: *env
 
   dispatcher:
+    <<: *user
     image: mercureimaging/mercure-dispatcher${IMAGE_TAG}
     restart: always
     depends_on:
@@ -85,6 +89,7 @@ services:
     <<: *env
 
   router:
+    <<: *user
     image: mercureimaging/mercure-router${IMAGE_TAG}
     restart: always
     depends_on:
@@ -94,6 +99,7 @@ services:
     <<: *env
 
   bookkeeper:
+    <<: *user
     image: mercureimaging/mercure-bookkeeper${IMAGE_TAG}
     restart: always
     depends_on:
