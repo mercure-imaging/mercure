@@ -241,6 +241,8 @@ def prioritize_tasks(sorted_tasks: list, counter: int) -> Optional[Path]:
         with open(taskfile_path, "r") as f:
             task_instance = Task(**json.load(f))
         applied_rule = config.mercure.rules.get(task_instance.info.get("applied_rule"))
+        if applied_rule is None:
+            continue
         priority = applied_rule.get('priority')
         if priority == "urgent" and urgent_task is None:
             urgent_task = task_folder

@@ -84,10 +84,10 @@ def dispatch() -> None:
             if applied_rule is None:
                 triggered_rule_names = task_instance.info.get("triggered_rules")
                 for rule_name in triggered_rule_names:
-                    if config.mercure.rules.get(rule_name).get("priority") == "urgent":
+                    if config.mercure.get("rules",{}).get(rule_name,{}).get("priority") == "urgent":
                         return True
                 return False
-            return applied_rule.get("priority") == "urgent"
+            return applied_rule.priority == "urgent"
         except:
             logger.exception("Error while checking if task is urgent")
             return False
