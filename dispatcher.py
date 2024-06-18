@@ -7,6 +7,7 @@ The dispatcher service of mercure that executes the DICOM transfer to the differ
 # Standard python includes
 import asyncio
 import logging
+import json
 import os
 import signal
 import sys
@@ -25,6 +26,7 @@ from dispatch.send import execute
 from common.constants import mercure_defs
 import common.influxdb
 import common.notification as notification
+from common.types import Task
 
 
 # Create local logger instance
@@ -73,10 +75,31 @@ def dispatch() -> None:
     retry_max = config.mercure.retry_max
     retry_delay = config.mercure.retry_delay
 
+    def is_urgent(task_folder: Path) -> bool:
+        try:
+            taskfile_path = task_folder / mercure_names.TASKFILE
+            with open(taskfile_path, "r") as f:
+                task_instance = Task(**json.load(f))
+            applied_rule = config.mercure.rules.get(task_instance.info.get("applied_rule"))
+            if applied_rule is None:
+                triggered_rule_names = task_instance.info.get("triggered_rules")
+                for rule_name in triggered_rule_names:
+                    if config.mercure.rules.get(rule_name).get("priority") == "urgent":
+                        return True
+                return False
+            return applied_rule.get("priority") == "urgent"
+        except:
+            logger.exception("Error while checking if task is urgent")
+            return False
+
     try:
-        # Obtain a sorted folder list, so that the oldest DICOMs get dispatched first
-        items = sorted(Path(config.mercure.outgoing_folder).iterdir(), key=os.path.getmtime)
-        for entry in items:
+        items = Path(config.mercure.outgoing_folder).iterdir()
+        # Get the folders that are ready for dispatching
+        valid_items = [item for item in items if item.is_dir() and is_ready_for_sending(item)]
+        # Sort the folders with first urgent priority then modification_time
+        sort_key = lambda x: (not is_urgent(x), os.path.getmtime(x))
+        sorted_items = sorted(valid_items, key=sort_key)
+        for entry in sorted_items:
             # First, check if dispatching might have been suspended via the UI
             if dispatcher_lockfile and dispatcher_lockfile.exists():
                 if not dispatcher_is_locked:
@@ -88,15 +111,14 @@ def dispatch() -> None:
                     dispatcher_is_locked = False
                     logger.info("Dispatching resumed")
 
-            # Now process the folders that are ready for dispatching
-            if entry.is_dir() and is_ready_for_sending(entry):
-                execute(Path(entry), success_folder, error_folder, retry_max, retry_delay)
+            execute(Path(entry), success_folder, error_folder, retry_max, retry_delay)
 
             # If termination is requested, stop processing series after the
             # active one has been completed
             if helper.is_terminated():
                 break
     except:
+        logger.exception("Error while dispatching")
         return    
 
 

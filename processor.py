@@ -181,7 +181,7 @@ async def search_folder(counter) -> bool:
         # logger.debug("No tasks found")
         return False
 
-    sorted_tasks = sorted(tasks)
+    sorted_tasks = [item[0] for item in sorted(tasks.items(), key=lambda x: x[1])]
     # TODO: Add priority sorting. However, do not honor the priority flag for, e.g., every third run
     #       so that stagnation of cases is avoided
 
