@@ -257,7 +257,7 @@ async def test_process_series(fs, mercure_config: Callable[[Dict], Config], mock
         volumes=unittest.mock.ANY,
         runtime="runc",
         detach=True),
-        call('busybox:stable-musl', volumes=unittest.mock.ANY, userns_mode='host', command='chown -R 1000:1000 /tmp/output', detach=True)
+        call('busybox:stable-musl', volumes=unittest.mock.ANY, userns_mode='host', command=f'chown -R {uid_string} /tmp/output', detach=True)
         ]
     )
     print("FAKE RUN RESULT FILES", list((Path("/var/success")).glob("**/*")))
