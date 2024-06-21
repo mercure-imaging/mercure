@@ -103,8 +103,11 @@ def mercure_config(fs) -> Callable[[Dict], Config]:
 
 
 def mock_task_ids(mocker, task_id, next_task_id) -> None:
+    if not isinstance(next_task_id, list):
+        next_task_id = [next_task_id]
+
     def generate_uuids() -> Iterator[str]:
-        yield from [task_id, next_task_id]
+        yield from [task_id] + next_task_id
 
     generator = generate_uuids()
     mocker.patch("uuid.uuid1", new=lambda: next(generator))
@@ -122,6 +125,13 @@ class FakeDockerContainer:
         return test_string.encode(encoding="utf8")
 
     def remove(self):
+        pass
+
+class FakeImageContainer:
+    attrs = {}
+    def __init__(self):
+        pass
+    def pull(self, etc):
         pass
 
 def make_fake_processor(fs, mocked, fails):
