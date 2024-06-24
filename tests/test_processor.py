@@ -484,7 +484,7 @@ async def test_priority_process(fs, mercure_config: Callable[[Dict], Config], mo
         prioritized_task = processor.prioritize_tasks(permutation,0) # check for default run
         assert get_priority(prioritized_task) == "urgent"
         prioritized_task = processor.prioritize_tasks(permutation,2) # check for reverse run
-        assert get_priority(prioritized_task) in ["normal", "offpeak"]
+        assert get_priority(prioritized_task) in ["normal", "offpeak"] if is_offpeak else ["normal"]
 
     await processor.run_processor()
     assert len(processor.process_series.call_args_list) == 3 if is_offpeak else 2

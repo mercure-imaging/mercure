@@ -96,10 +96,17 @@ def dispatch() -> None:
         items = Path(config.mercure.outgoing_folder).iterdir()
         # Get the folders that are ready for dispatching
         valid_items = [item for item in items if item.is_dir() and is_ready_for_sending(item)]
-        # Sort the folders with first urgent priority then modification_time
-        sort_key = lambda x: (not is_urgent(x), os.path.getmtime(x))
-        sorted_items = sorted(valid_items, key=sort_key)
-        for entry in sorted_items:
+        urgent_items, normal_items = [], []
+        for item in valid_items:
+            urgent_items.append(item) if is_urgent(item) else normal_items.append(item)
+        sorted_urgent_items = sorted(urgent_items, key=os.path.getmtime)
+        sorted_normal_items = sorted(normal_items, key=os.path.getmtime)
+        counter = 0
+        while sorted_urgent_items or sorted_normal_items:
+            if (counter % 3) < 2 and sorted_urgent_items:
+                entry = sorted_urgent_items.pop(0)
+            else:
+                entry = sorted_normal_items.pop(0)
             # First, check if dispatching might have been suspended via the UI
             if dispatcher_lockfile and dispatcher_lockfile.exists():
                 if not dispatcher_is_locked:
@@ -117,6 +124,7 @@ def dispatch() -> None:
             # active one has been completed
             if helper.is_terminated():
                 break
+            counter += 1
     except:
         logger.exception("Error while dispatching")
         return    
