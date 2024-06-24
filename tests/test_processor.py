@@ -475,16 +475,16 @@ async def test_priority_process(fs, mercure_config: Callable[[Dict], Config], mo
         taskfile_path = task_folder / mercure_names.TASKFILE
         with open(taskfile_path, "r") as f:
             task_instance = Task(**json.load(f))
-        applied_rule = partial["rules"].get(task_instance.info.get("applied_rule"))
+        applied_rule = partial["rules"].get(task_instance.info.get("applied_rule"), {})
         priority = applied_rule.get('priority')
-        return priority
+        return priority or ''
 
     tasks_folders = [processor_path / k for k in new_task_ids]
     for permutation in permutations(tasks_folders, len(tasks_folders)):
-        prioritized_task = processor.prioritize_tasks(permutation,0) # check for default run
-        assert get_priority(prioritized_task) == "urgent"
-        prioritized_task = processor.prioritize_tasks(permutation,2) # check for reverse run
-        assert get_priority(prioritized_task) in ["normal", "offpeak"] if is_offpeak else ["normal"]
+        prioritized_task = processor.prioritize_tasks(list(permutation),0) # check for default run
+        assert prioritized_task and get_priority(prioritized_task) == "urgent"
+        prioritized_task = processor.prioritize_tasks(list(permutation),2) # check for reverse run
+        assert prioritized_task and get_priority(prioritized_task) in ["normal", "offpeak"] if is_offpeak else ["normal"]
 
     await processor.run_processor()
     assert len(processor.process_series.call_args_list) == 3 if is_offpeak else 2
