@@ -16,7 +16,8 @@ import process.process_series
 import router
 import daiquiri
 import processor
-from common.constants import mercure_version
+from itertools import permutations
+from common.constants import mercure_version, mercure_names
 
 import json
 from pprint import pprint
@@ -28,6 +29,7 @@ from pathlib import Path
 from testing_common import *
 
 from docker.models.containers import ContainerCollection
+from docker.models.images import ImageCollection
 
 from nomad.api.job import Job
 from nomad.api.jobs import Jobs
@@ -92,6 +94,30 @@ def create_and_route(fs, mocked, task_id, uid="TESTFAKEUID") -> Tuple[List[str],
 
     mocked.patch("processor.process_series", new=mocked.spy(processor, "process_series"))
     return ["task.json", f"{uid}#bar.dcm", f"{uid}#bar.tags"], new_task_id
+
+def create_and_route_priority(fs, mocked, task_id, uid="TESTFAKEUID") -> Tuple[List[str], List[str]]:
+    print("Mocked task_id is", task_id)
+
+    new_task_ids = ["new-task-" + str(uuid.uuid1()) for _ in range(1000)] # todo: support arbitrary number of tasks created?
+    mock_task_ids(mocked, task_id, new_task_ids)
+
+    fs.create_file(f"/var/incoming/{uid}#bar.dcm", contents="asdfasdfafd")
+    fs.create_file(f"/var/incoming/{uid}#bar.tags", contents="{}")
+
+    router.run_router()
+
+    router.route_series.assert_called_once_with(task_id, uid)  # type: ignore
+
+    for case in Path("/var/processing").iterdir():
+        if not case.is_dir(): continue
+        assert ["task.json", f"{uid}#bar.dcm", f"{uid}#bar.tags"] == [
+            k.name for k in case.iterdir() if k.is_file()
+        ]
+
+    created_tasks = [k.name for k in Path("/var/processing").iterdir() if k.is_dir()]
+    assert set(created_tasks).issubset(set(new_task_ids))
+    mocked.patch("processor.process_series", new=mocked.spy(processor, "process_series"))
+    return ["task.json", f"{uid}#bar.dcm", f"{uid}#bar.tags"], created_tasks
 
 
 @pytest.mark.asyncio
@@ -257,7 +283,7 @@ async def test_process_series(fs, mercure_config: Callable[[Dict], Config], mock
         volumes=unittest.mock.ANY,
         runtime="runc",
         detach=True),
-        call('busybox:stable-musl', volumes=unittest.mock.ANY, userns_mode='host', command='chown -R 1000:1000 /tmp/output', detach=True)
+        call('busybox:stable-musl', volumes=unittest.mock.ANY, userns_mode='host', command=f'chown -R {uid_string} /tmp/output', detach=True)
         ]
     )
     print("FAKE RUN RESULT FILES", list((Path("/var/success")).glob("**/*")))
@@ -386,3 +412,83 @@ async def test_multi_process_series(fs, mercure_config: Callable[[Dict], Config]
             call(Task(**task),TaskProcessing(**task["process"][i]),i, partial["modules"][m]["settings"]["result"]) for i,m in enumerate(partial["modules"])
         ]
     )
+
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("is_offpeak", ((True,),(False,)))
+async def test_priority_process(fs, mercure_config: Callable[[Dict], Config], mocked: MockerFixture, is_offpeak: bool):
+    global processor_path
+    partial: Dict[str, Dict] = {
+        "modules": {
+            "test_module_1": Module(docker_tag="busybox:stable",settings={"fizz":"buzz","result":{"value":[1,2,3,4]}}).dict(),
+            "test_module_2": Module(docker_tag="busybox:stable",settings={"fizz":"bing","result":{"value":[100,200,300,400]}}).dict(),
+            "test_module_3": Module(docker_tag="busybox:stable",settings={"fizz":"bong","result":{"value":[1000,2000,3000,4000]}}).dict(),
+        },
+        "rules": {
+            "normal_rule": Rule(
+                rule="True",
+                action="process",
+                action_trigger="series",
+                study_trigger_condition="timeout",
+                processing_module="test_module_1",
+                processing_retain_images=True,
+                priority="normal"
+            ).dict(),
+            "urgent_rule": Rule(
+                rule="True",
+                action="process",
+                action_trigger="series",
+                study_trigger_condition="timeout",
+                processing_module="test_module_2",
+                processing_retain_images=True,
+                priority="urgent"
+            ).dict(),
+            "offpeak_rule": Rule(
+                rule="True",
+                action="process",
+                action_trigger="series",
+                study_trigger_condition="timeout",
+                processing_module="test_module_3",
+                processing_retain_images=True,
+                priority="offpeak"
+            ).dict()
+        },
+    }
+    config = mercure_config(
+        {"process_runner": "docker", **partial},
+    )
+    task_id = str(uuid.uuid1())
+    files, new_task_ids = create_and_route_priority(fs, mocked, task_id)
+    processor_path = Path(f"/var/processing/")
+
+    fake_run = mocked.Mock(return_value=FakeDockerContainer(), side_effect=make_fake_processor(fs,mocked,False))  # type: ignore
+    mocked.patch.object(ContainerCollection, "run", new=fake_run)
+
+    fake_pull = mocked.Mock(return_value=FakeImageContainer())  # type: ignore
+    mocked.patch.object(ImageCollection, "pull", new=fake_pull)
+
+    mocked.patch("processor._is_offpeak", lambda x,y,z: is_offpeak)
+
+    # Can be added as a helper function
+    def get_priority(task_folder: Path) -> str:
+        taskfile_path = task_folder / mercure_names.TASKFILE
+        with open(taskfile_path, "r") as f:
+            task_instance = Task(**json.load(f))
+        applied_rule = partial["rules"].get(task_instance.info.get("applied_rule"), {})
+        priority = applied_rule.get('priority')
+        return priority or ''
+
+    tasks_folders = [processor_path / k for k in new_task_ids]
+    for permutation in permutations(tasks_folders, len(tasks_folders)):
+        prioritized_task = processor.prioritize_tasks(list(permutation),0) # check for default run
+        assert prioritized_task and get_priority(prioritized_task) == "urgent"
+        prioritized_task = processor.prioritize_tasks(list(permutation),2) # check for reverse run
+        assert prioritized_task and get_priority(prioritized_task) in ["normal", "offpeak"] if is_offpeak else ["normal"]
+
+    await processor.run_processor()
+    assert len(processor.process_series.call_args_list) == 3 if is_offpeak else 2
+    args, _ = processor.process_series.call_args_list[0]
+    task_id = os.path.basename(args[0])
+    task_folder = Path(f"/var/success/") / task_id
+    assert get_priority(task_folder) == "urgent"

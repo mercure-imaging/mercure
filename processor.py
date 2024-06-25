@@ -12,13 +12,15 @@ import signal
 import os
 import sys
 import json
-from typing import Dict
+from typing import Dict, Optional
 import threading
 import graphyte
 import daiquiri
 import nomad
 from pathlib import Path
 import hupper
+from datetime import datetime
+from datetime import time as _time
 
 # App-specific includes
 import common.helper as helper
@@ -179,14 +181,24 @@ async def search_folder(counter) -> bool:
         # logger.debug("No tasks found")
         return False
 
-    sorted_tasks = sorted(tasks)
+    sorted_tasks = [item[0] for item in sorted(tasks.items(), key=lambda x: x[1])]
     # TODO: Add priority sorting. However, do not honor the priority flag for, e.g., every third run
     #       so that stagnation of cases is avoided
 
     # Only process one case at a time because the processing might take a while and
     # another instance might have processed the other entries already. So the folder
     # needs to be refreshed each time
-    task_folder = Path(sorted_tasks[0])
+    try:
+        selected_task_folder = prioritize_tasks(sorted_tasks, counter)
+        # Return if no task of valid priority is found
+        if selected_task_folder is None:
+            return False
+    except Exception as e:
+        logger.error("Error while prioritizing tasks- ignoring priority")
+        logger.error(e)
+        selected_task_folder = Path(sorted_tasks[0])
+
+    task_folder = selected_task_folder
 
     try:
         await process_series(task_folder)
@@ -205,6 +217,43 @@ async def search_folder(counter) -> bool:
 
         return False
 
+# Taken directly from cleaner.py- can be added as a helper function.
+def _is_offpeak(offpeak_start: str, offpeak_end: str, current_time: _time) -> bool:
+    try:
+        start_time = datetime.strptime(offpeak_start, "%H:%M").time()
+        end_time = datetime.strptime(offpeak_end, "%H:%M").time()
+    except Exception as e:
+        logger.error(f"Unable to parse offpeak time: {offpeak_start}, {offpeak_end}", None)  # handle_error
+        return True
+
+    if start_time < end_time:
+        return current_time >= start_time and current_time <= end_time
+    # End time is after midnight
+    return current_time >= start_time or current_time <= end_time
+
+def prioritize_tasks(sorted_tasks: list, counter: int) -> Optional[Path]:
+    """Returns the prioritized task based on the priority in the task file."""
+    is_offpeak = _is_offpeak(config.mercure.offpeak_start, config.mercure.offpeak_end, datetime.now().time())
+    normal_task, urgent_task = None, None
+    for task in sorted_tasks:
+        task_folder = Path(task)
+        taskfile_path = task_folder / mercure_names.TASKFILE
+        with open(taskfile_path, "r") as f:
+            task_instance = Task(**json.load(f))
+        applied_rule = config.mercure.rules.get(task_instance.info.get("applied_rule"))
+        if applied_rule is None:
+            continue
+        priority = applied_rule.get('priority')
+        if priority == "urgent" and urgent_task is None:
+            urgent_task = task_folder
+        elif (priority == "normal" or (priority == "offpeak" and is_offpeak)) and normal_task is None:
+            normal_task = task_folder
+        if (urgent_task is not None) and (normal_task is not None):
+            break
+    # Prioritize urgent task over normal task but reverse the order every third run
+    if (counter % 3) < 2:
+        return urgent_task or normal_task
+    return normal_task or urgent_task
 
 async def run_processor() -> None:
     """Main processing function that is called every second."""
