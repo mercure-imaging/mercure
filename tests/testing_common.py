@@ -128,7 +128,7 @@ class FakeDockerContainer:
         pass
 
 class FakeImageContainer:
-    attrs = {}
+    attrs: Any = {}
     def __init__(self):
         pass
     def pull(self, etc):
