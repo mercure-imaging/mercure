@@ -44,8 +44,8 @@ def replace_tags(rule: str, tags: Dict[str, str]) -> Any:
     return rule
 
 # def eval_rule(rule, tags):
-# Allow typecasting the DICOM tags during evaluation of routing rules
-safe_eval_cmds = {"float": float, "int": int, "str": str}
+# Allow some safe builtins
+safe_eval_cmds = {"float": float, "int": int, "str": str, "len": len, "bool": bool, "sum": sum, "round": round, "max": max, "min": min, "abs": abs, "pow": pow, "chr": chr, "ord": ord}
 
 
 def eval_rule(rule: str, tags: Dict[str, str]) -> Any:
