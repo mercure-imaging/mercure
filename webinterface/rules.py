@@ -252,6 +252,8 @@ async def rules_delete_post(request) -> Response:
 @requires(["authenticated", "admin"], redirect="login")
 async def rules_test(request) -> Response:
     """Evalutes if a given routing rule is valid. The rule and testing dictionary have to be passed as form parameters."""
+    noresult = set()
+    attrs_accessed = set()
     try:
         form = dict(await request.form())
         testrule = form["rule"]
@@ -261,24 +263,36 @@ async def rules_test(request) -> Response:
             '<span class="tag is-warning is-medium ruleresult"><i class="fas fa-bug"></i>&nbsp;Error</span>&nbsp;&nbsp;Invalid test values'
         )
     try:
-        result = rule_evaluation.eval_rule(testrule, testvalues)
+        result, attrs_accessed = rule_evaluation.eval_rule(testrule, testvalues)
+    
         if result:
-            return PlainTextResponse(
-                f'<span class="tag is-success is-medium ruleresult"><i class="fas fa-thumbs-up"></i>&nbsp;Trigger</span>' + (f'<pre style="display:inline; margin-left: 1em">{result}</pre>' if result is not True else '')
-            )
+            style = "success"
+            icon = "thumbs-up"
+            text = "Trigger"
+            inline = result if result is not True else noresult
         else:
-            return PlainTextResponse(
-                f'<span class="tag is-info is-medium ruleresult"><i class="fas fa-thumbs-down"></i>&nbsp;Reject</span>' + (f'<pre style="display:inline; margin-left: 1em">{result}</pre>' if result is not False else '')
-            )
-    except TagNotFoundException as e:
-        return PlainTextResponse(
-                f'<span class="tag is-info is-medium ruleresult"><i class="fas fa-thumbs-down"></i>&nbsp;Reject</span><span>{e}</span>'
-            )
-    except Exception as e:
-        return PlainTextResponse(
-            f'<span class="tag is-danger is-medium ruleresult"><i class="fas fa-bug"></i>&nbsp;Error</span>&nbsp;&nbsp;Invalid rule: <pre style="display:inline; margin-left: 1em">{e}</pre>'
-        )
+            style = "info"
+            icon = "thumbs-down"
+            text = "Reject"
+            inline = result if result is not False else noresult
 
+    except TagNotFoundException as e:
+        style = "info"
+        icon = "thumbs-down"
+        text = "Reject"
+        inline = e
+
+    except Exception as e:
+        style = "danger"
+        icon = "bug"
+        text = "Error"
+        inline = e
+
+    attrs_accessed_info = "\n".join([f"{x} = \"{testvalues[x]}\"" for x in attrs_accessed]) if len(attrs_accessed) > 0 else None
+    return PlainTextResponse(f'<span class="tag is-{style} is-medium ruleresult"><i class="fas fa-{icon}"></i>&nbsp;{text}</span>'
+                             + (f'<pre style="display:inline; margin-left: 1em">{repr(inline) if not isinstance(inline,Exception) else str(inline) }</pre>' if inline is not noresult else '')
+                             + (f'<pre style="margin: 1em">Tags evaluated:\n{attrs_accessed_info}</pre>' if attrs_accessed_info else '')
+                             )
 
 @router.post("/test_completionseries")
 @requires(["authenticated", "admin"], redirect="login")
