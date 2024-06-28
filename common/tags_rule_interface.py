@@ -1,12 +1,15 @@
+from typing import Dict, Set
+
+
 class Tags:
-    _tags_dict = None
-    _tags_accessed = None
+    _tags_dict: Dict[str,str] = {}
+    _tags_accessed: Set[str] = set()
 
     def __init__(self, input_dict) -> None:
         self._tags_dict = input_dict
         self._tags_accessed = set()
 
-    def tags_accessed(self):
+    def tags_accessed(self) -> Set[str]:
         return self._tags_accessed
 
     def __getattr__(self, name):
