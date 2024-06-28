@@ -1,6 +1,7 @@
 
 from pathlib import Path
 import shutil
+from typing import Generator, List, Union, cast
 from webinterface.query import SimpleDicomClient
 # Standard python includes
 from datetime import datetime
@@ -24,19 +25,25 @@ logger = config.get_logger()
 
 
 def get_accession_job(job_id, job_kwargs):
+    """
+    
+    """
     accession, node, path = job_kwargs["accession"], job_kwargs["node"], job_kwargs["path"]
     config.read_config()
     c = SimpleDicomClient(node.ip, node.port, node.aet_target, path)
     # job = get_current_job()
     # job.meta["started"] = 1
-    # job.save_meta()
+    # job.save_meta() # type: ignore
     for identifier in c.getscu(accession):
         completed, remaining = identifier.NumberOfCompletedSuboperations, identifier.NumberOfRemainingSuboperations, 
-        progress = f"{ completed } / { completed + remaining }"
+        progress = f"{ completed } / { completed + remaining }" 
         yield completed, remaining, progress
     return "Complete"
 
-def check_accessions_exist(*, accessions, node):
+def check_accessions_exist(*, accessions, node, queue=worker_queue):
+    """
+    Check if the given accessions exist on the node using a DICOM query.
+    """
     c = SimpleDicomClient(node.ip, node.port, node.aet_target, None)
     try:
         for accession in accessions:
@@ -44,11 +51,16 @@ def check_accessions_exist(*, accessions, node):
             logger.info(result)
     except:
         job = get_current_job()
-        job_parent = worker_queue.fetch_job(job.meta.get('parent'))
+        if not job:
+            raise Exception("No current job found")
+        job_parent = queue.fetch_job(job.meta.get('parent'))
         job_parent.meta['failed_reason'] = f"Accession {accession} not found on node"
-        worker_queue._enqueue_job(job_parent,at_front=True)
+        queue._enqueue_job(job_parent,at_front=True)
         raise
 def query_dummy(job_id, job_kwargs):
+    """
+    Dummy function to simulate a long-running task.
+    """
     total_time = 2  # Total time for the job in seconds (1 minute)
     update_interval = 0.25  # Interval between updates in seconds
     remaining = total_time // update_interval
@@ -69,14 +81,16 @@ def query_dummy(job_id, job_kwargs):
 class QueryJob():
 
     @classmethod
-    def get_accessions(cls, *,accession, node, path, perform_func=query_dummy):
+    def get_accessions(cls, *,accession, node, path, perform_func=query_dummy,queue=worker_queue):
         print(f"Getting {accession}")
         job = get_current_job()
+        if not job:
+            raise Exception("No current job")
         try:
             Path(path).mkdir(parents=True, exist_ok=True)
             job_parent = None
             if parent_id := job.meta.get('parent'):
-                job_parent = worker_queue.fetch_job(parent_id)
+                job_parent = queue.fetch_job(parent_id)
 
             if job_parent:
                 job_parent.meta['started'] = job_parent.meta.get('started',0) + 1
@@ -84,12 +98,12 @@ class QueryJob():
 
             job.meta['started'] = 1
             job.meta['progress'] = "0 / Unknown"
-            job.save_meta()
+            job.save_meta() # type: ignore
             for completed, remaining, progress in perform_func(job.id, job.kwargs):
                 job.meta['remaining'] = remaining
                 job.meta['completed'] = completed
                 job.meta['progress'] = progress
-                job.save_meta()  # Save the updated meta data to the job
+                job.save_meta() # type: ignore  # Save the updated meta data to the job
                 logger.info(progress)
             if job_parent.kwargs["move_promptly"]:
                 move_to_destination(path, job_parent.kwargs["destination"], job_parent.id)
@@ -106,23 +120,26 @@ class QueryJob():
             for subjob_id in job_parent.kwargs.get('subjobs',[]):
                 if subjob_id == job.id:
                     continue
-                subjob = worker_queue.fetch_job(subjob_id)
+                subjob = queue.fetch_job(subjob_id)
                 if subjob.get_status() not in ('finished', 'canceled','failed'):
                     subjob.cancel()
             job_parent.get_meta() 
             logger.info("Cancelled sibling jobs.")
             job_parent.meta["failed_reason"] = f"Failed to retrieve {accession}"
-            worker_queue._enqueue_job(job_parent,at_front=True) # Force the parent job to run and fail itself
+            queue._enqueue_job(job_parent,at_front=True) # Force the parent job to run and fail itself
             raise
 
         return "Job complete"
 
-def move_to_destination(path, destination, job_id):
+def move_to_destination(path, destination, job_id) -> None:
+    """
+
+    """
     if destination is None:
         config.read_config()
         for p in Path(path).glob("**/*"):
             if p.is_file():
-                shutil.move(p, config.mercure.incoming_folder)
+                shutil.move(str(p), config.mercure.incoming_folder) # Move the file to incoming folder
         shutil.rmtree(path)
     else:
         dest_folder: Path = Path(destination) / job_id
@@ -130,11 +147,13 @@ def move_to_destination(path, destination, job_id):
         logger.info(f"moving {path} to {dest_folder}")
         shutil.move(path, dest_folder)
 
-def batch_job(*, accessions, subjobs, path, destination, move_promptly):
+def batch_job(*, accessions, subjobs, path, destination, move_promptly, queue=worker_queue) -> str:
     job = get_current_job()
+    if not job:
+        raise Exception("No current job")
     job.get_meta()
     for job_id in job.kwargs.get('subjobs',[]):
-        subjob = worker_queue.fetch_job(job_id)
+        subjob = queue.fetch_job(job_id)
         if (status := subjob.get_status()) != 'finished':
             raise Exception(f"Subjob {subjob.id} is {status}")
         if job.kwargs.get('failed', False):
@@ -156,38 +175,51 @@ def batch_job(*, accessions, subjobs, path, destination, move_promptly):
 def monitor_job():
     print("monitoring")
 
-def pause_job(job: Job):
+def pause_job(job: Job, queue=worker_queue):
+    """
+    Pause the current job, including all its subjobs.
+    """
     for job_id in job.kwargs.get('subjobs',[]):
-        subjob = worker_queue.fetch_job(job_id)
+        subjob = queue.fetch_job(job_id)
         if subjob and (subjob.is_deferred or subjob.is_queued):
             subjob.meta['paused'] = True
-            subjob.save_meta()
+            subjob.save_meta() # type: ignore
             subjob.cancel()
     job.get_meta()
     job.meta['paused'] = True
-    job.save_meta()
+    job.save_meta() # type: ignore
 
-def resume_job(job: Job):
+def resume_job(job: Job, queue=worker_queue):
+    """
+    Resume a paused job by unpausing all its subjobs
+    """
     for subjob_id in job.kwargs.get('subjobs',[]):
-        subjob = worker_queue.fetch_job(subjob_id)
+        subjob = queue.fetch_job(subjob_id)
         if subjob and subjob.meta.get('paused', None):
             subjob.meta['paused'] = False
-            subjob.save_meta()
-            worker_queue.canceled_job_registry.requeue(subjob_id)
+            subjob.save_meta() # type: ignore
+            queue.canceled_job_registry.requeue(subjob_id)
     job.get_meta()
     job.meta['paused'] = False
-    job.save_meta()
+    job.save_meta() # type: ignore
 
-def create_job(accessions, dicom_node, destination_path, offpeak=False) -> Job:
+def create_job(accessions, dicom_node, destination_path, offpeak=False, queue=worker_queue) -> Job:
+    """
+    Create a job to process the given accessions and store them in the specified destination path.
+    """
     with Connection(redis):
-        jobs = []
+        jobs: List[Job] = []
         check_job = Job.create(check_accessions_exist, kwargs=dict(accessions=accessions,node=dicom_node), meta=dict(parent=None))
 
         for accession in accessions:
-            job = Job.create(QueryJob.get_accessions, kwargs=dict(perform_func=get_accession_job, accession=accession, node=dicom_node), timeout='30m', result_ttl=-1, meta=dict(type="get_accession_batch",parent=None, paused=False, offpeak=offpeak),depends_on=[check_job])
+            job = Job.create(QueryJob.get_accessions, 
+                             kwargs=dict(perform_func=get_accession_job, accession=accession, node=dicom_node), timeout=30*60, result_ttl=-1, 
+                             meta=dict(type="get_accession_batch",parent=None, paused=False, offpeak=offpeak),
+                             depends_on=cast(List[Union[Dependency, Job]],[check_job])
+                             )
             jobs.append(job)
         depends = Dependency(
-            jobs=jobs,
+            jobs=cast(List[Union[Job,str]],jobs),
             allow_failure=True,    # allow_failure defaults to False
         )
         full_job = Job.create(batch_job, kwargs=dict(accessions=accessions, subjobs=[j.id for j in jobs], destination=destination_path, move_promptly=True), timeout=-1, result_ttl=-1, meta=dict(type="batch", started=0, paused=False,completed=0, total=len(jobs), offpeak=offpeak), depends_on=depends)
@@ -198,17 +230,20 @@ def create_job(accessions, dicom_node, destination_path, offpeak=False) -> Job:
         full_job.kwargs["path"] = Path(f"/opt/mercure/data/query/job_dirs/{full_job.id}")
         full_job.kwargs["path"].mkdir(parents=True)
 
-    worker_queue.enqueue_job(check_job)
+    queue.enqueue_job(check_job)
     for j in jobs:
-        worker_queue.enqueue_job(j)
-    worker_queue.enqueue_job(full_job)
+        queue.enqueue_job(j)
+    queue.enqueue_job(full_job)
 
     if offpeak and not _is_offpeak(config.mercure.offpeak_start, config.mercure.offpeak_end, datetime.now().time()):
         pause_job(full_job)
 
     return full_job
 
-def retry_job(job):
+def retry_job(job, queue=worker_queue) -> None:
+    """
+    Retry a failed job by enqueuing it again
+    """
     # job.meta["retries"] = job.meta.get("retries", 0) + 1
     # if job.meta["retries"] > 3:
     #     return False
@@ -218,27 +253,30 @@ def retry_job(job):
             logger.info(f"Retrying {subjob}")
             if status == "failed" and (job_path:=Path(subjob.kwargs['path'])).exists():
                 shutil.rmtree(job_path) # Clean up after a failed job
-            worker_queue.enqueue_job(subjob)
-    worker_queue.enqueue_job(job)
-def get_subjobs(job):
-    return (worker_queue.fetch_job(job) for job in job.kwargs.get('subjobs', []))
+            queue.enqueue_job(subjob)
+    queue.enqueue_job(job)
+def get_subjobs(job, queue=worker_queue) -> Generator:
+    return (queue.fetch_job(job) for job in job.kwargs.get('subjobs', []))
 
-def get_all_jobs(type):
+def get_all_jobs(type, queue=worker_queue) -> Generator:
+    """
+    Get all jobs of a given type from the queue
+    """
     registries = [
-        worker_queue.started_job_registry,  # Returns StartedJobRegistry
-        worker_queue.deferred_job_registry,   # Returns DeferredJobRegistry
-        worker_queue.finished_job_registry,  # Returns FinishedJobRegistry
-        worker_queue.failed_job_registry,  # Returns FailedJobRegistry 
-        worker_queue.scheduled_job_registry,  # Returns ScheduledJobRegistry
-        worker_queue.canceled_job_registry,   # Returns CanceledJobRegistry
+        queue.started_job_registry,  # Returns StartedJobRegistry
+        queue.deferred_job_registry,   # Returns DeferredJobRegistry
+        queue.finished_job_registry,  # Returns FinishedJobRegistry
+        queue.failed_job_registry,  # Returns FailedJobRegistry 
+        queue.scheduled_job_registry,  # Returns ScheduledJobRegistry
+        queue.canceled_job_registry,   # Returns CanceledJobRegistry
     ]
     job_ids = set()
     for registry in registries:
         for j_id in registry.get_job_ids():
             job_ids.add(j_id)
-    for j_id in worker_queue.job_ids:
+    for j_id in queue.job_ids:
         job_ids.add(j_id)
-    jobs = (worker_queue.fetch_job(j_id) for j_id in job_ids)
+    jobs = (queue.fetch_job(j_id) for j_id in job_ids)
 
     return (j for j in jobs if j.get_meta().get("type") == type)
 
@@ -251,15 +289,18 @@ def _is_offpeak(offpeak_start: str, offpeak_end: str, current_time) -> bool:
         return True
 
     if start_time < end_time:
-        return current_time >= start_time and current_time <= end_time
+        return bool(current_time >= start_time and current_time <= end_time)
     # End time is after midnight
-    return current_time >= start_time or current_time <= end_time
+    return bool(current_time >= start_time or current_time <= end_time)
 
-def update_jobs_offpeak():
+def update_jobs_offpeak(queue=worker_queue):
+    """
+    Resume or pause offpeak jobs based on whether the current time is within offpeak hours.
+    """
     config.read_config()
     is_offpeak = _is_offpeak(config.mercure.offpeak_start, config.mercure.offpeak_end, datetime.now().time())
     logger.info(f"is_offpeak {is_offpeak}")
-    for job in get_all_jobs("batch"):
+    for job in get_all_jobs("batch", queue=queue):
         if not job.meta.get("offpeak"):
             continue
         if job.get_status() not in ("waiting", "running", "queued", "deferred"):
@@ -269,18 +310,19 @@ def update_jobs_offpeak():
             logger.info(f"{job.meta}, {job.get_status()}")
             if job.meta.get("paused", False):
                 logger.info("Resuming")
-                resume_job(job)
+                resume_job(job, queue=queue)
         else:
             if not job.meta.get("paused", False):
                 logger.info("Pausing")
-                pause_job(job)
+                pause_job(job, queue=queue)
 
 @router.post("/query/retry_job")
 @requires(["authenticated", "admin"], redirect="login")
-async def test_offpeak(request):
+async def post_retry_job(request):
     job = worker_queue.fetch_job(request.query_params['id'])
     retry_job(job)
     return JSONResponse({})
+
 @router.post("/query/pause_job")
 @requires(["authenticated", "admin"], redirect="login")
 async def post_pause_job(request):
@@ -315,6 +357,8 @@ async def get_job_info(request):
     subjob_info = []
     subjobs = (worker_queue.fetch_job(job) for job in job.kwargs.get('subjobs', []))
     for subjob in subjobs:
+        if not subjob:
+            continue
         info = {
                 'id': subjob.get_id(),
                 'ended_at': subjob.ended_at.isoformat().split('.')[0] if subjob.ended_at else "", 
@@ -368,13 +412,16 @@ async def query_post(request):
             node = n
             break
     
-    worker_queue.enqueue_call(query_job, kwargs=dict(accession=form.get("accession"), node=node), timeout='30m', result_ttl=-1, meta=dict(type="get_accession_single"))
+    worker_queue.enqueue_call(get_accession_job, kwargs=dict(accession=form.get("accession"), node=node), timeout=30*60, result_ttl=-1, meta=dict(type="get_accession_single"))
     return PlainTextResponse()
 
 
 @router.get("/query/jobs")
 @requires(["authenticated", "admin"], redirect="login")
 async def query_jobs(request):
+    """
+    Returns a list of all query jobs. 
+    """
     job_info = []
     for job in get_all_jobs("batch"):
         job_dict = dict(id=job.id, 

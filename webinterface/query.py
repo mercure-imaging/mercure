@@ -1,5 +1,6 @@
 import os
 import re
+from typing import Any, Iterator, List, Optional, Sequence, cast
 from pynetdicom import (
         AE,
         QueryRetrievePresentationContexts, BasicWorklistManagementPresentationContexts, UnifiedProcedurePresentationContexts,
@@ -7,11 +8,11 @@ from pynetdicom import (
         evt,
         StoragePresentationContexts
     )
-from pynetdicom.sop_class import StudyRootQueryRetrieveInformationModelFind
+from pynetdicom.sop_class import StudyRootQueryRetrieveInformationModelFind # type: ignore
 from pynetdicom.apps.common import create_dataset
 from pynetdicom._globals import DEFAULT_MAX_LENGTH
 from pynetdicom.pdu_primitives import SOPClassExtendedNegotiation
-from pynetdicom.sop_class import (
+from pynetdicom.sop_class import (  # type: ignore
     PatientRootQueryRetrieveInformationModelGet,
     StudyRootQueryRetrieveInformationModelGet,
     PatientStudyOnlyQueryRetrieveInformationModelGet,
@@ -19,11 +20,10 @@ from pynetdicom.sop_class import (
     EncapsulatedOBJStorage,
     EncapsulatedMTLStorage,
 )
-from pydicom.uid import DeflatedExplicitVRLittleEndian
+from pydicom.uid import DeflatedExplicitVRLittleEndian 
 from pydicom import Dataset
 import sys
 import subprocess
-
 
 class DicomClientCouldNotAssociate(Exception):
     pass
@@ -58,7 +58,7 @@ class SimpleDicomClient():
     port: int
     called_aet: str
     output_dir: str
-    def __init__(self, host, port, called_aet, out_dir):
+    def __init__(self, host, port, called_aet, out_dir) -> None:
         self.host = host
         self.port = port
         self.called_aet = called_aet
@@ -124,7 +124,7 @@ class SimpleDicomClient():
         return status_ds
 
 
-    def getscu(self, accession_number):
+    def getscu(self, accession_number) -> Iterator[Dataset]:
         # Exclude these SOP Classes
         _exclusion = [
             EncapsulatedSTLStorage,
@@ -145,6 +145,8 @@ class SimpleDicomClient():
         ae.add_requested_context(PatientStudyOnlyQueryRetrieveInformationModelGet)
         ext_neg = []
         for cx in store_contexts:
+            if not cx.abstract_syntax:
+                raise ValueError(f"Abstract syntax must be specified for storage context {cx}")
             ae.add_requested_context(cx.abstract_syntax)
             # Add SCP/SCU Role Selection Negotiation to the extended negotiation
             # We want to act as a Storage SCP
@@ -153,7 +155,7 @@ class SimpleDicomClient():
         assoc = ae.associate(
                 self.host, self.port,
                 ae_title=self.called_aet,
-                ext_neg=ext_neg,
+                ext_neg=ext_neg, # type: ignore
                 evt_handlers=[(evt.EVT_C_STORE, self.handle_store, [])],
                 max_pdu=0,
             )
@@ -181,7 +183,7 @@ class SimpleDicomClient():
 
         assoc.release()
 
-    def findscu(self,accession_number):
+    def findscu(self,accession_number) -> Optional[Dataset]:
         # Create application entity
         ae = AE(ae_title="MERCURE")
 

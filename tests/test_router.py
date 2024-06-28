@@ -25,6 +25,8 @@ from pathlib import Path
 
 from testing_common import *
 
+from testing_common import mock_task_ids
+
 # import common.config as config
 
 rules = {
@@ -96,7 +98,7 @@ def test_route_series_fail2(fs: FakeFilesystem, mercure_config, mocked):
         severity.ERROR,
         "Invalid rule encountered:  1/0 ",
     )
-    common.monitor.send_task_event.assert_any_call(task_event.DISCARD, task_id,1, "","Discard by default.")
+    common.monitor.send_task_event.assert_any_call(task_event.DISCARD, task_id,1, "","Discard by default.")  # type: ignore
     common.monitor.send_task_event.reset_mock()  # type: ignore
 
 
@@ -383,7 +385,7 @@ async def test_route_series_fail_with_bad_tags(fs: FakeFilesystem, mercure_confi
     common.monitor.send_register_task.assert_any_call(task_id, series_uid)  # type: ignore
     router.route_series.assert_called_once_with(task_id, series_uid)  # type: ignore
 
-    common.monitor.send_task_event.assert_any_call(task_event.DISCARD, task_id,1, "","Discard by default. Decoding error detected: some tags were not properly decoded, likely due to a malformed DICOM file. The expected rule may therefore not have been triggered.")
+    common.monitor.send_task_event.assert_any_call(task_event.DISCARD, task_id,1, "","Discard by default. Decoding error detected: some tags were not properly decoded, likely due to a malformed DICOM file. The expected rule may therefore not have been triggered.")  # type: ignore
 
 
 
