@@ -23,112 +23,132 @@ logger = config.get_logger()
 
 
 
-def query_job(*,accession, node):
+def get_accession_job(job_id, job_kwargs):
+    accession, node, path = job_kwargs["accession"], job_kwargs["node"], job_kwargs["path"]
     config.read_config()
-    c = SimpleDicomClient(node.ip, node.port, node.aet_target, config.mercure.incoming_folder)
-    job = get_current_job()
-    job.meta["started"] = 1
-    job.save_meta()
+    c = SimpleDicomClient(node.ip, node.port, node.aet_target, path)
+    # job = get_current_job()
+    # job.meta["started"] = 1
+    # job.save_meta()
     for identifier in c.getscu(accession):
-        job.meta['failed'] = identifier.NumberOfFailedSuboperations
-        job.meta['remaining'] = identifier.NumberOfRemainingSuboperations
-        job.meta['completed'] = identifier.NumberOfCompletedSuboperations
-        if not job.meta.get('total', False):
-            job.meta['total'] = identifier.NumberOfCompletedSuboperations + identifier.NumberOfRemainingSuboperations
-        job.meta["started"] += 1
-        job.save_meta()
+        completed, remaining = identifier.NumberOfCompletedSuboperations, identifier.NumberOfRemainingSuboperations, 
+        progress = f"{ completed } / { completed + remaining }"
+        yield completed, remaining, progress
     return "Complete"
 
-
-def dummy_job(*,accession, node, path):
-    print(f"Getting {accession}")
-    job = get_current_job()
+def check_accessions_exist(*, accessions, node):
+    c = SimpleDicomClient(node.ip, node.port, node.aet_target, None)
     try:
-        Path(path).mkdir(parents=True, exist_ok=True)
-        total_time = 10  # Total time for the job in seconds (1 minute)
-        update_interval = 1  # Interval between updates in seconds
-
-        start_time = time.monotonic()
-        if job.meta.get('parent'):
-            job_parent = worker_queue.fetch_job(job.meta['parent'])
-        else:
-            job_parent = None
-        # failed = 0
-        remaining = total_time // update_interval
-        completed = 0
-
-        if job_parent:
-            job_parent.meta['started'] = job_parent.meta.get('started',0) + 1
-            job_parent.save_meta()
-
-        job.meta['started'] = 1
-        job.meta['total'] = remaining
-        job.meta['progress'] = f"0 / {job.meta['total']}"
-        job.save_meta()
-        while (time.monotonic() - start_time) < total_time:
-            time.sleep(update_interval)  # Sleep for the interval duration
-            out_file = (Path(path) / f"dummy{completed}_{job.id}.dcm")
-            if out_file.exists():
-                raise Exception(f"{out_file} exists already")
-            out_file.touch()
-            remaining -= 1
-            completed += 1
-
-            # job.meta['failed'] = failed
-            job.meta['remaining'] = remaining
-            job.meta['completed'] = completed
-            job.meta['progress'] = f"{completed} / {job.meta['total']}"
-            print(job.meta['progress'])
-            job.save_meta()  # Save the updated meta data to the job
-        
-        if job_parent:
-            job_parent.get_meta() # there is technically a race condition here...
-            job_parent.meta['completed'] += 1
-            job_parent.meta['progress'] = f"{job_parent.meta['started'] } / {job_parent.meta['completed'] } / {job_parent.meta['total']}"
-
-            job_parent.save_meta()
+        for accession in accessions:
+            result = c.findscu(accession)
+            logger.info(result)
     except:
-        if not job_parent:
-            raise
-        # Cancel remaining sibling jobs
-        logger.info("Cancelling sibling jobs.")
-        for subjob_id in job_parent.kwargs.get('subjobs',[]):
-            if subjob_id == job.id:
-                continue
-            subjob = worker_queue.fetch_job(subjob_id)
-            if subjob.get_status() not in ('finished', 'canceled','failed'):
-                subjob.cancel()
-        job_parent.get_meta() 
-        logger.info("Cancelled sibling jobs.")
-        worker_queue._enqueue_job(job_parent) # Force the parent job to run and fail itself
+        job = get_current_job()
+        job_parent = worker_queue.fetch_job(job.meta.get('parent'))
+        job_parent.meta['failed_reason'] = f"Accession {accession} not found on node"
+        worker_queue._enqueue_job(job_parent,at_front=True)
         raise
+def query_dummy(job_id, job_kwargs):
+    total_time = 2  # Total time for the job in seconds (1 minute)
+    update_interval = 0.25  # Interval between updates in seconds
+    remaining = total_time // update_interval
+    completed = 0
+    start_time = time.monotonic()
 
-    return "Job complete"
+    while (time.monotonic() - start_time) < total_time:
+        time.sleep(update_interval)  # Sleep for the interval duration
+        out_file = (Path(job_kwargs['path']) / f"dummy{completed}_{job_id}.dcm")
+        if out_file.exists():
+            raise Exception(f"{out_file} exists already")
+        out_file.touch()
+        remaining -= 1
+        completed += 1
 
-def batch_job(*, accessions, subjobs, path, destination):
+        yield completed, remaining, f"{completed} / {remaining + completed}"
+
+class QueryJob():
+
+    @classmethod
+    def get_accessions(cls, *,accession, node, path, perform_func=query_dummy):
+        print(f"Getting {accession}")
+        job = get_current_job()
+        try:
+            Path(path).mkdir(parents=True, exist_ok=True)
+            job_parent = None
+            if parent_id := job.meta.get('parent'):
+                job_parent = worker_queue.fetch_job(parent_id)
+
+            if job_parent:
+                job_parent.meta['started'] = job_parent.meta.get('started',0) + 1
+                job_parent.save_meta()
+
+            job.meta['started'] = 1
+            job.meta['progress'] = "0 / Unknown"
+            job.save_meta()
+            for completed, remaining, progress in perform_func(job.id, job.kwargs):
+                job.meta['remaining'] = remaining
+                job.meta['completed'] = completed
+                job.meta['progress'] = progress
+                job.save_meta()  # Save the updated meta data to the job
+                logger.info(progress)
+            if job_parent.kwargs["move_promptly"]:
+                move_to_destination(path, job_parent.kwargs["destination"], job_parent.id)
+            if job_parent:
+                job_parent.get_meta() # there is technically a race condition here...
+                job_parent.meta['completed'] += 1
+                job_parent.meta['progress'] = f"{job_parent.meta['started'] } / {job_parent.meta['completed'] } / {job_parent.meta['total']}"
+                job_parent.save_meta()
+        except:
+            if not job_parent:
+                raise
+            # Cancel remaining sibling jobs
+            logger.info("Cancelling sibling jobs.")
+            for subjob_id in job_parent.kwargs.get('subjobs',[]):
+                if subjob_id == job.id:
+                    continue
+                subjob = worker_queue.fetch_job(subjob_id)
+                if subjob.get_status() not in ('finished', 'canceled','failed'):
+                    subjob.cancel()
+            job_parent.get_meta() 
+            logger.info("Cancelled sibling jobs.")
+            job_parent.meta["failed_reason"] = f"Failed to retrieve {accession}"
+            worker_queue._enqueue_job(job_parent,at_front=True) # Force the parent job to run and fail itself
+            raise
+
+        return "Job complete"
+
+def move_to_destination(path, destination, job_id):
+    if destination is None:
+        config.read_config()
+        for p in Path(path).glob("**/*"):
+            if p.is_file():
+                shutil.move(p, config.mercure.incoming_folder)
+        shutil.rmtree(path)
+    else:
+        dest_folder: Path = Path(destination) / job_id
+        dest_folder.mkdir(exist_ok=True)
+        logger.info(f"moving {path} to {dest_folder}")
+        shutil.move(path, dest_folder)
+
+def batch_job(*, accessions, subjobs, path, destination, move_promptly):
     job = get_current_job()
     job.get_meta()
     for job_id in job.kwargs.get('subjobs',[]):
         subjob = worker_queue.fetch_job(job_id)
         if (status := subjob.get_status()) != 'finished':
             raise Exception(f"Subjob {subjob.id} is {status}")
+        if job.kwargs.get('failed', False):
+            raise Exception(f"Failed")
 
     logger.info(f"Job completing {job.id}")
-    logger.info(path)
-    config.read_config()
-    if destination is None:
-        for p in Path(path).glob("**/*"):
-            if p.is_file():
-                shutil.move(p, config.mercure.incoming_folder)
-    else:
-        dest_folder: Path = Path(destination) / job.id
-        dest_folder.mkdir()
-        for p in Path(path).iterdir():
-            if p.is_dir():
-                logger.info(f"moving {p} to {dest_folder}")
-                shutil.move(p, dest_folder)
 
+    if not move_promptly:
+        for p in Path(path).iterdir():
+            if not p.is_dir():
+                continue
+            move_to_destination(p, destination, job.id)
     shutil.rmtree(path)
+
     return "Job complete"
 
 
@@ -161,19 +181,24 @@ def resume_job(job: Job):
 def create_job(accessions, dicom_node, destination_path, offpeak=False) -> Job:
     with Connection(redis):
         jobs = []
+        check_job = Job.create(check_accessions_exist, kwargs=dict(accessions=accessions,node=dicom_node), meta=dict(parent=None))
+
         for accession in accessions:
-            job = Job.create(dummy_job, kwargs=dict(accession=accession, node=dicom_node), timeout='30m', result_ttl=-1, meta=dict(type="get_accession_batch",parent=None, paused=False, offpeak=offpeak))
+            job = Job.create(QueryJob.get_accessions, kwargs=dict(perform_func=get_accession_job, accession=accession, node=dicom_node), timeout='30m', result_ttl=-1, meta=dict(type="get_accession_batch",parent=None, paused=False, offpeak=offpeak),depends_on=[check_job])
             jobs.append(job)
         depends = Dependency(
             jobs=jobs,
             allow_failure=True,    # allow_failure defaults to False
         )
-        full_job = Job.create(batch_job, kwargs=dict(accessions=accessions, subjobs=[j.id for j in jobs], destination=destination_path), timeout=-1, result_ttl=-1, meta=dict(type="batch", started=0, paused=False,completed=0, total=len(jobs), offpeak=offpeak), depends_on=depends)
+        full_job = Job.create(batch_job, kwargs=dict(accessions=accessions, subjobs=[j.id for j in jobs], destination=destination_path, move_promptly=True), timeout=-1, result_ttl=-1, meta=dict(type="batch", started=0, paused=False,completed=0, total=len(jobs), offpeak=offpeak), depends_on=depends)
+        check_job.meta["parent"] = full_job.id
         for j in jobs:
             j.meta["parent"] = full_job.id
             j.kwargs["path"] = f"/opt/mercure/data/query/job_dirs/{full_job.id}/{j.kwargs['accession']}"
         full_job.kwargs["path"] = Path(f"/opt/mercure/data/query/job_dirs/{full_job.id}")
         full_job.kwargs["path"].mkdir(parents=True)
+
+    worker_queue.enqueue_job(check_job)
     for j in jobs:
         worker_queue.enqueue_job(j)
     worker_queue.enqueue_job(full_job)
@@ -325,9 +350,9 @@ async def query_post_batch(request):
             dest_path = d.path
             break
 
-    random_accessions = ["".join(random.choices([str(i) for i in range(10)], k=10)) for _ in range(3)]
+    # random_accessions = ["".join(random.choices([str(i) for i in range(10)], k=10)) for _ in range(3)]
     offpeak = 'offpeak' in form
-    create_job(random_accessions, node, dest_path, offpeak=offpeak)
+    create_job(form.get("accession").split(","), node, dest_path, offpeak=offpeak)
     # worker_scheduler.schedule(scheduled_time=datetime.utcnow(), func=monitor_job, interval=10, repeat=10, result_ttl=-1)
     return PlainTextResponse()
 
@@ -357,7 +382,7 @@ async def query_jobs(request):
                                 parameters=dict(accession=job.kwargs.get('accession','')), 
                                 created_at=1000*datetime.timestamp(job.created_at) if job.created_at else "",
                                 enqueued_at=1000*datetime.timestamp(job.enqueued_at) if job.enqueued_at else "", 
-                                result=job.result, 
+                                result=job.result if job.get_status() != "failed" else job.meta.get("failed_reason",""), 
                                 meta=job.meta,
                                 progress="")
         # if job.meta.get('completed') and job.meta.get('remaining'):

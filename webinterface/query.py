@@ -183,7 +183,7 @@ class SimpleDicomClient():
 
     def findscu(self,accession_number):
         # Create application entity
-        ae = AE(ae_title=calling_aet)
+        ae = AE(ae_title="MERCURE")
 
         # Add a requested presentation context
         # ae.add_requested_context(StudyRootQueryRetrieveInformationModelFind)
