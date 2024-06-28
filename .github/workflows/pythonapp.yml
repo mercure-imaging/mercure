@@ -39,5 +39,5 @@ jobs:
         python -m pytest -vvv tests
     - name: Check getdcmtags version
       run: |
-        apt-get install -y build-essential dcmtk inetutils-ping libqt5core5a
+        sudo apt-get install -y build-essential dcmtk inetutils-ping libqt5core5a
         cd getdcmtags && ./check_version.sh
