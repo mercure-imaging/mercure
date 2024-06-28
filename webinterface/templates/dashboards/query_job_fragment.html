@@ -1,0 +1,29 @@
+<table>
+    <tr>
+        <th>
+        </th>
+        <th>
+            Accession
+        </th>
+        <th>
+            Ended at
+        </th>
+        <th>
+            Status
+        </th>
+        <th>
+            Progress
+        </th>
+    </tr>
+
+    </th>
+    {% for job in subjob_info %}
+    <tr>
+        <td></td>
+        <td>{{job['accession']}}</td>
+        <td>{{job['ended_at'] or ''}}</td>
+        <td>{{job['status']}}</td>
+        <td>{{job['progress'] or ''}}</td>
+    </tr>
+    {% endfor %}
+</table>

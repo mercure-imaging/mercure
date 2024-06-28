@@ -68,9 +68,11 @@
             <table class="table is-narrow is-hoverable is-fullwidth jobtable" id="casetable">
                 <thead>
                     <tr>
+                        <th></th>
                         <th>id</th>
+                        <th>type</th>
                         <th>status</th>
-                        <th>enqueued_at</th>
+                        <th>created_at</th>
                         <th>accession</th>
                         <th>result</th>
                         <th>progress</th>
@@ -93,14 +95,22 @@ $(document).ready(function () {
         ajax: "query/jobs",
         deferRender: true,
         columns: [
+            {
+                className: 'dt-control',
+                orderable: false,
+                data: null,
+                defaultContent: ''
+            },
             { data: 'id' },
+            { data: 'meta', render: data => data["type"]? data["type"]:"" },
             { data: 'status' },
-            { data: 'enqueued_at', render: data => `<span style="display:none;">${data}</span>`+new Date(data).toLocaleString("en-US")},
+            { data: 'created_at', render: data => `<span style="display:none;">${data || Date.now()  }</span>`+(data? new Date(data).toLocaleString("en-US"):"")},
             { data: 'parameters', render: data => data["accession"] || ""},
             { data: 'result' },
-            { data: 'meta', render: data => data["completed"]?`${data["completed"]}/${data["remaining"]+data["completed"]}`:"" },
+            { data: 'progress'},
         ],
         select: {
+            selector:'td:not(:first-child)',
             style: 'os'
         },
         language: {
@@ -108,10 +118,28 @@ $(document).ready(function () {
         },
         // filter: true,
         buttons: [],
-        order: [[2, 'desc']],
+        order: [[4, 'desc']],
         initComplete: function() {             
         }
     });
+    window.datatable.on('click', 'td.dt-control', function (e) {
+      let tr = e.target.closest('tr');
+      let row = window.datatable.row(tr);
+  
+      if (row.child.isShown()) {
+          // This row is already open - close it
+          row.child.hide();
+      }
+      else {
+          // Open this row
+          fetch("query/job_info?id="+row.data().id, {method: "GET"}
+            ).then(
+              response => response.text()
+            ).then(data=>{
+              row.child(data).show();
+            });
+      }
+  });
 });
 </script>
 {% endblock %}
