@@ -7,13 +7,17 @@ Helper functions for the graphical user interface of mercure.
 # Standard python includes
 from typing import Optional, Tuple
 import asyncio
+from redis import Redis
+from rq import Queue, Connection
 
 # Starlette-related includes
 from starlette.templating import Jinja2Templates
 
+from common.constants import mercure_defs
 
-templates = Jinja2Templates(directory="webinterface/templates")
 
+
+worker_queue = Queue(connection=Redis())
 
 def get_user_information(request) -> dict:
     """Returns dictionary of values that should always be passed to the templates when the user is logged in."""
@@ -22,6 +26,11 @@ def get_user_information(request) -> dict:
         "user": request.user.display_name,
         "is_admin": request.user.is_admin if request.user.is_authenticated else False,
     }
+
+def get_mercure_version(request) -> dict:
+    return { "mercure_version": mercure_defs.VERSION }
+
+templates = Jinja2Templates(directory="webinterface/templates", context_processors=[get_user_information, get_mercure_version])
 
 
 async def async_run(cmd, **params) -> Tuple[Optional[int], bytes, bytes]:

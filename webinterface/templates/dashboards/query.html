@@ -1,0 +1,117 @@
+{% extends "dashboards/dashboards.html" %}
+
+{% block title %}Query{% endblock %}
+
+{% block extra_head %}
+    <script type="text/javascript" src="{{ url_for('static', path='DataTables/datatables.min.js') }}"></script>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', path='DataTables/datatables.min.css') }}"/>  
+{% endblock %}
+
+{% block dashboard_content %}
+<main role="main">
+    <h1 class="title">DICOM Query</h1>
+    <div class="container">
+        <form class="box" id="form" hx-post="query" hx-target="#query_result" hx-swap="innerHTML">
+            <div class="field is-horizontal">
+              <div class="field-label is-normal">
+                <label class="label">Accession</label>
+              </div>
+              <div class="field-body">
+                <div class="field">
+                  <div class="control is-expanded">
+                    <div class="control">
+                        <input name="accession" class="input" type="text" placeholder="00000" value="">
+                      </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="field is-horizontal">
+              <div class="field-label is-normal">
+                <label class="label">Dicom Node</label>
+              </div>
+              <div class="field-body">
+                <div class="field">
+                  <div class="control is-expanded">
+                    <div class="select">
+                        <select name="dicom_node">
+                          {% for node in dicom_nodes %}
+                          <option>{{ node.name }}</option>
+                          {% endfor %}
+                        </select>
+                      </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="field is-horizontal">
+              <div class="field-label">
+                <!-- Left empty for spacing -->
+              </div>
+              <div class="field-body">
+                <div class="field">
+                  <div class="control">
+                    <button type="submit" class="button is-primary">
+                      Query
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div> 
+          </form>
+          <div id="query_result"></div>
+        <div class="columns">
+
+        <div class="column">
+            <table class="table is-narrow is-hoverable is-fullwidth jobtable" id="casetable">
+                <thead>
+                    <tr>
+                        <th>id</th>
+                        <th>status</th>
+                        <th>enqueued_at</th>
+                        <th>accession</th>
+                        <th>result</th>
+                        <th>progress</th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+            </div>
+            </div>
+    </div>
+</main>
+<script>
+$(document).ready(function () {      
+    $("#form").on('htmx:afterOnLoad', (event) => {
+        datatable.ajax.reload();
+});
+    window.datatable = $('#casetable').DataTable({           
+        dom: "<'row browsertoolbar align-items-end'<'col-sm-12 col-md-7 browserbuttons'B><'col-sm-12 col-md-2'><'col-sm-12 col-md-3'f>>" + "<'row'<'col-sm-12'tr>>" + "<'row browserfooterbar'<'col-sm-12 col-md-5'l><'col-sm-12 col-md-7'p>>",
+        ajax: "query/jobs",
+        deferRender: true,
+        columns: [
+            { data: 'id' },
+            { data: 'status' },
+            { data: 'enqueued_at', render: data => `<span style="display:none;">${data}</span>`+new Date(data).toLocaleString("en-US")},
+            { data: 'parameters', render: data => data["accession"] || ""},
+            { data: 'result' },
+            { data: 'meta', render: data => data["completed"]?`${data["completed"]}/${data["remaining"]+data["completed"]}`:"" },
+        ],
+        select: {
+            style: 'os'
+        },
+        language: {
+            "emptyTable": "No messages available on server."
+        },
+        // filter: true,
+        buttons: [],
+        order: [[2, 'desc']],
+        initComplete: function() {             
+        }
+    });
+});
+</script>
+{% endblock %}

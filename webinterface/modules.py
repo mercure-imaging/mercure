@@ -101,12 +101,11 @@ async def show_modules(request):
     template = "modules.html"
     context = {
         "request": request,
-        "mercure_version": mercure_defs.VERSION,
+        
         "page": "modules",
         "modules": config.mercure.modules,
         "used_modules": used_modules,
     }
-    context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
 
 
@@ -204,7 +203,7 @@ async def edit_module(request):
     template = "modules_edit.html"
     context = {
         "request": request,
-        "mercure_version": mercure_defs.VERSION,
+        
         "page": "modules",
         "module": config.mercure.modules[module],
         "module_name": module,
@@ -212,7 +211,6 @@ async def edit_module(request):
         "runtime": runtime,
         "support_root_modules": config.mercure.support_root_modules,
     }
-    context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
 
 
