@@ -44,7 +44,26 @@
                 </div>
               </div>
             </div>
-
+            <div class="field is-horizontal">
+              <div class="field-label is-normal">
+                <label class="label">Destination</label>
+              </div>
+              <div class="field-body">
+                <div class="field">
+                  <div class="control is-expanded">
+                    <div class="select">
+                        <select name="destination">
+                          <option>Mercure</option>
+                          <option disabled>————————</option>
+                          {% for destination in destination_folders %}
+                          <option>{{ destination.name }}</option>
+                          {% endfor %}
+                        </select>
+                      </div>
+                  </div>
+                </div>
+              </div>
+            </div>
             <div class="field is-horizontal">
               <div class="field-label">
                 <!-- Left empty for spacing -->
@@ -59,7 +78,6 @@
                 </div>
               </div>
             </div>
-          </div> 
           </form>
           <div id="query_result"></div>
         <div class="columns">
@@ -84,12 +102,45 @@
             </div>
             </div>
     </div>
+  </div> 
+
 </main>
 <script>
 $(document).ready(function () {      
     $("#form").on('htmx:afterOnLoad', (event) => {
         datatable.ajax.reload();
-});
+  });
+
+  function namespacedEvents(config) {
+        var unique = config._eventNamespace;
+        return 'draw.dt.DT' + unique + ' select.dt.DT' + unique + ' deselect.dt.DT' + unique;
+  }
+    var _buttonNamespace = 0;
+    my_selected_button = {
+		text: 'Selected',
+		className: 'buttons-selected',
+        enabled: function(dt,config) {
+           rows = dt.rows({ selected: true });
+           return rows.any();
+        },
+		init: function (dt, node, config) {
+			var that = this;
+			config._eventNamespace = '.select' + _buttonNamespace++;
+			// .DT namespace listeners are removed by DataTables automatically
+			// on table destroy
+      // console.log(config);
+			dt.on(namespacedEvents(config), function () {
+				that.enable(config.enabled(dt, node, config));
+			});
+
+			this.disable();
+		},
+		destroy: function (dt, node, config) {
+			dt.off(config._eventNamespace);
+		}}
+
+    $.fn.dataTable.ext.buttons.customEnable = my_selected_button;
+
     window.datatable = $('#casetable').DataTable({           
         dom: "<'row browsertoolbar align-items-end'<'col-sm-12 col-md-7 browserbuttons'B><'col-sm-12 col-md-2'><'col-sm-12 col-md-3'f>>" + "<'row'<'col-sm-12'tr>>" + "<'row browserfooterbar'<'col-sm-12 col-md-5'l><'col-sm-12 col-md-7'p>>",
         ajax: "query/jobs",
@@ -117,7 +168,43 @@ $(document).ready(function () {
             "emptyTable": "No messages available on server."
         },
         // filter: true,
-        buttons: [],
+        buttons: [
+          {
+                    extend: "customEnable",
+                    text: '<i class="fas fa-pause"></i>',
+                    titleAttr: 'Pause/Resume',
+                    enabled: function(dt, node, config) {
+                      let data = dt.row({selected: true}).data();
+                      console.log(node);
+                      if (!data) {
+                          return false;
+                      }
+                      if (data.status == "paused") {
+                        node.html('<i class="fas fa-play"></i>')
+                      } else {
+                        node.html('<i class="fas fa-pause"></i>')
+                      }
+                      return (data.status == "paused" || data.status == "deferred" || data.status == "queued" || data.status == "running");
+                    },
+                    action: function (e, dt, node, config) {
+                        let data = dt.row({selected: true}).data();
+                        
+                        if (data.status == "paused") {
+                          operation = "resume";
+                        } else if (data.status == "deferred" || data.status == "running" || data.status == "queued")  {
+                          operation = "pause";
+                        } else {
+                          alert("???");
+                          return;
+                        }
+                        fetch(`query/${operation}_job?id=${data.id}`, {method:"POST"}).then(()=>{
+                            dt.ajax.reload()
+                        }).catch((err)=>{
+                            console.log("Error: ", err)
+                        })
+                    }
+                },
+        ],
         order: [[4, 'desc']],
         initComplete: function() {             
         }
