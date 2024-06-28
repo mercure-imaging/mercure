@@ -379,13 +379,13 @@ async def query_jobs(request):
             else:
                 job_dict["status"] = "paused"
 
-        # if job_dict["status"] in ("deferred", "started"):
-            # if n_started == 0:
-            #     job_dict["status"] = "waiting"
-            # elif n_completed < n_total:
-            #     job_dict["status"] = "running"
-            # elif n_completed == n_total:
-            #     job_dict["status"] = "finishing"
+        if job_dict["status"] in ("deferred", "started"):
+            if n_started == 0:
+                job_dict["status"] = "waiting"
+            elif n_completed < n_total:
+                job_dict["status"] = "running" 
+            elif n_completed == n_total:
+                job_dict["status"] = "finishing" 
 
         job_info.append(job_dict)
     return JSONResponse(dict(data=job_info))
