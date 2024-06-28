@@ -179,18 +179,27 @@ pyxnat==1.6.2
     # via -r requirements.in
 reactivex==4.0.4
     # via influxdb-client
-requests==2.32.3
 redis==5.0.4
     # via rq
+requests==2.31.0
+    # via
+    #   dicomweb-client
+    #   docker
+    #   python-nomad
+    #   pyxnat
+    #   sphinx
 retrying==1.3.4
     # via dicomweb-client
-s3transfer==0.10.1
 rq==1.16.2
     # via
     #   -r requirements.in
     #   rq-scheduler
 rq-scheduler==0.13.1
     # via -r requirements.in
+s3transfer==0.10.0
+    # via boto3
+setuptools==70.0.0
+    # via influxdb-client
 six==1.16.0
     # via
     #   python-dateutil
