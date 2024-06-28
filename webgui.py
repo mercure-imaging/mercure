@@ -127,6 +127,18 @@ DEBUG_MODE = webgui_config("DEBUG", cast=bool, default=True)
 
 
 def startup() -> None:
+    scheduled_jobs = worker_scheduler.get_jobs()
+    for job in scheduled_jobs: 
+        if job.meta.get("type") != "offpeak":
+            continue
+        worker_scheduler.cancel(job)
+    worker_scheduler.schedule(
+        scheduled_time=datetime.datetime.utcnow(),
+        func=dashboards.query.update_jobs_offpeak,
+        interval=60,
+        meta={"type": "offpeak"},
+        repeat=None
+    )
     monitor.configure("webgui", "main", config.mercure.bookkeeper)
     monitor.send_event(monitor.m_events.BOOT, monitor.severity.INFO, f"PID = {os.getpid()}")
 
