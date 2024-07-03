@@ -6,7 +6,7 @@ Rules page for the graphical user interface of mercure.
 
 # Standard python includes
 import daiquiri
-from typing import Dict
+from typing import Any, Dict, Set
 import json
 
 # Starlette-related includes
@@ -256,7 +256,7 @@ async def rules_delete_post(request) -> Response:
 @requires(["authenticated", "admin"], redirect="login")
 async def rules_test(request) -> Response:
     """Evalutes if a given routing rule is valid. The rule and testing dictionary have to be passed as form parameters."""
-    noresult = set()
+    noresult:Set[Any] = set()
     attrs_accessed = set()
     try:
         form = dict(await request.form())
