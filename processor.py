@@ -217,23 +217,10 @@ async def search_folder(counter) -> bool:
 
         return False
 
-# Taken directly from cleaner.py- can be added as a helper function.
-def _is_offpeak(offpeak_start: str, offpeak_end: str, current_time: _time) -> bool:
-    try:
-        start_time = datetime.strptime(offpeak_start, "%H:%M").time()
-        end_time = datetime.strptime(offpeak_end, "%H:%M").time()
-    except Exception as e:
-        logger.error(f"Unable to parse offpeak time: {offpeak_start}, {offpeak_end}", None)  # handle_error
-        return True
-
-    if start_time < end_time:
-        return current_time >= start_time and current_time <= end_time
-    # End time is after midnight
-    return current_time >= start_time or current_time <= end_time
 
 def prioritize_tasks(sorted_tasks: list, counter: int) -> Optional[Path]:
     """Returns the prioritized task based on the priority in the task file."""
-    is_offpeak = _is_offpeak(config.mercure.offpeak_start, config.mercure.offpeak_end, datetime.now().time())
+    is_offpeak = helper._is_offpeak(config.mercure.offpeak_start, config.mercure.offpeak_end, datetime.now().time())
     normal_task, urgent_task = None, None
     for task in sorted_tasks:
         task_folder = Path(task)

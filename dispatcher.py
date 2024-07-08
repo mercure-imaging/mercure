@@ -15,6 +15,7 @@ from pathlib import Path
 import daiquiri
 import graphyte
 import hupper
+from datetime import datetime
 
 # App-specific includes
 import common.config as config
@@ -75,7 +76,7 @@ def dispatch() -> None:
     retry_max = config.mercure.retry_max
     retry_delay = config.mercure.retry_delay
 
-    def is_urgent(task_folder: Path) -> bool:
+    def get_priority(task_folder: Path) -> str:
         try:
             taskfile_path = task_folder / mercure_names.TASKFILE
             with open(taskfile_path, "r") as f:
@@ -83,22 +84,34 @@ def dispatch() -> None:
             applied_rule = config.mercure.rules.get(task_instance.info.get("applied_rule"))
             if applied_rule is None:
                 triggered_rule_names = task_instance.info.get("triggered_rules")
+                # replace/return the priority if a rule with higher priority is found
+                priority = ""
                 for rule_name in triggered_rule_names:
-                    if config.mercure.get("rules",{}).get(rule_name,{}).get("priority") == "urgent":
-                        return True
-                return False
-            return applied_rule.priority == "urgent"
+                    current_priority = config.mercure.get("rules",{}).get(rule_name,{}).get("priority")
+                    if current_priority == "urgent":
+                        return "urgent"
+                    elif current_priority == "normal":
+                        priority = "normal"
+                    elif current_priority == "offpeak" and priority == "":
+                        priority = "offpeak"
+                return priority
+            return applied_rule.priority
         except:
-            logger.exception("Error while checking if task is urgent")
-            return False
+            logger.exception("Error while checking priority")
+            return ""
 
     try:
         items = Path(config.mercure.outgoing_folder).iterdir()
+        is_offpeak = helper._is_offpeak(config.mercure.offpeak_start, config.mercure.offpeak_end, datetime.now().time())
         # Get the folders that are ready for dispatching
         valid_items = [item for item in items if item.is_dir() and is_ready_for_sending(item)]
         urgent_items, normal_items = [], []
         for item in valid_items:
-            urgent_items.append(item) if is_urgent(item) else normal_items.append(item)
+            priority = get_priority(item)
+            if priority == "urgent":
+                urgent_items.append(item)
+            elif priority == "normal" or (priority == "offpeak" and is_offpeak):
+                normal_items.append(item)
         sorted_urgent_items = sorted(urgent_items, key=os.path.getmtime)
         sorted_normal_items = sorted(normal_items, key=os.path.getmtime)
         counter = 0

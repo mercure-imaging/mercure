@@ -108,7 +108,7 @@ def clean() -> None:
                 )
 
     ## Regular cleaning procedure
-    if _is_offpeak(
+    if helper._is_offpeak(
         config.mercure.offpeak_start,
         config.mercure.offpeak_end,
         datetime.now().time(),
@@ -118,18 +118,6 @@ def clean() -> None:
         clean_dir(discard_folder, retention)
 
 
-def _is_offpeak(offpeak_start: str, offpeak_end: str, current_time: _time) -> bool:
-    try:
-        start_time = datetime.strptime(offpeak_start, "%H:%M").time()
-        end_time = datetime.strptime(offpeak_end, "%H:%M").time()
-    except Exception as e:
-        logger.error(f"Unable to parse offpeak time: {offpeak_start}, {offpeak_end}", None)  # handle_error
-        return True
-
-    if start_time < end_time:
-        return current_time >= start_time and current_time <= end_time
-    # End time is after midnight
-    return current_time >= start_time or current_time <= end_time
 
 
 def clean_dir(folder, retention) -> None:

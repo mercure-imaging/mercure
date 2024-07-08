@@ -468,7 +468,7 @@ async def test_priority_process(fs, mercure_config: Callable[[Dict], Config], mo
     fake_pull = mocked.Mock(return_value=FakeImageContainer())  # type: ignore
     mocked.patch.object(ImageCollection, "pull", new=fake_pull)
 
-    mocked.patch("processor._is_offpeak", lambda x,y,z: is_offpeak)
+    mocked.patch("common.helper._is_offpeak", lambda x,y,z: is_offpeak)
 
     # Can be added as a helper function
     def get_priority(task_folder: Path) -> str:
