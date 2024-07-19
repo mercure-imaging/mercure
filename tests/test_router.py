@@ -171,7 +171,7 @@ def task_will_dispatch_to(task, config, fake_process) -> None:
         [
             call(task_event.DISPATCH_BEGIN, task.id, 1, task.dispatch.target_name, "Routing job running"),
             call(task_event.DISPATCH_COMPLETE, task.id, 1, "", "Routing job complete"),
-            call(task_event.MOVE, task.id, 0, "/var/success", "Moved to success folder"),
+            call(task_event.MOVE, task.id, 0, f"/var/success/{task.id}", "Moved to success folder"),
         ],
     )
 
