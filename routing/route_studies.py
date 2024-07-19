@@ -324,8 +324,12 @@ def move_study_folder(task_id: Union[str, None], study: str, destination: str) -
         logger.error(f"Unknown destination {destination} requested for {study}", task_id)  # handle_error
         return False
 
-    # Create unique name of destination folder
-    destination_folder += "/" + str(uuid.uuid1())
+    if task_id is None:
+        # Create unique name of destination folder
+        destination_folder += "/" + str(uuid.uuid1())
+    else:
+        # If a task ID exists, name the folder by it to ensure that the files can be found again.
+        destination_folder += "/" + str(task_id)
 
     # Create the destination folder and validate that is has been created
     try:
