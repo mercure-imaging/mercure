@@ -57,8 +57,8 @@ pillow >= 10.0.1
 dicomweb-client
 boto3
 freezegun
-certifi>=2023.07.22
+certifi>=2024.07.04
 future>=0.18.3
 lxml>=4.9.1
 pyxnat
-urllib3>=1.26.18
+urllib3>=2.2.2
