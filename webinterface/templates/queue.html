@@ -810,6 +810,21 @@
             select: true,
             buttons: [
                 {
+                    extend: 'collection',
+                    text: '<i class="fas fa-filter"></i>',
+                    className: 'queueArchiveFilter',
+                    buttons: [
+                        {
+                            text: 'Show only STUDY tasks',
+                            className: 'queueArchiveFilterButton',
+                            action: function (e, dt, node, config, cb) {
+                                        // Toggles class when pressed
+                                        $(e.currentTarget).toggleClass("queueArchiveFilterButton-Checked")                       
+                                    }
+                        }
+                    ]
+                },
+                {
                     text: '<i class="far fa-question-circle"></i>',
                     titleAttr: 'Job information',
                     action: function ( e, dt, node, config ) {
@@ -832,19 +847,23 @@
                         var jid = $('#jobs_archive').DataTable().rows( { selected: true } ).data()[0].slice(-1)[0];
                         showLogs(jid);
                     }
-                }   
+                }
             ],
             dom: 'Bfrtip',
             "scrollY": "740px",
             "scrollX": false,
             "scrollCollapse": true,
-            "order": [[3, 'desc']]
+            "order": [[3, 'desc']],
+            initComplete: function() {
+                $('.queueArchiveFilter > .dt-down-arrow').hide()
+                $('.queueArchiveFilter > .icon').hide()
+            }
         } );
         $('#jobs_archive').DataTable().on( 'select deselect', function () {
             var selectedRows = $('#jobs_archive').DataTable().rows( { selected: true } ).count();
-            $('#jobs_archive').DataTable().button(0).enable( selectedRows > 0 );
             $('#jobs_archive').DataTable().button(1).enable( selectedRows > 0 );
             $('#jobs_archive').DataTable().button(2).enable( selectedRows > 0 );
+            $('#jobs_archive').DataTable().button(3).enable( selectedRows > 0 );
         } );
         $("#job_archive_search").on('keyup', function (event) {
             if (event.keyCode === 13) {
@@ -922,9 +941,9 @@
                             jobtable.row.add( [ data[key]["ACC"], data[key]["MRN"], data[key]["Scope"], data[key]["Time"], key ] );
                         })
                     }
-                    $('#jobs_archive').DataTable().button(0).enable(false);
                     $('#jobs_archive').DataTable().button(1).enable(false);
                     $('#jobs_archive').DataTable().button(2).enable(false);
+                    $('#jobs_archive').DataTable().button(3).enable(false);
                     jobtable.draw();
                 },
                 complete: function (data) {
