@@ -953,12 +953,13 @@
             },
             success: function (data) {
                 if (data && data.length > 0) {
-                    $("#process_logs_display").text("");
+                    var logText = "";
                     for (var i = 0; i < data.length; i++) {
-                        $("#process_logs_display").append("### Module " + (i+1).toString()  +  " -- Begin\n\n");
-                        $("#process_logs_display").append(data[i].logs);
-                        $("#process_logs_display").append("\n### Module " + (i+1).toString() + " -- Complete\n\n");
+                        logText += "### Module " + (i+1).toString()  +  " -- Begin\n\n";
+                        logText += data[i].logs;
+                        logText += "\n### Module " + (i+1).toString() + " -- Complete\n\n";
                     }
+                    $("#process_logs_display").text(logText);
                 } else {
                     $("#process_logs_display").text("No processing log available for selected task.")
                 }
