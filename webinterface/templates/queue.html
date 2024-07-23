@@ -930,7 +930,7 @@
                 complete: function (data) {
                     $('#loadingspinner').hide();
                 },
-                timeout: 3000
+                timeout: 5000
             });
             return;
         }
@@ -953,13 +953,18 @@
             },
             success: function (data) {
                 if (data && data.length > 0) {
-                    $("#process_logs_display").text(data[0].logs)
+                    $("#process_logs_display").text("");
+                    for (var i = 0; i < data.length; i++) {
+                        $("#process_logs_display").append("### Module " + (i+1).toString()  +  " -- Begin\n\n");
+                        $("#process_logs_display").append(data[i].logs);
+                        $("#process_logs_display").append("\n### Module " + (i+1).toString() + " -- Complete\n\n");
+                    }
                 } else {
                     $("#process_logs_display").text("No processing log available for selected task.")
                 }
                 $("#process_logs").addClass("is-active");
             },
-            timeout: 3000
+            timeout: 5000
         });
     }
 
