@@ -1034,7 +1034,7 @@
                     var resultsText = "";
                     for (var i = 0; i < data.length; i++) {
                         resultsText += "### Module " + data[i].module + "\n\n";
-                        resultsText += data[i].logs;
+                        resultsText += data[i].output;
                         resultsText += "\n\n";
                     }
                     $("#process_results_display").text(resultsText);
