@@ -164,9 +164,14 @@ async def get_task_process_logs(request) -> JSONResponse:
 @requires("authenticated")
 async def find_task(request) -> JSONResponse:
     search_term = request.query_params.get("search_term", "")
+    study_filter = request.query_params.get("study_filter", "false")
     filter_term = ""
     if search_term:
         filter_term = f"""and ((tag_accessionnumber ilike '{search_term}%') or (tag_patientid ilike '{search_term}%') or (tag_patientname ilike '%{search_term}%'))"""
+
+    study_filter_term = ""
+    if study_filter=="true":
+        study_filter_term = "and tasks.study_uid is not null"
 
     query = sqlalchemy.text(
         f""" select tasks.id as task_id, 
@@ -176,7 +181,7 @@ async def find_task(request) -> JSONResponse:
         tasks.time as time
         from tasks
         left join dicom_series on dicom_series.series_uid = tasks.series_uid 
-        where parent_id is null {filter_term}
+        where parent_id is null {filter_term} {study_filter_term}
         order by date_trunc('second', tasks.time) desc, tasks.id desc
         limit 256 """
     )

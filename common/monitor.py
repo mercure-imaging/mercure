@@ -250,8 +250,8 @@ async def get_tests() -> Any:
     return await get("query/tests")
 
 
-async def find_tasks(search_term="") -> Any:
-    return await get("query/find_task", {"search_term": search_term})
+async def find_tasks(search_term="", study_filter="false") -> Any:
+    return await get("query/find_task", {"search_term": search_term, "study_filter": study_filter})
 
 
 async def task_process_logs(task_id="") -> Any:

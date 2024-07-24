@@ -319,6 +319,8 @@
 
 <script>
 
+    var archiveFilterQueue = false;
+
     function update() {
         update_status();
         update_jobs();
@@ -731,10 +733,6 @@
                                 timeout: 3000
                             });
                         })
-
-
-
-
                     }
                 }
             ],
@@ -811,6 +809,7 @@
             buttons: [
                 {
                     extend: 'collection',
+                    autoClose: true,
                     text: '<i class="fas fa-filter"></i>',
                     className: 'queueArchiveFilter',
                     buttons: [
@@ -818,9 +817,11 @@
                             text: 'Show only STUDY tasks',
                             className: 'queueArchiveFilterButton',
                             action: function (e, dt, node, config, cb) {
-                                        // Toggles class when pressed
-                                        $(e.currentTarget).toggleClass("queueArchiveFilterButton-Checked")                       
-                                    }
+                                // Toggles class when pressed
+                                $(e.currentTarget).toggleClass("queueArchiveFilterButton-Checked");                       
+                                archiveFilterQueue = !archiveFilterQueue;
+                                archiveSearch();
+                            }
                         }
                     ]
                 },
@@ -928,7 +929,7 @@
             $.ajax({
                 type: 'GET',
                 url: '/api/find-tasks',
-                data: {'search_term': searchTerm },
+                data: {'search_term': searchTerm, 'study_filter': archiveFilterQueue },
                 dataType: 'json',
                 error: function () {
                     $('#erroralert').show();
