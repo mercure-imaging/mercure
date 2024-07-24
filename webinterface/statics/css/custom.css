@@ -381,14 +381,14 @@ table.dataTable tbody tr.selected th, table.dataTable tbody tr.selected td {
   height: 14px;
 }
 
-.process-logs-output {
+.process-logs-output, .process-results-output {
   font-family: monospace;
   background-color: #0a0a0a;
   color: #fff;
   padding: 8px;
 }
 
-.process-logs-output::selection {
+.process-logs-output::selection, .process-results-output::selection {
   background-color: rgb(50, 115, 220);
   color: #fff;
 }

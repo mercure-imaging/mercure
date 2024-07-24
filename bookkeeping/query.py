@@ -137,7 +137,7 @@ async def get_dicom_files(request) -> JSONResponse:
 @router.get("/task_process_logs")
 @requires("authenticated")
 async def get_task_process_logs(request) -> JSONResponse:
-    """Endpoint for getting all events related to one series."""
+    """Endpoint for getting all processing logs related to one series."""
     task_id = request.query_params.get("task_id", "")
 
     subtask_query = (
@@ -149,7 +149,7 @@ async def get_task_process_logs(request) -> JSONResponse:
     subtasks = await database.fetch_all(subtask_query)
     subtask_ids = [row[0] for row in subtasks]
 
-    query = processor_logs_table.select(processor_logs_table.c.task_id.in_(subtask_ids))
+    query = processor_logs_table.select(processor_logs_table.c.task_id.in_(subtask_ids)).order_by(processor_logs_table.c.id)
     results = [dict(r) for r in await database.fetch_all(query)]
     for result in results:
         if result["logs"] == None:
@@ -157,6 +157,17 @@ async def get_task_process_logs(request) -> JSONResponse:
                 result["logs"] = (
                     Path(logs_folder) / result["task_id"] / f"{result['module_name']}.{result['id']}.txt"
                 ).read_text(encoding="utf-8")
+    return CustomJSONResponse(results)
+
+
+@router.get("/task_process_results")
+@requires("authenticated")
+async def get_task_process_results(request) -> JSONResponse:
+    """Endpoint for getting all processing results from a task."""
+    task_id = request.query_params.get("task_id", "")
+
+    query = processor_outputs_table.select().where(processor_outputs_table.c.task_id == task_id).order_by(processor_outputs_table.c.id)
+    results = [dict(r) for r in await database.fetch_all(query)]
     return CustomJSONResponse(results)
 
 

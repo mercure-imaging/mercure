@@ -258,5 +258,9 @@ async def task_process_logs(task_id="") -> Any:
     return await get("query/task_process_logs", {"task_id": task_id})
 
 
+async def task_process_results(task_id="") -> Any:
+    return await get("query/task_process_results", {"task_id": task_id})
+
+
 async def get_task_info(task_id="") -> Any:
     return await get("query/get_task_info", {"task_id": task_id})

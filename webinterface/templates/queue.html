@@ -315,6 +315,20 @@
         </div>
     </div> 
 
+    <div class="modal" id="process_results">
+        <div class="modal-background"></div>
+        <div class="modal-card process-results" style="width: 60%;">
+            <header class="modal-card-head">
+                <p class="modal-card-title">Processing Results</p>
+            </header>
+            <section class="modal-card-body process-results" style="background-color: #0a0a0a; border-left: 3px solid #FFF; border-right: 3px solid #FFF;">
+                <pre id="process_results_display" class="process-results process-results-output"></pre>
+            </section>
+            <footer class="modal-card-foot buttons is-centered">
+                <button class="button" type="button" id="closeprocessresults" onclick="closeProcessResults()">Close</button>
+            </footer>
+        </div>
+    </div>     
 </main>
 
 <script>
@@ -812,9 +826,10 @@
                     autoClose: true,
                     text: '<i class="fas fa-filter"></i>',
                     className: 'queueArchiveFilter',
+                    titleAttr: 'Job filter',
                     buttons: [
                         {
-                            text: 'Show only STUDY tasks',
+                            text: 'Show only STUDY jobs',
                             className: 'queueArchiveFilterButton',
                             action: function (e, dt, node, config, cb) {
                                 // Toggles class when pressed
@@ -848,7 +863,15 @@
                         var jid = $('#jobs_archive').DataTable().rows( { selected: true } ).data()[0].slice(-1)[0];
                         showLogs(jid);
                     }
-                }
+                },
+                {
+                    text: '<i class="fas fa-chart-bar"></i>',
+                    titleAttr: 'Processing results',
+                    action: function ( e, dt, node, config ) {
+                        var jid = $('#jobs_archive').DataTable().rows( { selected: true } ).data()[0].slice(-1)[0];
+                        showResults(jid);
+                    }
+                }                
             ],
             dom: 'Bfrtip',
             "scrollY": "740px",
@@ -865,6 +888,7 @@
             $('#jobs_archive').DataTable().button(1).enable( selectedRows > 0 );
             $('#jobs_archive').DataTable().button(2).enable( selectedRows > 0 );
             $('#jobs_archive').DataTable().button(3).enable( selectedRows > 0 );
+            $('#jobs_archive').DataTable().button(4).enable( selectedRows > 0 );
         } );
         $("#job_archive_search").on('keyup', function (event) {
             if (event.keyCode === 13) {
@@ -945,6 +969,7 @@
                     $('#jobs_archive').DataTable().button(1).enable(false);
                     $('#jobs_archive').DataTable().button(2).enable(false);
                     $('#jobs_archive').DataTable().button(3).enable(false);
+                    $('#jobs_archive').DataTable().button(4).enable(false);
                     jobtable.draw();
                 },
                 complete: function (data) {
@@ -989,6 +1014,39 @@
         });
     }
 
+    function showResults(jobId)
+    {
+        if (jobId === "") {
+            return;
+        }
+        $("#process_results").addClass("is-loading");   
+
+        $.ajax({
+            type: 'GET',
+            url: '/api/task-process-results',
+            data: {'task_id': jobId},
+            dataType: 'json',
+            error: function () {
+                // $('#erroralert').show();
+            },
+            success: function (data) {
+                if (data && data.length > 0) {
+                    var resultsText = "";
+                    for (var i = 0; i < data.length; i++) {
+                        resultsText += "### Module " + data[i].module + "\n\n";
+                        resultsText += data[i].logs;
+                        resultsText += "\n\n";
+                    }
+                    $("#process_results_display").text(resultsText);
+                } else {
+                    $("#process_results_display").text("No processing results exist for the selected task.")
+                }
+                $("#process_results").addClass("is-active");
+            },
+            timeout: 5000
+        });
+    }
+
     function showAuditTrail(jobId)
     {
         if (jobId === "") {
@@ -1025,6 +1083,11 @@
     function closeProcessLogs()
     {
         $("#process_logs").removeClass("is-active");
+    }
+
+    function closeProcessResults()
+    {
+        $("#process_results").removeClass("is-active");
     }
 
     function showJobInformation(jobId,category)

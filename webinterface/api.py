@@ -87,6 +87,16 @@ async def task_process_logs(request):
         return JSONResponse({"error": e.status_code}, status_code=e.status_code)
 
 
+@router.get("/task-process-results")
+@requires(["authenticated"])
+async def task_process_results(request):
+    task_id = request.query_params.get("task_id", "")
+    try:
+        return JSONResponse(await monitor.task_process_results(task_id))
+    except monitor.MonitorHTTPError as e:
+        return JSONResponse({"error": e.status_code}, status_code=e.status_code)
+
+
 @router.get("/get-task-info")
 @requires(["authenticated"])
 async def get_task_info(request):
