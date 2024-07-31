@@ -38,14 +38,14 @@ logger = config.get_logger()
 
 
 @log_helpers.clear_task_decorator
-def route_series(task_id: str, series_UID: str) -> None:
+def route_series(task_id: str, series_UID: str, files:list[Path] = []) -> None:
     """
     Processes the series with the given series UID from the incoming folder.
     """
     logger.setTask(task_id)
     monitor.send_register_task(task_id, series_UID)
-
-    lock_file = Path(config.mercure.incoming_folder + "/" + str(series_UID) + mercure_names.LOCK)
+    base_dir = Path(config.mercure.incoming_folder)
+    lock_file = base_dir  / (str(series_UID) + mercure_names.LOCK)
     if lock_file.exists():
         # Series is locked, so another instance might be working on it
         return
@@ -65,11 +65,14 @@ def route_series(task_id: str, series_UID: str) -> None:
     fileList = []
     seriesPrefix = series_UID + mercure_defs.SEPARATOR
 
-    # Collect all files belonging to the series
-    for entry in os.scandir(config.mercure.incoming_folder):
-        if entry.name.endswith(mercure_names.TAGS) and entry.name.startswith(seriesPrefix) and not entry.is_dir():
-            stemName = entry.name[:-5]
-            fileList.append(stemName)
+    if not files:
+        # Collect all files belonging to the series
+        for entry in os.scandir(config.mercure.incoming_folder):
+            if entry.name.endswith(mercure_names.TAGS) and entry.name.startswith(seriesPrefix) and not entry.is_dir():
+                stemName = entry.name[:-5]
+                fileList.append(stemName)
+    else: 
+        fileList = [str(f.with_suffix("")) for f in files]
 
     logger.info("DICOM files found: " + str(len(fileList)))
     if not len(fileList):
