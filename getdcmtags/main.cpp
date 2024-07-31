@@ -284,6 +284,31 @@ bool writeTagsFile(OFString dcmFile, OFString originalFile)
     return true;
 }
 
+#include <QFile>
+#include <QFileInfo>
+#include <QDebug>
+#include <QDateTime>
+
+void copyFileTime(const QString& sourceFilePath, const QString& destFilePath) {
+    // Get the last modified time of the source file
+    QFileInfo sourceInfo(sourceFilePath);
+    QDateTime lastModified = sourceInfo.lastModified();
+
+    // Set the last modified time of the destination file to match the source file
+    QFile destFile(destFilePath);
+    if (!destFile.open(QIODevice::ReadWrite)) {
+        qDebug() << "Failed to open destination file:" << destFile.errorString();
+        return;
+    }
+
+    if (!destFile.setFileTime(lastModified, QFileDevice::FileModificationTime)) {
+        qDebug() << "Failed to set file time:" << destFile.errorString();
+        destFile.close();
+        return;
+    }
+
+    destFile.close();
+}
 
 int main(int argc, char *argv[])
 {
@@ -404,6 +429,6 @@ int main(int argc, char *argv[])
         rename((path + newFilename + ".dcm").c_str(), (path + origFilename).c_str());
         return 1;
     }
-
+    copyFileTime(QString((path + newFilename + ".dcm").c_str()), QString( (path + "receiver_info/" + tagSeriesInstanceUID + ".received").c_str()));
     sendBookkeeperPost(newFilename, tagSOPInstanceUID, tagSeriesInstanceUID);
 }

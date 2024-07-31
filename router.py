@@ -112,11 +112,21 @@ def run_router() -> None:
         )
         return
 
+    for entry in os.scandir(config.mercure.incoming_folder + "/receiver_info"):
+        if not entry.name.endswith(".received"):
+            continue
+        series_uid = entry.name[:-9]
+        mtime = entry.stat().st_mtime
+        if series_uid not in r.series:
+            r.series[series_uid] = SeriesItem(mtime)
+        elif mtime > r.series[series_uid].modification_time:
+            r.series[series_uid].modification_time = mtime
 
-    error_files_found = get_series_info(r.series, first_scan or (not config.mercure.use_inotify))
-    first_scan = False
-    logger.info([k.modification_time for k in r.series.values()])
-    logger.info(time.time())
+
+    # error_files_found = get_series_info(r.series, first_scan or (not config.mercure.use_inotify))
+    error_files_found = False
+    # first_scan = False
+
     # Check if any of the series exceeds the "series complete" threshold
     for series_uid, series_item in r.series.items():
         if ( time.time() - series_item.modification_time ) > config.mercure.series_complete_trigger:
@@ -124,6 +134,7 @@ def run_router() -> None:
             r.complete_series.add(series_uid)
         else:
             r.pending_series[series_uid] = series_item.modification_time
+
     # logger.info(f'Files found     = {filecount}')
     # logger.info(f'Series found    = {len(series)}')
     # logger.info(f'Complete series = {len(complete_series)}')
@@ -134,9 +145,10 @@ def run_router() -> None:
     for series_uid in sorted(r.complete_series):
         task_id = generate_task_id()
         try:
-            route_series(task_id, series_uid, r.series[series_uid].files)
+            route_series(task_id, series_uid)
             del r.series[series_uid]
             r.complete_series.remove(series_uid)
+            os.unlink(config.mercure.incoming_folder + "/receiver_info/"+series_uid + ".received")
         except Exception:
             logger.error(f"Problems while processing series {series_uid}", task_id)  # handle_error
         # If termination is requested, stop processing series after the active one has been completed
