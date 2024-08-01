@@ -220,7 +220,6 @@ class Config(BaseModel, Compat):
     email_notification_from: str = "mercure@mercure.mercure"
     support_root_modules: Optional[bool] = False
     webhook_certificate_location: Optional[str] = None
-    use_inotify: Optional[bool] = False
 
 class TaskInfo(BaseModel, Compat):
     action: Literal["route", "both", "process", "discard", "notification"]

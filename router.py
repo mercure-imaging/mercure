@@ -27,8 +27,6 @@ from routing.route_studies import route_studies
 from routing.common import generate_task_id, SeriesItem
 import common.influxdb
 import common.notification as notification
-import inotify.adapters
-import inotify.constants
 from dataclasses import dataclass,field
 import itertools
 
@@ -42,7 +40,6 @@ class RouterState():
 # Create local logger instance
 logger = config.get_logger()
 main_loop = None  # type: helper.AsyncTimer # type: ignore
-inotify_watcher = inotify.adapters.Inotify()
 first_scan = True
 r = RouterState()
 
@@ -57,38 +54,6 @@ async def terminate_process(signalNumber, frame) -> None:
     if "main_loop" in globals() and main_loop.is_running:
         main_loop.stop()
     helper.trigger_terminate()
-
-def get_series_info(series_dict, do_full=False) -> bool:
-    global inotify_watcher
-    if do_full:
-        files_to_process = (( entry.name, entry.stat().st_mtime ) for entry in os.scandir(config.mercure.incoming_folder))
-    else:
-        events = inotify_watcher.event_gen(yield_nones=False, timeout_s=1)
-        # events = itertools.islice(events, 50)
-        files_to_process =  ( (e[3], os.path.getmtime(e[2] + "/" + e[3]) if e[3].endswith(mercure_names.TAGS) else None)  for e in events if os.path.exists(e[2]+"/"+e[3]))
-
-    error_files_found = False
-
-    # Check the incoming folder for completed series. To this end, generate a map of all
-    # series in the folder with the timestamp of the latest DICOM file as value
-    r.filecount = 0
-    for (file_name, modification_time) in files_to_process:
-        file_path = Path(file_name)
-        match file_path.suffix:
-            case mercure_names.TAGS:
-                r.filecount += 1
-                series_uid = file_name.split(mercure_defs.SEPARATOR, 1)[0]
-                if series_uid not in r.series:
-                    series_dict[series_uid] = SeriesItem(modification_time)
-                elif modification_time > series_dict[series_uid].modification_time:
-                    r.series[series_uid].modification_time = modification_time
-                series_dict[series_uid].files.add(file_path)
-
-            # Check if at least one .error file exists. In that case, the incoming folder should
-            # be searched for .error files at the end of the update run
-            case mercure_names.ERROR:
-                error_files_found = True
-    return error_files_found
 
 def run_router() -> None:
     global r, first_scan
@@ -123,7 +88,6 @@ def run_router() -> None:
             r.series[series_uid].modification_time = mtime
 
 
-    # error_files_found = get_series_info(r.series, first_scan or (not config.mercure.use_inotify))
     error_files_found = False
     # first_scan = False
 
@@ -232,8 +196,7 @@ def main(args=sys.argv[1:]) -> None:
     )
 
     # Start the timer that will periodically trigger the scan of the incoming folder
-    global main_loop, inotify_watcher
-    inotify_watcher.add_watch(config.mercure.incoming_folder, inotify.constants.IN_CLOSE_WRITE)
+    global main_loop
     main_loop = helper.AsyncTimer(config.mercure.router_scan_interval, run_router)
 
     helper.g_log("events.boot", 1)

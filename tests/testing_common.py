@@ -157,3 +157,10 @@ def make_fake_processor(fs, mocked, fails):
             raise Exception("failed")
         return mocked.DEFAULT
     return fake_processor
+
+def mock_incoming_uid(config, fs, series_uid, tags="{}", name="bar"):    
+    dcm = fs.create_file(f"/var/incoming/{series_uid}#{name}.dcm", contents="asdfasdfafd")
+    tags_f = fs.create_file(f"/var/incoming/{series_uid}#{name}.tags", contents=tags)
+    (Path(config.incoming_folder) / "receiver_info").mkdir(exist_ok=True)
+    (Path(config.incoming_folder) / "receiver_info" / (series_uid+".received")).touch()
+    return dcm, tags_f

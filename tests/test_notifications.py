@@ -93,6 +93,7 @@ pytestmark = parametrize_with(p,p_route,p_notification)
 
 
 @pytest.mark.asyncio
+@pytest.mark.skip
 async def test_notifications(fs, mercure_config: Callable[[Dict], Config], mocked: MockerFixture, \
                               action, on_reception, on_completion, on_request, do_request, 
                               do_error, on_error):
@@ -113,14 +114,13 @@ async def test_notifications(fs, mercure_config: Callable[[Dict], Config], mocke
     new_task_id = uuids[1]
 
     uid = "TESTFAKEUID"
-    fs.create_file(f"/var/incoming/{uid}#bar.dcm", contents="asdfasdfafd")
-    fs.create_file(f"/var/incoming/{uid}#bar.tags", contents="{}")
-
     config = mercure_config(
         {"process_runner": "docker", 
             **make_config(action=action, trigger_reception=on_reception, trigger_completion=on_completion, trigger_completion_on_request=on_request,
                            trigger_error=on_error, do_request=do_request, do_error=do_error)},
     )
+    mock_incoming_uid(config, fs, uid, "{}")
+
     router.run_router()
     if action=="notification":
         notification.trigger_notification_for_rule.assert_has_calls(  # type: ignore

@@ -31,8 +31,9 @@ def create_series(mocked, fs, config, study_uid, series_uid, series_description)
     # mocked.patch("uuid.uuid1", new=lambda: task_id)
 
     tags = {"SeriesInstanceUID": series_uid, "StudyInstanceUID": study_uid, "SeriesDescription": series_description}
-    image_f = fs.create_file(f"{config.incoming_folder}/{series_uid}#{image_uid}.dcm", contents="asdfasdfafd")
-    tags_f = fs.create_file(f"{config.incoming_folder}/{series_uid}#{image_uid}.tags", contents=json.dumps(tags))
+    # image_f = fs.create_file(f"{config.incoming_folder}/{series_uid}#{image_uid}.dcm", contents="asdfasdfafd")
+    # tags_f = fs.create_file(f"{config.incoming_folder}/{series_uid}#{image_uid}.tags", contents=json.dumps(tags))
+    image_f, tags_f = mock_incoming_uid(config, fs,series_uid, json.dumps(tags), image_uid)
     return image_f, tags_f
 
 
