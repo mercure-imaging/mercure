@@ -149,7 +149,7 @@ def check_study_timeout(task: TaskHasStudy, pending_series: Dict[str, float]) ->
     logger.debug("Checking study timeout")
     study = task.study
     last_received_string = study.last_receive_time
-    logger.debug(f"Last received time: {last_received_string}, {datetime.now()}")
+    logger.debug(f"Last received time: {last_received_string}, now is: {datetime.now()}")
     if not last_received_string:
         return False
 
@@ -162,8 +162,10 @@ def check_study_timeout(task: TaskHasStudy, pending_series: Dict[str, float]) ->
             if tags_list["StudyInstanceUID"] == study.study_uid:
                 logger.debug(f"Timeout met, but found a pending series ({series_uid}) in study {study.study_uid}")
                 return False
+        logger.debug("Timeout met.")
         return True
     else:
+        logger.debug("Timeout not met.")
         return False
 
 

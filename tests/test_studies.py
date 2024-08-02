@@ -33,7 +33,7 @@ def create_series(mocked, fs, config, study_uid, series_uid, series_description)
     tags = {"SeriesInstanceUID": series_uid, "StudyInstanceUID": study_uid, "SeriesDescription": series_description}
     # image_f = fs.create_file(f"{config.incoming_folder}/{series_uid}#{image_uid}.dcm", contents="asdfasdfafd")
     # tags_f = fs.create_file(f"{config.incoming_folder}/{series_uid}#{image_uid}.tags", contents=json.dumps(tags))
-    image_f, tags_f = mock_incoming_uid(config, fs,series_uid, json.dumps(tags), image_uid)
+    image_f, tags_f = mock_incoming_uid(config, fs, series_uid, json.dumps(tags), image_uid)
     return image_f, tags_f
 
 
@@ -83,5 +83,42 @@ def test_route_study_pending(fs: FakeFilesystem, mercure_config, mocked):
         assert list(out_path.glob("**/*")) == []
         frozen_time.tick(delta=timedelta(seconds=35))
         # The study has timed out
+        router.run_router()
+        assert list(out_path.glob("**/*")) != []
+
+
+
+def test_route_study_simple(fs: FakeFilesystem, mercure_config, mocked):
+    """
+    Test that a study with a pending series is not routed until the pending series itself times out.
+    """
+    config = mercure_config(
+        {
+            "series_complete_trigger": 10,
+            "study_complete_trigger": 30,
+            "rules": {
+                "route_study": Rule(
+                    rule="True",  # """@StudyDescription@ == "foo" """,
+                    action="route",
+                    study_trigger_condition="timeout",
+                    target="test_target_2",
+                    action_trigger="study",
+                ).dict(),
+            },
+        }
+    )
+    study_uid = str(uuid.uuid4())
+    series_uid = str(uuid.uuid4())
+    series_description = "test_series_complete"
+    out_path = Path(config.outgoing_folder)
+
+    with freeze_time("2020-01-01 00:00:00") as frozen_time:
+        # Create the initial series.
+        create_series(mocked, fs, config, study_uid, series_uid, series_description)
+        frozen_time.tick(delta=timedelta(seconds=11))
+        # Run the router as the first series completes to generate a study task
+        router.run_router()
+        frozen_time.tick(delta=timedelta(seconds=31))
+        # Complete the study
         router.run_router()
         assert list(out_path.glob("**/*")) != []

@@ -55,13 +55,13 @@ rules = {
 }
 
 
-def create_series(mocked, fs, config, tags) -> Tuple[str, str]:
+def create_series(mocked, fs, config, tags, name="bar") -> Tuple[str, str]:
     task_id = "test_task_" + str(uuid.uuid1())
     series_uid = str(uuid.uuid4())
 
     mocked.patch("uuid.uuid1", new=lambda: task_id)
 
-    mock_incoming_uid(config, fs, series_uid, tags)
+    mock_incoming_uid(config, fs, series_uid, tags,name)
     return task_id, series_uid
 
 @pytest.mark.asyncio
@@ -144,7 +144,7 @@ def test_route_series_fail4(fs: FakeFilesystem, mercure_config, mocked):
     config = mercure_config(rules)
 
     tags = {"SeriesInstanceUID": "foo"}
-    task_id, series_uid = create_series(mocked, fs, config, json.dumps(tags))
+    task_id, series_uid = create_series(mocked, fs, config, json.dumps(tags), name="baz")
 
     mocked.patch("shutil.move", side_effect=Exception("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!no moving"))
     mocked.patch("shutil.copy", side_effect=Exception("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!no copying"))
@@ -188,7 +188,7 @@ async def test_route_study(fs: FakeFilesystem, mercure_config, mocked, fake_proc
         "StudyDescription": "foo",
         "SeriesDescription": "series_desc",
     }
-    task_id, series_uid = create_series(mocked, fs, config, json.dumps(tags))
+    task_id, series_uid = create_series(mocked, fs, config, json.dumps(tags), "baz")
     common.monitor.configure("router", "test", config.bookkeeper)
 
     router.run_router()
