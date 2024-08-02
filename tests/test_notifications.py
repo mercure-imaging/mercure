@@ -93,7 +93,7 @@ pytestmark = parametrize_with(p,p_route,p_notification)
 
 
 @pytest.mark.asyncio
-@pytest.mark.skip
+@pytest.mark.skipif("os.getenv('TEST_FAST') == 'true'")
 async def test_notifications(fs, mercure_config: Callable[[Dict], Config], mocked: MockerFixture, \
                               action, on_reception, on_completion, on_request, do_request, 
                               do_error, on_error):

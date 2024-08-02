@@ -6,7 +6,7 @@ import json
 import os
 from pathlib import Path
 import shutil
-from typing import Callable, Dict, Any, Iterator, Optional
+from typing import Callable, Dict, Any, Iterator, Optional, Tuple
 
 import pytest
 import process
@@ -158,9 +158,12 @@ def make_fake_processor(fs, mocked, fails):
         return mocked.DEFAULT
     return fake_processor
 
-def mock_incoming_uid(config, fs, series_uid, tags="{}", name="bar"):    
-    dcm = fs.create_file(f"/var/incoming/{series_uid}#{name}.dcm", contents="asdfasdfafd")
-    tags_f = fs.create_file(f"/var/incoming/{series_uid}#{name}.tags", contents=tags)
-    (Path(config.incoming_folder) / "receiver_info").mkdir(exist_ok=True)
-    (Path(config.incoming_folder) / "receiver_info" / (series_uid+".received")).touch()
+def mock_incoming_uid(config, fs, series_uid, tags="{}", name="bar") -> Tuple[str,str]:    
+    incoming = Path(config.incoming_folder)
+
+    dcm = fs.create_file(incoming / series_uid / f"{series_uid}#{name}.dcm", contents="asdfasdfafd")
+    tags_f = fs.create_file(incoming / series_uid / f"{series_uid}#{name}.tags", contents=tags)
+
+    # ( incoming / "receiver_info").mkdir(exist_ok=True)
+    # ( incoming / "receiver_info" / (series_uid+".received")).touch()
     return dcm, tags_f

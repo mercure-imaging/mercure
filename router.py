@@ -7,10 +7,12 @@ mercure's central router module that evaluates the routing rules and decides whi
 # Standard python includes
 import asyncio
 from pathlib import Path
+import shutil
 import time
 import signal
 import os
 import sys
+import typing
 import uuid
 import graphyte
 import daiquiri
@@ -34,13 +36,12 @@ import itertools
 class RouterState():
     filecount = 0
     series: Dict[str, SeriesItem] = field(default_factory=dict)
-    complete_series: set[str] = field(default_factory=set)
+    complete_series: typing.Set[str] = field(default_factory=set)
     pending_series: Dict[str, float] = field(default_factory=dict)  # Every series that hasn't timed out yet
 
 # Create local logger instance
 logger = config.get_logger()
 main_loop = None  # type: helper.AsyncTimer # type: ignore
-first_scan = True
 
 async def terminate_process(signalNumber, frame) -> None:
     """
@@ -77,10 +78,12 @@ def run_router() -> None:
 
     r = RouterState()
     
-    for entry in os.scandir(config.mercure.incoming_folder + "/receiver_info"):
-        if not entry.name.endswith(".received"):
+    for entry in os.scandir(config.mercure.incoming_folder):
+        if not entry.is_dir():
             continue
-        series_uid = entry.name[:-9]
+        # if not entry.name.endswith(".received"):
+        #     continue
+        series_uid = entry.name
         mtime = entry.stat().st_mtime
         if series_uid not in r.series:
             r.series[series_uid] = SeriesItem(mtime)
@@ -138,7 +141,7 @@ def run_router() -> None:
             route_series(task_id, series_uid)
             del r.series[series_uid]
             r.complete_series.remove(series_uid)
-            os.unlink(config.mercure.incoming_folder + "/receiver_info/"+series_uid + ".received")
+            shutil.rmtree(config.mercure.incoming_folder+"/"+series_uid)
         except Exception:
             logger.error(f"Problems while processing series {series_uid}", task_id)  # handle_error
         # If termination is requested, stop processing series after the active one has been completed

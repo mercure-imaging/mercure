@@ -180,5 +180,9 @@ class FileLock:
 
     def free(self) -> None:
         if self.lockCreated:
-            self.lockfile.unlink()
+            try:
+                self.lockfile.unlink()
+            except FileNotFoundError:
+                # Lock file was already removed by someone else
+                pass
             self.lockCreated = False

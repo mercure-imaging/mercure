@@ -146,15 +146,15 @@ def test_route_series_fail4(fs: FakeFilesystem, mercure_config, mocked):
     tags = {"SeriesInstanceUID": "foo"}
     task_id, series_uid = create_series(mocked, fs, config, json.dumps(tags), name="baz")
 
-    mocked.patch("shutil.move", side_effect=Exception("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!no moving"))
-    mocked.patch("shutil.copy", side_effect=Exception("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!no copying"))
+    mocked.patch("shutil.move", side_effect=Exception("no moving"))
+    mocked.patch("shutil.copy", side_effect=Exception("no copying"))
     router.run_router()
     common.monitor.send_task_event.assert_any_call(  # type: ignore
         task_event.ERROR,
         task_id,
         0,
         "",
-        f"Problem while pushing file to outgoing {series_uid}#baz\nSource folder {config.incoming_folder}/\nTarget folder {config.outgoing_folder}/{task_id}/",
+        f"Problem while pushing file to outgoing {series_uid}#baz\nSource folder {config.incoming_folder}/{series_uid}\nTarget folder {config.outgoing_folder}/{task_id}",
     )
     assert list(Path(config.outgoing_folder).glob("**/*.dcm")) == []
 
@@ -233,7 +233,7 @@ async def test_route_study(fs: FakeFilesystem, mercure_config, mocked, fake_proc
     # )
 
 @pytest.mark.asyncio
-async def test_route_series(fs: FakeFilesystem, mercure_config, mocked, fake_process):
+async def test_route_series_success(fs: FakeFilesystem, mercure_config, mocked, fake_process):
     config = mercure_config(rules)
     # attach_spies(mocker)
     # mocker.patch("routing.route_series.parse_ascconv", new=lambda x: {})
@@ -261,7 +261,7 @@ async def test_route_series(fs: FakeFilesystem, mercure_config, mocked, fake_pro
             call(task_event.ERROR, task_id, 0, "", "Invalid rule encountered:  1/0 "),
             call(task_event.REGISTER, task_id, 1, "route_series", "Registered series"),
             call(task_event.DELEGATE, task_id, 1, new_task_id, "route_series"),
-            call(task_event.MOVE, task_id, 1, f"/var/outgoing/{new_task_id}/", "Moved files"),
+            call(task_event.MOVE, task_id, 1, f"/var/outgoing/{new_task_id}", "Moved files"),
         ]
     )
     out_path = next(Path("/var/outgoing").iterdir())
