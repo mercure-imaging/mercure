@@ -41,7 +41,6 @@ class RouterState():
 logger = config.get_logger()
 main_loop = None  # type: helper.AsyncTimer # type: ignore
 first_scan = True
-r = RouterState()
 
 async def terminate_process(signalNumber, frame) -> None:
     """
@@ -56,7 +55,6 @@ async def terminate_process(signalNumber, frame) -> None:
     helper.trigger_terminate()
 
 def run_router() -> None:
-    global r, first_scan
     """
     Main processing function that is called every second
     """
@@ -66,7 +64,7 @@ def run_router() -> None:
     helper.g_log("events.run", 1)
     # logger.info('')
     # logger.info('Processing incoming folder...')
-
+    logger.debug('Running router')
     try:
         config.read_config()
     except Exception:
@@ -77,6 +75,8 @@ def run_router() -> None:
         )
         return
 
+    r = RouterState()
+    
     for entry in os.scandir(config.mercure.incoming_folder + "/receiver_info"):
         if not entry.name.endswith(".received"):
             continue
@@ -88,16 +88,42 @@ def run_router() -> None:
             r.series[series_uid].modification_time = mtime
 
 
+            # filecount = 0
+            # series: Dict[str, float] = {}
+            # complete_series: Dict[str, float] = {}
+            # pending_series: Dict[str, float] = {}  # Every series that hasn't timed out yet
+            # error_files_found = False
+
+            # # Check the incoming folder for completed series. To this end, generate a map of all
+            # # series in the folder with the timestamp of the latest DICOM file as value
+            # for entry in os.scandir(config.mercure.incoming_folder):
+            #     if entry.name.endswith(mercure_names.TAGS) and not entry.is_dir():
+            #         filecount += 1
+            #         seriesString = entry.name.split(mercure_defs.SEPARATOR, 1)[0]
+            #         modificationTime = entry.stat().st_mtime
+
+            #         if seriesString in series.keys():
+            #             if modificationTime > series[seriesString]:
+            #                 series[seriesString] = modificationTime
+            #         else:
+            #             series[seriesString] = modificationTime
+            #     # Check if at least one .error file exists. In that case, the incoming folder should
+            #     # be searched for .error files at the end of the update run
+            #     if (not error_files_found) and entry.name.endswith(mercure_names.ERROR):
+            #         error_files_found = True
+
+
     error_files_found = False
     # first_scan = False
 
     # Check if any of the series exceeds the "series complete" threshold
     for series_uid, series_item in r.series.items():
         if ( time.time() - series_item.modification_time ) > config.mercure.series_complete_trigger:
-            logger.info(f"======== {time.time() - series_item.modification_time}==========")
             r.complete_series.add(series_uid)
+            logger.debug("Complete series: " + str(series_uid))
         else:
             r.pending_series[series_uid] = series_item.modification_time
+            logger.debug("Pending series: " + str(series_uid))
 
     # logger.info(f'Files found     = {filecount}')
     # logger.info(f'Series found    = {len(series)}')

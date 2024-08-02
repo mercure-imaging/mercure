@@ -157,7 +157,11 @@ def check_study_timeout(task: TaskHasStudy, pending_series: Dict[str, float]) ->
     if datetime.now() > last_receive_time + timedelta(seconds=config.mercure.study_complete_trigger):
         # Check if there is a pending series on this study. If so, we need to wait for it to timeout before we can complete the study
         for series_uid in pending_series.keys():
-            example_file = next(Path(config.mercure.incoming_folder).glob(f"{series_uid}*.tags"))
+            try:
+                example_file = next(Path(config.mercure.incoming_folder).glob(f"{series_uid}*.tags"))
+            except StopIteration:  # No tag file with this series UID was found
+                logger.error(f"No tag file for series UID {series_uid} was found")
+                raise
             tags_list = json.loads(example_file.read_text())
             if tags_list["StudyInstanceUID"] == study.study_uid:
                 logger.debug(f"Timeout met, but found a pending series ({series_uid}) in study {study.study_uid}")
