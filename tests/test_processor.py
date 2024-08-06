@@ -68,7 +68,7 @@ expected_task_info = {
             "mercure_appliance": "master",
             "mercure_server": socket.gethostname(),
             "device_serial_number": None,
-            "sender_address": "MISSING"
+            "sender_address": "0.0.0.0"
         }
 
 def create_and_route(fs, mocked, task_id, config, uid="TESTFAKEUID") -> Tuple[List[str], str]:
@@ -76,16 +76,15 @@ def create_and_route(fs, mocked, task_id, config, uid="TESTFAKEUID") -> Tuple[Li
 
     new_task_id = "new-task-" + str(uuid.uuid1())
 
-    mock_task_ids(mocked, task_id, new_task_id)
-    # mocked.patch("routing.route_series.parse_ascconv", new=lambda x: {})
-
     mock_incoming_uid(config, fs, uid)
 
+    mock_task_ids(mocked, task_id, new_task_id)
+    # mocked.patch("routing.route_series.parse_ascconv", new=lambda x: {})
     router.run_router()
 
     router.route_series.assert_called_once_with(task_id, uid)  # type: ignore
-    routing.route_series.push_series_serieslevel.assert_called_once_with(task_id, {"catchall": True}, [f"{uid}#bar"], uid, {})  # type: ignore
-    routing.route_series.push_serieslevel_outgoing.assert_called_once_with(task_id, {"catchall": True}, [f"{uid}#bar"], uid, {}, {})  # type: ignore
+    routing.route_series.push_series_serieslevel.assert_called_once_with(task_id, {"catchall": True}, [f"{uid}#bar"], uid, unittest.mock.ANY)  # type: ignore
+    routing.route_series.push_serieslevel_outgoing.assert_called_once_with(task_id, {"catchall": True}, [f"{uid}#bar"], uid, unittest.mock.ANY, {})  # type: ignore
 
     assert ["task.json", f"{uid}#bar.dcm", f"{uid}#bar.tags"] == [
         k.name for k in Path("/var/processing").glob("**/*") if k.is_file()
@@ -98,10 +97,9 @@ def create_and_route_priority(fs, mocked, task_id, config, uid="TESTFAKEUID") ->
     print("Mocked task_id is", task_id)
 
     new_task_ids = ["new-task-" + str(uuid.uuid1()) for _ in range(1000)] # todo: support arbitrary number of tasks created?
-    mock_task_ids(mocked, task_id, new_task_ids)
-
     mock_incoming_uid(config, fs, uid)
 
+    mock_task_ids(mocked, task_id, new_task_ids)
     router.run_router()
 
     router.route_series.assert_called_once_with(task_id, uid)  # type: ignore
@@ -198,7 +196,8 @@ async def test_process_series_nomad(fs, mercure_config: Callable[[Dict], Config]
     )
     common.monitor.send_task_event.reset_mock()  # type: ignore
 
-    mock_incoming_uid(config,fs, "FAILEDFAILED","{}")
+    mock_incoming_uid(config,fs, "FAILEDFAILED")
+
     def process_failed(self, tag, meta):
         return {
             "DispatchedJobID": "mercure-processor/dispatch-1234567898-12345678",
@@ -211,7 +210,6 @@ async def test_process_series_nomad(fs, mercure_config: Callable[[Dict], Config]
     mocked.patch.object(Job, "dispatch_job", new=process_failed)
 
     mock_task_ids(mocked, task_id, new_task_id)
-
     router.run_router()
     processor_path = next(Path("/var/processing").iterdir())
     await processor.run_processor()

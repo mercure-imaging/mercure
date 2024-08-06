@@ -13,6 +13,7 @@
 #include <QString> 
 #include <QFile>
 #include <QVariant>
+#include <QDir>
 
 #include <QFileInfo>
 #include <QTextStream>
@@ -22,7 +23,7 @@
 
 #include "tags_list.h"
 
-#define VERSION "0.7"
+#define VERSION "0.71"
 
 
 static OFString tagSpecificCharacterSet = "";
@@ -284,32 +285,17 @@ bool writeTagsFile(OFString dcmFile, OFString originalFile)
     return true;
 }
 
-#include <QFile>
-#include <QFileInfo>
-#include <QDebug>
-#include <QDateTime>
-
-void copyFileTime(const QString& sourceFilePath, const QString& destFilePath) {
-    // Get the last modified time of the source file
-    QFileInfo sourceInfo(sourceFilePath);
-    QDateTime lastModified = sourceInfo.lastModified();
-
-    // Set the last modified time of the destination file to match the source file
-    QFile destFile(destFilePath);
-    if (!destFile.open(QIODevice::ReadWrite)) {
-        qDebug() << "Failed to open destination file:" << destFile.errorString();
-        return;
+bool createSeriesFolder(const OFString& path, const OFString& seriesUID) {
+    OFString fullPath = path + seriesUID;
+    QDir dir(QString::fromStdString(fullPath.c_str()));
+    if (!dir.exists()) {
+        if (!dir.mkpath(".")) {
+            std::cout << "ERROR: Unable to create directory " << fullPath << std::endl;
+            return false;
+        }
     }
-
-    if (!destFile.setFileTime(lastModified, QFileDevice::FileModificationTime)) {
-        qDebug() << "Failed to set file time:" << destFile.errorString();
-        destFile.close();
-        return;
-    }
-
-    destFile.close();
+    return true;
 }
-
 int main(int argc, char *argv[])
 {
     QCoreApplication app( argc, argv );
@@ -407,28 +393,36 @@ int main(int argc, char *argv[])
     }
 
     OFString newFilename = tagSeriesInstanceUID + "#" + origFilename;
+    OFString seriesFolder = path + tagSeriesInstanceUID + "/";
 
-    if (rename((path + origFilename).c_str(), (path + newFilename + ".dcm").c_str()) != 0)
-    {
-        OFString errorString = "Unable to rename DICOM file to ";
-        errorString.append(newFilename);
+    if (!createSeriesFolder(path, tagSeriesInstanceUID)) {
+        OFString errorString = "Unable to create series folder for ";
+        errorString.append(tagSeriesInstanceUID);
         errorString.append("\n");
         writeErrorInformation(path + origFilename, errorString);
         return 1;
     }
 
-    if (!writeTagsFile(path + newFilename, origFilename))
+    if (rename((path + origFilename).c_str(), (seriesFolder + newFilename + ".dcm").c_str()) != 0)
+    {
+        OFString errorString = "Unable to move DICOM file to ";
+        errorString.append(seriesFolder + newFilename);
+        errorString.append("\n");
+        writeErrorInformation(path + origFilename, errorString);
+        return 1;
+    }
+
+    if (!writeTagsFile(seriesFolder + newFilename, origFilename))
     {
         OFString errorString = "Unable to write tagsfile file for ";
         errorString.append(newFilename);
         errorString.append("\n");
-        writeErrorInformation(path + origFilename, errorString);
+        writeErrorInformation(seriesFolder + newFilename, errorString);
 
-        // Rename DICOM file back to original name, so that the name matches to
-        // the .error file and can be moved to the error folder by the router
-        rename((path + newFilename + ".dcm").c_str(), (path + origFilename).c_str());
+        // Rename DICOM file back to original name and location
+        rename((seriesFolder + newFilename + ".dcm").c_str(), (path + origFilename).c_str());
         return 1;
     }
-    copyFileTime(QString((path + newFilename + ".dcm").c_str()), QString( (path + "receiver_info/" + tagSeriesInstanceUID + ".received").c_str()));
+
     sendBookkeeperPost(newFilename, tagSOPInstanceUID, tagSeriesInstanceUID);
 }
