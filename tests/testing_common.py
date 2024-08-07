@@ -10,7 +10,7 @@ from typing import Callable, Dict, Any, Iterator, Optional, Tuple
 import uuid
 
 import pydicom
-from pydicom.dataset import Dataset, FileDataset
+from pydicom.dataset import Dataset, FileDataset, FileMetaDataset
 from pydicom.uid import generate_uid
 
 import pytest
@@ -117,7 +117,7 @@ def mock_task_ids(mocker, task_id, next_task_id) -> None:
     def generate_uuids() -> Iterator[str]:
         yield from [task_id] + next_task_id
         while True:
-            yield real_uuid()
+            yield str(real_uuid())
     generator = generate_uuids()
     
     mocker.patch("uuid.uuid1", new=lambda: next(generator))
@@ -169,7 +169,7 @@ def make_fake_processor(fs, mocked, fails):
     return fake_processor
 
 
-def create_minimal_dicom(output_filename, series_uid, additional_tags=None):
+def create_minimal_dicom(output_filename, series_uid, additional_tags=None) -> None:
     """
     Create a minimal DICOM file with the given series UID and additional tags.
     
@@ -179,8 +179,8 @@ def create_minimal_dicom(output_filename, series_uid, additional_tags=None):
     :return: None
     """
     # Create a new DICOM dataset
-    file_meta = Dataset()
-    file_meta.MediaStorageSOPClassUID = '1.2.840.10008.5.1.4.1.1.66'  # Raw Data Storage
+    file_meta = FileMetaDataset()
+    file_meta.MediaStorageSOPClassUID = pydicom.uid.UID('1.2.840.10008.5.1.4.1.1.66')  # Raw Data Storage
     file_meta.MediaStorageSOPInstanceUID = generate_uid()
     file_meta.ImplementationClassUID = generate_uid()
     file_meta.TransferSyntaxUID = pydicom.uid.ExplicitVRLittleEndian
@@ -227,4 +227,4 @@ def mock_incoming_uid(config, fs, series_uid, tags={}, name="bar", force_tags_ou
 
     # ( incoming / "receiver_info").mkdir(exist_ok=True)
     # ( incoming / "receiver_info" / (series_uid+".received")).touch()
-    return dcm_file, tags_f
+    return str(dcm_file), tags_f

@@ -1,4 +1,5 @@
 import logging
+from typing import List
 from starlette.testclient import TestClient
 from webgui import *
 import time
@@ -46,7 +47,7 @@ def run_test() -> None:
     assert tests[0]["status"] in ("begin","success")
     task_id = tests[0]["task_id"]
 
-    event_ids = []
+    event_ids:List[str] = []
     try:
         logger = logging.getLogger('httpx')
         logger.setLevel(logging.WARNING)

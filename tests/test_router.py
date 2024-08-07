@@ -153,7 +153,6 @@ def test_route_series_fail4(fs: FakeFilesystem, mercure_config, mocked):
     mocked.patch("shutil.move", side_effect=Exception("no moving"))
     mocked.patch("shutil.copy", side_effect=Exception("no copying"))
     router.run_router()
-    print(common.monitor.send_task_event.call_args_list)
     common.monitor.send_task_event.assert_any_call(  # type: ignore
         task_event.ERROR,
         task_id,
