@@ -8,66 +8,6 @@ services.read_services()
 config.read_config()
 users.read_users()
 
-import textwrap
-
-def pretty_print_table(data, headers=None, max_width=35):
-    if not data:
-        print("No data to display")
-        return
-
-    # Determine if data is a list of dicts or a list of lists
-    is_dict_data = isinstance(data[0], dict)
-
-    # If headers are not provided, use the keys of the first dictionary in data
-    # or generate column numbers for list data
-    if headers is None:
-        if is_dict_data:
-            headers = list(data[0].keys())
-        else:
-            headers = [f"Column {i+1}" for i in range(len(data[0]))]
-
-    # Calculate column widths
-    col_widths = [len(str(header)) for header in headers]
-    for row in data:
-        for i, header in enumerate(headers):
-            if is_dict_data:
-                value = str(row.get(header, ""))
-            else:
-                value = str(row[i]) if i < len(row) else ""
-            col_widths[i] = max(col_widths[i], len(value))
-
-    # Limit column width to max_width
-    col_widths = [min(width, max_width) for width in col_widths]
-
-    # Print headers
-    header_row = " | ".join(f"{header:<{col_widths[i]}}" for i, header in enumerate(headers))
-    print(header_row)
-    print("-" * len(header_row))
-
-    # Print data rows
-    for row in data:
-        row_data = []
-        for i, header in enumerate(headers):
-            if is_dict_data:
-                item = str(row.get(header, ""))
-            else:
-                item = str(row[i]) if i < len(row) else ""
-            if len(item) > col_widths[i]:
-                item = textwrap.fill(item, width=col_widths[i])
-            row_data.append(item)
-        
-        # Split multiline cells into separate lines
-        row_lines = [cell.split('\n') for cell in row_data]
-        max_lines = max(len(lines) for lines in row_lines)
-        
-        for line_num in range(max_lines):
-            line = " | ".join(f"{lines[line_num] if line_num < len(lines) else '':<{col_widths[i]}}"
-                              for i, lines in enumerate(row_lines))
-            print(line)
-        
-        # if max_lines > 1:
-        #     print("-" * len(header_row))
-
 def run_test() -> None:
     config.read_config()
     config.mercure.study_complete_trigger = 2
@@ -105,8 +45,10 @@ def run_test() -> None:
     assert tests[0]["id"] == test_id
     assert tests[0]["status"] in ("begin","success")
     task_id = tests[0]["task_id"]
+
+    event_ids = []
     try:
-        logger = logging.getLogger('_client')
+        logger = logging.getLogger('httpx')
         logger.setLevel(logging.WARNING)
         for i in range(200):
             time.sleep(0.1)
@@ -116,6 +58,23 @@ def run_test() -> None:
             )
             tests = response.json()
             task_id = tests[0]["task_id"]
+            if task_id:
+                response = client.get(
+                    "/api/get-task-events?task_id="+task_id,
+                )
+                lines = response.json()
+                cols = ['sender','event', 'info','target']
+                if not event_ids:
+                    print("{:<20} | {:<25} | {:<31} | {:<20}".format(*cols))
+                    print("-"*140)
+                for line in lines:
+                    if line["id"] in event_ids:
+                        continue
+
+                    event_ids.append(line["id"])
+                    p = [ line[col] for col in cols ]
+                    print("{:<20} | {:<25} | {:<31} | {:<20}".format(*p))
+ 
             if tests[0]["status"] == "success": 
                 logger.info("Success!")
                 return
@@ -125,11 +84,12 @@ def run_test() -> None:
         else:
             logger.error("Test timed out.")
     finally:
-        response = client.get(
-            "/api/get-task-events?task_id="+task_id,
-        )
-        lines = response.json()
-        pretty_print_table(lines, ['sender','event', 'info','target'])
+        pass
+        # response = client.get(
+        #     "/api/get-task-events?task_id="+task_id,
+        # )
+        # lines = response.json()
+        # pretty_print_table(lines, ['sender','event', 'info','target'])
     logger.info("Processing logs:")
     response = client.get(
         "/logs/processor",
