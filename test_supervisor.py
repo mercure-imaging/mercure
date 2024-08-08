@@ -13,7 +13,7 @@ from supervisor.xmlrpc import SupervisorTransport
 import xmlrpc.client
 import tempfile
 from common.config import mercure_defaults
-from common.types import FolderTarget, Rule, Target
+from common.types import FolderTarget, Module, Rule, Target
 from tests.testing_common import create_minimal_dicom
 import pydicom
 from pynetdicom import AE, debug_logger
@@ -209,9 +209,9 @@ def start_mercure(config = {}, services_to_start=["bookkeeper", "reciever", "rou
 
     services = [
         MercureService("bookkeeper", f"/opt/mercure/env/bin/python {here}/bookkeeper.py"), 
-        MercureService("router", f"/opt/mercure/env/bin/python {here}/router.py", numprocs=2), 
-        MercureService("processor", f"/opt/mercure/env/bin/python {here}/processor.py"), 
-        MercureService("dispatcher", f"/opt/mercure/env/bin/python {here}/dispatcher.py")
+        MercureService("router", f"/opt/mercure/env/bin/python {here}/router.py", numprocs=5), 
+        MercureService("processor", f"/opt/mercure/env/bin/python {here}/processor.py", numprocs=2), 
+        MercureService("dispatcher", f"/opt/mercure/env/bin/python {here}/dispatcher.py", numprocs=5)
     ]
     # services[0].startsecs = 5
     services += [MercureService(f"receiver", f"{here}/receiver.sh", stopasgroup=True)]
@@ -239,13 +239,18 @@ def test_dicoms_in_folder(folder, dicoms):
     for dicom in folder.glob('**/*.dcm'):
         uid = pydicom.dcmread(dicom).SOPInstanceUID
         dicoms_found.add(uid)
-    assert dicoms_found == set(ds.SOPInstanceUID for ds in dicoms)
+    try:
+        assert dicoms_found == set(ds.SOPInstanceUID for ds in dicoms)
+    except:
+        print("Expected dicoms not found")
+        for dicom in folder.glob('**/*.dcm'):
+            print(dicom)
+        raise
     print(f"Found {len(dicoms)} dicoms in {folder.name} as expected")
 
 def stop_mercure(supervisor_process):
     logs = {}
     for service in all_services():
-        print(service)
         if service['state'] in RUNNING_STATES:
             try:
                 stop_service(service['name'])
@@ -308,7 +313,7 @@ def test_case_simple(n_series=1):
     time.sleep(2)
     test_dicoms_received(mercure_base, ds)
     start_service("router:*")
-    time.sleep(2)
+    time.sleep(2+n_series/2)
     test_dicoms_in_folder(mercure_base / "data" / "success", ds)
 
 @mytest
@@ -324,28 +329,60 @@ def test_case_dispatch(n_series=1):
             "test_target": FolderTarget(folder=str(mercure_base / "target")).dict()
         }
     }
-    start_mercure(config, ["receiver"], mercure_base)
+    start_mercure(config, ["receiver", "router:*"], mercure_base)
     (mercure_base / "target").mkdir(parents=True, exist_ok=True)
 
     time.sleep(1)
-    ds = [create_minimal_dicom(None, None, additional_tags={'PatientName': 'Greg'}) for _ in range(n_series)]
+    ds = [create_minimal_dicom(None, None, additional_tags={'PatientName': 'Test'}) for _ in range(n_series)]
     for d in ds:
         send_dicom(d, "localhost", receiver_port)
 
-    time.sleep(2)
-    test_dicoms_received(mercure_base, ds)
-    start_service("router")
-    time.sleep(2)
+    time.sleep(2+n_series/2)
     test_dicoms_in_folder(mercure_base / "data" / "outgoing", ds)
     
-    start_service("dispatcher")
-    time.sleep(2)
+    start_service("dispatcher:*")
+    time.sleep(2+n_series/2)
     test_dicoms_in_folder(mercure_base / "target", ds)
 
+
+@mytest
+def test_case_process(n_series=1):
+    mercure_base = create_temp_dirs()
+    config = {
+        "rules": {
+            "test_series": Rule(
+                rule="True", action="both", action_trigger="series", processing_module="dummy_module", target="test_target"
+            ).dict(),
+        },
+        "modules": {
+            "dummy_module": Module(
+                docker_tag="mercureimaging/mercure-dummy-processor:latest"
+            ).dict()
+        },
+        "targets": {
+            "test_target": FolderTarget(folder=str(mercure_base / "target")).dict()
+        }
+    }
+    start_mercure(config, ["receiver", "router:*", "dispatcher:*", "processor:*"], mercure_base)
+
+    time.sleep(1)
+    ds = [create_minimal_dicom(None, None, additional_tags={'PatientName': 'Test'}) for _ in range(n_series)]
+    for d in ds:
+        send_dicom(d, "localhost", receiver_port)
+
+    for _ in range(120):
+        try:
+            test_dicoms_in_folder(mercure_base / "target", ds)
+            break
+        except AssertionError as e:
+            time.sleep(1)
+    else:
+        raise Exception("Failed to find dicoms in target folder after 120 seconds.")
 if __name__ == '__main__':
     services = None
-    test_case_simple(5)
-    # test_case_dispatch(5)
+    # test_case_simple(20)
+    # test_case_dispatch(20)
+    test_case_process(10)
         # # When done, stop supervisor
         # print("\nService Logs:")
         # for service in services:
