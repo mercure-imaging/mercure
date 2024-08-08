@@ -54,16 +54,20 @@ def route_series(task_id: str, series_UID: str, files:typing.List[Path] = []) ->
     # Create lock file in the incoming folder and prevent other instances from working on this series
     try:
         lock = helper.FileLock(lock_file)
-
+    except FileNotFoundError:
+        # Series likely already processed by other instance of router
+        logger.debug("Series {} is already moved, skipping".format(series_UID))
+        return
     except FileExistsError:
         # Series likely already processed by other instance of router
+        logger.debug("Series {} is locked, skipping".format(series_UID))
         return
     except:
         # Can't create lock file, so something must be seriously wrong
         logger.error(f"Unable to create lock file {lock_file}", task_id)  # handle_error
         return
 
-    logger.info(f"Processing series {series_UID}")
+    logger.info(f"Evaluating series {series_UID}")
     fileList = []
     seriesPrefix = series_UID + mercure_defs.SEPARATOR
 
@@ -134,6 +138,7 @@ def route_series(task_id: str, series_UID: str, files:typing.List[Path] = []) ->
     except Exception:
         logger.error(f"Unable to remove lock file {lock_file}", task_id)  # handle_error
         return
+    shutil.rmtree(base_dir)
 
 
 def get_triggered_rules(

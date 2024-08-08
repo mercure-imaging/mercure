@@ -141,7 +141,6 @@ def run_router() -> None:
             route_series(task_id, series_uid)
             del r.series[series_uid]
             r.complete_series.remove(series_uid)
-            shutil.rmtree(config.mercure.incoming_folder+"/"+series_uid)
         except Exception:
             logger.error(f"Problems while processing series {series_uid}", task_id)  # handle_error
         # If termination is requested, stop processing series after the active one has been completed
