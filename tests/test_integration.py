@@ -20,8 +20,8 @@ import pydicom
 from pynetdicom import AE, debug_logger
 from pynetdicom.sop_class import MRImageStorage
 
-
-here = os.path.abspath(os.path.dirname(__file__))
+# current workding directory
+here = os.path.abspath(os.getcwd())
 receiver_port = 21113
 supervisor_process = None
 
