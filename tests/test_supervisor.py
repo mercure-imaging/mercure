@@ -6,6 +6,7 @@ import multiprocessing
 import os
 from pathlib import Path
 import time
+import pytest
 from supervisor.supervisord import Supervisor
 from supervisor.states import RUNNING_STATES
 from supervisor.options import ServerOptions
@@ -222,7 +223,7 @@ def start_mercure(config = {}, services_to_start=["bookkeeper", "reciever", "rou
         start_service(service)
     return services, mercure_base
 
-def test_dicoms_received(mercure_base, dicoms):
+def is_dicoms_received(mercure_base, dicoms):
     dicoms_recieved = set()
     for series_folder in (mercure_base / 'data' / 'incoming').glob('*/'):
         for dicom in series_folder.glob('*.dcm'):
@@ -234,7 +235,7 @@ def test_dicoms_received(mercure_base, dicoms):
     assert dicoms_recieved == set(ds.SOPInstanceUID for ds in dicoms)
     print(f"Received {len(dicoms)} dicoms as expected")
 
-def test_dicoms_in_folder(folder, dicoms):
+def is_dicoms_in_folder(folder, dicoms):
     dicoms_found = set()
     for dicom in folder.glob('**/*.dcm'):
         uid = pydicom.dcmread(dicom).SOPInstanceUID
@@ -296,7 +297,7 @@ def mytest(func):
     return wrapper
 
 @mytest
-def test_case_simple(n_series=1):
+def case_simple(n_series=1):
     config = {
         "rules": {
             "test_series": Rule(
@@ -311,13 +312,13 @@ def test_case_simple(n_series=1):
         send_dicom(d, "localhost", receiver_port)
 
     time.sleep(2)
-    test_dicoms_received(mercure_base, ds)
+    is_dicoms_received(mercure_base, ds)
     start_service("router:*")
     time.sleep(2+n_series/2)
-    test_dicoms_in_folder(mercure_base / "data" / "success", ds)
+    is_dicoms_in_folder(mercure_base / "data" / "success", ds)
 
 @mytest
-def test_case_dispatch(n_series=1):
+def case_dispatch(n_series=1):
     mercure_base = create_temp_dirs()
     config = {
         "rules": {
@@ -338,15 +339,15 @@ def test_case_dispatch(n_series=1):
         send_dicom(d, "localhost", receiver_port)
 
     time.sleep(2+n_series/2)
-    test_dicoms_in_folder(mercure_base / "data" / "outgoing", ds)
+    is_dicoms_in_folder(mercure_base / "data" / "outgoing", ds)
     
     start_service("dispatcher:*")
     time.sleep(2+n_series/2)
-    test_dicoms_in_folder(mercure_base / "target", ds)
+    is_dicoms_in_folder(mercure_base / "target", ds)
 
-
+    
 @mytest
-def test_case_process(n_series=1):
+def case_process(n_series=1):
     mercure_base = create_temp_dirs()
     config = {
         "rules": {
@@ -372,17 +373,28 @@ def test_case_process(n_series=1):
 
     for _ in range(120):
         try:
-            test_dicoms_in_folder(mercure_base / "target", ds)
+            is_dicoms_in_folder(mercure_base / "target", ds)
             break
         except AssertionError as e:
             time.sleep(1)
     else:
         raise Exception("Failed to find dicoms in target folder after 120 seconds.")
+
+
+def test_case_simple():
+    case_simple(5)
+
+def test_case_dispatch():
+    case_dispatch(5)
+
+def test_case_process():
+    case_process(5)
+
 if __name__ == '__main__':
     services = None
     # test_case_simple(20)
     # test_case_dispatch(20)
-    test_case_process(10)
+    case_process(10)
         # # When done, stop supervisor
         # print("\nService Logs:")
         # for service in services:
