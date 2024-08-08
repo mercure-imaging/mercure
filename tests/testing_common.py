@@ -169,7 +169,7 @@ def make_fake_processor(fs, mocked, fails):
     return fake_processor
 
 
-def create_minimal_dicom(output_filename, series_uid, additional_tags=None) -> None:
+def create_minimal_dicom(output_filename, series_uid, additional_tags=None) -> Dataset:
     """
     Create a minimal DICOM file with the given series UID and additional tags.
     
@@ -178,9 +178,11 @@ def create_minimal_dicom(output_filename, series_uid, additional_tags=None) -> N
     :param additional_tags: A dictionary of additional DICOM tags and their values
     :return: None
     """
+    if not series_uid:
+        series_uid = generate_uid()
     # Create a new DICOM dataset
     file_meta = FileMetaDataset()
-    file_meta.MediaStorageSOPClassUID = pydicom.uid.UID('1.2.840.10008.5.1.4.1.1.66')  # Raw Data Storage
+    file_meta.MediaStorageSOPClassUID = pydicom.uid.MRImageStorage  # Raw Data Storage
     file_meta.MediaStorageSOPInstanceUID = generate_uid()
     file_meta.ImplementationClassUID = generate_uid()
     file_meta.TransferSyntaxUID = pydicom.uid.ExplicitVRLittleEndian
@@ -192,7 +194,6 @@ def create_minimal_dicom(output_filename, series_uid, additional_tags=None) -> N
     ds.StudyInstanceUID = generate_uid()
     ds.SOPInstanceUID = file_meta.MediaStorageSOPInstanceUID
     ds.SOPClassUID = file_meta.MediaStorageSOPClassUID
-
     # Add additional tags
     if additional_tags:
         for tag, value in additional_tags.items():
@@ -200,8 +201,10 @@ def create_minimal_dicom(output_filename, series_uid, additional_tags=None) -> N
     ds.SeriesInstanceUID = series_uid
 
     # Save the DICOM file
-    ds.save_as(output_filename)
-    print(f"Minimal DICOM file saved: {output_filename}")
+    if output_filename:
+        ds.save_as(output_filename)
+        print(f"Minimal DICOM file saved: {output_filename}")
+    return ds
 
 
 def mock_incoming_uid(config, fs, series_uid, tags={}, name="bar", force_tags_output=None) -> Tuple[str,str]:    

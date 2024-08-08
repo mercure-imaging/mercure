@@ -19,6 +19,13 @@ depends_on = None
 
 
 def upgrade():
+    connection = op.get_bind()
+    dialect = connection.dialect
+    if dialect.name == "sqlite":
+        jsonb = sa.Text # type: ignore
+    else:
+        jsonb = postgresql.JSONB # type: ignore
+
     op.create_table(
         "processor_outputs",
         sa.Column("id", sa.Integer, primary_key=True, autoincrement=True),
@@ -28,8 +35,8 @@ def upgrade():
         sa.Column("task_mrn", sa.String),
         sa.Column("module", sa.String),
         sa.Column("index", sa.Integer),
-        sa.Column("settings", postgresql.JSONB),
-        sa.Column("output", postgresql.JSONB),
+        sa.Column("settings", jsonb),
+        sa.Column("output", jsonb),
 
     )
 

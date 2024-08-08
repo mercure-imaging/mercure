@@ -17,7 +17,12 @@ depends_on = None
 
 
 def upgrade():
-    op.drop_constraint("task_events_task_fk", "task_events", type_="foreignkey")
+    connection = op.get_bind()
+    dialect = connection.dialect
+    if dialect.name == "sqlite":
+        pass
+    else:
+        op.drop_constraint("task_events_task_fk", "task_events", type_="foreignkey")
 
 
 def downgrade():
