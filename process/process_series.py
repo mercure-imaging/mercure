@@ -417,6 +417,9 @@ async def process_series(folder: Path) -> None:
                     # As far as the processing step is concerned, theres' only one processing step and it's this one,
                     # so we copy this one's information into a copy of the task file and hand that to the container.
                     copied_task.process = task_processing
+                    # The settings currently only exist in the first list entry of the processing modules. Therefore, 
+                    # take the settings from there.
+                    copied_task.process.settings = task.process[0].settings
                     with open(folder / "in" / mercure_names.TASKFILE,"w") as task_file:
                         json.dump(copied_task.dict(), task_file)
 
