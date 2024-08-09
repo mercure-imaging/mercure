@@ -7,9 +7,11 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+import threading
 import time
 from typing import Optional
 import pytest
+import requests
 from supervisor.supervisord import Supervisor
 from supervisor.states import RUNNING_STATES
 from supervisor.options import ServerOptions
@@ -145,6 +147,20 @@ environment=MERCURE_CONFIG_FOLDER="{self.mercure_base}/config"
     def get_service_log(self, name, offset=0, length=10000):
         return self.rpc.supervisor.readProcessStdoutLog(name, offset, length)
 
+    def stream_service_logs(self, name, timeout=1):
+        offset = 0
+        while True:
+            log_data, offset, overflow = self.rpc.supervisor.tailProcessStdoutLog(name, offset, 1024)
+            if log_data:
+                print(log_data, end='', flush=True)
+            if overflow:
+                print(f"Warning: Log overflow detected for {name}. Some log entries may have been missed.")
+            time.sleep(timeout)
+
+    def stream_service_logs_threaded(self, name, timeout=1):
+        thread = threading.Thread(target=self.stream_service_logs, args=(name, timeout))
+        thread.start()
+        return thread
     def wait_for_start(self):
         while True:
             if Path(self.socket).exists():
@@ -192,6 +208,13 @@ def is_dicoms_in_folder(folder, dicoms):
         raise
     print(f"Found {len(dicoms)} dicoms in {folder.name} as expected")
 
+def is_series_registered(bookkeeper_port, dicoms):
+    result = requests.get(f"http://localhost:{bookkeeper_port}/query/series",
+                            headers={"Authorization": f"Token test"})
+    assert result.status_code == 200
+    result = result.json()
+    assert set([r['series_uid'] for r in result]) == set([d.SeriesInstanceUID for d in dicoms])
+
 @pytest.fixture(scope="function")
 def supervisord(mercure_base):
     supervisor: Optional[SupervisorManager] = None
@@ -238,7 +261,7 @@ def mercure(mercure_base, supervisord, python_bin):
     def py_service(service, **kwargs):
         return MercureService(service,f"{python_bin} {here}/{service}.py", **kwargs)
     services = [
-        py_service("bookkeeper"),
+        py_service("bookkeeper",startsecs=10),
         py_service("router", numprocs=5),
         py_service("processor", numprocs=2),
         py_service("dispatcher", numprocs=5),
@@ -296,7 +319,7 @@ def mercure_config(mercure_base, receiver_port, bookkeeper_port):
     mercure_config["study_complete_trigger"] = 2
     mercure_config["bookkeeper_api_key"] = "test"
     mercure_config["port"] = receiver_port
-    mercure_config["bookkeeper"] = f"0.0.0.0:{bookkeeper_port}"
+    mercure_config["bookkeeper"] = f"localhost:{bookkeeper_port}"
     with (mercure_base / 'config' / 'mercure.json').open('w') as fp:
         json.dump(mercure_config, fp)
 
@@ -319,7 +342,7 @@ DEBUG=True
     return update_config
 
 @pytest.mark.parametrize("n_series",(5,))
-def test_case_simple(mercure, mercure_config, mercure_base, receiver_port, n_series):
+def test_case_simple(mercure, mercure_config, mercure_base, receiver_port, bookkeeper_port, n_series):
     config = {
         "rules": {
             "test_series": Rule(
@@ -328,7 +351,7 @@ def test_case_simple(mercure, mercure_config, mercure_base, receiver_port, n_ser
         }
     }
     mercure_config(config)
-    supervisor = mercure(["receiver"])
+    supervisor = mercure(["receiver", "bookkeeper"])
     time.sleep(1)
     ds = [create_minimal_dicom(None, None, additional_tags={'PatientName': 'Greg'}) for _ in range(n_series)]
     for d in ds:
@@ -338,9 +361,10 @@ def test_case_simple(mercure, mercure_config, mercure_base, receiver_port, n_ser
     supervisor.start_service("router:*")
     time.sleep(2+n_series/2)
     is_dicoms_in_folder(mercure_base / "data" / "success", ds)
+    is_series_registered(bookkeeper_port, ds)
 
 @pytest.mark.parametrize("n_series",(5,))
-def test_case_dispatch(mercure,mercure_config, mercure_base, receiver_port, n_series):
+def test_case_dispatch(mercure,mercure_config, mercure_base, receiver_port, bookkeeper_port, n_series):
     config = {
         "rules": {
             "test_series": Rule(
@@ -352,7 +376,7 @@ def test_case_dispatch(mercure,mercure_config, mercure_base, receiver_port, n_se
         }
     }
     mercure_config(config)
-    supervisor = mercure(["receiver", "router:*"])
+    supervisor = mercure(["receiver", "router:*","bookkeeper"])
     (mercure_base / "target").mkdir(parents=True, exist_ok=True)
 
     time.sleep(1)
@@ -366,10 +390,11 @@ def test_case_dispatch(mercure,mercure_config, mercure_base, receiver_port, n_se
     supervisor.start_service("dispatcher:*")
     time.sleep(2+n_series/2)
     is_dicoms_in_folder(mercure_base / "target", ds)
+    is_series_registered(bookkeeper_port, ds)
 
     
 @pytest.mark.parametrize("n_series",(3,))
-def test_case_process(mercure, mercure_config, mercure_base, receiver_port, n_series):
+def test_case_process(mercure, mercure_config, mercure_base, receiver_port, bookkeeper_port, n_series):
     config = {
         "rules": {
             "test_series": Rule(
@@ -386,7 +411,7 @@ def test_case_process(mercure, mercure_config, mercure_base, receiver_port, n_se
         }
     }
     mercure_config(config)
-    mercure(["receiver", "router:*", "dispatcher:*", "processor:*"])
+    mercure(["bookkeeper", "receiver", "router:*", "dispatcher:*", "processor:*"])
     time.sleep(1)
     ds = [create_minimal_dicom(None, None, additional_tags={'PatientName': 'Test'}) for _ in range(n_series)]
     for d in ds:
@@ -400,7 +425,8 @@ def test_case_process(mercure, mercure_config, mercure_base, receiver_port, n_se
             time.sleep(1)
     else:
         raise Exception("Failed to find dicoms in target folder after 120 seconds.")
-
+    is_series_registered(bookkeeper_port, ds)
+    # t1.join(0.1)
 
 if __name__ == '__main__':
     services = None
