@@ -66,11 +66,11 @@ async def do_post(endpoint, kwargs, catch_errors=False) -> None:
                         f"Failed POST request {kwargs} to bookkeeper endpoint {endpoint}: status: {resp.status}"
                     )
     except aiohttp.client.ClientError as e:
-        logger.error(f"Failed POST request to bookkeeper endpoint {endpoint}: {e}")
+        logger.error(f"Failed POST request to {bookkeeper_address}/{endpoint}: {e}")
         if not catch_errors:
             raise
     except asyncio.TimeoutError as e:
-        logger.error(f"Failed POST request to bookkeeper endpoint {endpoint} with timeout: {e}")
+        logger.error(f"Failed POST request to {bookkeeper_address}/{endpoint} with timeout: {e}")
         if not catch_errors:
             raise
 

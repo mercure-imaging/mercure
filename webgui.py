@@ -131,7 +131,7 @@ DEBUG_MODE = webgui_config("DEBUG", cast=bool, default=True)
 async def lifespan(app):
     startup()
     yield
-    shutdown()
+    await shutdown()
 
 
 def startup() -> None:
@@ -139,7 +139,7 @@ def startup() -> None:
     monitor.send_event(monitor.m_events.BOOT, monitor.severity.INFO, f"PID = {os.getpid()}")
 
 
-async def shutdown():
+async def shutdown() -> None:
     monitor.send_event(monitor.m_events.SHUTDOWN, monitor.severity.INFO, "")
     await delete_old_tests()
 

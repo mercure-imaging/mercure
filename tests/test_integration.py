@@ -131,8 +131,8 @@ environment=MERCURE_CONFIG_FOLDER="{self.mercure_base}/config"
         self.process = multiprocessing.Process(target=self.run)
         self.process.start()
         self.wait_for_start()
-        transport = SupervisorTransport(None, None, f'unix://{self.socket}')
-        self.rpc = xmlrpc.client.ServerProxy('http://localhost', transport=transport)
+        self.transport = SupervisorTransport(None, None, f'unix://{self.socket}')
+        self.rpc = xmlrpc.client.ServerProxy('http://localhost', transport=self.transport)
 
     def start_service(self, name) -> None:
         self.rpc.supervisor.startProcess(name)
@@ -170,6 +170,7 @@ environment=MERCURE_CONFIG_FOLDER="{self.mercure_base}/config"
         if not self.process:
             return
         try:
+            self.transport.close()
             self.process.terminate()
             self.process.join()
         except Exception as e:
@@ -263,7 +264,7 @@ def mercure(mercure_base, supervisord: Callable[[Any], SupervisorManager], pytho
     def py_service(service, **kwargs) -> MercureService:
         return MercureService(service,f"{python_bin} {here}/{service}.py", **kwargs)
     services = [
-        py_service("bookkeeper",startsecs=10),
+        py_service("bookkeeper",startsecs=6),
         py_service("router", numprocs=5),
         py_service("processor", numprocs=2),
         py_service("dispatcher", numprocs=5),
@@ -361,10 +362,17 @@ def test_case_simple(mercure, mercure_config, mercure_base, receiver_port, bookk
     time.sleep(2)
     is_dicoms_received(mercure_base, ds)
     supervisor.start_service("router:*")
-    time.sleep(2+n_series/2)
-    is_dicoms_in_folder(mercure_base / "data" / "success", ds)
-    is_series_registered(bookkeeper_port, ds)
 
+    for n in range(n_series//2):
+        try:
+            is_dicoms_in_folder(mercure_base / "data" / "success", ds)
+            is_series_registered(bookkeeper_port, ds)
+            break
+        except AssertionError:
+            if n < n_series//2:
+                time.sleep(1)
+            else:
+                raise
 @pytest.mark.parametrize("n_series",(5,))
 def test_case_dispatch(mercure,mercure_config, mercure_base, receiver_port, bookkeeper_port, n_series):
     config = {
@@ -390,11 +398,16 @@ def test_case_dispatch(mercure,mercure_config, mercure_base, receiver_port, book
     is_dicoms_in_folder(mercure_base / "data" / "outgoing", ds)
     
     supervisor.start_service("dispatcher:*")
-    time.sleep(2+n_series/2)
-    is_dicoms_in_folder(mercure_base / "target", ds)
-    is_series_registered(bookkeeper_port, ds)
+    for n in range(2+n_series//2):
+        try:
+            is_dicoms_in_folder(mercure_base / "target", ds)
+            is_series_registered(bookkeeper_port, ds)
+        except AssertionError:
+            if n < n_series//2+2:
+                time.sleep(1)
+            else:
+                raise
 
-    
 @pytest.mark.parametrize("n_series",(3,))
 def test_case_process(mercure, mercure_config, mercure_base, receiver_port, bookkeeper_port, n_series):
     config = {

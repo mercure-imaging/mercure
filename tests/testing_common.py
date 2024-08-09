@@ -10,9 +10,8 @@ from typing import Callable, Dict, Any, Iterator, Optional, Tuple
 import uuid
 
 import pydicom
-from pydicom import config
-config.settings.reading_validation_mode = config.IGNORE
-config.settings.writing_validation_mode = config.IGNORE
+pydicom.config.settings.reading_validation_mode = pydicom.config.IGNORE
+pydicom.config.settings.writing_validation_mode = pydicom.config.IGNORE
 
 
 from pydicom.dataset import Dataset, FileDataset, FileMetaDataset
