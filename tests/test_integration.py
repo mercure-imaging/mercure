@@ -1,4 +1,3 @@
-import asyncore
 from dataclasses import dataclass
 import functools
 import json
@@ -173,7 +172,8 @@ environment=MERCURE_CONFIG_FOLDER="{self.mercure_base}/config"
         try:
             self.process.terminate()
             self.process.join()
-        except asyncore.ExitNow:
+        except Exception as e:
+            print(e)
             pass
 
 @dataclass

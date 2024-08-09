@@ -10,6 +10,11 @@ from typing import Callable, Dict, Any, Iterator, Optional, Tuple
 import uuid
 
 import pydicom
+from pydicom import config
+config.settings.reading_validation_mode = config.IGNORE
+config.settings.writing_validation_mode = config.IGNORE
+
+
 from pydicom.dataset import Dataset, FileDataset, FileMetaDataset
 from pydicom.uid import generate_uid
 
@@ -21,6 +26,7 @@ from common.types import Config
 import docker.errors
 
 from tests.getdcmtags import process_dicom
+
 
 def spy_on(mocker, obj) -> None:
     pieces = obj.split(".")
