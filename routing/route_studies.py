@@ -158,7 +158,7 @@ def check_study_timeout(task: TaskHasStudy, pending_series: Dict[str, float]) ->
         # Check if there is a pending series on this study. If so, we need to wait for it to timeout before we can complete the study
         for series_uid in pending_series.keys():
             try:
-                example_file = next(Path(config.mercure.incoming_folder).glob(f"{series_uid}*.tags"))
+                example_file = next((Path(config.mercure.incoming_folder) / series_uid).glob(f"{series_uid}*.tags"))
             except StopIteration:  # No tag file with this series UID was found
                 logger.error(f"No tag file for series UID {series_uid} was found")
                 raise
