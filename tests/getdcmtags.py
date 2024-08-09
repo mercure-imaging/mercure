@@ -125,7 +125,7 @@ def process_dicom(dcm_file, sender_address, sender_aet, receiver_aet, bookkeeper
     dcm_file = Path(dcm_file)
     
     try:
-        dataset = pydicom.dcmread(dcm_file)
+        dataset = pydicom.dcmread(dcm_file, stop_before_pixels=True)
     except pydicom.errors.InvalidDicomError as e:
         write_error_information(dcm_file, f"Unable to read DICOM file {dcm_file.name}: {e}")
         return None

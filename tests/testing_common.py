@@ -190,7 +190,7 @@ def create_minimal_dicom(output_filename, series_uid, additional_tags=None) -> D
     file_meta.MediaStorageSOPClassUID = pydicom.uid.MRImageStorage  # Raw Data Storage
     file_meta.MediaStorageSOPInstanceUID = generate_uid()
     file_meta.ImplementationClassUID = generate_uid()
-    file_meta.TransferSyntaxUID = pydicom.uid.ExplicitVRLittleEndian
+    file_meta.TransferSyntaxUID = pydicom.uid.ImplicitVRLittleEndian  # Implicit VR Little Endian transfer syntax
 
     # Create the FileDataset instance
     ds = FileDataset(output_filename, {}, file_meta=file_meta, preamble=b"\0" * 128)
