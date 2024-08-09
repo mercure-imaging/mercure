@@ -8,6 +8,7 @@ from pathlib import Path
 import subprocess
 import sys
 import time
+from typing import Optional
 import pytest
 from supervisor.supervisord import Supervisor
 from supervisor.states import RUNNING_STATES
@@ -66,45 +67,38 @@ def send_dicom(ds, dest_host, dest_port):
         print("Failed to establish association")
         return None
 
+class SupervisorManager:
+    def __init__(self, mercure_base: Path):
+        self.mercure_base = mercure_base
+        self.config_path = None
+        self.process = None
+        self.socket = mercure_base / "supervisor.sock"
 
-    # Send the dataset to a DICOM server (replace with your server's IP and port)
-    status = send_dicom(ds, "127.0.0.1", 11112)
+    def create_config(self, services):
+        self.config_path = self.mercure_base / 'supervisord.conf'
+        log_path = self.mercure_base / 'supervisord.logs'
+        pidfile = self.mercure_base / 'supervisord.pid'
+        self.config_path.touch()
 
-    if status:
-        print(f"C-STORE request status: 0x{status.Status:04x}")
-    else:
-        print("DICOM file sending failed")
-
-
-def create_supervisor_config(services, mercure_base: Path):
-    config_path = mercure_base / 'supervisord.conf'
-    log_path = mercure_base / 'supervisord.logs'
-    config_path.touch()
-    # config_fd, config_path = tempfile.mkstemp(prefix='mercure_supervisord_conf')    
-    # log_fd, log_path = tempfile.mkstemp(prefix='mercure_supervisord_log')
-    with config_path.open('w') as f:
-        f.write(f"""
+        with self.config_path.open('w') as f:
+            f.write(f"""
 [supervisord]
 nodaemon=true
 identifier=supervisor
 directory=/tmp
 loglevel=info
-pidfile=/tmp/supervisord.pid
-sockfile=/tmp/supervisor.sock
+pidfile={pidfile}
+sockfile={self.socket}
 logfile={log_path}
-
 [rpcinterface:supervisor]
 supervisor.rpcinterface_factory = supervisor.rpcinterface:make_main_rpcinterface
-
 [unix_http_server]
-file=/tmp/supervisor.sock
-
+file={self.socket}
 [supervisorctl]
-serverurl=unix:///tmp/supervisor.sock
-
+serverurl=unix://{self.socket}
 """)
-        for service in services:
-            f.write(f"""
+            for service in services:
+                f.write(f"""
 [program:{service.name}]
 command={service.command}
 process_name=%(program_name)s{'_%(process_num)d' if service.numprocs>1 else ''}
@@ -115,59 +109,55 @@ redirect_stderr=true
 startsecs={service.startsecs}
 stopasgroup={str(service.stopasgroup).lower()}
 numprocs={service.numprocs}
-environment=MERCURE_CONFIG_FOLDER="{mercure_base}/config"
+environment=MERCURE_CONFIG_FOLDER="{self.mercure_base}/config"
 """)
 
-    return config_path
+    def run(self):
+        args = ['-c', str(self.config_path)]
+        options = ServerOptions()
+        options.realize(args)
+        
+        s = Supervisor(options)
+        options.first = True
+        options.test = False
+        try:
+            s.main()
+        except Exception as e:
+            print(e)
 
-def run_supervisor(config_path):
-    args = ['-c', config_path]
-    options = ServerOptions()
-    options.realize(args)
-    
-    s = Supervisor(options)
-    options.first = True
-    options.test = False
-    try:
-        s.main()
-    except Exception as e:
-        print(e)
-        pass
+    def start(self, services):
+        self.create_config(services)
+        self.process = multiprocessing.Process(target=self.run)
+        self.process.start()
+        self.wait_for_start()
+        transport = SupervisorTransport(None, None, f'unix://{self.socket}')
+        self.rpc = xmlrpc.client.ServerProxy('http://localhost', transport=transport)
 
-def start_supervisor(services, mercure_base):
-    config_path = create_supervisor_config(services, mercure_base)
-    process = multiprocessing.Process(target=run_supervisor, args=(config_path,))
-    process.start()
-    wait_for_supervisor()
-    return process
+    def start_service(self, name):
+        self.rpc.supervisor.startProcess(name)
 
-def get_supervisor_rpc():
-    transport = SupervisorTransport(None, None, 'unix:///tmp/supervisor.sock')
-    return xmlrpc.client.ServerProxy('http://localhost', transport=transport)
+    def stop_service(self, name):
+        self.rpc.supervisor.stopProcess(name)
 
-def start_service(name):
-    rpc = get_supervisor_rpc()
-    rpc.supervisor.startProcess(name)
+    def all_services(self):
+        return self.rpc.supervisor.getAllProcessInfo()
 
-def stop_service(name):
-    rpc = get_supervisor_rpc()
-    rpc.supervisor.stopProcess(name)
+    def get_service_log(self, name, offset=0, length=10000):
+        return self.rpc.supervisor.readProcessStdoutLog(name, offset, length)
 
-def all_services():
-    rpc = get_supervisor_rpc()
-    return rpc.supervisor.getAllProcessInfo()
+    def wait_for_start(self):
+        while True:
+            if Path(self.socket).exists():
+                break
+            else:
+                time.sleep(0.1)
+    def stop(self):
+        try:
+            self.process.terminate()
+            self.process.join()
+        except asyncore.ExitNow:
+            pass
 
-def get_service_log(name, offset=0, length=10000):
-    rpc = get_supervisor_rpc()
-    return rpc.supervisor.readProcessStdoutLog(name, offset, length)
-
-def wait_for_supervisor():
-    import time
-    while True:
-        if Path('/tmp/supervisor.sock').exists():
-            break
-        else:
-            time.sleep(0.1)
 @dataclass
 class MercureService:
     name: str
@@ -204,32 +194,28 @@ def is_dicoms_in_folder(folder, dicoms):
 
 @pytest.fixture(scope="function")
 def supervisord(mercure_base):
-    process = None
-    def starter(services):
-        nonlocal process
-        if not process:
-            process = start_supervisor(services, mercure_base)
-        return process
+    supervisor: Optional[SupervisorManager] = None
+    def starter(services=[]):
+        nonlocal supervisor
+        if not supervisor:
+            supervisor = SupervisorManager(mercure_base)
+            supervisor.start(services)
+            return supervisor
+        return supervisor
     yield starter
-    if process:
-        stop_supervisor(process)
+    if supervisor is not None:
+        supervisor.stop()
 
-def stop_supervisor(process):
-    try:
-        process.terminate()
-        process.join()
-    except asyncore.ExitNow:
-        pass
 
-def stop_mercure():
+def stop_mercure(supervisor: SupervisorManager):
     logs = {}
-    for service in all_services():
+    for service in supervisor.all_services():
         if service['state'] in RUNNING_STATES:
             try:
-                stop_service(service['name'])
+                supervisor.stop_service(service['name'])
             except xmlrpc.client.Fault as e:
                 if e.faultCode == 10:
-                    stop_service(service['group']+":*")
+                    supervisor.stop_service(service['group']+":*")
         # log = get_service_log(service['name'])
         # if log:
         log =  Path(service['stdout_logfile']).read_text()
@@ -258,13 +244,13 @@ def mercure(mercure_base, supervisord, python_bin):
         py_service("dispatcher", numprocs=5),
     ]
     services += [MercureService(f"receiver", f"{here}/receiver.sh", stopasgroup=True)]
-    supervisord(services)
+    supervisor = supervisord(services)
     def do_start(services_to_start=["bookkeeper", "reciever", "router", "processor", "dispatcher"]):
         for service in services_to_start:
-            start_service(service)
-
+            supervisor.start_service(service)
+        return supervisor
     yield do_start
-    logs = stop_mercure()
+    logs = stop_mercure(supervisor)
     for l in logs:
         print(f"====== {l} ======")
         print(logs[l])
@@ -272,7 +258,7 @@ def mercure(mercure_base, supervisord, python_bin):
 
 @pytest.fixture(scope="function")
 def mercure_base():
-    with tempfile.TemporaryDirectory(prefix='mercure_', dir='/tmp') as temp_dir:
+    with tempfile.TemporaryDirectory(prefix='mercure_') as temp_dir:
         temp_dir = Path(temp_dir)
         for d in ['config','data']:
             (temp_dir / d).mkdir()
@@ -340,16 +326,16 @@ def test_case_simple(mercure, mercure_config, mercure_base, receiver_port, n_ser
                 rule="True", action="notification", action_trigger="series"
             ).dict(),
         }
-    }  
+    }
     mercure_config(config)
-    mercure(["receiver"])
+    supervisor = mercure(["receiver"])
     time.sleep(1)
     ds = [create_minimal_dicom(None, None, additional_tags={'PatientName': 'Greg'}) for _ in range(n_series)]
     for d in ds:
         send_dicom(d, "localhost", receiver_port)
     time.sleep(2)
     is_dicoms_received(mercure_base, ds)
-    start_service("router:*")
+    supervisor.start_service("router:*")
     time.sleep(2+n_series/2)
     is_dicoms_in_folder(mercure_base / "data" / "success", ds)
 
@@ -366,8 +352,7 @@ def test_case_dispatch(mercure,mercure_config, mercure_base, receiver_port, n_se
         }
     }
     mercure_config(config)
-    mercure(["receiver", "router:*"])
-
+    supervisor = mercure(["receiver", "router:*"])
     (mercure_base / "target").mkdir(parents=True, exist_ok=True)
 
     time.sleep(1)
@@ -378,7 +363,7 @@ def test_case_dispatch(mercure,mercure_config, mercure_base, receiver_port, n_se
     time.sleep(2+n_series/2)
     is_dicoms_in_folder(mercure_base / "data" / "outgoing", ds)
     
-    start_service("dispatcher:*")
+    supervisor.start_service("dispatcher:*")
     time.sleep(2+n_series/2)
     is_dicoms_in_folder(mercure_base / "target", ds)
 
@@ -402,7 +387,6 @@ def test_case_process(mercure, mercure_config, mercure_base, receiver_port, n_se
     }
     mercure_config(config)
     mercure(["receiver", "router:*", "dispatcher:*", "processor:*"])
-
     time.sleep(1)
     ds = [create_minimal_dicom(None, None, additional_tags={'PatientName': 'Test'}) for _ in range(n_series)]
     for d in ds:
