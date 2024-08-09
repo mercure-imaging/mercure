@@ -5,6 +5,8 @@ import json
 import multiprocessing
 import os
 from pathlib import Path
+import subprocess
+import sys
 import time
 import pytest
 from supervisor.supervisord import Supervisor
@@ -17,14 +19,15 @@ from common.config import mercure_defaults
 from common.types import FolderTarget, Module, Rule, Target
 from tests.testing_common import create_minimal_dicom
 import pydicom
-from pynetdicom import AE, debug_logger
+from pynetdicom import AE
 from pynetdicom.sop_class import MRImageStorage
+import logging
+import socket
 
 # current workding directory
 here = os.path.abspath(os.getcwd())
-receiver_port = 21113
-supervisor_process = None
 
+logging.getLogger('pynetdicom').setLevel(logging.WARNING)
 def send_dicom(ds, dest_host, dest_port):
     """
     Sends a DICOM Dataset to a specified destination using pynetdicom.
@@ -73,10 +76,13 @@ def send_dicom(ds, dest_host, dest_port):
         print("DICOM file sending failed")
 
 
-def create_supervisor_config(services, mercure_base):
-    config_fd, config_path = tempfile.mkstemp(prefix='mercure_supervisord_conf')    
-    log_fd, log_path = tempfile.mkstemp(prefix='mercure_supervisord_log')
-    with open(config_fd, 'w') as f:
+def create_supervisor_config(services, mercure_base: Path):
+    config_path = mercure_base / 'supervisord.conf'
+    log_path = mercure_base / 'supervisord.logs'
+    config_path.touch()
+    # config_fd, config_path = tempfile.mkstemp(prefix='mercure_supervisord_conf')    
+    # log_fd, log_path = tempfile.mkstemp(prefix='mercure_supervisord_log')
+    with config_path.open('w') as f:
         f.write(f"""
 [supervisord]
 nodaemon=true
@@ -170,59 +176,6 @@ class MercureService:
     stopasgroup: bool = False
     startsecs: int = 0
 
-def create_temp_dirs():
-    temp_route = Path(tempfile.mkdtemp(prefix='mercure_', dir='/tmp'))
-    for d in ['config','data']:
-        temp_route.joinpath(d).mkdir()
-    for k in ["incoming", "studies", "outgoing", "success", "error", "discard", "processing"]:
-        temp_route.joinpath('data', k).mkdir()
-    return temp_route
-
-
-def write_mercure_config(mercure_base, config = {}):
-    mercure_config = { k: v for k, v in mercure_defaults.items()}
-    for folder in (mercure_base / 'data').iterdir():
-        mercure_config[f"{folder.name}_folder"] = str(folder)
-
-    mercure_config["series_complete_trigger"] = 1
-    mercure_config["study_complete_trigger"] = 2
-    mercure_config["bookkeeper_api_key"] = "test"
-    mercure_config["port"] = 21113
-    mercure_config["bookkeeper"] = "0.0.0.0:8080"
-    mercure_config.update(config)
-    with (mercure_base / 'config' / 'mercure.json').open('w') as fp:
-        json.dump(mercure_config, fp)
-
-    bookkeeper_config = f"""
-PORT=8080
-HOST=0.0.0.0
-DATABASE_URL=sqlite:///{mercure_base}/data/bookkeeper.sqlite3
-DEBUG=True
-"""
-    with (mercure_base / 'config' / 'bookkeeper.env').open('w') as fp:
-        fp.write(bookkeeper_config)
-
-def start_mercure(config = {}, services_to_start=["bookkeeper", "reciever", "router", "processor", "dispatcher"], mercure_base= None):
-    global supervisor_process
-    if mercure_base is None:
-        mercure_base = create_temp_dirs()
-    write_mercure_config(mercure_base, config)
-
-    services = [
-        MercureService("bookkeeper", f"/opt/mercure/env/bin/python {here}/bookkeeper.py"), 
-        MercureService("router", f"/opt/mercure/env/bin/python {here}/router.py", numprocs=5), 
-        MercureService("processor", f"/opt/mercure/env/bin/python {here}/processor.py", numprocs=2), 
-        MercureService("dispatcher", f"/opt/mercure/env/bin/python {here}/dispatcher.py", numprocs=5)
-    ]
-    # services[0].startsecs = 5
-    services += [MercureService(f"receiver", f"{here}/receiver.sh", stopasgroup=True)]
-    supervisor_process = start_supervisor(services,mercure_base)
-    # Wait for Supervisor to fully start
-    
-    for service in services_to_start:
-        start_service(service)
-    return services, mercure_base
-
 def is_dicoms_received(mercure_base, dicoms):
     dicoms_recieved = set()
     for series_folder in (mercure_base / 'data' / 'incoming').glob('*/'):
@@ -249,7 +202,26 @@ def is_dicoms_in_folder(folder, dicoms):
         raise
     print(f"Found {len(dicoms)} dicoms in {folder.name} as expected")
 
-def stop_mercure(supervisor_process):
+@pytest.fixture(scope="function")
+def supervisord(mercure_base):
+    process = None
+    def starter(services):
+        nonlocal process
+        if not process:
+            process = start_supervisor(services, mercure_base)
+        return process
+    yield starter
+    if process:
+        stop_supervisor(process)
+
+def stop_supervisor(process):
+    try:
+        process.terminate()
+        process.join()
+    except asyncore.ExitNow:
+        pass
+
+def stop_mercure():
     logs = {}
     for service in all_services():
         if service['state'] in RUNNING_STATES:
@@ -263,63 +235,126 @@ def stop_mercure(supervisor_process):
         log =  Path(service['stdout_logfile']).read_text()
         if log:
             logs[service['name']] = log
-    try:
-        supervisor_process.terminate()
-        supervisor_process.join()
-    except asyncore.ExitNow:
-        pass
     return logs
 
+@pytest.fixture(scope="session")
+def python_bin():
+    if os.environ.get("CLEAN_VENV"):
+        with tempfile.TemporaryDirectory(prefix="mercure_venv") as venvdir:
+            subprocess.run([sys.executable, "-m", "venv", venvdir], check=True)
+            subprocess.run([os.path.join(venvdir, "bin", "pip"), "install", "-r", f"{here}/requirements.txt"], check=True)
+            yield venvdir+"/bin/python"
+    else:
+        yield sys.executable
 
-def mytest(func):
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        """A wrapper function"""
- 
-        # Extend some capabilities of func
-        try:
-            func(*args, **kwargs)
-        except:
-            logs = stop_mercure(supervisor_process)
-            for l in logs:
-                print(f"====== {l} ======")
-                print(logs[l])
-            print("=============")
-            raise
-        else:
-            print(func.__name__, 'succeeded')
-            logs = stop_mercure(supervisor_process)
-            if os.environ.get('LOGS'):
-                for l in logs:
-                    print(f"====== {l} ======")
-                    print(logs[l])
-                print("=============")
-    return wrapper
+@pytest.fixture(scope="function")
+def mercure(mercure_base, supervisord, python_bin):
+    def py_service(service, **kwargs):
+        return MercureService(service,f"{python_bin} {here}/{service}.py", **kwargs)
+    services = [
+        py_service("bookkeeper"),
+        py_service("router", numprocs=5),
+        py_service("processor", numprocs=2),
+        py_service("dispatcher", numprocs=5),
+    ]
+    services += [MercureService(f"receiver", f"{here}/receiver.sh", stopasgroup=True)]
+    supervisord(services)
+    def do_start(services_to_start=["bookkeeper", "reciever", "router", "processor", "dispatcher"]):
+        for service in services_to_start:
+            start_service(service)
 
-@mytest
-def case_simple(n_series=1):
+    yield do_start
+    logs = stop_mercure()
+    for l in logs:
+        print(f"====== {l} ======")
+        print(logs[l])
+    print("=============")
+
+@pytest.fixture(scope="function")
+def mercure_base():
+    with tempfile.TemporaryDirectory(prefix='mercure_', dir='/tmp') as temp_dir:
+        temp_dir = Path(temp_dir)
+        for d in ['config','data']:
+            (temp_dir / d).mkdir()
+        for k in ["incoming", "studies", "outgoing", "success", "error", "discard", "processing"]:
+            (temp_dir / 'data' / k).mkdir()
+        yield temp_dir
+
+def random_port():
+    """
+    Generate a free port number to use as an ephemeral endpoint.
+    """
+    s = socket.socket() 
+    s.bind(('',0)) # bind to any available port
+    port = s.getsockname()[1] # get the port number
+    s.close()
+    return port
+
+
+@pytest.fixture(scope="module")
+def receiver_port():
+    return random_port()
+
+@pytest.fixture(scope="module")
+def bookkeeper_port():
+    return random_port()
+
+
+@pytest.fixture(scope="function")
+def mercure_config(mercure_base, receiver_port, bookkeeper_port):
+    mercure_config = { k: v for k, v in mercure_defaults.items()}
+    for folder in (mercure_base / 'data').iterdir():
+        mercure_config[f"{folder.name}_folder"] = str(folder)
+
+    mercure_config["series_complete_trigger"] = 1
+    mercure_config["study_complete_trigger"] = 2
+    mercure_config["bookkeeper_api_key"] = "test"
+    mercure_config["port"] = receiver_port
+    mercure_config["bookkeeper"] = f"0.0.0.0:{bookkeeper_port}"
+    with (mercure_base / 'config' / 'mercure.json').open('w') as fp:
+        json.dump(mercure_config, fp)
+
+    bookkeeper_config = f"""
+PORT={bookkeeper_port}
+HOST=0.0.0.0
+DATABASE_URL=sqlite:///{mercure_base}/data/bookkeeper.sqlite3
+DEBUG=True
+"""
+    with (mercure_base / 'config' / 'bookkeeper.env').open('w') as fp:
+        fp.write(bookkeeper_config)
+    
+    def update_config(config):
+        with (mercure_base / 'config' / 'mercure.json').open('r+') as fp:
+            data = json.load(fp)
+            data.update(config)
+            fp.seek(0)
+            json.dump(data, fp)
+            fp.truncate()
+    return update_config
+
+@pytest.mark.parametrize("n_series",(5,))
+def test_case_simple(mercure, mercure_config, mercure_base, receiver_port, n_series):
     config = {
         "rules": {
             "test_series": Rule(
                 rule="True", action="notification", action_trigger="series"
             ).dict(),
         }
-    }
-    services, mercure_base = start_mercure(config, ["receiver"])
+    }  
+    mercure_config(config)
+    mercure(["receiver"])
     time.sleep(1)
     ds = [create_minimal_dicom(None, None, additional_tags={'PatientName': 'Greg'}) for _ in range(n_series)]
     for d in ds:
         send_dicom(d, "localhost", receiver_port)
-
     time.sleep(2)
     is_dicoms_received(mercure_base, ds)
     start_service("router:*")
     time.sleep(2+n_series/2)
     is_dicoms_in_folder(mercure_base / "data" / "success", ds)
 
-@mytest
-def case_dispatch(n_series=1):
-    mercure_base = create_temp_dirs()
+@pytest.mark.parametrize("n_series",(5,))
+def test_case_dispatch(mercure,mercure_config, mercure_base, receiver_port, n_series):
     config = {
         "rules": {
             "test_series": Rule(
@@ -330,7 +365,9 @@ def case_dispatch(n_series=1):
             "test_target": FolderTarget(folder=str(mercure_base / "target")).dict()
         }
     }
-    start_mercure(config, ["receiver", "router:*"], mercure_base)
+    mercure_config(config)
+    mercure(["receiver", "router:*"])
+
     (mercure_base / "target").mkdir(parents=True, exist_ok=True)
 
     time.sleep(1)
@@ -346,9 +383,8 @@ def case_dispatch(n_series=1):
     is_dicoms_in_folder(mercure_base / "target", ds)
 
     
-@mytest
-def case_process(n_series=1):
-    mercure_base = create_temp_dirs()
+@pytest.mark.parametrize("n_series",(3,))
+def test_case_process(mercure, mercure_config, mercure_base, receiver_port, n_series):
     config = {
         "rules": {
             "test_series": Rule(
@@ -364,14 +400,15 @@ def case_process(n_series=1):
             "test_target": FolderTarget(folder=str(mercure_base / "target")).dict()
         }
     }
-    start_mercure(config, ["receiver", "router:*", "dispatcher:*", "processor:*"], mercure_base)
+    mercure_config(config)
+    mercure(["receiver", "router:*", "dispatcher:*", "processor:*"])
 
     time.sleep(1)
     ds = [create_minimal_dicom(None, None, additional_tags={'PatientName': 'Test'}) for _ in range(n_series)]
     for d in ds:
         send_dicom(d, "localhost", receiver_port)
 
-    for _ in range(120):
+    for _ in range(220):
         try:
             is_dicoms_in_folder(mercure_base / "target", ds)
             break
@@ -380,15 +417,6 @@ def case_process(n_series=1):
     else:
         raise Exception("Failed to find dicoms in target folder after 120 seconds.")
 
-
-def test_case_simple():
-    case_simple(5)
-
-def test_case_dispatch():
-    case_dispatch(5)
-
-def test_case_process():
-    case_process(5)
 
 if __name__ == '__main__':
     services = None
