@@ -1,17 +1,11 @@
 from datetime import datetime, timedelta
 import importlib
-import os
-import stat
-import time
+
 from typing import Tuple
-from unittest.mock import call
-import json
 from pprint import pprint
 import uuid
 
 import pytest
-from common.helper import FileLock
-from common.monitor import m_events, task_event, severity
 from common.types import *
 import common
 from pyfakefs.fake_filesystem import FakeFilesystem
@@ -120,5 +114,41 @@ def test_route_study_simple(fs: FakeFilesystem, mercure_config, mocked):
         router.run_router()
         frozen_time.tick(delta=timedelta(seconds=31))
         # Complete the study
+        router.run_router()
+        assert list(out_path.glob("**/*")) != []
+
+def test_route_study_series_trigger(fs: FakeFilesystem, mercure_config, mocked):
+    """
+    Test that a study with a pending series is not routed until the pending series itself times out.
+    """
+    config = mercure_config(
+        {
+            "series_complete_trigger": 5,
+            "study_complete_trigger": 30,
+            "rules": {
+                "route_study": Rule(
+                    rule="True",  # """@StudyDescription@ == "foo" """,
+                    action="route",
+                    study_trigger_condition="received_series",
+                    study_trigger_series=" 'test_series_complete' ",
+                    target="test_target_2",
+                    action_trigger="study",
+                ).dict(),
+            },
+        }
+    )
+    study_uid = str(uuid.uuid4())
+    series_uid = str(uuid.uuid4())
+    series_description = "test_series_complete"
+    out_path = Path(config.outgoing_folder)
+
+    with freeze_time("2020-01-01 00:00:00") as frozen_time:
+        # Create the initial series.
+        create_series(mocked, fs, config, study_uid, series_uid, series_description)
+        frozen_time.tick(delta=timedelta(seconds=4))
+        create_series(mocked, fs, config, study_uid, str(uuid.uuid4()), "pending")
+        router.run_router()
+        assert list(out_path.glob("**/*")) == [] # Pending series should prevent routing
+        frozen_time.tick(delta=timedelta(seconds=2)) # Tick to the point that the pending series is timed out
         router.run_router()
         assert list(out_path.glob("**/*")) != []
