@@ -9,7 +9,7 @@ import subprocess
 import sys
 import threading
 import time
-from typing import Optional
+from typing import Any, Callable, Generator, Optional
 import pytest
 import requests
 from supervisor.supervisord import Supervisor
@@ -23,7 +23,7 @@ from common.types import FolderTarget, Module, Rule, Target
 from tests.testing_common import create_minimal_dicom
 import pydicom
 from pynetdicom import AE
-from pynetdicom.sop_class import MRImageStorage
+from pynetdicom.sop_class import MRImageStorage # type: ignore
 import logging
 import socket
 
@@ -31,7 +31,7 @@ import socket
 here = os.path.abspath(os.getcwd())
 
 logging.getLogger('pynetdicom').setLevel(logging.WARNING)
-def send_dicom(ds, dest_host, dest_port):
+def send_dicom(ds, dest_host, dest_port) -> Optional[pydicom.Dataset]:
     """
     Sends a DICOM Dataset to a specified destination using pynetdicom.
 
@@ -70,13 +70,13 @@ def send_dicom(ds, dest_host, dest_port):
         return None
 
 class SupervisorManager:
-    def __init__(self, mercure_base: Path):
+    process: Optional[multiprocessing.Process] = None
+    config_path: Optional[Path] = None
+    def __init__(self, mercure_base: Path) -> None:
         self.mercure_base = mercure_base
-        self.config_path = None
-        self.process = None
         self.socket = mercure_base / "supervisor.sock"
 
-    def create_config(self, services):
+    def create_config(self, services) -> None:
         self.config_path = self.mercure_base / 'supervisord.conf'
         log_path = self.mercure_base / 'supervisord.logs'
         pidfile = self.mercure_base / 'supervisord.pid'
@@ -114,7 +114,7 @@ numprocs={service.numprocs}
 environment=MERCURE_CONFIG_FOLDER="{self.mercure_base}/config"
 """)
 
-    def run(self):
+    def run(self) -> None:
         args = ['-c', str(self.config_path)]
         options = ServerOptions()
         options.realize(args)
@@ -127,7 +127,7 @@ environment=MERCURE_CONFIG_FOLDER="{self.mercure_base}/config"
         except Exception as e:
             print(e)
 
-    def start(self, services):
+    def start(self, services) -> None:
         self.create_config(services)
         self.process = multiprocessing.Process(target=self.run)
         self.process.start()
@@ -135,39 +135,41 @@ environment=MERCURE_CONFIG_FOLDER="{self.mercure_base}/config"
         transport = SupervisorTransport(None, None, f'unix://{self.socket}')
         self.rpc = xmlrpc.client.ServerProxy('http://localhost', transport=transport)
 
-    def start_service(self, name):
+    def start_service(self, name) -> None:
         self.rpc.supervisor.startProcess(name)
 
-    def stop_service(self, name):
+    def stop_service(self, name)-> None:
         self.rpc.supervisor.stopProcess(name)
 
-    def all_services(self):
-        return self.rpc.supervisor.getAllProcessInfo()
+    def all_services(self) -> Any:
+        return self.rpc.supervisor.getAllProcessInfo() # type: ignore
 
-    def get_service_log(self, name, offset=0, length=10000):
-        return self.rpc.supervisor.readProcessStdoutLog(name, offset, length)
+    def get_service_log(self, name, offset=0, length=10000) -> Any:
+        return self.rpc.supervisor.readProcessStdoutLog(name, offset, length) # type: ignore
 
-    def stream_service_logs(self, name, timeout=1):
+    def stream_service_logs(self, name, timeout=1) -> None:
         offset = 0
         while True:
-            log_data, offset, overflow = self.rpc.supervisor.tailProcessStdoutLog(name, offset, 1024)
+            log_data, offset, overflow = self.rpc.supervisor.tailProcessStdoutLog(name, offset, 1024) # type: ignore
             if log_data:
                 print(log_data, end='', flush=True)
             if overflow:
                 print(f"Warning: Log overflow detected for {name}. Some log entries may have been missed.")
             time.sleep(timeout)
 
-    def stream_service_logs_threaded(self, name, timeout=1):
+    def stream_service_logs_threaded(self, name, timeout=1) -> threading.Thread:
         thread = threading.Thread(target=self.stream_service_logs, args=(name, timeout))
         thread.start()
         return thread
-    def wait_for_start(self):
+    def wait_for_start(self) -> None:
         while True:
             if Path(self.socket).exists():
                 break
             else:
                 time.sleep(0.1)
-    def stop(self):
+    def stop(self) -> None:
+        if not self.process:
+            return
         try:
             self.process.terminate()
             self.process.join()
@@ -182,7 +184,7 @@ class MercureService:
     stopasgroup: bool = False
     startsecs: int = 0
 
-def is_dicoms_received(mercure_base, dicoms):
+def is_dicoms_received(mercure_base, dicoms) -> None:
     dicoms_recieved = set()
     for series_folder in (mercure_base / 'data' / 'incoming').glob('*/'):
         for dicom in series_folder.glob('*.dcm'):
@@ -194,7 +196,7 @@ def is_dicoms_received(mercure_base, dicoms):
     assert dicoms_recieved == set(ds.SOPInstanceUID for ds in dicoms)
     print(f"Received {len(dicoms)} dicoms as expected")
 
-def is_dicoms_in_folder(folder, dicoms):
+def is_dicoms_in_folder(folder, dicoms) -> None:
     dicoms_found = set()
     for dicom in folder.glob('**/*.dcm'):
         uid = pydicom.dcmread(dicom).SOPInstanceUID
@@ -208,12 +210,12 @@ def is_dicoms_in_folder(folder, dicoms):
         raise
     print(f"Found {len(dicoms)} dicoms in {folder.name} as expected")
 
-def is_series_registered(bookkeeper_port, dicoms):
+def is_series_registered(bookkeeper_port, dicoms) -> None:
     result = requests.get(f"http://localhost:{bookkeeper_port}/query/series",
                             headers={"Authorization": f"Token test"})
     assert result.status_code == 200
-    result = result.json()
-    assert set([r['series_uid'] for r in result]) == set([d.SeriesInstanceUID for d in dicoms])
+    result_json = result.json()
+    assert set([r['series_uid'] for r in result_json]) == set([d.SeriesInstanceUID for d in dicoms])
 
 @pytest.fixture(scope="function")
 def supervisord(mercure_base):
@@ -257,8 +259,8 @@ def python_bin():
         yield sys.executable
 
 @pytest.fixture(scope="function")
-def mercure(mercure_base, supervisord, python_bin):
-    def py_service(service, **kwargs):
+def mercure(mercure_base, supervisord: Callable[[Any], SupervisorManager], python_bin) -> Generator[Callable[[Any],SupervisorManager], None, None]:
+    def py_service(service, **kwargs) -> MercureService:
         return MercureService(service,f"{python_bin} {here}/{service}.py", **kwargs)
     services = [
         py_service("bookkeeper",startsecs=10),
@@ -268,7 +270,7 @@ def mercure(mercure_base, supervisord, python_bin):
     ]
     services += [MercureService(f"receiver", f"{here}/receiver.sh", stopasgroup=True)]
     supervisor = supervisord(services)
-    def do_start(services_to_start=["bookkeeper", "reciever", "router", "processor", "dispatcher"]):
+    def do_start(services_to_start=["bookkeeper", "reciever", "router", "processor", "dispatcher"]) -> SupervisorManager:
         for service in services_to_start:
             supervisor.start_service(service)
         return supervisor
@@ -280,16 +282,16 @@ def mercure(mercure_base, supervisord, python_bin):
     print("=============")
 
 @pytest.fixture(scope="function")
-def mercure_base():
+def mercure_base() -> Generator[Path, None, None]:
     with tempfile.TemporaryDirectory(prefix='mercure_') as temp_dir:
-        temp_dir = Path(temp_dir)
+        temp_path = Path(temp_dir)
         for d in ['config','data']:
-            (temp_dir / d).mkdir()
+            (temp_path / d).mkdir()
         for k in ["incoming", "studies", "outgoing", "success", "error", "discard", "processing"]:
-            (temp_dir / 'data' / k).mkdir()
-        yield temp_dir
+            (temp_path / 'data' / k).mkdir()
+        yield temp_path
 
-def random_port():
+def random_port() -> int:
     """
     Generate a free port number to use as an ephemeral endpoint.
     """
@@ -297,7 +299,7 @@ def random_port():
     s.bind(('',0)) # bind to any available port
     port = s.getsockname()[1] # get the port number
     s.close()
-    return port
+    return int(port)
 
 
 @pytest.fixture(scope="module")
@@ -428,15 +430,3 @@ def test_case_process(mercure, mercure_config, mercure_base, receiver_port, book
     is_series_registered(bookkeeper_port, ds)
     # t1.join(0.1)
 
-if __name__ == '__main__':
-    services = None
-    # test_case_simple(20)
-    # test_case_dispatch(20)
-    case_process(10)
-        # # When done, stop supervisor
-        # print("\nService Logs:")
-        # for service in services:
-        #     print(f"\n--- {service.name} Log ---")
-        #     log = get_service_log(service.name)
-        #     print(log)
-        # print("Supervisor stopped")

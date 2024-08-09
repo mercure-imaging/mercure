@@ -24,11 +24,8 @@ import bookkeeping.config as bk_config
 database = databases.Database(bk_config.DATABASE_URL)
 metadata = sqlalchemy.MetaData(schema=bk_config.DATABASE_SCHEMA)
 
-if 'sqlite://' in bk_config.DATABASE_URL:
-    # SQLite does not support JSONB natively, so we use TEXT instead
-    JSONB = sqlalchemy.types.Text()
-else:
-    from sqlalchemy.dialects.postgresql import JSONB
+# SQLite does not support JSONB natively, so we use TEXT instead
+JSONB = sqlalchemy.types.Text() if 'sqlite://' in bk_config.DATABASE_URL else sqlalchemy.dialects.postgresql.JSONB
 # 
 mercure_events = sqlalchemy.Table(
     "mercure_events",
