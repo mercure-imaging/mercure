@@ -338,7 +338,7 @@
                             <textarea name="notification_payload" id="notification_payload" class="textarea textarea_scroll"
                                 autocomplete="off" rows="6"
                                 data-json
-                                placeholder="JSON Payload for REST call">{{rules[rule]['notification_payload']}}</textarea>
+                                placeholder="JSON Payload for REST call">{% if rules[rule]['notification_payload'] %}{ {{rules[rule]['notification_payload']}} }{% endif %}</textarea>
                         </div>
                     </div>                    
                     <div class="field is-grouped is-grouped-right">
@@ -357,6 +357,9 @@
                                     </a>
                                     <a href="#" id="template_webex" class="dropdown-item">
                                         WebEx Teams
+                                    </a>
+                                    <a href="#" id="template_yarramailbox" class="dropdown-item">
+                                        Yarra Mailbox
                                     </a>
                                 </div>
                             </div>
@@ -680,12 +683,17 @@
         {% raw %}
         var body_template = "Rule {{ rule }} triggered {{ event }}\n{% if details is defined and details|length %}\nDetails:\n{{ details }}\n{%endif%}"
         $('#template_slack').click(function () {
-            $('#notification_payload').val('{\n  "text": "{{ body }}",\n  "channel": "YOUR_CHANNEL_ID"\n}');
+            $('#notification_payload').val('{\n    "text": "{{ body }}",\n    "channel": "YOUR_CHANNEL_ID"\n}');
             $('#notification_payload').trigger("input");
         });
 
         $('#template_webex').click(function () {
-            $('#notification_payload').val('{\n  "text": "{{ body }}"\n}');
+            $('#notification_payload').val('{\n    "text": "{{ body }}"\n}');
+            $('#notification_payload').trigger("input");
+        });
+
+        $('#template_yarramailbox').click(function () {
+            $('#notification_payload').val('{\n    "content": "{{ body }}",\n    "client_serial": "{{ DeviceSerialNumber }}",\n    "timeout": "2 hours",\n    "options": {},\n    "api_key": "INSERT_API_KEY"\n}');
             $('#notification_payload').trigger("input");
         });
         {% endraw %}

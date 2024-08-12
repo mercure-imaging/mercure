@@ -105,6 +105,8 @@ async def rules_edit(request) -> Response:
         return PlainTextResponse("Configuration is being updated. Try again in a minute.")
 
     rule = request.path_params["rule"]
+    if not rule in config.mercure.rules:
+        return PlainTextResponse("Rule does not exist anymore.")
 
     settings_string = ""
     if config.mercure.rules[rule].processing_settings:
@@ -138,13 +140,15 @@ async def rules_edit_post(request) -> Response:
     except:
         return PlainTextResponse("Configuration is being updated. Try again in a minute.")
 
-    editrule = request.path_params["rule"]
-    form = dict(await request.form())
-
+    editrule = request.path_params["rule"]   
     if not editrule in config.mercure.rules:
         return PlainTextResponse("Rule does not exist anymore.")
 
-    old_rule = config.mercure.rules[editrule]
+    try:
+        form = dict(await request.form())
+    except:
+        return PlainTextResponse("Invalid form data.")
+
     # Ensure that the processing settings are valid. Should happen on the client side too, but can't hurt
     # to check again
     try:
@@ -152,33 +156,6 @@ async def rules_edit_post(request) -> Response:
     except:
         new_processing_settings = {}
 
-    # new_rule = Rule(
-    #     disabled=form["status_disabled"],
-    #     fallback=form["status_fallback"],
-    #     processing_settings=new_processing_settings,
-    #     **{
-    #         k: form[k]
-    #         for k in (
-    #             "rule",
-    #             "target",
-    #             "contact",
-    #             "comment",
-    #             "tags",
-    #             "action",
-    #             "action_trigger",
-    #             "study_trigger_condition",
-    #             "study_trigger_series",
-    #             "priority",
-    #             "processing_module",
-    #             "processing_retain_images",
-    #             "notification_webhook",
-    #             "notification_payload",
-    #             "notification_trigger_reception",
-    #             "notification_trigger_completion",
-    #             "notification_trigger_error",
-    #         )
-    #     },
-    # )
     if "processing_module_list" in form:
         processing_module = form.get("processing_module_list","").split(",")
         if processing_module == [""]:
