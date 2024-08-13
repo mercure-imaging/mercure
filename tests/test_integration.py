@@ -283,7 +283,7 @@ def mercure(mercure_base, supervisord: Callable[[Any], SupervisorManager], pytho
         py_service("processor", numprocs=2),
         py_service("dispatcher", numprocs=5),
     ]
-    services += [MercureService(f"receiver", f"{here}/receiver.sh", stopasgroup=True)]
+    services += [MercureService(f"receiver", f"{here}/receiver.sh --inject-errors", stopasgroup=True)]
     supervisor = supervisord(services)
     def do_start(services_to_start=["bookkeeper", "reciever", "router", "processor", "dispatcher"]) -> SupervisorManager:
         for service in services_to_start:
@@ -479,6 +479,9 @@ def test_case_error_inject(mercure, mercure_config, mercure_base, receiver_port,
                 rule="True", action="notification", action_trigger="series"
             ).dict(),
         },
+        "dicom_receiver": {
+            "additional_tags": {"LUTFrameRange": "Value"}
+        }
     }
     mercure_config(config)
     supervisor = mercure(["receiver","router:*"])
@@ -487,7 +490,7 @@ def test_case_error_inject(mercure, mercure_config, mercure_base, receiver_port,
     inject_error(error)
     for d in ds:
         send_dicom(d, "localhost", receiver_port)
-    time.sleep(1)
+    time.sleep(2)
     try:
         is_dicoms_in_folder(mercure_base / "data"/"error", ds)
         for d in (mercure_base / 'data' / "error").rglob('*'):

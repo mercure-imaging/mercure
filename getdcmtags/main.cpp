@@ -316,10 +316,30 @@ void writeErrorInformationAndMove(const OFString& path, const OFString& filename
         writeErrorInformation(path + "error/" + filename+".dcm", errorString);
 }
 
+DcmTagKey calculateUntilTag() {
+    const DcmTagKey* last_tag = std::max_element(main_tags_list.begin(), main_tags_list.end());
+    if (additional_tags.size() > 0) {
+        DcmTagKey last_tag_additional = std::max_element(additional_tags.begin(), additional_tags.end())->first;
+        std::cout << "Last additional tag: " << last_tag_additional.toString() << std::endl;
+        if (*last_tag < last_tag_additional) {
+            last_tag = &last_tag_additional;
+        }
+    }
+    std::cout << "Last tag: " << last_tag->toString() << std::endl;
+    DcmTagKey next_tag = DCM_UndefinedTagKey;
+
+    if (last_tag->getElement() == 0xFFFF) {
+        next_tag = DcmTagKey(last_tag->getGroup()+1, 0x0000);
+    } else {
+        next_tag = DcmTagKey(last_tag->getGroup(), last_tag->getElement()+1);
+    }
+    return next_tag;
+}
+
 int main(int argc, char *argv[])
 {
     QCoreApplication app( argc, argv );
-    
+        
     if (!charsetConverter.isConversionAvailable())
     {
         std::cout << std::endl;
@@ -346,6 +366,8 @@ int main(int argc, char *argv[])
     helperSenderAET = OFString(argv[3]);
     helperReceiverAET = OFString(argv[4]);
 
+    bool injectErrors = false;
+    bool tagsStopEarly = false;
     if (argc > 5)
     {
         bookkeeperAddress = std::string(argv[5]);
@@ -355,11 +377,24 @@ int main(int argc, char *argv[])
     {
         bookkeeperToken = std::string(argv[6]);
     }
+    if (argc > 7)
+    {
+        // scan argv for additional arguments and store them in a vector of strings
+        for (int i = 7; i < argc; ++i) {
+            if (strcmp(argv[i],"--inject-errors") == 0 ) {
+                injectErrors = true;
+            } else if (strcmp(argv[i], "--tags-stop-early") == 0) {
+                tagsStopEarly = true;
+            }
+        }
+    }
 
-    QFile file("./dcm_inject_error");
-    if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        testInjectError = QTextStream(&file).readAll().simplified().toInt();
-        file.close();
+    if (injectErrors) {
+        QFile file("./dcm_inject_error");
+        if (file.exists() && file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            testInjectError = QTextStream(&file).readAll().simplified().toInt();
+            file.close();
+        }
     }
 
     OFString origFilename = OFString(argv[1]);
@@ -373,7 +408,14 @@ int main(int argc, char *argv[])
     }
     OFString full_path = path + origFilename;
     DcmFileFormat dcmFile;
-    OFCondition status = dcmFile.loadFile(full_path);
+    
+    DcmTagKey untilTag;
+    if (tagsStopEarly) {
+        untilTag = calculateUntilTag();
+    } else {
+        untilTag = DCM_UndefinedTagKey;
+    }
+    OFCondition status = dcmFile.loadFileUntilTag(full_path, EXS_Unknown, EGL_noChange, 4096U, ERM_autoDetect, untilTag);
 
     if (DO_ERROR(1) || !status.good())
     {
