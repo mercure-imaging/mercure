@@ -595,7 +595,7 @@ def route_error_files() -> None:
     """
     error_files_found = 0
     errors_folder = Path(config.mercure.incoming_folder) / "error"
-    entries = []
+    entries:List[os.DirEntry] = []
     if errors_folder.is_dir():
         entries += list(os.scandir(errors_folder))
     entries += list(os.scandir(config.mercure.incoming_folder))
@@ -603,11 +603,11 @@ def route_error_files() -> None:
         if not entry.name.endswith(mercure_names.ERROR) or entry.is_dir():
             continue
         # Check if a lock file exists. If not, create one.
-        lock_file = entry.path + mercure_names.LOCK
+        lock_file = str(entry.path) + mercure_names.LOCK
         if os.path.exists(lock_file):
             continue
         try:
-            lock = helper.FileLock(lock_file)
+            lock = helper.FileLock(Path(lock_file))
         except:
             continue
 
@@ -628,7 +628,7 @@ def route_error_files() -> None:
                 move_to = config.mercure.error_folder + "/" + f.name
                 logger.info(f"Moving {f.name} to {move_to}")
                 shutil.move(
-                    f,
+                    str(f),
                     move_to,
                 )
 

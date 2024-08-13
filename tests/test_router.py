@@ -406,7 +406,7 @@ def test_route_series_with_error(fs: FakeFilesystem, mercure_config, mocked):
     router.run_router()
     assert (Path(config.error_folder) / f"bad_dicom.dcm").exists()
     assert (Path(config.error_folder) / f"bad_dicom.error").exists()
-    common.monitor.send_event.assert_called_with(m_events.PROCESSING, severity.ERROR, "Error parsing 1 incoming files")
+    common.monitor.send_event.assert_called_with(m_events.PROCESSING, severity.ERROR, "Error parsing 1 incoming files") # type: ignore
 
 def test_route_series_multiple_rules(fs: FakeFilesystem, mercure_config, mocked, fake_process):
     config = mercure_config({
@@ -426,8 +426,8 @@ def test_route_series_multiple_rules(fs: FakeFilesystem, mercure_config, mocked,
     router.run_router()
     
     # Assert that both rules were triggered and series routed to both targets
-    routing.route_series.push_serieslevel_outgoing.assert_called()
-    assert set(routing.route_series.push_serieslevel_outgoing.call_args[0][1].keys()) == set(["rule1", "rule2"])
+    routing.route_series.push_serieslevel_outgoing.assert_called() # type: ignore
+    assert set(routing.route_series.push_serieslevel_outgoing.call_args[0][1].keys()) == set(["rule1", "rule2"]) # type: ignore
     assert len(list(Path(config.outgoing_folder).iterdir())) == 2
 
     for path in Path(config.outgoing_folder).iterdir():

@@ -196,7 +196,7 @@ async def test_route_study_processing(fs: FakeFilesystem, mercure_config, mocked
     study_uid = str(uuid.uuid4())
     series_uid = str(uuid.uuid4())
     series_description = "test_series_complete"
-    out_path = Path(config.processing_folder)
+    processing_path = Path(config.processing_folder)
 
     with freeze_time("2020-01-01 00:00:00") as frozen_time:
         # Create the initial series.
@@ -207,7 +207,8 @@ async def test_route_study_processing(fs: FakeFilesystem, mercure_config, mocked
         frozen_time.tick(delta=timedelta(seconds=31))
         # Complete the study
         router.run_router()
-        assert list(out_path.glob("**/*")) != []
+        assert list(processing_path.glob("**/*")) != []
+        processor_path = next(Path("/var/processing").iterdir())
         def fake_processor(tag=None, meta=None, do_process=True, **kwargs):
             in_ = processor_path / "in"
             out_ = processor_path / "out"
