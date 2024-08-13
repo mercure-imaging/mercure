@@ -138,7 +138,7 @@ def is_study_complete(folder: str, pending_series: Dict[str, float]) -> bool:
             logger.error(f"Invalid trigger condition in task file in study folder {folder}", task.id)  # handle_error
             return False
     except Exception:
-        logger.error(f"Invalid task file in study folder {folder}", task.id)  # handle_error
+        logger.error(f"Invalid task file in study folder {folder}")  # handle_error
         return False
 
 
@@ -288,7 +288,7 @@ def push_studylevel_notification(study: str, task: Task) -> bool:
 
 def push_studylevel_error(study: str) -> None:
     """
-    Pushes the study folder to the error folder after unsuccessful processing
+    Pushes the study folder to the error folder after unsuccessful routing
     """
     study_folder = config.mercure.studies_folder + "/" + study
     lock_file = Path(study_folder + "/" + study + mercure_names.LOCK)

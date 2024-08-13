@@ -134,6 +134,7 @@ static bool isConversionNeeded = false;
         {                                                                               \
             std::cout << "ERROR: Unable to convert charset for tag " << A << std::endl; \
             std::cout << "ERROR: Unable to process file " << dcmFile << std::endl;      \
+            conversionFailed = true;                                                    \
         }                                                                               \
     }                                                                                   \
     else                                                                                \
@@ -171,13 +172,14 @@ bool readTag(DcmTagKey tag, DcmItem* dataset, OFString& out, OFString path_info)
     if (!dataset->tagExistsWithValue(tag)) {
         return true;
     }
-    if (!dataset->findAndGetOFStringArray(tag, out).good())
+    OFCondition result = dataset->findAndGetOFStringArray(tag, out);
+    if (!result.good())
     {
         OFString errorStr = "Unable to read tag "; 
         errorStr.append(tag.toString());
-        errorStr.append("\nReason: ");                                                                                        
-        errorStr.append(dataset->findAndGetOFStringArray(tag, out).text());                                            
-        writeErrorInformation(path_info, errorStr);                                                                 
+        errorStr.append("\nReason: ");                                           
+        errorStr.append(result.text());
+        writeErrorInformation(path_info, errorStr);
         return false;
     }
     for (size_t i = 0; i < out.length(); i++)                                                                                 
@@ -234,10 +236,10 @@ bool readExtraTags(DcmDataset* dataset, OFString path_info) {
 }
 
 
-void writeTagsList(QVector<QPair<DcmTagKey, OFString>>& tags, FILE* fp, OFString& dcmFile, OFString& conversionBuffer) {
+bool writeTagsList(QVector<QPair<DcmTagKey, OFString>>& tags, FILE* fp, OFString& dcmFile, OFString& conversionBuffer) {
     
     QVectorIterator<QPair<DcmTagKey, OFString>> iter(tags);
-
+    bool conversionFailed = false;
     const DcmDataDictionary &globalDataDict = dcmDataDict.rdlock();
     while(iter.hasNext())
     {
@@ -249,6 +251,7 @@ void writeTagsList(QVector<QPair<DcmTagKey, OFString>>& tags, FILE* fp, OFString
             INSERTTAG(dicent->getTagName(), pair.second,"");
         }
     }
+    return !conversionFailed;
     dcmDataDict.rdunlock();
 }
 
@@ -266,7 +269,7 @@ bool writeTagsFile(OFString dcmFile, OFString originalFile)
 
     fprintf(fp, "{\n");
     OFString conversionBuffer = "";
-
+    bool conversionFailed = false;
     INSERTTAG("SpecificCharacterSet", tagSpecificCharacterSet, "ISO_IR 100");
     INSERTTAG("SeriesInstanceUID", tagSeriesInstanceUID, "1.2.256.0.7230020.3.1.3.531431169.31.1254476944.91508");
     INSERTTAG("SOPInstanceUID", tagSOPInstanceUID, "1.2.256.0.7220020.3.1.3.541411159.31.1254476944.91518");
@@ -277,7 +280,6 @@ bool writeTagsFile(OFString dcmFile, OFString originalFile)
 
     writeTagsList(main_tags, fp, dcmFile, conversionBuffer);
     writeTagsList(additional_tags, fp, dcmFile, conversionBuffer);
-
     fprintf(fp, "\"Filename\": \"%s\"\n", originalFile.c_str());
     fprintf(fp, "}\n");
 
@@ -296,6 +298,7 @@ bool createSeriesFolder(const OFString& path, const OFString& seriesUID) {
     }
     return true;
 }
+
 int main(int argc, char *argv[])
 {
     QCoreApplication app( argc, argv );
@@ -354,7 +357,12 @@ int main(int argc, char *argv[])
         OFString errorString = "Unable to read DICOM file ";
         errorString.append(origFilename);
         errorString.append("\n");
-        writeErrorInformation(full_path, errorString);
+        if (createSeriesFolder(path, "error")) {
+            writeErrorInformation(path + "error/" + origFilename, errorString);
+            rename(full_path.c_str(), (path + "error/" + origFilename+".dcm").c_str());
+        } else {
+            writeErrorInformation(full_path, errorString);
+        }
         return 1;
     }
     DcmDataset* dataset = dcmFile.getDataset();
@@ -364,17 +372,36 @@ int main(int argc, char *argv[])
     readTag(DCM_SeriesInstanceUID, dataset, tagSeriesInstanceUID, full_path);
 
     OFString tag_read_out = "";
+    bool read_success = true;
     for (auto tag: main_tags_list ) {
         tag_read_out = "";
-        if (!readTag(tag, dataset, tag_read_out, full_path))
-            return 1;
+        if (!readTag(tag, dataset, tag_read_out, full_path)) {
+            read_success = false;
+            break;
+        }
         main_tags.append(QPair<DcmTagKey, OFString>(tag, tag_read_out));
+    }
+    if (!read_success) {
+        if (createSeriesFolder(path, "error")) {
+            rename((full_path+".error").c_str(), (path + "error/" + origFilename+".dcm.error").c_str());
+            rename(full_path.c_str(), (path + "error/" + origFilename+".dcm").c_str());
+        } else {
+            writeErrorInformation(full_path, "Unable to read some DICOM tags\n");
+        }
+        return 1;
     }
     tag_read_out = "";
     readTag(DCM_MediaStorageSOPClassUID, dcmFile.getMetaInfo(), tag_read_out, full_path);
     main_tags.append(QPair<DcmTagKey, OFString>(DCM_MediaStorageSOPClassUID, tag_read_out));
 
     if (!readExtraTags(dcmFile.getDataset(), full_path)) {
+        OFString errorString = "Unable to read extra_tags file.\n";
+        if (createSeriesFolder(path, "error")) {
+            writeErrorInformation(path + "error/" + origFilename+".dcm", errorString);
+            rename(full_path.c_str(), (path + "error/" + origFilename+".dcm").c_str());
+        } else {
+            writeErrorInformation(full_path, errorString);
+        }
         return 1;
     }
 
@@ -387,8 +414,15 @@ int main(int argc, char *argv[])
 
     if (!charsetConverter.selectCharacterSet(tagSpecificCharacterSet).good())
     {
-        std::cout << "ERROR: Unable to perform character set conversion! " << std::endl;
-        std::cout << "ERROR: Incoming charset is " << tagSpecificCharacterSet << std::endl;
+        OFString errorString = "ERROR: Unable to perform character set conversion!\n";
+        errorString += "ERROR: Incoming charset is "+ tagSpecificCharacterSet;
+        std::cout << errorString.c_str() << std::endl;
+        if (createSeriesFolder(path, "error")) {
+            writeErrorInformation(path + "error/" + origFilename+".dcm", errorString);
+            rename(full_path.c_str(), (path + "error/" + origFilename+".dcm").c_str());
+        } else {
+            writeErrorInformation(full_path, errorString);
+        }
         return 1;
     }
 
@@ -399,16 +433,21 @@ int main(int argc, char *argv[])
         OFString errorString = "Unable to create series folder for ";
         errorString.append(tagSeriesInstanceUID);
         errorString.append("\n");
-        writeErrorInformation(path + origFilename, errorString);
+        if (createSeriesFolder(path, "error")) {
+            writeErrorInformation(path +"error/"+ origFilename+".dcm", errorString);
+            rename(full_path.c_str(), (path + "error/" + origFilename+".dcm").c_str());
+        } else {
+            writeErrorInformation(full_path, errorString);
+        }
         return 1;
     }
 
-    if (rename((path + origFilename).c_str(), (seriesFolder + newFilename + ".dcm").c_str()) != 0)
+    if (rename(full_path.c_str(), (seriesFolder + newFilename + ".dcm").c_str()) != 0)
     {
         OFString errorString = "Unable to move DICOM file to ";
         errorString.append(seriesFolder + newFilename);
         errorString.append("\n");
-        writeErrorInformation(path + origFilename, errorString);
+        writeErrorInformation(full_path, errorString);
         return 1;
     }
 
@@ -417,10 +456,12 @@ int main(int argc, char *argv[])
         OFString errorString = "Unable to write tagsfile file for ";
         errorString.append(newFilename);
         errorString.append("\n");
-        writeErrorInformation(seriesFolder + newFilename, errorString);
-
-        // Rename DICOM file back to original name and location
-        rename((seriesFolder + newFilename + ".dcm").c_str(), (path + origFilename).c_str());
+        if (createSeriesFolder(path, "error")) {
+            writeErrorInformation(path + "error/" + origFilename + ".dcm", errorString);
+            rename((seriesFolder + newFilename + ".dcm").c_str(), (path + "error/" + origFilename + ".dcm").c_str());
+        } else {
+            writeErrorInformation(seriesFolder + newFilename + ".dcm", errorString);
+        }
         return 1;
     }
 

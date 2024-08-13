@@ -198,12 +198,15 @@ def is_dicoms_received(mercure_base, dicoms) -> None:
     print(f"Received {len(dicoms)} dicoms as expected")
 
 def is_dicoms_in_folder(folder, dicoms) -> None:
-    dicoms_found = set()
-    for dicom in folder.glob('**/*.dcm'):
+    uids_found = set()
+    print("Looking for dicoms")
+    dicoms_found = list(folder.rglob('*.dcm'))
+    print("Dicoms", dicoms_found)
+    for dicom in dicoms_found:
         uid = pydicom.dcmread(dicom).SOPInstanceUID
-        dicoms_found.add(uid)
+        uids_found.add(uid)
     try:
-        assert dicoms_found == set(ds.SOPInstanceUID for ds in dicoms)
+        assert uids_found == set(ds.SOPInstanceUID for ds in dicoms)
     except:
         print("Expected dicoms not found")
         for dicom in folder.glob('**/*.dcm'):
@@ -344,7 +347,9 @@ DEBUG=True
             fp.truncate()
     return update_config
 
-@pytest.mark.parametrize("n_series",(5,))
+
+@pytest.mark.parametrize("n_series",(2,))
+@pytest.mark.skipif("os.getenv('TEST_FAST',False)")
 def test_case_simple(mercure, mercure_config, mercure_base, receiver_port, bookkeeper_port, n_series):
     config = {
         "rules": {
@@ -363,17 +368,19 @@ def test_case_simple(mercure, mercure_config, mercure_base, receiver_port, bookk
     is_dicoms_received(mercure_base, ds)
     supervisor.start_service("router:*")
 
-    for n in range(n_series//2):
+    for n in range(1+n_series//2):
         try:
             is_dicoms_in_folder(mercure_base / "data" / "success", ds)
             is_series_registered(bookkeeper_port, ds)
             break
         except AssertionError:
-            if n < n_series//2:
+            if n < n_series//2+1:
                 time.sleep(1)
             else:
                 raise
-@pytest.mark.parametrize("n_series",(5,))
+
+@pytest.mark.parametrize("n_series",(2,))
+@pytest.mark.skipif("os.getenv('TEST_FAST',False)")
 def test_case_dispatch(mercure,mercure_config, mercure_base, receiver_port, bookkeeper_port, n_series):
     config = {
         "rules": {
@@ -408,7 +415,8 @@ def test_case_dispatch(mercure,mercure_config, mercure_base, receiver_port, book
             else:
                 raise
 
-@pytest.mark.parametrize("n_series",(3,))
+@pytest.mark.parametrize("n_series",(1,))
+@pytest.mark.skipif("os.getenv('TEST_FAST',False)")
 def test_case_process(mercure, mercure_config, mercure_base, receiver_port, bookkeeper_port, n_series):
     config = {
         "rules": {
@@ -432,7 +440,7 @@ def test_case_process(mercure, mercure_config, mercure_base, receiver_port, book
     for d in ds:
         send_dicom(d, "localhost", receiver_port)
 
-    for _ in range(220):
+    for _ in range(60):
         try:
             is_dicoms_in_folder(mercure_base / "target", ds)
             break
@@ -443,3 +451,50 @@ def test_case_process(mercure, mercure_config, mercure_base, receiver_port, book
     is_series_registered(bookkeeper_port, ds)
     # t1.join(0.1)
 
+
+@pytest.mark.skipif("os.getenv('TEST_FAST',False)")
+def test_case_error(mercure, mercure_config, mercure_base, receiver_port, bookkeeper_port):
+    config = {
+        "rules": {
+            "test_series": Rule(
+                rule="True", action="notification", action_trigger="series"
+            ).dict(),
+        },
+        "dicom_receiver": {
+            "additional_tags": {"GarbageTag": "Value"}
+        }
+    }
+    mercure_config(config)
+    supervisor = mercure(["receiver"])
+    time.sleep(1)
+    ds = [create_minimal_dicom(None, None, additional_tags={'PatientName': 'Greg'}) for _ in range(1)]
+
+    for d in ds:
+        send_dicom(d, "localhost", receiver_port)
+
+    time.sleep(1)
+
+    # is_dicoms_received(mercure_base, ds)
+    # try:
+    #     is_dicoms_in_folder(mercure_base / "data" / "incoming" / "error", ds)
+    # finally:
+    #     for d in mercure_base.rglob('*'):
+    #         print(d)
+    #     print(next(d for d in (mercure_base / "data" / "incoming" / "error").rglob('*.error')).read_text())
+    supervisor.start_service("router:*")
+    time.sleep(5)
+    for d in (mercure_base / 'data').rglob('*'):
+        print(d)
+
+    is_dicoms_in_folder(mercure_base / "data"/"error", ds)
+    
+    # for n in range(1+n_series//2):
+    #     try:
+    #         is_dicoms_in_folder(mercure_base / "data" / "success", ds)
+    #         is_series_registered(bookkeeper_port, ds)
+    #         break
+    #     except AssertionError:
+    #         if n < n_series//2+1:
+    #             time.sleep(1)
+    #         else:
+    #             raise

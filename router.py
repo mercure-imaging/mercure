@@ -77,9 +77,15 @@ def run_router() -> None:
         return
 
     r = RouterState()
-    
+    error_files_found = False
     for entry in os.scandir(config.mercure.incoming_folder):
+        if entry.name.endswith('.error'):
+            error_files_found = True
+            continue
         if not entry.is_dir():
+            continue
+        if entry.name == "error":
+            error_files_found = True
             continue
         # if not entry.name.endswith(".received"):
         #     continue
@@ -89,35 +95,6 @@ def run_router() -> None:
             r.series[series_uid] = SeriesItem(mtime)
         elif mtime > r.series[series_uid].modification_time:
             r.series[series_uid].modification_time = mtime
-
-
-            # filecount = 0
-            # series: Dict[str, float] = {}
-            # complete_series: Dict[str, float] = {}
-            # pending_series: Dict[str, float] = {}  # Every series that hasn't timed out yet
-            # error_files_found = False
-
-            # # Check the incoming folder for completed series. To this end, generate a map of all
-            # # series in the folder with the timestamp of the latest DICOM file as value
-            # for entry in os.scandir(config.mercure.incoming_folder):
-            #     if entry.name.endswith(mercure_names.TAGS) and not entry.is_dir():
-            #         filecount += 1
-            #         seriesString = entry.name.split(mercure_defs.SEPARATOR, 1)[0]
-            #         modificationTime = entry.stat().st_mtime
-
-            #         if seriesString in series.keys():
-            #             if modificationTime > series[seriesString]:
-            #                 series[seriesString] = modificationTime
-            #         else:
-            #             series[seriesString] = modificationTime
-            #     # Check if at least one .error file exists. In that case, the incoming folder should
-            #     # be searched for .error files at the end of the update run
-            #     if (not error_files_found) and entry.name.endswith(mercure_names.ERROR):
-            #         error_files_found = True
-
-
-    error_files_found = False
-    # first_scan = False
 
     # Check if any of the series exceeds the "series complete" threshold
     for series_uid, series_item in r.series.items():
@@ -148,6 +125,7 @@ def run_router() -> None:
             return
 
     if error_files_found:
+        logger.warning("Error files found during processing")
         route_error_files()
 
     # Now, check if studies in the studies folder are ready for routing/processing

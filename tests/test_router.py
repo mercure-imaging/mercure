@@ -391,3 +391,44 @@ async def test_route_series_fail_with_bad_tags(fs: FakeFilesystem, mercure_confi
 def test_router_no_syntax_errors():
     """Checks if router.py can be started."""
     assert router
+
+def test_route_series_with_error(fs: FakeFilesystem, mercure_config, mocked):
+    """Checks if the router can handle a series that can't be parsed by getdcmtags."""
+
+    config = mercure_config(rules)
+    
+    incoming = Path(config.incoming_folder)
+    dcm_file = incoming / f"bad_dicom.dcm"
+    fs.create_file(dcm_file, contents="not a dicom file")
+    process_dicom(str(dcm_file), "0.0.0.0","mercure","mercure")
+    assert not dcm_file.exists()
+    assert "Unable to read DICOM file" in (incoming / "error" / "bad_dicom.error").read_text()
+    router.run_router()
+    assert (Path(config.error_folder) / f"bad_dicom.dcm").exists()
+    assert (Path(config.error_folder) / f"bad_dicom.error").exists()
+    common.monitor.send_event.assert_called_with(m_events.PROCESSING, severity.ERROR, "Error parsing 1 incoming files")
+
+def test_route_series_multiple_rules(fs: FakeFilesystem, mercure_config, mocked, fake_process):
+    config = mercure_config({
+        "rules": {
+            "rule1": Rule(rule="@SeriesDescription@ == 'Test'", target="test_target", action="route").dict(),
+            "rule2": Rule(rule="@Modality@ == 'CT'", target="test_target_2", action="route").dict()
+        }
+    })
+    
+    tags = {
+        "SeriesInstanceUID": "123",
+        "SeriesDescription": "Test",
+        "Modality": "CT"
+    }
+    dcm_file, _ = mock_incoming_uid(config, fs, generate_uid(), tags, "test")
+  
+    router.run_router()
+    
+    # Assert that both rules were triggered and series routed to both targets
+    routing.route_series.push_serieslevel_outgoing.assert_called()
+    assert set(routing.route_series.push_serieslevel_outgoing.call_args[0][1].keys()) == set(["rule1", "rule2"])
+    assert len(list(Path(config.outgoing_folder).iterdir())) == 2
+
+    for path in Path(config.outgoing_folder).iterdir():
+        assert (path / Path(dcm_file).name).exists()

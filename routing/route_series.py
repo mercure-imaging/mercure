@@ -131,7 +131,7 @@ def route_series(task_id: str, series_UID: str, files:typing.List[Path] = []) ->
 
         # If more than one rule has triggered, the series files need to be removed
         if len(triggered_rules) > 1:
-            remove_series(task_id, fileList)
+            remove_series(task_id, fileList, series_UID)
 
     try:
         lock.free()
@@ -570,11 +570,11 @@ def push_files(task_id: str, series_uid:str, file_list: List[str], target_path: 
     return True
 
 
-def remove_series(task_id: str, file_list: List[str]) -> bool:
+def remove_series(task_id: str, file_list: List[str], series_UID:str) -> bool:
     """
     Deletes the given files from the incoming folder.
     """
-    source_folder = config.mercure.incoming_folder + "/"
+    source_folder = config.mercure.incoming_folder + "/" + series_UID + "/"
     for entry in file_list:
         try:
             os.remove(source_folder + entry + mercure_names.TAGS)
@@ -594,35 +594,41 @@ def route_error_files() -> None:
     and sends an alert to the bookkeeper instance.
     """
     error_files_found = 0
+    errors_folder = Path(config.mercure.incoming_folder) / "error"
+    entries = []
+    if errors_folder.is_dir():
+        entries += list(os.scandir(errors_folder))
+    entries += list(os.scandir(config.mercure.incoming_folder))
+    for entry in entries:
+        if not entry.name.endswith(mercure_names.ERROR) or entry.is_dir():
+            continue
+        # Check if a lock file exists. If not, create one.
+        lock_file = entry.path + mercure_names.LOCK
+        if os.path.exists(lock_file):
+            continue
+        try:
+            lock = helper.FileLock(lock_file)
+        except:
+            continue
 
-    for entry in os.scandir(config.mercure.incoming_folder):
-        if entry.name.endswith(mercure_names.ERROR) and not entry.is_dir():
-            # Check if a lock file exists. If not, create one.
-            lock_file = Path(config.mercure.incoming_folder + "/" + entry.name + mercure_names.LOCK)
-            if lock_file.exists():
-                continue
-            try:
-                lock = helper.FileLock(lock_file)
-            except:
-                continue
+        logger.error(f"Found incoming error file {entry.name}")
+        error_files_found += 1
 
-            logger.error(f"Found incoming error file {entry.name}")
-            error_files_found += 1
+        shutil.move(
+            entry.path,
+            config.mercure.error_folder + "/" + entry.name.replace(".error",".dcm.error") if ".dcm" not in entry.name else entry.name,
+        )
+        dicom_file = Path(entry.path).with_suffix(".dcm")
+        dicom_file_b = Path(entry.path).with_suffix("")
 
-            shutil.move(
-                config.mercure.incoming_folder + "/" + entry.name,
-                config.mercure.error_folder + "/" + entry.name,
-            )
-
-            dicom_filename = entry.name[:-6]
-            dicom_file = Path(config.mercure.incoming_folder + "/" + dicom_filename)
-            if dicom_file.exists():
+        for f in [dicom_file, dicom_file_b]:
+            if f.exists():
                 shutil.move(
-                    config.mercure.incoming_folder + "/" + dicom_filename,
-                    config.mercure.error_folder + "/" + dicom_filename,
+                    f,
+                    config.mercure.error_folder + "/" + f.name + (".dcm" if not f.name.endswith('.dcm') else ""),
                 )
 
-            lock.free()
+        lock.free()
 
     if error_files_found > 0:
         monitor.send_event(

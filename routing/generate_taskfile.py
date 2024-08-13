@@ -96,6 +96,8 @@ def add_processing(uid: str, applied_rule: str, tags_list: Dict[str, str]) -> Op
     process_infos = []
     for i, module_name in enumerate(module_names):
         # Get the configuration of this module
+        if module_name not in config.mercure.modules:
+            logger.warning(f"Module {module_name} not found in configuration modules ({list(config.mercure.modules.keys())})")
         module_config = config.mercure.modules.get(module_name, None)
 
         # Compose the processing settings that should be used (module level + rule level)

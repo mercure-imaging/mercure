@@ -50,11 +50,15 @@ def send_bookkeeper_post(filename, file_uid, series_uid, bookkeeper_address, boo
     except requests.RequestException as e:
         print(f"Error sending request to bookkeeper: {e}")
 
-def write_error_information(dcm_file, error_string) -> None:
+def write_error_information(dcm_file: Path, error_string: str) -> None:
     """Write error information to a file."""
+    err_folder = dcm_file.parent / "error"
+    err_folder.mkdir(exist_ok=True)
+    dcm_file = dcm_file.rename(dcm_file.parent / "error" / dcm_file.name)
+
     error_file = dcm_file.with_suffix('.error')
     lock_file = dcm_file.with_suffix('.error.lock')
-
+    
     try:
         with lock_file.open('w') as _:
             pass
