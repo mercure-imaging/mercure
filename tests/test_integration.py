@@ -199,12 +199,23 @@ def is_dicoms_received(mercure_base, dicoms) -> None:
 
 def is_dicoms_in_folder(folder, dicoms) -> None:
     uids_found = set()
-    print("Looking for dicoms")
-    dicoms_found = list(folder.rglob('*.dcm'))
+    print(f"Looking for dicoms in {folder}")
+    dicoms_found = []
+    for f in folder.rglob('*'):
+        if not f.is_file():
+            continue
+        if f.suffix == '.dcm':
+            dicoms_found.append(f)
+        if f.suffix not in ('.error','.tags'):
+            dicoms_found.append(f)
     print("Dicoms", dicoms_found)
     for dicom in dicoms_found:
-        uid = pydicom.dcmread(dicom).SOPInstanceUID
-        uids_found.add(uid)
+        
+        try:
+            uid = pydicom.dcmread(dicom).SOPInstanceUID
+            uids_found.add(uid)
+        except Exception as e:
+            pass
     try:
         assert uids_found == set(ds.SOPInstanceUID for ds in dicoms)
     except:
@@ -447,13 +458,53 @@ def test_case_process(mercure, mercure_config, mercure_base, receiver_port, book
         except AssertionError as e:
             time.sleep(1)
     else:
-        raise Exception("Failed to find dicoms in target folder after 120 seconds.")
+        raise Exception("Failed to find dicoms in target folder after 60 seconds.")
     is_series_registered(bookkeeper_port, ds)
     # t1.join(0.1)
 
+@pytest.fixture(scope='function')
+def inject_error():
+    inject_path = Path("./dcm_inject_error")
+    def inject(error_n):
+        inject_path.write_text(str(error_n))
+    yield inject
+    inject_path.unlink(missing_ok=True)
 
 @pytest.mark.skipif("os.getenv('TEST_FAST',False)")
-def test_case_error(mercure, mercure_config, mercure_base, receiver_port, bookkeeper_port):
+@pytest.mark.parametrize("error", range(1,8))
+def test_case_error_inject(mercure, mercure_config, mercure_base, receiver_port, inject_error, error):
+    config = {
+        "rules": {
+            "test_series": Rule(
+                rule="True", action="notification", action_trigger="series"
+            ).dict(),
+        },
+    }
+    mercure_config(config)
+    supervisor = mercure(["receiver","router:*"])
+    time.sleep(2)
+    ds = [create_minimal_dicom(None, None, additional_tags={'PatientName': 'Greg'}) for _ in range(1)]
+    inject_error(error)
+    for d in ds:
+        send_dicom(d, "localhost", receiver_port)
+    time.sleep(1)
+    try:
+        is_dicoms_in_folder(mercure_base / "data"/"error", ds)
+        for d in (mercure_base / 'data' / "error").rglob('*'):
+            if d.suffix == '.dcm':
+                assert d.with_suffix('.dcm.error').exists(), f"Expected {d.with_suffix('.dcm.error')}"
+            if d.suffix == '':
+                assert d.with_suffix('.error').exists(), f"Expected {d.with_suffix('.error')}"
+            if d.suffix == '.error':
+                assert d.with_suffix('').exists(), f"Expected {d.with_suffix('')}"
+
+    except AssertionError as e:
+        for d in (mercure_base).rglob('*'):
+            print(d)
+        raise
+
+@pytest.mark.skipif("os.getenv('TEST_FAST',False)")
+def test_case_error_real(mercure, mercure_config, mercure_base, receiver_port, bookkeeper_port):
     config = {
         "rules": {
             "test_series": Rule(
@@ -474,27 +525,8 @@ def test_case_error(mercure, mercure_config, mercure_base, receiver_port, bookke
 
     time.sleep(1)
 
-    # is_dicoms_received(mercure_base, ds)
-    # try:
-    #     is_dicoms_in_folder(mercure_base / "data" / "incoming" / "error", ds)
-    # finally:
-    #     for d in mercure_base.rglob('*'):
-    #         print(d)
-    #     print(next(d for d in (mercure_base / "data" / "incoming" / "error").rglob('*.error')).read_text())
+    is_dicoms_in_folder(mercure_base / "data" / "incoming" / "error", ds)
     supervisor.start_service("router:*")
     time.sleep(5)
-    for d in (mercure_base / 'data').rglob('*'):
-        print(d)
-
-    is_dicoms_in_folder(mercure_base / "data"/"error", ds)
-    
-    # for n in range(1+n_series//2):
-    #     try:
-    #         is_dicoms_in_folder(mercure_base / "data" / "success", ds)
-    #         is_series_registered(bookkeeper_port, ds)
-    #         break
-    #     except AssertionError:
-    #         if n < n_series//2+1:
-    #             time.sleep(1)
-    #         else:
-    #             raise
+    is_dicoms_in_folder(mercure_base / "data" / "error", ds)
+    assert "Unable to read extra_tags file" in (next(d for d in (mercure_base / "data" / "error").glob('*.error')).read_text())

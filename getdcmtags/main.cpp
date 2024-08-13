@@ -90,9 +90,10 @@ void sendBookkeeperPost(OFString filename, OFString fileUID, OFString seriesUID)
 
 void writeErrorInformation(OFString dcmFile, OFString errorString)
 {
+    std::cout << errorString << std::endl;
     OFString filename = dcmFile + ".error";
     OFString lock_filename = dcmFile + ".error.lock";
-
+    std::cout << "Writing error information to: " << filename << std::endl;
     // Create lock file to ensure that no other process moves the file
     // while the error information is written
     FILE *lfp = fopen(lock_filename.c_str(), "w+");
@@ -111,20 +112,21 @@ void writeErrorInformation(OFString dcmFile, OFString errorString)
     if (fp == nullptr)
     {
         std::cout << "ERROR: Unable to write error file " << filename << std::endl;
+    } else {
+        fprintf(fp, "%s\n", errorString.c_str());
+        fclose(fp);
     }
-
-    fprintf(fp, "%s\n", errorString.c_str());
-    fclose(fp);
-
     // Remove lock file
     remove(lock_filename.c_str());
-
-    std::cout << errorString << std::endl;
 }
 
 
 static DcmSpecificCharacterSet charsetConverter;
 static bool isConversionNeeded = false;
+static int testInjectError = 0;
+
+#define DO_ERROR(n) \
+    (testInjectError == n)
 
 #define INSERTTAG(A, B, C)                                                              \
     conversionBuffer = "";                                                              \
@@ -299,6 +301,21 @@ bool createSeriesFolder(const OFString& path, const OFString& seriesUID) {
     return true;
 }
 
+void writeErrorInformationAndMove(const OFString& path, const OFString& filename, const OFString& errorString) {
+        if (!createSeriesFolder(path, "error")) {
+            writeErrorInformation(path+filename, errorString);
+            return;
+        }
+        if (rename((path+filename).c_str(), (path + "error/" + filename + ".dcm").c_str()) != 0) {
+            writeErrorInformation(path+filename, errorString);
+            return;
+        }
+        if (QFileInfo::exists((path+filename+".error").c_str())) {
+            rename((path+filename+".error").c_str(), (path+"error/"+filename+".dcm.error").c_str());
+        }
+        writeErrorInformation(path + "error/" + filename+".dcm", errorString);
+}
+
 int main(int argc, char *argv[])
 {
     QCoreApplication app( argc, argv );
@@ -339,6 +356,12 @@ int main(int argc, char *argv[])
         bookkeeperToken = std::string(argv[6]);
     }
 
+    QFile file("./dcm_inject_error");
+    if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        testInjectError = QTextStream(&file).readAll().simplified().toInt();
+        file.close();
+    }
+
     OFString origFilename = OFString(argv[1]);
     OFString path = "";
 
@@ -352,17 +375,18 @@ int main(int argc, char *argv[])
     DcmFileFormat dcmFile;
     OFCondition status = dcmFile.loadFile(full_path);
 
-    if (!status.good())
+    if (DO_ERROR(1) || !status.good())
     {
         OFString errorString = "Unable to read DICOM file ";
         errorString.append(origFilename);
         errorString.append("\n");
-        if (createSeriesFolder(path, "error")) {
-            writeErrorInformation(path + "error/" + origFilename, errorString);
-            rename(full_path.c_str(), (path + "error/" + origFilename+".dcm").c_str());
-        } else {
-            writeErrorInformation(full_path, errorString);
-        }
+        writeErrorInformationAndMove(path, origFilename, errorString);
+        // if (createSeriesFolder(path, "error")) {
+        //     writeErrorInformation(path + "error/" + origFilename, errorString);
+        //     rename(full_path.c_str(), (path + "error/" + origFilename+".dcm").c_str());
+        // } else {
+        //     writeErrorInformation(full_path, errorString);
+        // }
         return 1;
     }
     DcmDataset* dataset = dcmFile.getDataset();
@@ -381,27 +405,29 @@ int main(int argc, char *argv[])
         }
         main_tags.append(QPair<DcmTagKey, OFString>(tag, tag_read_out));
     }
-    if (!read_success) {
-        if (createSeriesFolder(path, "error")) {
-            rename((full_path+".error").c_str(), (path + "error/" + origFilename+".dcm.error").c_str());
-            rename(full_path.c_str(), (path + "error/" + origFilename+".dcm").c_str());
-        } else {
-            writeErrorInformation(full_path, "Unable to read some DICOM tags\n");
-        }
+    if (DO_ERROR(2) || !read_success) {
+        writeErrorInformationAndMove(path, origFilename, "Unable to read some DICOM tags\n");
+        // if (createSeriesFolder(path, "error")) {
+        //     rename((full_path+".error").c_str(), (path + "error/" + origFilename+".dcm.error").c_str());
+        //     rename(full_path.c_str(), (path + "error/" + origFilename+".dcm").c_str());
+        // } else {
+        //     writeErrorInformation(full_path, "Unable to read some DICOM tags\n");
+        // }
         return 1;
     }
     tag_read_out = "";
     readTag(DCM_MediaStorageSOPClassUID, dcmFile.getMetaInfo(), tag_read_out, full_path);
     main_tags.append(QPair<DcmTagKey, OFString>(DCM_MediaStorageSOPClassUID, tag_read_out));
 
-    if (!readExtraTags(dcmFile.getDataset(), full_path)) {
+    if (DO_ERROR(3) || !readExtraTags(dcmFile.getDataset(), full_path)) {
         OFString errorString = "Unable to read extra_tags file.\n";
-        if (createSeriesFolder(path, "error")) {
-            writeErrorInformation(path + "error/" + origFilename+".dcm", errorString);
-            rename(full_path.c_str(), (path + "error/" + origFilename+".dcm").c_str());
-        } else {
-            writeErrorInformation(full_path, errorString);
-        }
+        writeErrorInformationAndMove(path, origFilename, errorString);
+        // if (createSeriesFolder(path, "error")) {
+        //     writeErrorInformation(path + "error/" + origFilename+".dcm", errorString);
+        //     rename(full_path.c_str(), (path + "error/" + origFilename+".dcm").c_str());
+        // } else {
+        //     writeErrorInformation(full_path, errorString);
+        // }
         return 1;
     }
 
@@ -412,37 +438,39 @@ int main(int argc, char *argv[])
         isConversionNeeded = false;
     }
 
-    if (!charsetConverter.selectCharacterSet(tagSpecificCharacterSet).good())
+    if (DO_ERROR(4) || !charsetConverter.selectCharacterSet(tagSpecificCharacterSet).good())
     {
         OFString errorString = "ERROR: Unable to perform character set conversion!\n";
         errorString += "ERROR: Incoming charset is "+ tagSpecificCharacterSet;
         std::cout << errorString.c_str() << std::endl;
-        if (createSeriesFolder(path, "error")) {
-            writeErrorInformation(path + "error/" + origFilename+".dcm", errorString);
-            rename(full_path.c_str(), (path + "error/" + origFilename+".dcm").c_str());
-        } else {
-            writeErrorInformation(full_path, errorString);
-        }
+        writeErrorInformationAndMove(path, origFilename, errorString);
+        // if (createSeriesFolder(path, "error")) {
+        //     writeErrorInformation(path + "error/" + origFilename+".dcm", errorString);
+        //     rename(full_path.c_str(), (path + "error/" + origFilename+".dcm").c_str());
+        // } else {
+        //     writeErrorInformation(full_path, errorString);
+        // }
         return 1;
     }
 
     OFString newFilename = tagSeriesInstanceUID + "#" + origFilename;
     OFString seriesFolder = path + tagSeriesInstanceUID + "/";
 
-    if (!createSeriesFolder(path, tagSeriesInstanceUID)) {
+    if (DO_ERROR(5) || !createSeriesFolder(path, tagSeriesInstanceUID)) {
         OFString errorString = "Unable to create series folder for ";
         errorString.append(tagSeriesInstanceUID);
         errorString.append("\n");
-        if (createSeriesFolder(path, "error")) {
-            writeErrorInformation(path +"error/"+ origFilename+".dcm", errorString);
-            rename(full_path.c_str(), (path + "error/" + origFilename+".dcm").c_str());
-        } else {
-            writeErrorInformation(full_path, errorString);
-        }
+        writeErrorInformationAndMove(path, origFilename, errorString);
+        // if (createSeriesFolder(path, "error")) {
+        //     writeErrorInformation(path +"error/"+ origFilename+".dcm", errorString);
+        //     rename(full_path.c_str(), (path + "error/" + origFilename+".dcm").c_str());
+        // } else {
+        //     writeErrorInformation(full_path, errorString);
+        // }
         return 1;
     }
 
-    if (rename(full_path.c_str(), (seriesFolder + newFilename + ".dcm").c_str()) != 0)
+    if (DO_ERROR(6) || rename(full_path.c_str(), (seriesFolder + newFilename + ".dcm").c_str()) != 0)
     {
         OFString errorString = "Unable to move DICOM file to ";
         errorString.append(seriesFolder + newFilename);
@@ -451,17 +479,19 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    if (!writeTagsFile(seriesFolder + newFilename, origFilename))
+    if (DO_ERROR(7) || !writeTagsFile(seriesFolder + newFilename, origFilename))
     {
         OFString errorString = "Unable to write tagsfile file for ";
         errorString.append(newFilename);
         errorString.append("\n");
-        if (createSeriesFolder(path, "error")) {
-            writeErrorInformation(path + "error/" + origFilename + ".dcm", errorString);
-            rename((seriesFolder + newFilename + ".dcm").c_str(), (path + "error/" + origFilename + ".dcm").c_str());
-        } else {
-            writeErrorInformation(seriesFolder + newFilename + ".dcm", errorString);
-        }
+        rename((seriesFolder + newFilename + ".dcm").c_str(), (path + origFilename).c_str());
+        writeErrorInformationAndMove(path, origFilename, errorString);
+        // if (createSeriesFolder(path, "error")) {
+        //     writeErrorInformation(path + "error/" + origFilename + ".dcm", errorString);
+        //     rename((seriesFolder + newFilename + ".dcm").c_str(), (path + "error/" + origFilename + ".dcm").c_str());
+        // } else {
+        //     writeErrorInformation(seriesFolder + newFilename + ".dcm", errorString);
+        // }
         return 1;
     }
 

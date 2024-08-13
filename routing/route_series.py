@@ -614,18 +614,22 @@ def route_error_files() -> None:
         logger.error(f"Found incoming error file {entry.name}")
         error_files_found += 1
 
+        move_error_to = config.mercure.error_folder + "/" + entry.name
+        logger.error(f"Moving {entry.name} to {move_error_to}")
         shutil.move(
             entry.path,
-            config.mercure.error_folder + "/" + entry.name.replace(".error",".dcm.error") if ".dcm" not in entry.name else entry.name,
+            move_error_to,
         )
         dicom_file = Path(entry.path).with_suffix(".dcm")
         dicom_file_b = Path(entry.path).with_suffix("")
 
         for f in [dicom_file, dicom_file_b]:
             if f.exists():
+                move_to = config.mercure.error_folder + "/" + f.name
+                logger.info(f"Moving {f.name} to {move_to}")
                 shutil.move(
                     f,
-                    config.mercure.error_folder + "/" + f.name + (".dcm" if not f.name.endswith('.dcm') else ""),
+                    move_to,
                 )
 
         lock.free()
