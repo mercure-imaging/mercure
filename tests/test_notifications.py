@@ -45,7 +45,7 @@ def make_config(action, trigger_reception, trigger_completion, trigger_completio
                 notification_webhook="",
                 notification_email="test@localhost, test2@localhost",
                 processing_module=["test_module_1", "test_module_2"],
-                processing_settings=[{"foo":"bar"},{"bar":"baz"}],
+                processing_settings={"foo":"bar", "bar":"baz"},
                 processing_retain_images=True,
                 notification_trigger_completion=trigger_completion,
                 notification_trigger_reception=trigger_reception,
