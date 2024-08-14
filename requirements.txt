@@ -6,7 +6,9 @@
 #
 aiofiles==23.2.1
     # via -r requirements.in
-aiohttp==3.9.5
+aiohappyeyeballs==2.3.5
+    # via aiohttp
+aiohttp==3.10.3
     # via -r requirements.in
 aiopg==1.4.0
     # via databases

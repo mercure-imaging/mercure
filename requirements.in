@@ -12,7 +12,7 @@ wheel>=0.38.1
 graphyte
 influxdb_client
 daiquiri
-aiohttp>=3.8.5
+aiohttp>=3.10.2
 types-requests
 
 # documentation
