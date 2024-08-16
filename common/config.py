@@ -66,7 +66,8 @@ mercure_defaults = {
     "features": {"dummy_target": False},
     "processing_logs": {"discard_logs": False},
     "email_notification_from":"mercure@mercure.mercure",
-    "support_root_modules": False
+    "support_root_modules": False,
+    "phi_notifications": False,
 }
 
 mercure: Config

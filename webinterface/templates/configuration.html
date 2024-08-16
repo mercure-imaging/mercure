@@ -105,10 +105,6 @@
                         <td>Bookkeeper:</td>
                         <td>{{config['bookkeeper']}}</td>
                     </tr>
-                    <tr>
-                        <td>Notification Email From:</td>
-                        <td>{{config['email_notification_from']}}</td>
-                    </tr>                    
                     {% if config['graphite_ip'] %}
                     <tr>
                         <td>Graphite IP:</td>
@@ -147,6 +143,19 @@
                         <td>Not configured</td>
                     </tr>
                     {% endif %}
+                    <tr>
+                        <td>Notification Email From:</td>
+                        <td>{{config['email_notification_from']}}</td>
+                    </tr>         
+                    <tr>
+                        <td>PHI in Notifications:</td>
+                        <td>{% if config['phi_notifications']==True %}
+                            Enabled <a href="https://mercure-imaging.org/docs/advanced.html#additional-settings" target="_blank" title="This setting can be dangerous. Carefully read the documentation and understand the risks."><i class="fas fa-exclamation-circle has-text-warning" style="margin-left: 1px;"></i></a>
+                            {% else %}                            
+                            Disabled
+                            {% endif %}
+                        </td>
+                    </tr>                               
                 </table>
             </div>
         </div>

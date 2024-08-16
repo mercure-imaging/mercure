@@ -316,6 +316,15 @@
                     -->
                 </div>
                 <div class="panel" data-content="notification">
+                    {% if phi_notifications %}
+                    <div class="notification is-warning">
+                        <i class="fas fa-info-circle"></i>&nbsp;&nbsp;This server is configured to allow patient health information (PHI) in notifications. Please use extra caution when setting up notifications.
+                    </div>                    
+                    {% else %}            
+                    <div class="notification is-info">
+                        <i class="fas fa-info-circle"></i>&nbsp;&nbsp;Using patient health information (PHI) in notifications is disabled for this server. Variables containing PHI will not be rendered.
+                    </div>                    
+                    {% endif %}                    
                     <div class="field">
                         <label class="label">Webhook URL</label>
                         <div class="control">

@@ -123,7 +123,8 @@ async def rules_edit(request) -> Response:
         "alltags": tagslist.alltags,
         "sortedtags": tagslist.sortedtags,
         "processing_settings": settings_string,
-        "process_runner": config.mercure.process_runner
+        "process_runner": config.mercure.process_runner,
+        "phi_notifications": config.mercure.phi_notifications,
     }
     context.update(get_user_information(request))
 

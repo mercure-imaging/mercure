@@ -137,6 +137,7 @@ class Module(BaseModel, Compat):
     resources: Optional[str] = ""
     requires_root: Optional[bool] = False
 
+
 class UnsetRule(TypedDict):
     rule: str
 
@@ -220,6 +221,7 @@ class Config(BaseModel, Compat):
     email_notification_from: str = "mercure@mercure.mercure"
     support_root_modules: Optional[bool] = False
     webhook_certificate_location: Optional[str] = None
+    phi_notifications: Optional[bool] = False
 
 
 class TaskInfo(BaseModel, Compat):
@@ -236,6 +238,7 @@ class TaskInfo(BaseModel, Compat):
     mercure_appliance: str
     mercure_server: str
     device_serial_number: Optional[str] = None
+
 
 class TaskDispatch(BaseModel, Compat):
     target_name: str
