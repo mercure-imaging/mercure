@@ -1067,7 +1067,7 @@
             success: function (data) {
                 var eventstable = $('#job-events-table').DataTable().clear();
                 Object.keys(data).forEach(function (key) {
-                    eventstable.row.add([ data[key]["task_id"].slice(0,8) || "", data[key]["time"], data[key]["event"], data[key]["sender"], data[key]["target"], data[key]["file_count"], data[key]["info"] ])
+                    eventstable.row.add([ data[key]["task_id"].slice(0,8) || "", data[key]["local_time"], data[key]["event"], data[key]["sender"], data[key]["target"], data[key]["file_count"], data[key]["info"] ])
                 })
                 eventstable.draw();
             },

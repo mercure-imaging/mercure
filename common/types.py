@@ -222,6 +222,8 @@ class Config(BaseModel, Compat):
     support_root_modules: Optional[bool] = False
     webhook_certificate_location: Optional[str] = None
     phi_notifications: Optional[bool] = False
+    server_time: str = "UTC"
+    local_time: str = "UTC"
 
 
 class TaskInfo(BaseModel, Compat):

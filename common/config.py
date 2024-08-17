@@ -68,6 +68,8 @@ mercure_defaults = {
     "email_notification_from":"mercure@mercure.mercure",
     "support_root_modules": False,
     "phi_notifications": False,
+    "server_time": "UTC",
+    "local_time": "UTC",
 }
 
 mercure: Config

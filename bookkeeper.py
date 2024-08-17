@@ -425,6 +425,7 @@ async def shutdown() -> None:
     """Disconnect from database on shutdown."""
     await database.disconnect()
 
+
 @app.exception_handler(500)
 async def server_error(request, exc) -> Response:
     """
@@ -445,6 +446,14 @@ def main(args=sys.argv[1:]) -> None:
     logger.info(f"mercure Bookkeeper ver {mercure_defs.VERSION}")
     logger.info("--------------------------------------------")
     logger.info("")
+
+    try:
+        config.read_config()
+        query.set_timezone_conversion()
+    except Exception as e:
+        logger.error(f"Could not read configuration file: {e}")
+        logger.info("Going down.")
+        sys.exit(1)
 
     uvicorn.run(app, host=bk_config.BOOKKEEPER_HOST, port=bk_config.BOOKKEEPER_PORT)
 

@@ -31,6 +31,8 @@
     "offpeak_end"                :  "06:00",
     "emergency_clean_percentage" :       90,
     "phi_notifications"          :    false,
+    "server_time"                :    "UTC",
+    "local_time"                 :    "UTC",    
     "targets": {
     },
     "rules": {

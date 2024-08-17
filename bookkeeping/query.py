@@ -23,10 +23,17 @@ from common import config
 from decoRouter import Router as decoRouter
 router = decoRouter()
 
+tz_conversion = ""
+
+def set_timezone_conversion():
+    global tz_conversion
+    tz_conversion = ""
+    if config.mercure.server_time != config.mercure.local_time:
+        tz_conversion = f" AT time zone '{config.mercure.server_time}' at time zone '{config.mercure.local_time}' "
+
 ###################################################################################
 ## Query endpoints
 ###################################################################################
-
 
 
 @router.get("/series")
@@ -105,18 +112,28 @@ async def get_test_task(request) -> JSONResponse:
 async def get_task_events(request) -> JSONResponse:
     """Endpoint for getting all events related to one task."""
 
-    # series_uid = request.query_params.get("series_uid", "")
     task_id = request.query_params.get("task_id", "")
-
     subtask_query = sqlalchemy.select(tasks_table.c.id).where(tasks_table.c.parent_id == task_id)
-    subtask_ids = [row[0] for row in await database.fetch_all(subtask_query)]
+    
+    # Note: The space at the end is needed for the case that there are no subtasks
+    subtask_ids_str = "( "
+    for row in await database.fetch_all(subtask_query):
+        subtask_ids_str += f"'{row[0]}',"
+    subtask_ids_str = subtask_ids_str[:-1] + ")"
 
     # Get all the task_events from task `task_id` or any of its subtasks
-    query = (
-        task_events.select()
-        .order_by(task_events.c.task_id, task_events.c.time)
-        .where(sqlalchemy.or_(task_events.c.task_id == task_id, task_events.c.task_id.in_(subtask_ids)))
-    )
+    # subtask_ids = [row[0] for row in await database.fetch_all(subtask_query)]
+    # query = (
+    #     task_events.select()
+    #     .order_by(task_events.c.task_id, task_events.c.time)
+    #     .where(sqlalchemy.or_(task_events.c.task_id == task_id, task_events.c.task_id.in_(subtask_ids)))
+    # )
+    query = sqlalchemy.text(
+        f"""select *, time {tz_conversion} as local_time from task_events
+        where task_events.task_id = '{task_id}' or task_events.task_id in {subtask_ids_str}
+        order by task_events.task_id, task_events.time
+        """
+    )    
 
     results = await database.fetch_all(query)
     return CustomJSONResponse(results)
@@ -189,7 +206,7 @@ async def find_task(request) -> JSONResponse:
         tag_accessionnumber as acc, 
         tag_patientid as mrn,
         data->'info'->>'uid_type' as scope,
-        tasks.time as time
+        tasks.time::timestamp {tz_conversion} as time
         from tasks
         left join dicom_series on dicom_series.series_uid = tasks.series_uid 
         where parent_id is null {filter_term} {study_filter_term}

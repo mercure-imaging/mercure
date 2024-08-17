@@ -25,8 +25,6 @@ logger = daiquiri.getLogger("api")
 ###################################################################################
 
 
-
-
 @router.get("/get-task-events")
 @requires(["authenticated"])
 async def get_series_events(request):
