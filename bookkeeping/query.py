@@ -25,7 +25,7 @@ router = decoRouter()
 
 tz_conversion = ""
 
-def set_timezone_conversion():
+def set_timezone_conversion() -> None:
     global tz_conversion
     tz_conversion = ""
     if config.mercure.server_time != config.mercure.local_time:
