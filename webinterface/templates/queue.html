@@ -208,6 +208,7 @@
                                 <th>ACC</th>
                                 <th>MRN</th>
                                 <th>Scope</th>
+                                <th>Rule</th>
                                 <th>Time</th>
                                 <th>ID</th>
                             </tr>
@@ -877,7 +878,7 @@
             "scrollY": "740px",
             "scrollX": false,
             "scrollCollapse": true,
-            "order": [[3, 'desc']],
+            "order": [[4, 'desc'], [5, 'desc']],
             initComplete: function() {
                 $('.queueArchiveFilter > .dt-down-arrow').hide()
                 $('.queueArchiveFilter > .icon').hide()
@@ -963,7 +964,7 @@
                     var jobtable = $('#jobs_archive').DataTable();
                     if (Object.keys(data).length) {
                         Object.keys(data).forEach(function (key) {
-                            jobtable.row.add( [ data[key]["ACC"], data[key]["MRN"], data[key]["Scope"], data[key]["Time"], key ] );
+                            jobtable.row.add( [ data[key]["ACC"], data[key]["MRN"], data[key]["Scope"], data[key]["Rule"], data[key]["Time"], key ] );
                         })
                     }
                     $('#jobs_archive').DataTable().button(1).enable(false);
@@ -995,6 +996,7 @@
             dataType: 'json',
             error: function () {
                 // $('#erroralert').show();
+                $("#process_logs_display").text("Unable to load processing logs for the selected task.")
             },
             success: function (data) {
                 if (data && data.length > 0) {
@@ -1028,6 +1030,7 @@
             dataType: 'json',
             error: function () {
                 // $('#erroralert').show();
+                $("#process_results_display").text("Unable to load processing results for the selected task.")
             },
             success: function (data) {
                 if (data && data.length > 0) {
@@ -1053,6 +1056,8 @@
             return;
         }
 
+        console.log("Showing audit trail for job " + jobId);
+
         $("#jobaudittrail").addClass("is-active");
         $("#jobaudittrail").addClass("is-loading");        
 
@@ -1063,9 +1068,13 @@
             dataType: 'json',
             error: function () {
                 // $('#erroralert').show();
+                var eventstable = $('#job-events-table').DataTable();
+                eventstable.clear();                
+                eventstable.draw();
             },
             success: function (data) {
-                var eventstable = $('#job-events-table').DataTable().clear();
+                var eventstable = $('#job-events-table').DataTable();
+                eventstable.clear();
                 Object.keys(data).forEach(function (key) {
                     eventstable.row.add([ data[key]["task_id"].slice(0,8) || "", data[key]["local_time"], data[key]["event"], data[key]["sender"], data[key]["target"], data[key]["file_count"], data[key]["info"] ])
                 })
