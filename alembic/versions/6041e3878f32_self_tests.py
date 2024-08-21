@@ -24,7 +24,7 @@ def upgrade():
     if dialect.name == "sqlite":
         jsonb = sa.Text() # type: ignore
     else:
-        jsonb = postgresql.JSONB(astext_type=sa.Text()) # type: ignore
+        jsonb = JSONB(astext_type=sa.Text()) # type: ignore
 
     op.create_table(
         "tests",
