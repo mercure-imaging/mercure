@@ -21,52 +21,18 @@ from common.config import mercure_defaults
 from common.types import FolderTarget, Module, Rule, Target
 from tests.testing_common import create_minimal_dicom
 import pydicom
-from pynetdicom import AE
-from pynetdicom.sop_class import MRImageStorage # type: ignore
 import logging
 import socket
+import tempfile
 
 # current workding directory
 here = os.path.abspath(os.getcwd())
 
-logging.getLogger('pynetdicom').setLevel(logging.WARNING)
-def send_dicom(ds, dest_host, dest_port) -> Optional[pydicom.Dataset]:
-    """
-    Sends a DICOM Dataset to a specified destination using pynetdicom.
+def send_dicom(ds, dest_host, dest_port) -> None:
+    with tempfile.NamedTemporaryFile('w') as ds_temp:
+        ds.save_as(ds_temp.name)
+        subprocess.run(["dcmsend", dest_host, str(dest_port), ds_temp.name],check=True)
 
-    Parameters:
-        ds (pydicom.Dataset): The DICOM dataset to send.
-        dest_host (str): The destination DICOM server hostname or IP.
-        dest_port (int): The destination DICOM server port.
-
-    Returns:
-        status (pydicom.Dataset or None): The status dataset returned by the C-STORE request,
-                                          or None if the association failed.
-    """
-    # Enable debug logging (optional)
-    # debug_logger()
-
-    # Create an AE (Application Entity) instance
-    ae = AE()
-
-    # Add a requested presentation context
-    ae.add_requested_context(MRImageStorage)
-
-    # Associate with the remote AE (DICOM server)
-    assoc = ae.associate(dest_host, dest_port)
-
-    if assoc.is_established:
-        # Send the DICOM dataset
-        status = assoc.send_c_store(ds)
-
-        # Release the association
-        assoc.release()
-
-        # Return the status
-        return status
-    else:
-        print("Failed to establish association")
-        return None
 
 class SupervisorManager:
     process: Optional[multiprocessing.Process] = None
