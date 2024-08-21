@@ -68,25 +68,23 @@ expected_task_info = {
             "mercure_appliance": "master",
             "mercure_server": socket.gethostname(),
             "device_serial_number": None,
-            "sender_address": "MISSING"
+            "sender_address": "0.0.0.0"
         }
 
-def create_and_route(fs, mocked, task_id, uid="TESTFAKEUID") -> Tuple[List[str], str]:
+def create_and_route(fs, mocked, task_id, config, uid="TESTFAKEUID") -> Tuple[List[str], str]:
     print("Mocked task_id is", task_id)
 
     new_task_id = "new-task-" + str(uuid.uuid1())
 
+    mock_incoming_uid(config, fs, uid)
+
     mock_task_ids(mocked, task_id, new_task_id)
     # mocked.patch("routing.route_series.parse_ascconv", new=lambda x: {})
-
-    fs.create_file(f"/var/incoming/{uid}#bar.dcm", contents="asdfasdfafd")
-    fs.create_file(f"/var/incoming/{uid}#bar.tags", contents="{}")
-
     router.run_router()
 
     router.route_series.assert_called_once_with(task_id, uid)  # type: ignore
-    routing.route_series.push_series_serieslevel.assert_called_once_with(task_id, {"catchall": True}, [f"{uid}#bar"], uid, {})  # type: ignore
-    routing.route_series.push_serieslevel_outgoing.assert_called_once_with(task_id, {"catchall": True}, [f"{uid}#bar"], uid, {}, {})  # type: ignore
+    routing.route_series.push_series_serieslevel.assert_called_once_with(task_id, {"catchall": True}, [f"{uid}#bar"], uid, unittest.mock.ANY)  # type: ignore
+    routing.route_series.push_serieslevel_outgoing.assert_called_once_with(task_id, {"catchall": True}, [f"{uid}#bar"], uid, unittest.mock.ANY, {})  # type: ignore
 
     assert ["task.json", f"{uid}#bar.dcm", f"{uid}#bar.tags"] == [
         k.name for k in Path("/var/processing").glob("**/*") if k.is_file()
@@ -95,15 +93,13 @@ def create_and_route(fs, mocked, task_id, uid="TESTFAKEUID") -> Tuple[List[str],
     mocked.patch("processor.process_series", new=mocked.spy(processor, "process_series"))
     return ["task.json", f"{uid}#bar.dcm", f"{uid}#bar.tags"], new_task_id
 
-def create_and_route_priority(fs, mocked, task_id, uid="TESTFAKEUID") -> Tuple[List[str], List[str]]:
+def create_and_route_priority(fs, mocked, task_id, config, uid="TESTFAKEUID") -> Tuple[List[str], List[str]]:
     print("Mocked task_id is", task_id)
 
     new_task_ids = ["new-task-" + str(uuid.uuid1()) for _ in range(1000)] # todo: support arbitrary number of tasks created?
+    mock_incoming_uid(config, fs, uid)
+
     mock_task_ids(mocked, task_id, new_task_ids)
-
-    fs.create_file(f"/var/incoming/{uid}#bar.dcm", contents="asdfasdfafd")
-    fs.create_file(f"/var/incoming/{uid}#bar.tags", contents="{}")
-
     router.run_router()
 
     router.route_series.assert_called_once_with(task_id, uid)  # type: ignore
@@ -122,14 +118,14 @@ def create_and_route_priority(fs, mocked, task_id, uid="TESTFAKEUID") -> Tuple[L
 
 @pytest.mark.asyncio
 async def test_process_series_nomad(fs, mercure_config: Callable[[Dict], Config], mocked: MockerFixture):
-    mercure_config(
+    config = mercure_config(
         {"process_runner": "nomad", **config_partial},
     )
     fs.create_file(f"nomad/mercure-processor-template.nomad", contents="foo")
     mocked.patch.object(Jobs, "parse", new=lambda x, y: {})
 
     task_id = str(uuid.uuid1())
-    files, new_task_id = create_and_route(fs, mocked, task_id)
+    files, new_task_id = create_and_route(fs, mocked, task_id, config)
 
     processor_path = next(Path("/var/processing").iterdir())
 
@@ -192,7 +188,7 @@ async def test_process_series_nomad(fs, mercure_config: Callable[[Dict], Config]
         [
             call(task_event.REGISTER, task_id, 1, "catchall", "Registered series"),
             call(task_event.DELEGATE, task_id, 1, new_task_id, "catchall"),
-            call(task_event.MOVE, task_id, 1, f"/var/processing/{new_task_id}/", "Moved files"),
+            call(task_event.MOVE, task_id, 1, f"/var/processing/{new_task_id}", "Moved files"),
             call(task_event.PROCESS_BEGIN, new_task_id, 1, "test_module", "Processing job dispatched"),
             call(task_event.PROCESS_COMPLETE, new_task_id, 1, "", "Processing complete"),
             call(task_event.COMPLETE, new_task_id, 0, "", "Task complete"),
@@ -200,8 +196,7 @@ async def test_process_series_nomad(fs, mercure_config: Callable[[Dict], Config]
     )
     common.monitor.send_task_event.reset_mock()  # type: ignore
 
-    fs.create_file(f"/var/incoming/FAILEDFAILED#bar.dcm", contents="asdfasdfafd")
-    fs.create_file(f"/var/incoming/FAILEDFAILED#bar.tags", contents="{}")
+    mock_incoming_uid(config,fs, "FAILEDFAILED")
 
     def process_failed(self, tag, meta):
         return {
@@ -215,7 +210,6 @@ async def test_process_series_nomad(fs, mercure_config: Callable[[Dict], Config]
     mocked.patch.object(Job, "dispatch_job", new=process_failed)
 
     mock_task_ids(mocked, task_id, new_task_id)
-
     router.run_router()
     processor_path = next(Path("/var/processing").iterdir())
     await processor.run_processor()
@@ -233,7 +227,7 @@ async def test_process_series_nomad(fs, mercure_config: Callable[[Dict], Config]
         [
             call(task_event.REGISTER, task_id, 1, "catchall", "Registered series"),
             call(task_event.DELEGATE, task_id, 1, new_task_id, "catchall"),
-            call(task_event.MOVE, task_id, 1, f"/var/processing/{new_task_id}/", "Moved files"),
+            call(task_event.MOVE, task_id, 1, f"/var/processing/{new_task_id}", "Moved files"),
             call(task_event.PROCESS_BEGIN, new_task_id, 1, "test_module", "Processing job dispatched"),
             call(task_event.ERROR, new_task_id, 0, "", "Processing failed"),
         ]
@@ -248,7 +242,7 @@ async def test_process_series(fs, mercure_config: Callable[[Dict], Config], mock
         {"process_runner": "docker", **config_partial},
     )
     task_id = str(uuid.uuid1())
-    files, new_task_id = create_and_route(fs, mocked, task_id)
+    files, new_task_id = create_and_route(fs, mocked, task_id, config)
     processor_path = Path(f"/var/processing/{task_id}")
 
     # def fake_processor(tag, environment, volumes: Dict, **kwargs):
@@ -294,7 +288,7 @@ async def test_process_series(fs, mercure_config: Callable[[Dict], Config], mock
         [
             call(task_event.REGISTER, task_id, 1, "catchall", "Registered series"),
             call(task_event.DELEGATE, task_id, 1, new_task_id, "catchall"),
-            call(task_event.MOVE, task_id, 1, f"/var/processing/{new_task_id}/", "Moved files"),
+            call(task_event.MOVE, task_id, 1, f"/var/processing/{new_task_id}", "Moved files"),
             call(task_event.PROCESS_COMPLETE, new_task_id, 1, "", "Processing job complete"),
             call(task_event.COMPLETE, new_task_id, 0, "", "Task complete"),
         ]
@@ -330,7 +324,7 @@ async def test_multi_process_series(fs, mercure_config: Callable[[Dict], Config]
         {"process_runner": "docker", **partial},
     )
     task_id = str(uuid.uuid1())
-    files, new_task_id = create_and_route(fs, mocked, task_id)
+    files, new_task_id = create_and_route(fs, mocked, task_id, config)
     processor_path = Path(f"/var/processing/{new_task_id}")
 
     # def fake_processor(tag, environment, volumes: Dict, **kwargs):
@@ -393,7 +387,7 @@ async def test_multi_process_series(fs, mercure_config: Callable[[Dict], Config]
         [
             call(task_event.REGISTER, task_id, 1, "catchall", "Registered series"),
             call(task_event.DELEGATE, task_id, 1, new_task_id, "catchall"),
-            call(task_event.MOVE, task_id, 1, f"/var/processing/{new_task_id}/", "Moved files"),
+            call(task_event.MOVE, task_id, 1, f"/var/processing/{new_task_id}", "Moved files"),
             call(task_event.PROCESS_COMPLETE, new_task_id, 1, "", "Processing job complete"),
             call(task_event.COMPLETE, new_task_id, 0, "", "Task complete"),
         ]
@@ -459,7 +453,7 @@ async def test_priority_process(fs, mercure_config: Callable[[Dict], Config], mo
         {"process_runner": "docker", **partial},
     )
     task_id = str(uuid.uuid1())
-    files, new_task_ids = create_and_route_priority(fs, mocked, task_id)
+    files, new_task_ids = create_and_route_priority(fs, mocked, task_id, config)
     processor_path = Path(f"/var/processing/")
 
     fake_run = mocked.Mock(return_value=FakeDockerContainer(), side_effect=make_fake_processor(fs,mocked,False))  # type: ignore

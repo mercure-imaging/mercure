@@ -8,6 +8,7 @@ Provides functions for routing/processing of series. For study-level processing,
 import os
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Tuple, Union
+import typing
 from typing_extensions import Literal
 import uuid
 import json
@@ -38,14 +39,14 @@ logger = config.get_logger()
 
 
 @log_helpers.clear_task_decorator
-def route_series(task_id: str, series_UID: str) -> None:
+def route_series(task_id: str, series_UID: str, files:typing.List[Path] = []) -> None:
     """
     Processes the series with the given series UID from the incoming folder.
     """
     logger.setTask(task_id)
     monitor.send_register_task(task_id, series_UID)
-
-    lock_file = Path(config.mercure.incoming_folder + "/" + str(series_UID) + mercure_names.LOCK)
+    base_dir = Path(config.mercure.incoming_folder) / series_UID
+    lock_file = base_dir / mercure_names.LOCK
     if lock_file.exists():
         # Series is locked, so another instance might be working on it
         return
@@ -53,33 +54,44 @@ def route_series(task_id: str, series_UID: str) -> None:
     # Create lock file in the incoming folder and prevent other instances from working on this series
     try:
         lock = helper.FileLock(lock_file)
+    except FileNotFoundError:
+        # Series likely already processed by other instance of router
+        logger.debug("Series {} is already moved, skipping".format(series_UID))
+        return
     except FileExistsError:
         # Series likely already processed by other instance of router
+        logger.debug("Series {} is locked, skipping".format(series_UID))
         return
     except:
         # Can't create lock file, so something must be seriously wrong
         logger.error(f"Unable to create lock file {lock_file}", task_id)  # handle_error
         return
 
-    logger.info(f"Processing series {series_UID}")
+    logger.info(f"Evaluating series {series_UID}")
     fileList = []
     seriesPrefix = series_UID + mercure_defs.SEPARATOR
 
-    # Collect all files belonging to the series
-    for entry in os.scandir(config.mercure.incoming_folder):
-        if entry.name.endswith(mercure_names.TAGS) and entry.name.startswith(seriesPrefix) and not entry.is_dir():
-            stemName = entry.name[:-5]
-            fileList.append(stemName)
+    if not files:
+        # Collect all files belonging to the series
+        for entry in os.scandir(base_dir):
+            if entry.name.endswith(mercure_names.TAGS) and entry.name.startswith(seriesPrefix) and not entry.is_dir():
+                stemName = entry.name[:-5]
+                fileList.append(stemName)
+        logger.debug(f"Found files: {fileList}")
+    else: 
+        fileList = [str(f.with_suffix("")) for f in files]
 
     logger.info("DICOM files found: " + str(len(fileList)))
     if not len(fileList):
         logger.error(f"No tags files found for series {series_UID}", task_id)  # handle_error
+        lock.free()
         return
 
     # Use the tags file from the first slice for evaluating the routing rules
-    tagsMasterFile = Path(config.mercure.incoming_folder + "/" + fileList[0] + mercure_names.TAGS)
+    tagsMasterFile = base_dir / (fileList[0] + mercure_names.TAGS)
     if not tagsMasterFile.exists():
         logger.error(f"Missing file! {tagsMasterFile.name}", task_id)  # handle_error
+        lock.free()
         return
 
     tagsList_encoding_error = False
@@ -95,6 +107,7 @@ def route_series(task_id: str, series_UID: str) -> None:
 
     except Exception:
         logger.exception(f"Invalid tag for series {series_UID}", task_id)  # handle_error
+        lock.free()
         return
 
     monitor.send_register_series(tagsList)
@@ -118,13 +131,14 @@ def route_series(task_id: str, series_UID: str) -> None:
 
         # If more than one rule has triggered, the series files need to be removed
         if len(triggered_rules) > 1:
-            remove_series(task_id, fileList)
+            remove_series(task_id, fileList, series_UID)
 
     try:
         lock.free()
     except Exception:
         logger.error(f"Unable to remove lock file {lock_file}", task_id)  # handle_error
         return
+    shutil.rmtree(base_dir)
 
 
 def get_triggered_rules(
@@ -217,7 +231,7 @@ def push_series_complete(
                 logger.warning(info_text)
         monitor.send_task_event(monitor.task_event.DISCARD, task_id, len(file_list), discard_rule or "", info_text)
 
-    if not push_files(task_id, file_list, destination_path, copy_files):
+    if not push_files(task_id, series_UID, file_list, destination_path, copy_files):
         logger.error(f"Problem while moving completed files", task_id)  # handle_error
 
     operation_name = "MOVE"
@@ -287,7 +301,7 @@ def push_series_studylevel(
                 logger.error(f"Problem assigning series to study ", task_id)
 
             # Copy (or move) the files into the study folder
-            push_files(task_id, file_list, folder_name, (len(triggered_rules) > 1))
+            push_files(task_id, series_UID, file_list, folder_name, (len(triggered_rules) > 1))
             lock.free()
 
 
@@ -357,7 +371,7 @@ def push_serieslevel_processing(
                 new_task_id = generate_task_id()
 
                 folder_name = config.mercure.processing_folder + "/" + new_task_id
-                target_folder = folder_name + "/"
+                target_folder = Path(folder_name)
 
                 # Create processing folder
                 try:
@@ -389,7 +403,7 @@ def push_serieslevel_processing(
                 else:
                     return False
 
-                if not push_files(task_id, file_list, target_folder, copy_files):
+                if not push_files(task_id, series_UID, file_list, str(target_folder), copy_files):
                     logger.error(
                         f"Unable to push files into processing folder {target_folder}", task_id
                     )  # handle_error
@@ -445,7 +459,7 @@ def push_serieslevel_outgoing(
     """
     Move the DICOM files of the series to a separate subfolder for each target in the outgoing folder.
     """
-    source_folder = config.mercure.incoming_folder + "/"
+    source_folder = Path(config.mercure.incoming_folder) / series_UID
 
     # Determine if the files should be copied or moved. If only one rule triggered, files can
     # safely be moved, otherwise files will be moved and removed in the end
@@ -461,7 +475,7 @@ def push_serieslevel_outgoing(
         new_task_id = generate_task_id()
 
         folder_name = config.mercure.outgoing_folder + "/" + new_task_id
-        target_folder = folder_name + "/"
+        target_folder = Path(folder_name)
 
         try:
             os.mkdir(folder_name)
@@ -500,18 +514,19 @@ def push_serieslevel_outgoing(
 
         for entry in file_list:
             try:
-                operation(source_folder + entry + mercure_names.DCM, target_folder + entry + mercure_names.DCM)
-                operation(source_folder + entry + mercure_names.TAGS, target_folder + entry + mercure_names.TAGS)
+                operation(source_folder / (entry + mercure_names.DCM), target_folder / (entry + mercure_names.DCM))
+                operation(source_folder / (entry + mercure_names.TAGS), target_folder / (entry + mercure_names.TAGS))
             except Exception:
                 logger.error(  # handle_error
                     f"Problem while pushing file to outgoing {entry}\nSource folder {source_folder}\nTarget folder {target_folder}",
                     task_id,
                 )
+                raise
 
         if move_operation:
-            monitor.send_task_event(monitor.task_event.MOVE, task_id, len(file_list), target_folder, "Moved files")
+            monitor.send_task_event(monitor.task_event.MOVE, task_id, len(file_list), str(target_folder), "Moved files")
         else:
-            monitor.send_task_event(monitor.task_event.COPY, task_id, len(file_list), target_folder, "Copied files")
+            monitor.send_task_event(monitor.task_event.COPY, task_id, len(file_list), str(target_folder), "Copied files")
 
         try:
             lock.free()
@@ -521,7 +536,7 @@ def push_serieslevel_outgoing(
             return
 
 
-def push_files(task_id: str, file_list: List[str], target_path: str, copy_files: bool) -> bool:
+def push_files(task_id: str, series_uid:str, file_list: List[str], target_path: str, copy_files: bool) -> bool:
     """
     Copies or moves the given files to the target path. If copy_files is True, files are copied, otherwise moved.
     Note that this function does not create a lock file (this needs to be done by the calling function).
@@ -532,13 +547,14 @@ def push_files(task_id: str, file_list: List[str], target_path: str, copy_files:
     else:
         operation = shutil.copy
 
-    source_folder = config.mercure.incoming_folder + "/"
-    target_folder = target_path + "/"
+    source_folder = Path(config.mercure.incoming_folder) / series_uid
+    target_folder = Path(target_path)
 
     for entry in file_list:
         try:
-            operation(source_folder + entry + mercure_names.DCM, target_folder + entry + mercure_names.DCM)
-            operation(source_folder + entry + mercure_names.TAGS, target_folder + entry + mercure_names.TAGS)
+            operation(source_folder / (entry + mercure_names.DCM), target_folder / (entry + mercure_names.DCM))
+            operation(source_folder / (entry + mercure_names.TAGS), target_folder / (entry + mercure_names.TAGS))
+            logger.debug(f"Pushed {source_folder / (entry+mercure_names.DCM)}")
         except Exception:
             logger.error(  # handle_error
                 f"Problem while pushing file to outgoing {entry}\n Source folder {source_folder}\nTarget folder {target_folder}",
@@ -554,11 +570,11 @@ def push_files(task_id: str, file_list: List[str], target_path: str, copy_files:
     return True
 
 
-def remove_series(task_id: str, file_list: List[str]) -> bool:
+def remove_series(task_id: str, file_list: List[str], series_UID:str) -> bool:
     """
     Deletes the given files from the incoming folder.
     """
-    source_folder = config.mercure.incoming_folder + "/"
+    source_folder = config.mercure.incoming_folder + "/" + series_UID + "/"
     for entry in file_list:
         try:
             os.remove(source_folder + entry + mercure_names.TAGS)
@@ -578,35 +594,45 @@ def route_error_files() -> None:
     and sends an alert to the bookkeeper instance.
     """
     error_files_found = 0
+    errors_folder = Path(config.mercure.incoming_folder) / "error"
+    entries:List[os.DirEntry] = []
+    if errors_folder.is_dir():
+        entries += list(os.scandir(errors_folder))
+    entries += list(os.scandir(config.mercure.incoming_folder))
+    for entry in entries:
+        if not entry.name.endswith(mercure_names.ERROR) or entry.is_dir():
+            continue
+        # Check if a lock file exists. If not, create one.
+        lock_file = str(entry.path) + mercure_names.LOCK
+        if os.path.exists(lock_file):
+            continue
+        try:
+            lock = helper.FileLock(Path(lock_file))
+        except:
+            continue
 
-    for entry in os.scandir(config.mercure.incoming_folder):
-        if entry.name.endswith(mercure_names.ERROR) and not entry.is_dir():
-            # Check if a lock file exists. If not, create one.
-            lock_file = Path(config.mercure.incoming_folder + "/" + entry.name + mercure_names.LOCK)
-            if lock_file.exists():
-                continue
-            try:
-                lock = helper.FileLock(lock_file)
-            except:
-                continue
+        logger.error(f"Found incoming error file {entry.name}")
+        error_files_found += 1
 
-            logger.error(f"Found incoming error file {entry.name}")
-            error_files_found += 1
+        move_error_to = config.mercure.error_folder + "/" + entry.name
+        logger.error(f"Moving {entry.name} to {move_error_to}")
+        shutil.move(
+            entry.path,
+            move_error_to,
+        )
+        dicom_file = Path(entry.path).with_suffix(".dcm")
+        dicom_file_b = Path(entry.path).with_suffix("")
 
-            shutil.move(
-                config.mercure.incoming_folder + "/" + entry.name,
-                config.mercure.error_folder + "/" + entry.name,
-            )
-
-            dicom_filename = entry.name[:-6]
-            dicom_file = Path(config.mercure.incoming_folder + "/" + dicom_filename)
-            if dicom_file.exists():
+        for f in [dicom_file, dicom_file_b]:
+            if f.exists():
+                move_to = config.mercure.error_folder + "/" + f.name
+                logger.info(f"Moving {f.name} to {move_to}")
                 shutil.move(
-                    config.mercure.incoming_folder + "/" + dicom_filename,
-                    config.mercure.error_folder + "/" + dicom_filename,
+                    str(f),
+                    move_to,
                 )
 
-            lock.free()
+        lock.free()
 
     if error_files_found > 0:
         monitor.send_event(

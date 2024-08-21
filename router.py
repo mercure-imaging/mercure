@@ -6,10 +6,13 @@ mercure's central router module that evaluates the routing rules and decides whi
 
 # Standard python includes
 import asyncio
+from pathlib import Path
+import shutil
 import time
 import signal
 import os
 import sys
+import typing
 import uuid
 import graphyte
 import daiquiri
@@ -23,15 +26,22 @@ import common.config as config
 import common.monitor as monitor
 from routing.route_series import route_series, route_error_files
 from routing.route_studies import route_studies
-from routing.common import generate_task_id
+from routing.common import generate_task_id, SeriesItem
 import common.influxdb
 import common.notification as notification
+from dataclasses import dataclass,field
+import itertools
 
+@dataclass
+class RouterState():
+    filecount = 0
+    series: Dict[str, SeriesItem] = field(default_factory=dict)
+    complete_series: typing.Set[str] = field(default_factory=set)
+    pending_series: Dict[str, float] = field(default_factory=dict)  # Every series that hasn't timed out yet
 
 # Create local logger instance
 logger = config.get_logger()
 main_loop = None  # type: helper.AsyncTimer # type: ignore
-
 
 async def terminate_process(signalNumber, frame) -> None:
     """
@@ -45,7 +55,6 @@ async def terminate_process(signalNumber, frame) -> None:
         main_loop.stop()
     helper.trigger_terminate()
 
-
 def run_router() -> None:
     """
     Main processing function that is called every second
@@ -56,7 +65,7 @@ def run_router() -> None:
     helper.g_log("events.run", 1)
     # logger.info('')
     # logger.info('Processing incoming folder...')
-
+    logger.debug('Running router')
     try:
         config.read_config()
     except Exception:
@@ -67,47 +76,48 @@ def run_router() -> None:
         )
         return
 
-    filecount = 0
-    series: Dict[str, float] = {}
-    complete_series: Dict[str, float] = {}
-    pending_series: Dict[str, float] = {}  # Every series that hasn't timed out yet
+    r = RouterState()
     error_files_found = False
-
-    # Check the incoming folder for completed series. To this end, generate a map of all
-    # series in the folder with the timestamp of the latest DICOM file as value
     for entry in os.scandir(config.mercure.incoming_folder):
-        if entry.name.endswith(mercure_names.TAGS) and not entry.is_dir():
-            filecount += 1
-            seriesString = entry.name.split(mercure_defs.SEPARATOR, 1)[0]
-            modificationTime = entry.stat().st_mtime
-
-            if seriesString in series.keys():
-                if modificationTime > series[seriesString]:
-                    series[seriesString] = modificationTime
-            else:
-                series[seriesString] = modificationTime
-        # Check if at least one .error file exists. In that case, the incoming folder should
-        # be searched for .error files at the end of the update run
-        if (not error_files_found) and entry.name.endswith(mercure_names.ERROR):
+        if entry.name.endswith('.error'):
             error_files_found = True
+            continue
+        if not entry.is_dir():
+            continue
+        if entry.name == "error":
+            error_files_found = True
+            continue
+        # if not entry.name.endswith(".received"):
+        #     continue
+        series_uid = entry.name
+        mtime = entry.stat().st_mtime
+        if series_uid not in r.series:
+            r.series[series_uid] = SeriesItem(mtime)
+        elif mtime > r.series[series_uid].modification_time:
+            r.series[series_uid].modification_time = mtime
 
     # Check if any of the series exceeds the "series complete" threshold
-    for series_entry in series:
-        if (time.time() - series[series_entry]) > config.mercure.series_complete_trigger:
-            complete_series[series_entry] = series[series_entry]
+    for series_uid, series_item in r.series.items():
+        if ( time.time() - series_item.modification_time ) > config.mercure.series_complete_trigger:
+            r.complete_series.add(series_uid)
+            logger.debug("Complete series: " + str(series_uid))
         else:
-            pending_series[series_entry] = series[series_entry]
+            r.pending_series[series_uid] = series_item.modification_time
+            logger.debug("Pending series: " + str(series_uid))
+
     # logger.info(f'Files found     = {filecount}')
     # logger.info(f'Series found    = {len(series)}')
     # logger.info(f'Complete series = {len(complete_series)}')
-    helper.g_log("incoming.files", filecount)
-    helper.g_log("incoming.series", len(series))
+    helper.g_log("incoming.files", r.filecount)
+    helper.g_log("incoming.series", len(r.series))
 
     # Process all complete series
-    for series_uid in sorted(complete_series):
+    for series_uid in sorted(r.complete_series):
         task_id = generate_task_id()
         try:
             route_series(task_id, series_uid)
+            del r.series[series_uid]
+            r.complete_series.remove(series_uid)
         except Exception:
             logger.error(f"Problems while processing series {series_uid}", task_id)  # handle_error
         # If termination is requested, stop processing series after the active one has been completed
@@ -115,10 +125,11 @@ def run_router() -> None:
             return
 
     if error_files_found:
+        logger.warning("Error files found during processing")
         route_error_files()
 
     # Now, check if studies in the studies folder are ready for routing/processing
-    route_studies(pending_series)
+    route_studies(r.pending_series)
 
 
 def exit_router(args) -> None:
@@ -202,6 +213,7 @@ def main(args=sys.argv[1:]) -> None:
         monitor.send_event(monitor.m_events.SHUTDOWN, monitor.severity.INFO)
     except Exception as e:
         monitor.send_event(monitor.m_events.SHUTDOWN, monitor.severity.ERROR, str(e))
+        logger.exception(e)
     finally:
         # Finish all asyncio tasks that might be still pending
         remaining_tasks = helper.asyncio.all_tasks(helper.loop)  # type: ignore[attr-defined]

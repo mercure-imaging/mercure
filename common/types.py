@@ -225,7 +225,6 @@ class Config(BaseModel, Compat):
     server_time: str = "UTC"
     local_time: str = "UTC"
 
-
 class TaskInfo(BaseModel, Compat):
     action: Literal["route", "both", "process", "discard", "notification"]
     uid: str

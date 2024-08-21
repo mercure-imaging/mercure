@@ -17,8 +17,14 @@ depends_on = None
 
 
 def upgrade():
-    op.execute("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS parent_id character varying NULL")
-    op.execute("ALTER TABLE task_events ADD COLUMN IF NOT EXISTS client_timestamp float NULL")
+    connection = op.get_bind()
+    dialect = connection.dialect
+    if dialect.name == "sqlite":
+        op.execute("ALTER TABLE tasks ADD COLUMN parent_id character varying NULL")
+        op.execute("ALTER TABLE task_events ADD COLUMN client_timestamp float NULL")
+    else:
+        op.execute("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS parent_id character varying NULL")
+        op.execute("ALTER TABLE task_events ADD COLUMN IF NOT EXISTS client_timestamp float NULL")
 
 
 def downgrade():

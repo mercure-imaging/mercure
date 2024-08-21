@@ -58,7 +58,9 @@ async def do_post(endpoint, kwargs, catch_errors=False) -> None:
         return
     logger.debug(f"Posting to {endpoint}: {kwargs}")
     try:
-        async with aiohttp.ClientSession(headers={"Authorization": f"Token {api_key}"}) as session:
+        async with aiohttp.ClientSession(headers={"Authorization": f"Token {api_key}"},
+                                         timeout=aiohttp.ClientTimeout(total=None, connect=120, sock_connect=120, sock_read=120)
+                                         ) as session:
             async with session.post(bookkeeper_address + "/" + endpoint, **kwargs) as resp:
                 logger.debug(f"Response from {endpoint}: {resp.status}")
                 if resp.status != 200:
@@ -66,11 +68,11 @@ async def do_post(endpoint, kwargs, catch_errors=False) -> None:
                         f"Failed POST request {kwargs} to bookkeeper endpoint {endpoint}: status: {resp.status}"
                     )
     except aiohttp.client.ClientError as e:
-        logger.error(f"Failed POST request to bookkeeper endpoint {endpoint}: {e}")
+        logger.error(f"Failed POST request to {bookkeeper_address}/{endpoint}: {e}")
         if not catch_errors:
             raise
     except asyncio.TimeoutError as e:
-        logger.error(f"Failed POST request to bookkeeper endpoint {endpoint} with timeout: {e}")
+        logger.error(f"Failed POST request to {bookkeeper_address}/{endpoint} with timeout: {e}")
         if not catch_errors:
             raise
 

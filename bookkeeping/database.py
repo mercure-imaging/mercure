@@ -5,7 +5,6 @@ Database functions needed for the bookkeeper service.
 """
 
 # Standard python includes
-from sqlalchemy.dialects.postgresql import JSONB
 import sqlalchemy
 from sqlalchemy.sql import func
 import databases
@@ -25,7 +24,9 @@ import bookkeeping.config as bk_config
 database = databases.Database(bk_config.DATABASE_URL)
 metadata = sqlalchemy.MetaData(schema=bk_config.DATABASE_SCHEMA)
 
-
+# SQLite does not support JSONB natively, so we use TEXT instead
+JSONB = sqlalchemy.types.Text() if 'sqlite://' in bk_config.DATABASE_URL else sqlalchemy.dialects.postgresql.JSONB
+# 
 mercure_events = sqlalchemy.Table(
     "mercure_events",
     metadata,

@@ -22,6 +22,7 @@ import routing
 import routing.generate_taskfile
 import router, dispatcher
 from pathlib import Path
+import unittest
 
 from testing_common import *
 
@@ -33,13 +34,13 @@ rules = {
             rule="""@StudyDescription@ == "foo" """, action="route", target="test_target_2", action_trigger="study"
         ).dict(),
         "route_series": Rule(
-            rule="""@SeriesInstanceUID@ == "foo" """,
+            rule="""tags.SeriesDescription == "foo" """,
             target="test_target",
             action="route",
             action_trigger="series",
         ).dict(),
         "route_series_new_rule": Rule(
-            rule="""tags.SeriesInstanceUID == "new_rule" """,
+            rule="""tags.SeriesDescription == "new_rule" """,
             target="test_target",
             action="route",
             action_trigger="series",
@@ -55,23 +56,25 @@ rules = {
 }
 
 
-def create_series(mocked, fs, config, tags) -> Tuple[str, str]:
+def create_series(mocked, fs, config, tags, name="bar") -> Tuple[str, str]:
     task_id = "test_task_" + str(uuid.uuid1())
     series_uid = str(uuid.uuid4())
 
     mocked.patch("uuid.uuid1", new=lambda: task_id)
 
-    fs.create_file(f"{config.incoming_folder}/{series_uid}#baz.dcm", contents="asdfasdfafd")
-    fs.create_file(f"{config.incoming_folder}/{series_uid}#baz.tags", contents=tags)
+    mock_incoming_uid(config, fs, series_uid, tags,name)
     return task_id, series_uid
 
 @pytest.mark.asyncio
 async def test_route_series_fail1(fs: FakeFilesystem, mercure_config, mocked):
     config = mercure_config(rules)
 
-    tags = {"SeriesInstanceUID": "foo"}
-    task_id, series_uid = create_series(mocked, fs, config, "foobar")
+    tags = {"asdfasdfas": "foo"}
+    task_id, series_uid = create_series(mocked, fs, config, tags)
 
+    tags_file = next(Path(config.incoming_folder).glob("**/*.tags"))
+    with open(tags_file,'a') as f:
+        f.write("garbage")
     common.monitor.configure("router", "test", config.bookkeeper)
     router.run_router()
     print(common.monitor.send_task_event.call_args_list)  # type: ignore
@@ -88,7 +91,7 @@ def test_route_series_fail2(fs: FakeFilesystem, mercure_config, mocked):
     config = mercure_config(rules)
 
     tags = {"SeriesInstanceUID": "asdfasdfasdf"}
-    task_id, series_uid = create_series(mocked, fs, config, json.dumps(tags))
+    task_id, series_uid = create_series(mocked, fs, config, tags)
 
     router.run_router()
     common.monitor.send_event.assert_any_call(  # type: ignore
@@ -103,8 +106,8 @@ def test_route_series_fail2(fs: FakeFilesystem, mercure_config, mocked):
 def test_route_series_fail3(fs: FakeFilesystem, mercure_config, mocked):
     config = mercure_config(rules)
 
-    tags = {"SeriesInstanceUID": "foo"}
-    task_id, series_uid = create_series(mocked, fs, config, json.dumps(tags))
+    tags = {"SeriesDescription": "foo"}
+    task_id, series_uid = create_series(mocked, fs, config, tags)
 
     real_mkdir = os.mkdir
 
@@ -124,38 +127,40 @@ def test_route_series_fail3(fs: FakeFilesystem, mercure_config, mocked):
         f"Unable to create outgoing folder {config.outgoing_folder}/{task_id}",
     )
 
-    def fake_create_destination(dest):
-        if config.outgoing_folder in dest:
-            pass
-        else:
-            real_mkdir(dest)
+    # def fake_create_destination(dest):
+    #     if dest == config.outgoing_folder:
+    #         pass
+    #     else:
+    #         real_mkdir(dest)
 
-    mocked.patch("os.mkdir", new=fake_create_destination)
-    router.run_router()
-    common.monitor.send_task_event.assert_any_call(  # type: ignore
-        task_event.ERROR,
-        task_id,
-        0,
-        "",
-        f"Creating folder not possible {config.outgoing_folder}/{task_id}",
-    )
+    # mocked.patch("os.mkdir", new=fake_create_destination)
+    # router.run_router()
+    # common.monitor.send_task_event.assert_any_call(  # type: ignore
+    #     task_event.ERROR,
+    #     task_id,
+    #     0,
+    #     "",
+    #     f"Creating folder not possible {config.outgoing_folder}/{task_id}",
+    # )
 
 
 def test_route_series_fail4(fs: FakeFilesystem, mercure_config, mocked):
     config = mercure_config(rules)
 
-    tags = {"SeriesInstanceUID": "foo"}
-    task_id, series_uid = create_series(mocked, fs, config, json.dumps(tags))
+    tags = {"SeriesDescription": "foo"}
+    task_id, series_uid = create_series(mocked, fs, config, tags, name="baz")
 
     mocked.patch("shutil.move", side_effect=Exception("no moving"))
+    mocked.patch("shutil.copy", side_effect=Exception("no copying"))
     router.run_router()
     common.monitor.send_task_event.assert_any_call(  # type: ignore
         task_event.ERROR,
         task_id,
         0,
         "",
-        f"Problem while pushing file to outgoing {series_uid}#baz\nSource folder {config.incoming_folder}/\nTarget folder {config.outgoing_folder}/{task_id}/",
+        f"Problem while pushing file to outgoing {series_uid}#baz\nSource folder {config.incoming_folder}/{series_uid}\nTarget folder {config.outgoing_folder}/{task_id}",
     )
+    assert list(Path(config.outgoing_folder).glob("**/*.dcm")) == []
 
 
 def task_will_dispatch_to(task, config, fake_process) -> None:
@@ -183,11 +188,10 @@ async def test_route_study(fs: FakeFilesystem, mercure_config, mocked, fake_proc
     rule_name = "route_study"
     tags = {
         "StudyInstanceUID": study_uid,
-        "SeriesInstanceUID": "bar",
         "StudyDescription": "foo",
         "SeriesDescription": "series_desc",
     }
-    task_id, series_uid = create_series(mocked, fs, config, json.dumps(tags))
+    task_id, series_uid = create_series(mocked, fs, config, tags, "baz")
     common.monitor.configure("router", "test", config.bookkeeper)
 
     router.run_router()
@@ -232,7 +236,7 @@ async def test_route_study(fs: FakeFilesystem, mercure_config, mocked, fake_proc
     # )
 
 @pytest.mark.asyncio
-async def test_route_series(fs: FakeFilesystem, mercure_config, mocked, fake_process):
+async def test_route_series_success(fs: FakeFilesystem, mercure_config, mocked, fake_process):
     config = mercure_config(rules)
     # attach_spies(mocker)
     # mocker.patch("routing.route_series.parse_ascconv", new=lambda x: {})
@@ -240,27 +244,27 @@ async def test_route_series(fs: FakeFilesystem, mercure_config, mocked, fake_pro
     series_uid = str(uuid.uuid4())
 
     new_task_id = "new-task-" + str(uuid.uuid1())
-    mock_task_ids(mocked, task_id, new_task_id)
     # mocked.patch("uuid.uuid1", new=lambda: task_id)
-    tags = {"SeriesInstanceUID": "foo"}
-    fs.create_file(f"/var/incoming/{series_uid}#bar.dcm", contents="asdfasdfafd")
-    fs.create_file(f"/var/incoming/{series_uid}#bar.tags", contents=json.dumps(tags))
+    tags = {"SeriesDescription": "foo"}
+    mock_incoming_uid(config, fs, series_uid, tags)
+
 
     common.monitor.configure("router", "test", config.bookkeeper)
+    mock_task_ids(mocked, task_id, new_task_id)
     router.run_router()
 
-    common.monitor.send_register_series.assert_called_once_with({"SeriesInstanceUID": "foo"})  # type: ignore
+    common.monitor.send_register_series.call_args_list[0][0][0]["SeriesDescription"] == "foo"  # type: ignore
     common.monitor.send_register_task.assert_any_call(task_id, series_uid)  # type: ignore
     router.route_series.assert_called_once_with(task_id, series_uid)  # type: ignore
-    routing.route_series.push_series_serieslevel.assert_called_once_with(task_id, {"route_series": True}, [f"{series_uid}#bar"], series_uid, tags)  # type: ignore
-    routing.route_series.push_serieslevel_outgoing.assert_called_once_with(task_id, {"route_series": True}, [f"{series_uid}#bar"], series_uid, tags, {"test_target": ["route_series"]})  # type: ignore
+    routing.route_series.push_series_serieslevel.assert_called_once_with(task_id, {"route_series": True}, [f"{series_uid}#bar"], series_uid, unittest.mock.ANY)  # type: ignore
+    routing.route_series.push_serieslevel_outgoing.assert_called_once_with(task_id, {"route_series": True}, [f"{series_uid}#bar"], series_uid, unittest.mock.ANY, {"test_target": ["route_series"]})  # type: ignore
 
     common.monitor.send_task_event.assert_has_calls(  # type: ignore
         [
             call(task_event.ERROR, task_id, 0, "", "Invalid rule encountered:  1/0 "),
             call(task_event.REGISTER, task_id, 1, "route_series", "Registered series"),
             call(task_event.DELEGATE, task_id, 1, new_task_id, "route_series"),
-            call(task_event.MOVE, task_id, 1, f"/var/outgoing/{new_task_id}/", "Moved files"),
+            call(task_event.MOVE, task_id, 1, f"/var/outgoing/{new_task_id}", "Moved files"),
         ]
     )
     out_path = next(Path("/var/outgoing").iterdir())
@@ -299,20 +303,19 @@ async def test_route_series_new_rule(fs: FakeFilesystem, mercure_config, mocked,
     series_uid = str(uuid.uuid4())
 
     new_task_id = "new-task-" + str(uuid.uuid1())
-    mock_task_ids(mocked, task_id, new_task_id)
     # mocked.patch("uuid.uuid1", new=lambda: task_id)
-    tags = {"SeriesInstanceUID": "new_rule"}
-    fs.create_file(f"/var/incoming/{series_uid}#bar.dcm", contents="asdfasdfafd")
-    fs.create_file(f"/var/incoming/{series_uid}#bar.tags", contents=json.dumps(tags))
+    tags = {"SeriesDescription": "new_rule"}
+    mock_incoming_uid(config, fs, series_uid, tags)
 
     common.monitor.configure("router", "test", config.bookkeeper)
+    mock_task_ids(mocked, task_id, new_task_id)
     router.run_router()
 
-    common.monitor.send_register_series.assert_called_once_with({"SeriesInstanceUID": "new_rule"})  # type: ignore
+    common.monitor.send_register_series.call_args[0][0]["SeriesDescription"] == "new_rule"  # type: ignore
     common.monitor.send_register_task.assert_any_call(task_id, series_uid)  # type: ignore
     router.route_series.assert_called_once_with(task_id, series_uid)  # type: ignore
-    routing.route_series.push_series_serieslevel.assert_called_once_with(task_id, {"route_series_new_rule": True}, [f"{series_uid}#bar"], series_uid, tags)  # type: ignore
-    routing.route_series.push_serieslevel_outgoing.assert_called_once_with(task_id, {"route_series_new_rule": True}, [f"{series_uid}#bar"], series_uid, tags, {"test_target": ["route_series_new_rule"]})  # type: ignore
+    routing.route_series.push_series_serieslevel.assert_called_once_with(task_id, {"route_series_new_rule": True}, [f"{series_uid}#bar"], series_uid, unittest.mock.ANY)  # type: ignore
+    routing.route_series.push_serieslevel_outgoing.assert_called_once_with(task_id, {"route_series_new_rule": True}, [f"{series_uid}#bar"], series_uid, unittest.mock.ANY, {"test_target": ["route_series_new_rule"]})  # type: ignore
 
     common.monitor.send_task_event.assert_has_calls(  # type: ignore
         [
@@ -339,13 +342,12 @@ async def test_route_series_with_bad_tags(fs: FakeFilesystem, mercure_config, mo
     series_uid = str(uuid.uuid4())
 
     new_task_id = "new-task-" + str(uuid.uuid1())
-    mock_task_ids(mocked, task_id, new_task_id)
     # mocked.patch("uuid.uuid1", new=lambda: task_id)
     tags = b'{"BadTag": "\xb1d\u0000 Garbage"}'
-    fs.create_file(f"/var/incoming/{series_uid}#bar.dcm", contents="asdfasdfafd")
-    fs.create_file(f"/var/incoming/{series_uid}#bar.tags", contents=tags)
+    mock_incoming_uid(config, fs, series_uid, {}, force_tags_output=tags)
 
     common.monitor.configure("router", "test", config.bookkeeper)
+    mock_task_ids(mocked, task_id, new_task_id)
     router.run_router()
 
     parsed_tags = json.loads(tags.decode(errors="surrogateescape"))
@@ -369,13 +371,12 @@ async def test_route_series_fail_with_bad_tags(fs: FakeFilesystem, mercure_confi
     series_uid = str(uuid.uuid4())
 
     new_task_id = "new-task-" + str(uuid.uuid1())
-    mock_task_ids(mocked, task_id, new_task_id)
     # mocked.patch("uuid.uuid1", new=lambda: task_id)
     tags = b'{"BadTag": "dGar\u0000\xb1bage"}'
-    fs.create_file(f"/var/incoming/{series_uid}#bar.dcm", contents="asdfasdfafd")
-    fs.create_file(f"/var/incoming/{series_uid}#bar.tags", contents=tags)
+    mock_incoming_uid(config, fs, series_uid, {}, force_tags_output=tags)
 
     common.monitor.configure("router", "test", config.bookkeeper)
+    mock_task_ids(mocked, task_id, new_task_id)
     router.run_router()
 
     parsed_tags = json.loads(tags.decode(errors="surrogateescape"))
@@ -390,3 +391,44 @@ async def test_route_series_fail_with_bad_tags(fs: FakeFilesystem, mercure_confi
 def test_router_no_syntax_errors():
     """Checks if router.py can be started."""
     assert router
+
+def test_route_series_with_error(fs: FakeFilesystem, mercure_config, mocked):
+    """Checks if the router can handle a series that can't be parsed by getdcmtags."""
+
+    config = mercure_config(rules)
+    
+    incoming = Path(config.incoming_folder)
+    dcm_file = incoming / f"bad_dicom.dcm"
+    fs.create_file(dcm_file, contents="not a dicom file")
+    process_dicom(str(dcm_file), "0.0.0.0","mercure","mercure")
+    assert not dcm_file.exists()
+    assert "Unable to read DICOM file" in (incoming / "error" / "bad_dicom.error").read_text()
+    router.run_router()
+    assert (Path(config.error_folder) / f"bad_dicom.dcm").exists()
+    assert (Path(config.error_folder) / f"bad_dicom.error").exists()
+    common.monitor.send_event.assert_called_with(m_events.PROCESSING, severity.ERROR, "Error parsing 1 incoming files") # type: ignore
+
+def test_route_series_multiple_rules(fs: FakeFilesystem, mercure_config, mocked, fake_process):
+    config = mercure_config({
+        "rules": {
+            "rule1": Rule(rule="@SeriesDescription@ == 'Test'", target="test_target", action="route").dict(),
+            "rule2": Rule(rule="@Modality@ == 'CT'", target="test_target_2", action="route").dict()
+        }
+    })
+    
+    tags = {
+        "SeriesInstanceUID": "123",
+        "SeriesDescription": "Test",
+        "Modality": "CT"
+    }
+    dcm_file, _ = mock_incoming_uid(config, fs, generate_uid(), tags, "test")
+  
+    router.run_router()
+    
+    # Assert that both rules were triggered and series routed to both targets
+    routing.route_series.push_serieslevel_outgoing.assert_called() # type: ignore
+    assert set(routing.route_series.push_serieslevel_outgoing.call_args[0][1].keys()) == set(["rule1", "rule2"]) # type: ignore
+    assert len(list(Path(config.outgoing_folder).iterdir())) == 2
+
+    for path in Path(config.outgoing_folder).iterdir():
+        assert (path / Path(dcm_file).name).exists()

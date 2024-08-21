@@ -138,7 +138,7 @@ def is_study_complete(folder: str, pending_series: Dict[str, float]) -> bool:
             logger.error(f"Invalid trigger condition in task file in study folder {folder}", task.id)  # handle_error
             return False
     except Exception:
-        logger.error(f"Invalid task file in study folder {folder}", task.id)  # handle_error
+        logger.error(f"Invalid task file in study folder {folder}")  # handle_error
         return False
 
 
@@ -149,7 +149,7 @@ def check_study_timeout(task: TaskHasStudy, pending_series: Dict[str, float]) ->
     logger.debug("Checking study timeout")
     study = task.study
     last_received_string = study.last_receive_time
-    logger.debug(f"Last received time: {last_received_string}, {datetime.now()}")
+    logger.debug(f"Last received time: {last_received_string}, now is: {datetime.now()}")
     if not last_received_string:
         return False
 
@@ -157,13 +157,19 @@ def check_study_timeout(task: TaskHasStudy, pending_series: Dict[str, float]) ->
     if datetime.now() > last_receive_time + timedelta(seconds=config.mercure.study_complete_trigger):
         # Check if there is a pending series on this study. If so, we need to wait for it to timeout before we can complete the study
         for series_uid in pending_series.keys():
-            example_file = next(Path(config.mercure.incoming_folder).glob(f"{series_uid}*.tags"))
+            try:
+                example_file = next((Path(config.mercure.incoming_folder) / series_uid).glob(f"{series_uid}*.tags"))
+            except StopIteration:  # No tag file with this series UID was found
+                logger.error(f"No tag file for series UID {series_uid} was found")
+                raise
             tags_list = json.loads(example_file.read_text())
             if tags_list["StudyInstanceUID"] == study.study_uid:
                 logger.debug(f"Timeout met, but found a pending series ({series_uid}) in study {study.study_uid}")
                 return False
+        logger.debug("Timeout met.")
         return True
     else:
+        logger.debug("Timeout not met.")
         return False
 
 
@@ -282,7 +288,7 @@ def push_studylevel_notification(study: str, task: Task) -> bool:
 
 def push_studylevel_error(study: str) -> None:
     """
-    Pushes the study folder to the error folder after unsuccessful processing
+    Pushes the study folder to the error folder after unsuccessful routing
     """
     study_folder = config.mercure.studies_folder + "/" + study
     lock_file = Path(study_folder + "/" + study + mercure_names.LOCK)

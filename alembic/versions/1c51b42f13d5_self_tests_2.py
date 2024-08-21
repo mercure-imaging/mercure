@@ -17,7 +17,12 @@ depends_on = None
 
 
 def upgrade():
-    op.execute("ALTER TABLE tests ADD COLUMN IF NOT EXISTS rule_type character varying NULL")
+    connection = op.get_bind()
+    dialect = connection.dialect
+    if dialect.name == "sqlite":
+        op.execute("ALTER TABLE tests ADD COLUMN rule_type character varying NULL")    
+    else:
+        op.execute("ALTER TABLE tests ADD COLUMN IF NOT EXISTS rule_type character varying NULL")
 
 
 def downgrade():

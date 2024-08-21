@@ -62,3 +62,4 @@ future>=0.18.3
 lxml>=4.9.1
 pyxnat
 urllib3>=2.2.2
+aiosqlite~=0.20.0
