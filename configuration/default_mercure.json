@@ -1,5 +1,6 @@
 {
     "appliance_name"             : "master",
+    "appliance_color"            :   "#FFF",
     "port"                       :    11112,
     "accept_compressed_images"   :    false,
     "support_root_modules"       :    false,

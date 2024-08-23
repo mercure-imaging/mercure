@@ -181,6 +181,7 @@ class DicomReceiverConfig(BaseModel):
 
 class Config(BaseModel, Compat):
     appliance_name: str
+    appliance_color: str = "#FFF"
     port: int
     accept_compressed_images: bool
     incoming_folder: str

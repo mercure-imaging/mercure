@@ -5,7 +5,18 @@
 {% block content %}
 <main role="main">
     <div class="container">
-        <h1 class="title">Configuration</h1>
+        <div class="columns">
+            <div class="column">
+                <h1 class="title">Configuration</h1>
+            </div>
+            <div class="column">
+                {% if is_admin %}
+                <div class="buttons is-right">
+                    <a class="button" href="/configuration/edit"><i class="fas fa-pencil-alt"></i>&nbsp;Edit</a>
+                </div>
+                {% endif %}                
+            </div>
+        </div>
         <div class="columns">
             <div class="column is-full">
                 {% if config_edited>0 %}
@@ -260,16 +271,6 @@
                         <td>{{config['discard_folder']}}</td>
                     </tr>
                 </table>
-            </div>
-        </div>
-        <div class="columns">
-            <div class="column is-full">
-                {% if is_admin %}
-                <div class="buttons is-left" style="margin-top: 10px;">
-                    <a class="button" href="/configuration/edit"><i class="fas fa-pencil-alt"></i>&nbsp;Edit
-                        Settings</a>
-                </div>
-                {% endif %}
             </div>
         </div>
     </div>

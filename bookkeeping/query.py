@@ -259,7 +259,7 @@ async def find_task(request) -> JSONResponse:
                 except json.JSONDecodeError:
                     rule_information = "ERROR"       
             else:
-                rule_information = "(Delegation)"
+                rule_information = ""
 
         response[task_id] = {
             "ACC": acc,

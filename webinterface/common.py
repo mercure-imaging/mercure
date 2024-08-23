@@ -11,6 +11,7 @@ import asyncio
 # Starlette-related includes
 from starlette.templating import Jinja2Templates
 
+import common.config as config
 
 templates = Jinja2Templates(directory="webinterface/templates")
 
@@ -21,6 +22,8 @@ def get_user_information(request) -> dict:
         "logged_in": request.user.is_authenticated,
         "user": request.user.display_name,
         "is_admin": request.user.is_admin if request.user.is_authenticated else False,
+        "appliance_name": config.mercure.appliance_name,
+        "appliance_color": config.mercure.appliance_color,
     }
 
 
