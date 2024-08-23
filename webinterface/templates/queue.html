@@ -244,7 +244,7 @@
                 </div>
             </section>
             <footer class="modal-card-foot buttons is-centered">
-                <button class="button" type="button" id="closejobinformation" onclick="closeJobInformation()">Close</button>
+                <button class="button" type="button" id="closejobinformation" onclick="closeJobInformation()"><i class="fas fa-check"></i>&nbsp;Close</button>
             </footer>
         </div>
     </div>    
@@ -267,7 +267,7 @@
                 </div>
             </section>
             <footer class="modal-card-foot buttons is-centered">
-                <button class="button" type="button" id="closejobarchiveinformation" onclick="closeJobArchiveInformation()">Close</button>
+                <button class="button" type="button" id="closejobarchiveinformation" onclick="closeJobArchiveInformation()"><i class="fas fa-check"></i>&nbsp;Close</button>
             </footer>
         </div>
     </div>        
@@ -296,7 +296,7 @@
                 </table>
             </section>
             <footer class="modal-card-foot buttons is-centered">
-                <button class="button" type="button" id="closejobaudittrail" onclick="closeJobAuditTrail()">Close</button>
+                <button class="button" type="button" id="closejobaudittrail" onclick="closeJobAuditTrail()"><i class="fas fa-check"></i>&nbsp;Close</button>
             </footer>
         </div>
     </div> 
@@ -311,7 +311,7 @@
                 <pre id="process_logs_display" class="process-logs process-logs-output"></pre>
             </section>
             <footer class="modal-card-foot buttons is-centered">
-                <button class="button" type="button" id="closeprocesslogs" onclick="closeProcessLogs()">Close</button>
+                <button class="button" type="button" id="closeprocesslogs" onclick="closeProcessLogs()"><i class="fas fa-check"></i>&nbsp;Close</button>
             </footer>
         </div>
     </div> 
@@ -326,7 +326,7 @@
                 <pre id="process_results_display" class="process-results process-results-output"></pre>
             </section>
             <footer class="modal-card-foot buttons is-centered">
-                <button class="button" type="button" id="closeprocessresults" onclick="closeProcessResults()">Close</button>
+                <button class="button" type="button" id="closeprocessresults" onclick="closeProcessResults()"><i class="fas fa-check"></i>&nbsp;Close</button>
             </footer>
         </div>
     </div>     
@@ -602,7 +602,7 @@
                     titleAttr: 'Deselect all',
                 },
                 {
-                    text: '<i class="far fa-question-circle"></i>',
+                    text: '<i class="fas fa-code"></i>',
                     titleAttr: 'Job information',
                     action: function ( e, dt, node, config ) {
                         var jid = $('#jobs_processing').DataTable().rows( { selected: true } ).data()[0][5];
@@ -610,7 +610,7 @@
                     }
                 },
                 {
-                    text: '<i class="far fa-trash-alt"></i>',
+                    text: '<i class="fas fa-trash-alt"></i>',
                     titleAttr: 'Cancel job',
                     action: function ( e, dt, node, config ) {
                         alert("Coming soon!");                    
@@ -649,7 +649,7 @@
                     titleAttr: 'Deselect all',
                 },
                 {
-                    text: '<i class="far fa-question-circle"></i>',
+                    text: '<i class="fas fa-code"></i>',
                     titleAttr: 'Job information',
                     action: function ( e, dt, node, config ) {
                         var jid = $('#jobs_routing').DataTable().rows( { selected: true } ).data()[0][5];
@@ -657,7 +657,7 @@
                     }
                 },
                 {
-                    text: '<i class="far fa-trash-alt"></i>',
+                    text: '<i class="fas fa-trash-alt"></i>',
                     titleAttr: 'Cancel job',
                     action: function ( e, dt, node, config ) {
                         alert("Coming soon!");                    
@@ -700,21 +700,22 @@
                     titleAttr: 'Deselect all',
                 },
                 {
-                    text: '<i class="far fa-question-circle"></i>',
+                    text: '<i class="fas fa-code"></i>',
                     titleAttr: 'Job information',
                     action: function ( e, dt, node, config ) {
-                        showJobInformation("","studies");
+                        var jid = $('#jobs_studies').DataTable().rows( { selected: true } ).data()[0][0];
+                        showJobInformation(jid,"studies");
                     }
                 },
                 {
-                    text: '<i class="far fa-trash-alt"></i>',
+                    text: '<i class="fas fa-trash-alt"></i>',
                     titleAttr: 'Cancel study',
                     action: function ( e, dt, node, config ) {
                         alert("Coming soon!");                    
                     }
                 },
                 {
-                    text: '<i class="far fa-play-circle"></i>',
+                    text: '<i class="fas fa-sign-out-alt"></i>',
                     titleAttr: 'Force study completion',
                     action: function ( e, dt, node, config ) {
 
@@ -785,7 +786,7 @@
                     titleAttr: 'Deselect all',
                 },
                 {
-                    text: '<i class="far fa-question-circle"></i>',
+                    text: '<i class="fas fa-code"></i>',
                     titleAttr: 'Job information',
                     action: function ( e, dt, node, config ) {
                         var jid = $('#jobs_fail').DataTable().rows( { selected: true } ).data()[0][4];
@@ -793,7 +794,7 @@
                     }
                 },
                 {
-                    text: '<i class="fas fa-redo"></i>',
+                    text: '<i class="fas fa-redo-alt"></i>',
                     titleAttr: 'Restart job',
                     action: function ( e, dt, node, config ) {
                         alert("Coming soon!");
@@ -842,7 +843,7 @@
                     ]
                 },
                 {
-                    text: '<i class="far fa-question-circle"></i>',
+                    text: '<i class="fas fa-code"></i>',
                     titleAttr: 'Job information',
                     action: function ( e, dt, node, config ) {
                         var jid = $('#jobs_archive').DataTable().rows( { selected: true } ).data()[0].slice(-1)[0];
@@ -850,7 +851,7 @@
                     }
                 },
                 {
-                    text: '<i class="fas fa-list"></i>',
+                    text: '<i class="fas fa-list-ul"></i>',
                     titleAttr: 'Audit trail',
                     action: function ( e, dt, node, config ) {
                         var jid = $('#jobs_archive').DataTable().rows( { selected: true } ).data()[0].slice(-1)[0];
@@ -858,7 +859,7 @@
                     }
                 },
                 {
-                    text: '<i class="far fa-file-alt"></i>',
+                    text: '<i class="fas fa-receipt"></i>',
                     titleAttr: 'Processing log',
                     action: function ( e, dt, node, config ) {
                         var jid = $('#jobs_archive').DataTable().rows( { selected: true } ).data()[0].slice(-1)[0];
@@ -1110,9 +1111,9 @@
         $("#jobinfocontrol").addClass("is-loading");        
 
         $.ajax({
-            type: 'GET',
+            type: 'POST',
             url: '/queue/jobinfo/' + category + '/' + jobId,
-            data: {},
+            data: { 'jobId': jobId },
             dataType: 'json',
             success: function (data) {
                 textContent = ""
