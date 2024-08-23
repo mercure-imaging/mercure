@@ -54,18 +54,18 @@ def eval_rule(rule: str, tags_dict: Dict[str, str]) -> Any:
     logger.info(f"Rule: {rule}")
     rule = replace_tags(rule, tags_dict)
     logger.info(f"Evaluated: {rule}")
+    tags_obj = Tags(tags)
     try:
-        tags = Tags(tags_dict)
-        result = eval(rule, {"__builtins__": {}}, {**safe_eval_cmds,"tags":tags})
+        result = eval(rule, {"__builtins__": {}}, {**safe_eval_cmds,"tags":tags_obj})
     except SyntaxError as e:
         opening = rule.find("@")
         closing = rule.find("@",opening+1)
         if opening >-1 and closing>1:
             raise TagNotFoundException(f"No such tag '{rule[opening+1:closing]}' in tags list.")
         raise
-    logger.info(", ".join([f"{tag} = \"{tags_dict[tag]}\"" for tag in tags.tags_accessed()]))
+    logger.info(", ".join([f"{tag} = \"{tags[tag]}\"" for tag in tags_obj.tags_accessed()]))
     logger.info(f"Result: {result}")
-    return result, tags.tags_accessed()
+    return result, tags_obj.tags_accessed()
 
 def parse_rule(rule: str, tags: Dict[str, str]) -> Tuple[bool,Optional[str], Optional[str]]:
     try: 

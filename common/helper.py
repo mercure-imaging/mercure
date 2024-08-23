@@ -6,6 +6,8 @@ Various internal helper functions for mercure.
 # Standard python includes
 import asyncio
 from contextlib import suppress
+from datetime import datetime
+from datetime import time as _time
 import inspect
 from pathlib import Path
 import threading
@@ -62,6 +64,21 @@ def g_log(*args, **kwargs) -> None:
     except:
         send_to_graphite(*args, **kwargs)
         send_to_influxdb(*args, **kwargs)
+
+
+def _is_offpeak(offpeak_start: str, offpeak_end: str, current_time: _time) -> bool:
+    """Check if the provided time is within the offpeak time range."""
+    try:
+        start_time = datetime.strptime(offpeak_start, "%H:%M").time()
+        end_time = datetime.strptime(offpeak_end, "%H:%M").time()
+    except Exception as e:
+        print(f"Unable to parse offpeak time: {offpeak_start}, {offpeak_end}", None)  # handle_error
+        return True
+
+    if start_time < end_time:
+        return current_time >= start_time and current_time <= end_time
+    # End time is after midnight
+    return current_time >= start_time or current_time <= end_time
 
 
 class AsyncTimer(object):
@@ -163,5 +180,9 @@ class FileLock:
 
     def free(self) -> None:
         if self.lockCreated:
-            self.lockfile.unlink()
+            try:
+                self.lockfile.unlink()
+            except FileNotFoundError:
+                # Lock file was already removed by someone else
+                pass
             self.lockCreated = False

@@ -18,6 +18,14 @@ depends_on = None
 
 
 def upgrade():
+    connection = op.get_bind()
+    dialect = connection.dialect
+    print(dialect.name)
+    if dialect.name == "sqlite":
+        jsonb = sa.Text() # type: ignore
+    else:
+        jsonb = JSONB(astext_type=sa.Text()) # type: ignore
+
     op.create_table(
         "tests",
         sa.Column("id", sa.String()),
@@ -26,7 +34,7 @@ def upgrade():
         sa.Column("time_begin", sa.DateTime(), nullable=True),
         sa.Column("time_end", sa.DateTime(), nullable=True),
         sa.Column("status", sa.String(), nullable=True),
-        sa.Column("data", JSONB(), nullable=True),
+        sa.Column("data", jsonb, nullable=True),
         sa.PrimaryKeyConstraint("id"),
     )
 

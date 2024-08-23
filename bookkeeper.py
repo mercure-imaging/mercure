@@ -6,6 +6,7 @@ and stores the information in a Postgres database.
 """
 
 # Standard python includes
+import contextlib
 import os
 from pathlib import Path
 import subprocess
@@ -402,36 +403,33 @@ async def store_processor_output(request) -> JSONResponse:
 ###################################################################################
 
 
-app = Starlette(debug=bk_config.DEBUG_MODE, routes=router)
-app.add_middleware(
-    AuthenticationMiddleware,
-    backend=TokenAuth(),
-    on_error=lambda _, exc: PlainTextResponse(str(exc), status_code=401),
-)
-app.mount("/query", query.query_app)
-
-
-@app.on_event("startup")
-async def startup() -> None:
-    """Connects to database on startup. If the database does not exist, it will
-    be created."""
+@contextlib.asynccontextmanager
+async def lifespan(app):
     await database.connect()
     create_database()
     bk_config.set_api_key()
-
-
-@app.on_event("shutdown")
-async def shutdown() -> None:
-    """Disconnect from database on shutdown."""
+    yield
     await database.disconnect()
 
-@app.exception_handler(500)
+
 async def server_error(request, exc) -> Response:
     """
     Return an HTTP 500 page.
     """
     return JSONResponse({"error": "Internal server error"}, status_code=500)
 
+exception_handlers = {
+    500: server_error
+}
+
+
+app = Starlette(debug=bk_config.DEBUG_MODE, routes=router, lifespan=lifespan, exception_handlers=exception_handlers)
+app.add_middleware(
+    AuthenticationMiddleware,
+    backend=TokenAuth(),
+    on_error=lambda _, exc: PlainTextResponse(str(exc), status_code=401),
+)
+app.mount("/query", query.query_app)
 
 def main(args=sys.argv[1:]) -> None:
     if "--reload" in args or os.getenv("MERCURE_ENV", "PROD").lower() == "dev":
@@ -445,6 +443,14 @@ def main(args=sys.argv[1:]) -> None:
     logger.info(f"mercure Bookkeeper ver {mercure_defs.VERSION}")
     logger.info("--------------------------------------------")
     logger.info("")
+
+    try:
+        config.read_config()
+        query.set_timezone_conversion()
+    except Exception as e:
+        logger.error(f"Could not read configuration file: {e}")
+        logger.info("Going down.")
+        sys.exit(1)
 
     uvicorn.run(app, host=bk_config.BOOKKEEPER_HOST, port=bk_config.BOOKKEEPER_PORT)
 

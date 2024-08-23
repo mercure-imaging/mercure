@@ -1,6 +1,19 @@
 Release History
 ===============
 
+Version 0.3.1-beta.1
+--------------------
+*Release date: 6/10/2024*
+
+* New JSON editor for configuration and module settings
+* Support for rsync and DICOM-TLS transfers
+* Improved error messages 
+* Integrated Zulip chat for support forum
+* Added option to dispatch DICOMs back to sender
+* Added support for InfluxDB monitoring
+* Changed Vagrant files to use Ubuntu 22.04
+* Various bugfixes
+
 Version 0.3.0-beta.1
 --------------------
 *Release date: 9/18/2023*

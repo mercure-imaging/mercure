@@ -191,8 +191,8 @@ def execute(
             "Routing job complete",
         )
 
-        monitor.send_task_event(task_event.MOVE, task_content.id, 0, str(success_folder), "Moved to success folder")
         _move_sent_directory(task_content.id, source_folder, success_folder)
+        monitor.send_task_event(task_event.MOVE, task_content.id, 0, str(success_folder)+"/"+str(source_folder.name), "Moved to success folder")
 
         _trigger_notification(task_content, mercure_events.COMPLETED)
         monitor.send_task_event(monitor.task_event.COMPLETE, task_content.id, 0, "", "Task complete")

@@ -208,6 +208,7 @@
                                 <th>ACC</th>
                                 <th>MRN</th>
                                 <th>Scope</th>
+                                <th>Rule</th>
                                 <th>Time</th>
                                 <th>ID</th>
                             </tr>
@@ -315,9 +316,25 @@
         </div>
     </div> 
 
+    <div class="modal" id="process_results">
+        <div class="modal-background"></div>
+        <div class="modal-card process-results" style="width: 60%;">
+            <header class="modal-card-head">
+                <p class="modal-card-title">Processing Results</p>
+            </header>
+            <section class="modal-card-body process-results" style="background-color: #0a0a0a; border-left: 3px solid #FFF; border-right: 3px solid #FFF;">
+                <pre id="process_results_display" class="process-results process-results-output"></pre>
+            </section>
+            <footer class="modal-card-foot buttons is-centered">
+                <button class="button" type="button" id="closeprocessresults" onclick="closeProcessResults()">Close</button>
+            </footer>
+        </div>
+    </div>     
 </main>
 
 <script>
+
+    var archiveFilterQueue = false;
 
     function update() {
         update_status();
@@ -731,10 +748,6 @@
                                 timeout: 3000
                             });
                         })
-
-
-
-
                     }
                 }
             ],
@@ -810,6 +823,25 @@
             select: true,
             buttons: [
                 {
+                    extend: 'collection',
+                    autoClose: true,
+                    text: '<i class="fas fa-filter"></i>',
+                    className: 'queueArchiveFilter',
+                    titleAttr: 'Job filter',
+                    buttons: [
+                        {
+                            text: 'Show only STUDY jobs',
+                            className: 'queueArchiveFilterButton',
+                            action: function (e, dt, node, config, cb) {
+                                // Toggles class when pressed
+                                $(e.currentTarget).toggleClass("queueArchiveFilterButton-Checked");                       
+                                archiveFilterQueue = !archiveFilterQueue;
+                                archiveSearch();
+                            }
+                        }
+                    ]
+                },
+                {
                     text: '<i class="far fa-question-circle"></i>',
                     titleAttr: 'Job information',
                     action: function ( e, dt, node, config ) {
@@ -832,19 +864,32 @@
                         var jid = $('#jobs_archive').DataTable().rows( { selected: true } ).data()[0].slice(-1)[0];
                         showLogs(jid);
                     }
-                }   
+                },
+                {
+                    text: '<i class="fas fa-chart-bar"></i>',
+                    titleAttr: 'Processing results',
+                    action: function ( e, dt, node, config ) {
+                        var jid = $('#jobs_archive').DataTable().rows( { selected: true } ).data()[0].slice(-1)[0];
+                        showResults(jid);
+                    }
+                }                
             ],
             dom: 'Bfrtip',
             "scrollY": "740px",
             "scrollX": false,
             "scrollCollapse": true,
-            "order": [[3, 'desc']]
+            "order": [[4, 'desc'], [5, 'desc']],
+            initComplete: function() {
+                $('.queueArchiveFilter > .dt-down-arrow').hide()
+                $('.queueArchiveFilter > .icon').hide()
+            }
         } );
         $('#jobs_archive').DataTable().on( 'select deselect', function () {
             var selectedRows = $('#jobs_archive').DataTable().rows( { selected: true } ).count();
-            $('#jobs_archive').DataTable().button(0).enable( selectedRows > 0 );
             $('#jobs_archive').DataTable().button(1).enable( selectedRows > 0 );
             $('#jobs_archive').DataTable().button(2).enable( selectedRows > 0 );
+            $('#jobs_archive').DataTable().button(3).enable( selectedRows > 0 );
+            $('#jobs_archive').DataTable().button(4).enable( selectedRows > 0 );
         } );
         $("#job_archive_search").on('keyup', function (event) {
             if (event.keyCode === 13) {
@@ -909,7 +954,7 @@
             $.ajax({
                 type: 'GET',
                 url: '/api/find-tasks',
-                data: {'search_term': searchTerm },
+                data: {'search_term': searchTerm, 'study_filter': archiveFilterQueue },
                 dataType: 'json',
                 error: function () {
                     $('#erroralert').show();
@@ -919,18 +964,19 @@
                     var jobtable = $('#jobs_archive').DataTable();
                     if (Object.keys(data).length) {
                         Object.keys(data).forEach(function (key) {
-                            jobtable.row.add( [ data[key]["ACC"], data[key]["MRN"], data[key]["Scope"], data[key]["Time"], key ] );
+                            jobtable.row.add( [ data[key]["ACC"], data[key]["MRN"], data[key]["Scope"], data[key]["Rule"], data[key]["Time"], key ] );
                         })
                     }
-                    $('#jobs_archive').DataTable().button(0).enable(false);
                     $('#jobs_archive').DataTable().button(1).enable(false);
                     $('#jobs_archive').DataTable().button(2).enable(false);
+                    $('#jobs_archive').DataTable().button(3).enable(false);
+                    $('#jobs_archive').DataTable().button(4).enable(false);
                     jobtable.draw();
                 },
                 complete: function (data) {
                     $('#loadingspinner').hide();
                 },
-                timeout: 3000
+                timeout: 5000
             });
             return;
         }
@@ -950,16 +996,57 @@
             dataType: 'json',
             error: function () {
                 // $('#erroralert').show();
+                $("#process_logs_display").text("Unable to load processing logs for the selected task.")
             },
             success: function (data) {
                 if (data && data.length > 0) {
-                    $("#process_logs_display").text(data[0].logs)
+                    var logText = "";
+                    for (var i = 0; i < data.length; i++) {
+                        logText += "### Module " + (i+1).toString()  +  " -- Begin\n\n";
+                        logText += data[i].logs;
+                        logText += "\n### Module " + (i+1).toString() + " -- Complete\n\n";
+                    }
+                    $("#process_logs_display").text(logText);
                 } else {
                     $("#process_logs_display").text("No processing log available for selected task.")
                 }
                 $("#process_logs").addClass("is-active");
             },
-            timeout: 3000
+            timeout: 5000
+        });
+    }
+
+    function showResults(jobId)
+    {
+        if (jobId === "") {
+            return;
+        }
+        $("#process_results").addClass("is-loading");   
+
+        $.ajax({
+            type: 'GET',
+            url: '/api/task-process-results',
+            data: {'task_id': jobId},
+            dataType: 'json',
+            error: function () {
+                // $('#erroralert').show();
+                $("#process_results_display").text("Unable to load processing results for the selected task.")
+            },
+            success: function (data) {
+                if (data && data.length > 0) {
+                    var resultsText = "";
+                    for (var i = 0; i < data.length; i++) {
+                        resultsText += "### Module " + data[i].module + "\n\n";
+                        resultsText += JSON.stringify(data[i].output, null, 4);
+                        resultsText += "\n\n";
+                    }
+                    $("#process_results_display").text(resultsText);
+                } else {
+                    $("#process_results_display").text("No processing results exist for the selected task.")
+                }
+                $("#process_results").addClass("is-active");
+            },
+            timeout: 5000
         });
     }
 
@@ -968,6 +1055,8 @@
         if (jobId === "") {
             return;
         }
+
+        console.log("Showing audit trail for job " + jobId);
 
         $("#jobaudittrail").addClass("is-active");
         $("#jobaudittrail").addClass("is-loading");        
@@ -979,11 +1068,15 @@
             dataType: 'json',
             error: function () {
                 // $('#erroralert').show();
+                var eventstable = $('#job-events-table').DataTable();
+                eventstable.clear();                
+                eventstable.draw();
             },
             success: function (data) {
-                var eventstable = $('#job-events-table').DataTable().clear();
+                var eventstable = $('#job-events-table').DataTable();
+                eventstable.clear();
                 Object.keys(data).forEach(function (key) {
-                    eventstable.row.add([ data[key]["task_id"].slice(0,8) || "", data[key]["time"], data[key]["event"], data[key]["sender"], data[key]["target"], data[key]["file_count"], data[key]["info"] ])
+                    eventstable.row.add([ data[key]["task_id"].slice(0,8) || "", data[key]["local_time"], data[key]["event"], data[key]["sender"], data[key]["target"], data[key]["file_count"], data[key]["info"] ])
                 })
                 eventstable.draw();
             },
@@ -999,6 +1092,11 @@
     function closeProcessLogs()
     {
         $("#process_logs").removeClass("is-active");
+    }
+
+    function closeProcessResults()
+    {
+        $("#process_results").removeClass("is-active");
     }
 
     function showJobInformation(jobId,category)

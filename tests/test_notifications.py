@@ -46,7 +46,7 @@ def make_config(action, trigger_reception, trigger_completion, trigger_completio
                 notification_webhook="",
                 notification_email="test@localhost, test2@localhost",
                 processing_module=["test_module_1", "test_module_2"],
-                processing_settings=[{"foo":"bar"},{"bar":"baz"}],
+                processing_settings={"foo":"bar", "bar":"baz"},
                 processing_retain_images=True,
                 notification_trigger_completion=trigger_completion,
                 notification_trigger_reception=trigger_reception,
@@ -94,6 +94,7 @@ pytestmark = parametrize_with(p,p_route,p_notification)
 
 
 @pytest.mark.asyncio
+@pytest.mark.skipif("os.getenv('TEST_FAST',False)")
 async def test_notifications(fs, mercure_config: Callable[[Dict], Config], mocked: MockerFixture, \
                               action, on_reception, on_completion, on_request, do_request, 
                               do_error, on_error):
@@ -104,24 +105,23 @@ async def test_notifications(fs, mercure_config: Callable[[Dict], Config], mocke
     assert hasattr(notification.trigger_notification_for_rule,"assert_has_calls")
     uuids = [str(uuid.uuid1()) for i in range(2)]
     
+    real_uuid = uuid.uuid1
     def generate_uuids() -> Iterator[str]:
         yield from uuids
 
     generator = generate_uuids()
-    mocked.patch("uuid.uuid1", new=lambda: next(generator))
 
     task_id = uuids[0]
     new_task_id = uuids[1]
 
     uid = "TESTFAKEUID"
-    fs.create_file(f"/var/incoming/{uid}#bar.dcm", contents="asdfasdfafd")
-    fs.create_file(f"/var/incoming/{uid}#bar.tags", contents="{}")
-
     config = mercure_config(
         {"process_runner": "docker", 
             **make_config(action=action, trigger_reception=on_reception, trigger_completion=on_completion, trigger_completion_on_request=on_request,
                            trigger_error=on_error, do_request=do_request, do_error=do_error)},
     )
+    mock_incoming_uid(config, fs, uid)
+    mocked.patch("uuid.uuid1", new=lambda: next(generator))
     router.run_router()
     if action=="notification":
         notification.trigger_notification_for_rule.assert_has_calls(  # type: ignore

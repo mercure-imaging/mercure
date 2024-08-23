@@ -23,10 +23,17 @@ from common import config
 from decoRouter import Router as decoRouter
 router = decoRouter()
 
+tz_conversion = ""
+
+def set_timezone_conversion() -> None:
+    global tz_conversion
+    tz_conversion = ""
+    if config.mercure.server_time != config.mercure.local_time:
+        tz_conversion = f" AT time zone '{config.mercure.server_time}' at time zone '{config.mercure.local_time}' "
+
 ###################################################################################
 ## Query endpoints
 ###################################################################################
-
 
 
 @router.get("/series")
@@ -105,18 +112,32 @@ async def get_test_task(request) -> JSONResponse:
 async def get_task_events(request) -> JSONResponse:
     """Endpoint for getting all events related to one task."""
 
-    # series_uid = request.query_params.get("series_uid", "")
     task_id = request.query_params.get("task_id", "")
-
     subtask_query = sqlalchemy.select(tasks_table.c.id).where(tasks_table.c.parent_id == task_id)
-    subtask_ids = [row[0] for row in await database.fetch_all(subtask_query)]
+    
+    # Note: The space at the end is needed for the case that there are no subtasks
+    subtask_ids_str = ""
+    for row in await database.fetch_all(subtask_query):
+        subtask_ids_str += f"'{row[0]}',"
+
+    subtask_ids_filter = ""
+    if subtask_ids_str:
+        subtask_ids_filter = "or task_events.task_id in (" + subtask_ids_str[:-1] + ")"
 
     # Get all the task_events from task `task_id` or any of its subtasks
-    query = (
-        task_events.select()
-        .order_by(task_events.c.task_id, task_events.c.time)
-        .where(sqlalchemy.or_(task_events.c.task_id == task_id, task_events.c.task_id.in_(subtask_ids)))
-    )
+    # subtask_ids = [row[0] for row in await database.fetch_all(subtask_query)]
+    # query = (
+    #     task_events.select()
+    #     .order_by(task_events.c.task_id, task_events.c.time)
+    #     .where(sqlalchemy.or_(task_events.c.task_id == task_id, task_events.c.task_id.in_(subtask_ids)))
+    # )
+
+    query_string = f"""select *, time {tz_conversion} as local_time from task_events
+        where task_events.task_id = '{task_id}' {subtask_ids_filter}
+        order by task_events.task_id, task_events.time
+        """
+    #print("SQL Query = " + query_string)
+    query = sqlalchemy.text(query_string)    
 
     results = await database.fetch_all(query)
     return CustomJSONResponse(results)
@@ -137,7 +158,7 @@ async def get_dicom_files(request) -> JSONResponse:
 @router.get("/task_process_logs")
 @requires("authenticated")
 async def get_task_process_logs(request) -> JSONResponse:
-    """Endpoint for getting all events related to one series."""
+    """Endpoint for getting all processing logs related to one series."""
     task_id = request.query_params.get("task_id", "")
 
     subtask_query = (
@@ -149,7 +170,7 @@ async def get_task_process_logs(request) -> JSONResponse:
     subtasks = await database.fetch_all(subtask_query)
     subtask_ids = [row[0] for row in subtasks]
 
-    query = processor_logs_table.select(processor_logs_table.c.task_id.in_(subtask_ids))
+    query = processor_logs_table.select(processor_logs_table.c.task_id.in_(subtask_ids)).order_by(processor_logs_table.c.id)
     results = [dict(r) for r in await database.fetch_all(query)]
     for result in results:
         if result["logs"] == None:
@@ -160,26 +181,49 @@ async def get_task_process_logs(request) -> JSONResponse:
     return CustomJSONResponse(results)
 
 
+@router.get("/task_process_results")
+@requires("authenticated")
+async def get_task_process_results(request) -> JSONResponse:
+    """Endpoint for getting all processing results from a task."""
+    task_id = request.query_params.get("task_id", "")
+
+    query = processor_outputs_table.select().where(processor_outputs_table.c.task_id == task_id).order_by(processor_outputs_table.c.id)
+    results = [dict(r) for r in await database.fetch_all(query)]
+    return CustomJSONResponse(results)
+
+
 @router.get("/find_task")
 @requires("authenticated")
 async def find_task(request) -> JSONResponse:
     search_term = request.query_params.get("search_term", "")
+    study_filter = request.query_params.get("study_filter", "false")
     filter_term = ""
     if search_term:
         filter_term = f"""and ((tag_accessionnumber ilike '{search_term}%') or (tag_patientid ilike '{search_term}%') or (tag_patientname ilike '%{search_term}%'))"""
 
-    query = sqlalchemy.text(
-        f""" select tasks.id as task_id, 
-        tag_accessionnumber as acc, 
-        tag_patientid as mrn,
-        data->'info'->>'uid_type' as scope,
-        tasks.time as time
-        from tasks
-        left join dicom_series on dicom_series.series_uid = tasks.series_uid 
-        where parent_id is null {filter_term}
-        order by date_trunc('second', tasks.time) desc, tasks.id desc
-        limit 256 """
-    )
+    study_filter_term = ""
+    if study_filter=="true":
+        study_filter_term = "and tasks.study_uid is not null"
+
+    query_string = f"""select max(a.acc) as acc, max(a.mrn) as mrn, max(a.task_id) as task_id, max(a.scope) as scope, max(a.time) as time, 
+                   string_agg(b.data->'info'->>'applied_rule', ', ' order by b.id) as rule, 
+                   string_agg(b.data->'info'->>'triggered_rules', ',' order by b.id) as triggered_rules 
+                   from (select tasks.id as task_id, 
+                   tag_accessionnumber as acc, 
+                   tag_patientid as mrn,
+                   data->'info'->>'uid_type' as scope,
+                   tasks.time::timestamp {tz_conversion} as time        
+                   from tasks
+                   left join dicom_series on dicom_series.series_uid = tasks.series_uid 
+                   where parent_id is null {filter_term} {study_filter_term}
+                   order by date_trunc('second', tasks.time) desc, tasks.id desc
+                   limit 512) a 
+                   left join tasks b on (b.parent_id = a.task_id or b.id = a.task_id)
+                   group by a.task_id
+                   order by max(a.time) desc
+                   """
+    #print(query_string)
+    query = sqlalchemy.text(query_string)
 
     response: Dict = {}
     result_rows = await database.fetch_all(query)
@@ -196,11 +240,33 @@ async def find_task(request) -> JSONResponse:
         else:
             job_scope = "SERIES"
 
+        if item["rule"]:
+            item["rule"] = item["rule"].strip()
+            if item["rule"] == ",":
+                item["rule"] = ""
+
+        rule_information = ""       
+        if item["rule"]:
+            rule_information = item["rule"]
+        else:            
+            if item["triggered_rules"]:
+                try:
+                    json_data = json.loads("["+item["triggered_rules"]+"]")
+                    for entry in json_data:
+                        rule_information += ", ".join(list(entry.keys())) + ", "
+                    if rule_information:
+                        rule_information = rule_information[:-2]
+                except json.JSONDecodeError:
+                    rule_information = "ERROR"       
+            else:
+                rule_information = "(Delegation)"
+
         response[task_id] = {
             "ACC": acc,
             "MRN": mrn,
             "Scope": job_scope,
             "Time": time,
+            "Rule": rule_information,
         }
 
     return CustomJSONResponse(response)

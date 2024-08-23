@@ -1,18 +1,16 @@
 from datetime import datetime, timedelta
 import importlib
-import os
-import stat
-import time
+
 from typing import Tuple
-from unittest.mock import call
-import json
 from pprint import pprint
+import unittest
 import uuid
 
 import pytest
-from common.helper import FileLock
-from common.monitor import m_events, task_event, severity
+from common import helper
+from common.constants import mercure_events, mercure_names
 from common.types import *
+from common import notification
 import common
 from pyfakefs.fake_filesystem import FakeFilesystem
 from pyfakefs import fake_filesystem
@@ -22,17 +20,19 @@ import router, dispatcher
 from pathlib import Path
 from freezegun import freeze_time
 from testing_common import *
+from nomad.api.job import Job
 
 
-def create_series(mocked, fs, config, study_uid, series_uid, series_description) -> Tuple[str, str]:
+def create_series(mocked, fs, config, study_uid, series_uid, series_description, study_description="") -> Tuple[str, str]:
     # task_id = "test_task_" + str(uuid.uuid1())
 
     image_uid = str(uuid.uuid4())
     # mocked.patch("uuid.uuid1", new=lambda: task_id)
 
-    tags = {"SeriesInstanceUID": series_uid, "StudyInstanceUID": study_uid, "SeriesDescription": series_description}
-    image_f = fs.create_file(f"{config.incoming_folder}/{series_uid}#{image_uid}.dcm", contents="asdfasdfafd")
-    tags_f = fs.create_file(f"{config.incoming_folder}/{series_uid}#{image_uid}.tags", contents=json.dumps(tags))
+    tags = {"SeriesInstanceUID": series_uid, "StudyInstanceUID": study_uid, "SeriesDescription": series_description, "StudyDescription": study_description}
+    # image_f = fs.create_file(f"{config.incoming_folder}/{series_uid}#{image_uid}.dcm", contents="asdfasdfafd")
+    # tags_f = fs.create_file(f"{config.incoming_folder}/{series_uid}#{image_uid}.tags", contents=json.dumps(tags))
+    image_f, tags_f = mock_incoming_uid(config, fs, series_uid, tags, image_uid)
     return image_f, tags_f
 
 
@@ -84,3 +84,229 @@ def test_route_study_pending(fs: FakeFilesystem, mercure_config, mocked):
         # The study has timed out
         router.run_router()
         assert list(out_path.glob("**/*")) != []
+
+
+@pytest.mark.parametrize("action,force", [("route",True),("route",False),("notification", False)])
+def test_route_study_simple(fs: FakeFilesystem, mercure_config, mocked, action, force):
+    """
+    Test that a study with a pending series is not routed until the pending series itself times out.
+    """
+    config = mercure_config(
+        {
+            "series_complete_trigger": 10,
+            "study_complete_trigger": 30,
+            "rules": {
+                "route_study": Rule(
+                    rule="True",
+                    action="route" if action == "route" else "notification",
+                    study_trigger_condition="timeout",
+                    target="test_target_2",
+                    action_trigger="study",
+                ).dict(),
+            },
+        }
+    )
+    study_uid = str(uuid.uuid4())
+    series_uid = str(uuid.uuid4())
+    series_description = "test_series_complete"
+    out_path = Path(config.outgoing_folder)
+
+    with freeze_time("2020-01-01 00:00:00") as frozen_time:
+        # Create the initial series.
+        create_series(mocked, fs, config, study_uid, series_uid, series_description)
+        frozen_time.tick(delta=timedelta(seconds=11))
+        # Run the router as the first series completes to generate a study task
+        router.run_router()
+        if force:
+            (next(Path(config.studies_folder).iterdir()) / mercure_names.FORCE_COMPLETE).touch()
+        else:
+            frozen_time.tick(delta=timedelta(seconds=31))
+        # Complete the study
+        router.run_router()
+        if action == "route":
+            assert list(out_path.glob("**/*")) != []
+        else:
+            assert list(Path(config.success_folder).glob("**/*")) != []
+            notification.trigger_notification_for_rule.assert_has_calls(  # type: ignore
+            [
+                unittest.mock.call("route_study", unittest.mock.ANY, mercure_events.RECEIVED, task=unittest.mock.ANY),
+                unittest.mock.call("route_study", unittest.mock.ANY, mercure_events.COMPLETED, task=unittest.mock.ANY)
+            ])
+
+def test_route_study_error(fs: FakeFilesystem, mercure_config, mocked):
+    """
+    Test that a study with a pending series is not routed until the pending series itself times out.
+    """
+    config = mercure_config(
+        {
+            "series_complete_trigger": 10,
+            "study_complete_trigger": 30,
+            "rules": {
+                "route_study": Rule(
+                    rule="True",  # """@StudyDescription@ == "foo" """,
+                    action="route",
+                    study_trigger_condition="timeout",
+                    target="test_target_2",
+                    action_trigger="study",
+                ).dict(),
+            },
+        }
+    )
+    study_uid = str(uuid.uuid4())
+    series_uid = str(uuid.uuid4())
+    series_description = "test_series_complete"
+    out_path = Path(config.outgoing_folder)
+
+    with freeze_time("2020-01-01 00:00:00") as frozen_time:
+        # Create the initial series.
+        create_series(mocked, fs, config, study_uid, series_uid, series_description)
+        frozen_time.tick(delta=timedelta(seconds=11))
+        # Run the router as the first series completes to generate a study task
+        router.run_router()
+        # mocked.patch.object(helper.FileLock, "__init__" new=lambda x: raise Exception("oops"))
+        # TODO: simulate an exception in  route_study
+        mocked.patch("routing.route_studies.route_study", side_effect=lambda x: False)
+        frozen_time.tick(delta=timedelta(seconds=31))
+        router.run_router()
+        assert list(Path(config.error_folder).glob("**/*")) != []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("do_error", [True, False])
+async def test_route_study_processing(fs: FakeFilesystem, mercure_config, mocked, do_error):
+    config = mercure_config(
+        {
+            "modules": {
+                "test_module_1": Module(docker_tag="busybox:stable",settings={"fizz":"buzz","result":{"value":[1,2,3,4]}}).dict(),
+            },
+            "series_complete_trigger": 10,
+            "study_complete_trigger": 30,
+            "rules": {
+                "route_study": Rule(
+                    rule="True",  # """@StudyDescription@ == "foo" """,
+                    action="both",
+                    study_trigger_condition="timeout",
+                    target="test_target",
+                    processing_module=["test_module_1" if not do_error else "missing_module"],
+                    action_trigger="study",
+                ).dict(),
+            },
+        }
+    )
+    study_uid = str(uuid.uuid4())
+    series_uid = str(uuid.uuid4())
+    series_description = "test_series_complete"
+    processing_path = Path(config.processing_folder)
+
+    with freeze_time("2020-01-01 00:00:00") as frozen_time:
+        # Create the initial series.
+        create_series(mocked, fs, config, study_uid, series_uid, series_description)
+        frozen_time.tick(delta=timedelta(seconds=11))
+        # Run the router as the first series completes to generate a study task
+        router.run_router()
+        frozen_time.tick(delta=timedelta(seconds=31))
+        # Complete the study
+        router.run_router()
+        assert list(processing_path.glob("**/*")) != []
+        processor_path = next(Path("/var/processing").iterdir())
+        def fake_processor(tag=None, meta=None, do_process=True, **kwargs):
+            in_ = processor_path / "in"
+            out_ = processor_path / "out"
+            # print(f"Processing {processor_path}")
+            for child in in_.iterdir():
+                # print(f"Moving {child} to {out_ / child.name})")
+                shutil.copy(child, out_ / child.name)
+            return unittest.mock.DEFAULT
+
+        fake_run = mocked.Mock(
+            side_effect=fake_processor,
+            return_value={
+                "DispatchedJobID": "mercure-processor/dispatch-1624378734-e8388181",
+                "EvalID": "f2fd681b-bc41-50cc-3d15-79f2f5c661e2",
+                "EvalCreateIndex": 1138,
+                "JobCreateIndex": 1137,
+                "Index": 1138,
+            },
+        )
+        mocked.patch.object(Job, "register_job", new=lambda *args: None)
+        mocked.patch.object(Job, "dispatch_job", new=fake_run)
+        mocked.patch.object(Job, "get_job", new=lambda x, y: dict(Status="dead"))
+
+        await processor.run_processor()
+        if do_error:
+            assert list(Path(config.error_folder).glob("**/*")) != []
+        else:
+            assert list(Path(config.outgoing_folder).glob("**/*")) != []
+
+
+
+def test_route_study_series_trigger(fs: FakeFilesystem, mercure_config, mocked):
+    """
+    Test that a study with a pending series is not routed until the pending series itself times out.
+    """
+    config = mercure_config(
+        {
+            "series_complete_trigger": 5,
+            "study_complete_trigger": 30,
+            "rules": {
+                "route_study": Rule(
+                    rule="True",  # """@StudyDescription@ == "foo" """,
+                    action="route",
+                    study_trigger_condition="received_series",
+                    study_trigger_series=" 'test_series_complete' ",
+                    target="test_target_2",
+                    action_trigger="study",
+                ).dict(),
+            },
+        }
+    )
+    study_uid = str(uuid.uuid4())
+    series_uid = str(uuid.uuid4())
+    series_description = "test_series_complete"
+    out_path = Path(config.outgoing_folder)
+
+    with freeze_time("2020-01-01 00:00:00") as frozen_time:
+        # Create the initial series.
+        create_series(mocked, fs, config, study_uid, series_uid, series_description)
+        frozen_time.tick(delta=timedelta(seconds=4))
+        create_series(mocked, fs, config, study_uid, str(uuid.uuid4()), "pending")
+        router.run_router()
+        assert list(out_path.glob("**/*")) == [] # Pending series should prevent routing
+        frozen_time.tick(delta=timedelta(seconds=2)) # Tick to the point that the pending series is timed out
+        router.run_router()
+        assert list(out_path.glob("**/*")) != []
+
+# def test_route_study_multiple_series(fs: FakeFilesystem, mercure_config, mocked):
+#     config = mercure_config({
+#         "series_complete_trigger": 1,
+#         "study_complete_trigger": 30,
+#         "rules": {
+#             "study_rule": Rule(
+#                 rule="@StudyDescription@ == 'MultiSeries'",
+#                 action="route",
+#                 action_trigger="study",
+#                 study_trigger_condition="received_series",
+#                 study_trigger_series="'Series1' and 'Series2'",
+#                 target="test_target_2"
+#             ).dict()
+#         }
+#     })
+
+#     study_uid = str(uuid.uuid4())
+#     with freeze_time("2020-01-01 00:00:00") as frozen_time:
+#         create_series(mocked, fs, config, study_uid, "series1", "Series1", "MultiSeries")
+#         frozen_time.tick(delta=timedelta(seconds=2))
+#         router.run_router()
+#         create_series(mocked, fs, config, study_uid, "series2", "Series2", "MultiSeries")
+#         frozen_time.tick(delta=timedelta(seconds=2))
+#         router.run_router()
+    
+#     routing.route_studies.route_study.assert_called_once()
+#     routing.route_studies.move_study_folder.assert_called_once()
+#     assert routing.route_studies.move_study_folder.call_args[0][2] == "OUTGOING"
+#     outgoing = Path(config.outgoing_folder)
+#     for k in Path("/var").glob("**/*.dcm"):
+#         print(k)
+#     assert ( outgoing / study_uid).exists()
+
+#     assert list((outgoing / study_uid).glob("**/*.dcm")) != []

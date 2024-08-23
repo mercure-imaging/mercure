@@ -5,6 +5,7 @@ The web-based graphical user interface of mercure.
 """
 
 # Standard python includes
+import contextlib
 import pprint
 import random
 from re import L
@@ -126,6 +127,13 @@ WEBGUI_HOST = webgui_config("HOST", default="0.0.0.0")
 DEBUG_MODE = webgui_config("DEBUG", cast=bool, default=True)
 
 
+@contextlib.asynccontextmanager
+async def lifespan(app):
+    startup()
+    yield
+    await shutdown()
+
+
 def startup() -> None:
     scheduled_jobs = worker_scheduler.get_jobs()
     for job in scheduled_jobs: 
@@ -143,7 +151,7 @@ def startup() -> None:
     monitor.send_event(monitor.m_events.BOOT, monitor.severity.INFO, f"PID = {os.getpid()}")
 
 
-async def shutdown():
+async def shutdown() -> None:
     monitor.send_event(monitor.m_events.SHUTDOWN, monitor.severity.INFO, "")
     await delete_old_tests()
 
@@ -797,7 +805,32 @@ async def error(request):
     raise RuntimeError("Oh no")
 
 
-app = Starlette(debug=DEBUG_MODE, on_startup=[startup], on_shutdown=[shutdown], routes=router)
+
+async def not_found(request, exc) -> Response:
+    """
+    Return an HTTP 404 page.
+    """
+    template = "404.html"
+    context = {"request": request, "mercure_version": mercure_defs.VERSION}
+    return templates.TemplateResponse(template, context, status_code=404)
+
+
+async def server_error(request, exc) -> Response:
+    """
+    Return an HTTP 500 page.
+    """
+    if request.method == "GET":
+        template = "500.html"
+        context = {"request": request, "mercure_version": mercure_defs.VERSION}
+        return templates.TemplateResponse(template, context, status_code=500)
+    else:
+        return JSONResponse({"error": "Internal server error"}, status_code=500)
+exception_handlers = {
+    404: not_found,
+    500: server_error
+}
+
+app = Starlette(debug=DEBUG_MODE, lifespan=lifespan, exception_handlers=exception_handlers, routes=router)
 # Don't check the existence of the static folder because the wrong parent folder is used if the
 # source code is parsed by sphinx. This would raise an exception and lead to failure of sphinx.
 app.mount("/static", StaticFiles(directory="webinterface/statics", check_dir=False), name="static")
@@ -812,27 +845,6 @@ app.mount("/api", api.api_app)
 app.mount("/dashboards", dashboards.dashboards_app)
 
 
-@app.exception_handler(404)
-async def not_found(request, exc) -> Response:
-    """
-    Return an HTTP 404 page.
-    """
-    template = "404.html"
-    context = {"request": request, "mercure_version": mercure_defs.VERSION}
-    return templates.TemplateResponse(template, context, status_code=404)
-
-
-@app.exception_handler(500)
-async def server_error(request, exc) -> Response:
-    """
-    Return an HTTP 500 page.
-    """
-    if request.method == "GET":
-        template = "500.html"
-        context = {"request": request, "mercure_version": mercure_defs.VERSION}
-        return templates.TemplateResponse(template, context, status_code=500)
-    else:
-        return JSONResponse({"error": "Internal server error"}, status_code=500)
 
 
 ###################################################################################

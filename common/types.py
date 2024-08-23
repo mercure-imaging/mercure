@@ -137,6 +137,7 @@ class Module(BaseModel, Compat):
     resources: Optional[str] = ""
     requires_root: Optional[bool] = False
 
+
 class UnsetRule(TypedDict):
     rule: str
 
@@ -177,7 +178,6 @@ class ProcessingLogsConfig(BaseModel):
 class DicomReceiverConfig(BaseModel):
     additional_tags: Dict[str,str] = {}
     
-
 class DicomNode(BaseModel):
     name: str
     ip: str
@@ -235,6 +235,9 @@ class Config(BaseModel, Compat):
     email_notification_from: str = "mercure@mercure.mercure"
     support_root_modules: Optional[bool] = False
     webhook_certificate_location: Optional[str] = None
+    phi_notifications: Optional[bool] = False
+    server_time: str = "UTC"
+    local_time: str = "UTC"
     dicom_retrieve: DicomRetrieveConfig = DicomRetrieveConfig()
 
 class TaskInfo(BaseModel, Compat):
@@ -251,6 +254,7 @@ class TaskInfo(BaseModel, Compat):
     mercure_appliance: str
     mercure_server: str
     device_serial_number: Optional[str] = None
+
 
 class TaskDispatch(BaseModel, Compat):
     target_name: str

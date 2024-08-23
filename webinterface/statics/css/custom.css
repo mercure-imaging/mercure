@@ -381,14 +381,14 @@ table.dataTable tbody tr.selected th, table.dataTable tbody tr.selected td {
   height: 14px;
 }
 
-.process-logs-output {
+.process-logs-output, .process-results-output {
   font-family: monospace;
   background-color: #0a0a0a;
   color: #fff;
   padding: 8px;
 }
 
-.process-logs-output::selection {
+.process-logs-output::selection, .process-results-output::selection {
   background-color: rgb(50, 115, 220);
   color: #fff;
 }
@@ -548,4 +548,17 @@ body {
 
 .cm-activeLineGutter {
   background-color: rgba(0, 0, 0, 0.0) !important;
+}
+
+.queueArchiveFilterButton::before {
+}
+
+.queueArchiveFilterButton-Checked::before {
+  margin-right: 8px;
+  font-family: "Font Awesome 5 Free"; 
+  font-weight: 900; 
+  content: "\f00c";
+}
+
+.queueArchiveFilter {
 }

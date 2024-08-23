@@ -25,8 +25,6 @@ logger = daiquiri.getLogger("api")
 ###################################################################################
 
 
-
-
 @router.get("/get-task-events")
 @requires(["authenticated"])
 async def get_series_events(request):
@@ -70,8 +68,9 @@ async def get_tests(request):
 @requires(["authenticated"])
 async def find_tasks(request):
     search_term = request.query_params.get("search_term", "")
+    study_filter = request.query_params.get("study_filter", "false")
     try:
-        return JSONResponse(await monitor.find_tasks(search_term))
+        return JSONResponse(await monitor.find_tasks(search_term, study_filter))
     except monitor.MonitorHTTPError as e:
         return JSONResponse({"error": e.status_code}, status_code=e.status_code)
 
@@ -82,6 +81,16 @@ async def task_process_logs(request):
     task_id = request.query_params.get("task_id", "")
     try:
         return JSONResponse(await monitor.task_process_logs(task_id))
+    except monitor.MonitorHTTPError as e:
+        return JSONResponse({"error": e.status_code}, status_code=e.status_code)
+
+
+@router.get("/task-process-results")
+@requires(["authenticated"])
+async def task_process_results(request):
+    task_id = request.query_params.get("task_id", "")
+    try:
+        return JSONResponse(await monitor.task_process_results(task_id))
     except monitor.MonitorHTTPError as e:
         return JSONResponse({"error": e.status_code}, status_code=e.status_code)
 

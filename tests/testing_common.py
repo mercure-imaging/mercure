@@ -6,7 +6,16 @@ import json
 import os
 from pathlib import Path
 import shutil
-from typing import Callable, Dict, Any, Iterator, Optional
+from typing import Callable, Dict, Any, Iterator, Optional, Tuple
+import uuid
+
+import pydicom
+pydicom.config.settings.reading_validation_mode = pydicom.config.IGNORE
+pydicom.config.settings.writing_validation_mode = pydicom.config.IGNORE
+
+
+from pydicom.dataset import Dataset, FileDataset, FileMetaDataset
+from pydicom.uid import generate_uid
 
 import pytest
 import process
@@ -14,6 +23,9 @@ import routing, common, router, processor
 import common.config as config
 from common.types import Config
 import docker.errors
+
+from tests.getdcmtags import process_dicom
+
 
 def spy_on(mocker, obj) -> None:
     pieces = obj.split(".")
@@ -49,7 +61,8 @@ def attach_spies(mocker) -> None:
             "common.monitor.send_processor_output",
             "common.monitor.send_update_task",
             "common.notification.trigger_notification_for_rule",
-            "common.notification.send_email"
+            "common.notification.send_email",
+            "uuid.uuid1"
         ],
     )
     # mocker.patch("processor.process_series", new=mocker.spy(process.process_series, "process_series"))
@@ -105,11 +118,13 @@ def mercure_config(fs) -> Callable[[Dict], Config]:
 def mock_task_ids(mocker, task_id, next_task_id) -> None:
     if not isinstance(next_task_id, list):
         next_task_id = [next_task_id]
-
+    real_uuid = uuid.uuid1
     def generate_uuids() -> Iterator[str]:
         yield from [task_id] + next_task_id
-
+        while True:
+            yield str(real_uuid())
     generator = generate_uuids()
+    
     mocker.patch("uuid.uuid1", new=lambda: next(generator))
 
 
@@ -157,3 +172,67 @@ def make_fake_processor(fs, mocked, fails):
             raise Exception("failed")
         return mocked.DEFAULT
     return fake_processor
+
+
+def create_minimal_dicom(output_filename, series_uid, additional_tags=None) -> Dataset:
+    """
+    Create a minimal DICOM file with the given series UID and additional tags.
+    
+    :param output_filename: The filename to save the DICOM file
+    :param series_uid: The Series Instance UID to use
+    :param additional_tags: A dictionary of additional DICOM tags and their values
+    :return: None
+    """
+    if not series_uid:
+        series_uid = generate_uid()
+    # Create a new DICOM dataset
+    file_meta = FileMetaDataset()
+    file_meta.MediaStorageSOPClassUID = pydicom.uid.MRImageStorage  # Raw Data Storage
+    file_meta.MediaStorageSOPInstanceUID = generate_uid()
+    file_meta.ImplementationClassUID = generate_uid()
+    file_meta.TransferSyntaxUID = pydicom.uid.ImplicitVRLittleEndian  # Implicit VR Little Endian transfer syntax
+
+    # Create the FileDataset instance
+    ds = FileDataset(output_filename, {}, file_meta=file_meta, preamble=b"\0" * 128)
+
+    # Add the minimal required data elements
+    ds.StudyInstanceUID = generate_uid()
+    ds.SOPInstanceUID = file_meta.MediaStorageSOPInstanceUID
+    ds.SOPClassUID = file_meta.MediaStorageSOPClassUID
+    # Add additional tags
+    if additional_tags:
+        for tag, value in additional_tags.items():
+            setattr(ds, tag, value)
+    ds.SeriesInstanceUID = series_uid
+
+    # Save the DICOM file
+    if output_filename:
+        ds.save_as(output_filename)
+        print(f"Minimal DICOM file saved: {output_filename}")
+    return ds
+
+
+def mock_incoming_uid(config, fs, series_uid, tags={}, name="bar", force_tags_output=None) -> Tuple[str,str]:    
+    incoming = Path(config.incoming_folder)
+    dcm_file = incoming / f"{name}.dcm"
+    create_minimal_dicom(dcm_file, series_uid, tags)
+    dcm_file = process_dicom(str(dcm_file), "0.0.0.0","mercure","mercure")
+    tags_f = str(dcm_file).replace('.dcm','.tags')
+
+    # print("@@@@@@@", dcm_file, tags_f)
+    # print("$$$$$$$" + Path(tags_f).read_text())
+    # dcm_file = fs.create_file(incoming / series_uid / f"{series_uid}#{name}.dcm", contents="asdfasdfafd")
+    # tags_f = fs.create_file(incoming / series_uid / f"{series_uid}#{name}.tags", contents=json.dumps(tags))
+    # print("@@@@@@@", dcm_file, tags_f)
+
+
+    if force_tags_output is not None:
+        with open(tags_f, 'wb') as f:
+            if isinstance(force_tags_output, str):
+                f.write(force_tags_output.encode())
+            else:
+                f.write(force_tags_output)
+
+    # ( incoming / "receiver_info").mkdir(exist_ok=True)
+    # ( incoming / "receiver_info" / (series_uid+".received")).touch()
+    return str(dcm_file), tags_f

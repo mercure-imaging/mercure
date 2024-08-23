@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import click
 import webinterface.users as users
+import test as mercure_test
 @click.group()
 def manage():
     """
@@ -12,6 +13,11 @@ def manage():
 def user():
     """User management commands."""
     pass
+
+@click.command()
+def test():
+    """Test command to check the setup."""
+    mercure_test.run_test()
 
 @click.command()
 @click.argument('username')
@@ -65,7 +71,7 @@ user.add_command(set_password)
 
 # Adding the user group to the main CLI group
 manage.add_command(user)
-
+manage.add_command(test)
 if __name__ == '__main__':
     users.logger.setLevel('ERROR')
     users.read_users()

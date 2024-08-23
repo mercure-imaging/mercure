@@ -60,6 +60,7 @@ def post(url: str, payload: Any) -> None:
 
     asyncio.ensure_future(do_post(url, payload), loop=loop)
 
+
 def parse_payload(
     payload: str,
     event: mercure_events,
@@ -107,6 +108,8 @@ def send_webhook(url:str, payload: str) -> None:
         logger.error(traceback.format_exc())
         return
 
+
+
 import smtplib
 from email.message import EmailMessage
 
@@ -135,6 +138,7 @@ def send_email_helper(to:str, subject:str, content:str, rule_type="plain") -> No
     finally:
         s.quit()
 
+
 def get_task_requested_notification(task:Task) -> bool:
     process_infos = task.process
     if not isinstance(process_infos,(TaskProcessing,List)):
@@ -147,6 +151,7 @@ def get_task_requested_notification(task:Task) -> bool:
             return True
     return False
 
+
 def get_task_custom_notification(task:Task) -> Optional[str]:
     results = []
     process_infos = task.process
@@ -156,13 +161,14 @@ def get_task_custom_notification(task:Task) -> Optional[str]:
     for process in (process_infos if isinstance(process_infos,List) else [process_infos]):
         if not process.output:
             continue
-        if (notification_info := process.output.get("__mercure_notification")) and (text:= notification_info.get("text")):
+        if (notification_info := process.output.get("__mercure_notification")) and (text := notification_info.get("text")):
             results.append((process.module_name,text))
     if not results:
         return None
 
     str_results = [ f"{module_name}: {text}" for module_name, text in results]
     return "\n".join(str_results)
+
 
 @typing.overload
 def trigger_notification_for_rule(
@@ -235,7 +241,21 @@ def trigger_notification_for_rule(
 
     if webhook_url:
         body = current_rule.get("notification_payload_body", "")
-        context = dict(body=jinja2.utils.htmlsafe_json_dumps(parse_payload(body, event, rule_name, task_id, details, {}, task=task, tags_list=tags_list))[1:-1])  # type: ignore
+
+        phi_data = dict(
+            acc="UNKNOWN",
+            mrn="UNKNOWN",
+            patient_name="UNKNOWN",
+        )
+        if task and config.mercure.phi_notifications:
+            phi_data = dict(
+                acc=task.info.acc,
+                mrn=task.info.mrn,
+                patient_name=task.info.patient_name or "",
+            )
+
+        context = dict(body=jinja2.utils.htmlsafe_json_dumps(parse_payload(body, event, rule_name, task_id, details, phi_data, task=task, tags_list=tags_list))[1:-1])  # type: ignore
+        context.update(phi_data)
 
         webhook_payload = parse_payload(
             current_rule.get("notification_payload", ""),
@@ -260,7 +280,7 @@ def trigger_notification_for_rule(
     if not email_addresses:
         return True
 
-    if task:
+    if task and config.mercure.phi_notifications:
         context = dict(
             acc=task.info.acc,
             mrn=task.info.mrn,

@@ -96,6 +96,8 @@ def add_processing(uid: str, applied_rule: str, tags_list: Dict[str, str]) -> Op
     process_infos = []
     for i, module_name in enumerate(module_names):
         # Get the configuration of this module
+        if module_name not in config.mercure.modules:
+            logger.warning(f"Module {module_name} not found in configuration modules ({list(config.mercure.modules.keys())})")
         module_config = config.mercure.modules.get(module_name, None)
 
         # Compose the processing settings that should be used (module level + rule level)
@@ -103,14 +105,11 @@ def add_processing(uid: str, applied_rule: str, tags_list: Dict[str, str]) -> Op
         if module_config is not None:
             settings.update(module_config.settings)
 
-        rule_settings: List[Dict[str,Any]] = []
         if isinstance(applied_rule_info.processing_settings,list):
-            rule_settings = applied_rule_info.processing_settings
+            if i < len(applied_rule_info.processing_settings):
+                settings.update(applied_rule_info.processing_settings[i])
         else:
-            rule_settings = [applied_rule_info.processing_settings]
-
-        if i < len(rule_settings):
-            settings.update(rule_settings[i])
+            settings.update(applied_rule_info.processing_settings)
 
         # Store in the target structure
         process_info: TaskProcessing = TaskProcessing(
@@ -235,7 +234,7 @@ def add_info(
 
 def create_series_task(
     task_id: str,
-    folder_name: str,
+    folder_name: Path,
     triggered_rules: Dict[str, Literal[True]],
     applied_rule: str,
     series_UID: str,
@@ -249,7 +248,7 @@ def create_series_task(
     task = compose_task(task_id, series_UID, "series", triggered_rules, applied_rule, tags_list, target)
     monitor.send_update_task(task)
 
-    task_filename = folder_name + mercure_names.TASKFILE
+    task_filename = folder_name / mercure_names.TASKFILE
     try:
         with open(task_filename, "w") as task_file:
             json.dump(task.dict(), task_file)
