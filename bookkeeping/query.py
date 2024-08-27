@@ -205,22 +205,49 @@ async def find_task(request) -> JSONResponse:
     if study_filter=="true":
         study_filter_term = "and tasks.study_uid is not null"
 
-    query_string = f"""select max(a.acc) as acc, max(a.mrn) as mrn, max(a.task_id) as task_id, max(a.scope) as scope, max(a.time) as time, 
-                   string_agg(b.data->'info'->>'applied_rule', ', ' order by b.id) as rule, 
-                   string_agg(b.data->'info'->>'triggered_rules', ',' order by b.id) as triggered_rules 
-                   from (select tasks.id as task_id, 
-                   tag_accessionnumber as acc, 
-                   tag_patientid as mrn,
-                   data->'info'->>'uid_type' as scope,
-                   tasks.time::timestamp {tz_conversion} as time        
-                   from tasks
-                   left join dicom_series on dicom_series.series_uid = tasks.series_uid 
-                   where parent_id is null {filter_term} {study_filter_term}
-                   order by date_trunc('second', tasks.time) desc, tasks.id desc
-                   limit 512) a 
-                   left join tasks b on (b.parent_id = a.task_id or b.id = a.task_id)
-                   group by a.task_id
-                   order by max(a.time) desc
+    # query_string = f"""select max(a.acc) as acc, max(a.mrn) as mrn, max(a.task_id) as task_id, max(a.scope) as scope, max(a.time) as time, 
+    #                string_agg(b.data->'info'->>'applied_rule', ', ' order by b.id) as rule, 
+    #                string_agg(b.data->'info'->>'triggered_rules', ',' order by b.id) as triggered_rules 
+    #                from (select tasks.id as task_id, 
+    #                tag_accessionnumber as acc, 
+    #                tag_patientid as mrn,
+    #                data->'info'->>'uid_type' as scope,
+    #                tasks.time::timestamp {tz_conversion} as time        
+    #                from tasks
+    #                left join dicom_series on dicom_series.series_uid = tasks.series_uid 
+    #                where parent_id is null {filter_term} {study_filter_term}
+    #                order by date_trunc('second', tasks.time) desc, tasks.id desc
+    #                limit 512) a 
+    #                left join tasks b on (b.parent_id = a.task_id or b.id = a.task_id)
+    #                group by a.task_id
+    #                order by max(a.time) desc
+    #                """
+    
+    query_string = f"""WITH task_data AS (
+                           SELECT 
+                               tasks.id AS task_id, 
+                               tag_accessionnumber AS acc, 
+                               tag_patientid AS mrn,
+                               data->'info'->>'uid_type' AS scope,
+                               tasks.time::timestamp {tz_conversion} AS time
+                           FROM tasks
+                           LEFT JOIN dicom_series ON dicom_series.series_uid = tasks.series_uid 
+                           WHERE parent_id IS NULL {filter_term} {study_filter_term}
+                           ORDER BY tasks.time DESC, tasks.id DESC
+                           LIMIT 512
+                       )
+                       SELECT 
+                           MAX(a.acc) AS acc, 
+                           MAX(a.mrn) AS mrn, 
+                           MAX(a.task_id) AS task_id, 
+                           MAX(a.scope) AS scope, 
+                           MAX(a.time) AS time,
+                           STRING_AGG(b.data->'info'->>'applied_rule', ', ' ORDER BY b.id) AS rule, 
+                           STRING_AGG(b.data->'info'->>'triggered_rules', ',' ORDER BY b.id) AS triggered_rules 
+                       FROM task_data a
+                       LEFT JOIN tasks b ON (b.parent_id = a.task_id OR b.id = a.task_id)
+                       GROUP BY a.task_id
+                       ORDER BY MAX(a.time) DESC;
                    """
     #print(query_string)
     query = sqlalchemy.text(query_string)
