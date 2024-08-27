@@ -191,7 +191,7 @@ class DicomNodeBase(BaseModel):
     @classmethod
     def validate(cls, v):
         """Parse the target as any of the known target types."""
-        subclass_dict: typing.Dict[str, Type[DicomNode]] = {sbc.__name__: sbc for sbc in cls.__subclasses__()}
+        subclass_dict: typing.Dict[str, Type[DicomNodeBase]] = {sbc.__name__: sbc for sbc in cls.__subclasses__()}
         for k in subclass_dict:
             try:
                 return subclass_dict[k](**v)

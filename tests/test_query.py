@@ -4,12 +4,12 @@ import tempfile
 import pydicom
 import pytest
 from pynetdicom import AE, evt, StoragePresentationContexts, build_role
-from pynetdicom.sop_class import Verification, StudyRootQueryRetrieveInformationModelFind, StudyRootQueryRetrieveInformationModelGet,PatientRootQueryRetrieveInformationModelGet,  CTImageStorage
+from pynetdicom.sop_class import Verification, StudyRootQueryRetrieveInformationModelFind, StudyRootQueryRetrieveInformationModelGet,PatientRootQueryRetrieveInformationModelGet,  CTImageStorage # type: ignore
 from pynetdicom.status import Status
 from pydicom.uid import generate_uid
 from pydicom.dataset import Dataset, FileMetaDataset
 from rq import Worker
-from webinterface.dashboards.query import SimpleDicomClient, QueryJob, create_job
+from webinterface.dashboards.query import SimpleDicomClient, QueryJob, WrappedJob
 from common.types import DicomNode, DicomWebNode
 from webinterface.common import redis, worker_queue
 from pyfakefs import fake_filesystem
@@ -46,14 +46,6 @@ class DummyDICOMServer:
             else:
                 yield (0x0000, None)  # Status 'Success', but no match
 
-        def handle_find(event):
-            ds = event.identifier
-            # Check if the request matches our dummy data
-            if 'AccessionNumber' in ds and ds.AccessionNumber == MOCK_ACCESSION:
-                yield (0xFF00, self.dataset)
-            else:
-                yield (0x0000, None)  # Status 'Success', but no match
-
         # Define handler for C-GET requests
         def handle_get(event):
             ds = event.identifier
@@ -66,7 +58,7 @@ class DummyDICOMServer:
                 dummy_ds = self.dataset.copy()
                 dummy_ds.SOPClassUID = CTImageStorage  # CT Image Storage
                 dummy_ds.SOPInstanceUID = generate_uid()
-                dummy_ds.file_meta = Dataset()
+                dummy_ds.file_meta = FileMetaDataset()
                 dummy_ds.file_meta.TransferSyntaxUID = ExplicitVRLittleEndian
 
                 # Yield the dataset
@@ -90,7 +82,7 @@ class DummyDICOMServer:
 
         self.ae.start_server(("127.0.0.1", port), block=False, evt_handlers=[(evt.EVT_C_FIND, handle_find), (evt.EVT_C_GET, handle_get)])
 
-    def stop(self):
+    def stop(self)->None:
         """Stop the DICOM server."""
         self.ae.shutdown()
 
@@ -155,25 +147,26 @@ def test_query_job(dicom_server, tempdir):
     We use mocker to mock the queue and avoid actually creating jobs.
     """
     queue = Queue(connection=redis)
-    job = create_job([MOCK_ACCESSION], dicom_server, str(tempdir), queue=queue)
-    assert job is not None
+    job = WrappedJob.create([MOCK_ACCESSION], dicom_server, str(tempdir), queue=queue)
+    assert job
     w = SimpleWorker([queue], connection=redis)
     w.work(burst=True)
     # assert len(list(Path(config.mercure.jobs_folder).iterdir())) == 1
     print([k for k in Path(tempdir).rglob('*')])
     assert pydicom.dcmread(next(k for k in Path(tempdir).rglob("*.dcm")))['AccessionNumber'].value == MOCK_ACCESSION
 
-def tree(path, prefix='', level=0):
-    """Print a tree representation of the directory."""
-    if not level:
+def tree(path, prefix='', level=0) -> None:
+    if level==0:
         print(path)
-    with os.scandir(path) as entries:
-        entries = sorted(entries, key=lambda e: (e.is_file(), e.name))
-        for i, entry in enumerate(entries):
-            conn = '└── ' if i == len(entries) - 1 else '├── '
-            print(f'{prefix}{conn}{entry.name}')
-            if entry.is_dir():
-                tree(entry.path, prefix + ('    ' if i == len(entries) - 1 else '│   '), level+1)
+    entries = list(os.listdir(path))
+    entries = sorted(entries, key=lambda e: (e.is_file(), e.name))
+    if not entries and level==0:
+        print(prefix + "[[ empty ]]")
+    for i, entry in enumerate(entries):
+        conn = '└── ' if i == len(entries) - 1 else '├── '
+        print(f'{prefix}{conn}{entry.name}')
+        if entry.is_dir():
+            tree(entry.path, prefix + ('    ' if i == len(entries) - 1 else '│   '), level+1)
 
 def test_query_dicomweb(receiver_port, tempdir, dummy_dataset, fs):
     assert isinstance(os, fake_filesystem.FakeOsModule)
@@ -192,10 +185,10 @@ def test_query_dicomweb(receiver_port, tempdir, dummy_dataset, fs):
 
 
     queue = Queue(connection=redis)
-    job = create_job([MOCK_ACCESSION], node, (tempdir / "outdir"), queue=queue)
+    job = WrappedJob.create([MOCK_ACCESSION], node, (tempdir / "outdir"), queue=queue)
     assert job is not None
     w = SimpleWorker([queue], connection=redis)
     w.work(burst=True)
-    tree(tempdir / "outdir")
+    # tree(tempdir / "outdir")
     outfile = (tempdir / "outdir" / job.id / ds.AccessionNumber /  f"{ds.SOPInstanceUID}.dcm")
     assert outfile.exists()
