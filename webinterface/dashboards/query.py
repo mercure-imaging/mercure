@@ -55,9 +55,35 @@ def query_dummy(job_id, job_kwargs):
 
         yield completed, remaining, f"{completed} / {remaining + completed}"
 
-class QueryJob():
+
+@dataclass
+class ClassBasedRQJob():
+    parent: Optional[str] = None
+    type: str = "unknown"
+    _job: Optional[Job] = None
+    def create(self, rq_options={}, **kwargs) -> Job:
+        fields = dataclasses.fields(self)
+        meta = {field.name: getattr(self, field.name) for field in fields}
+        return Job.create(self._execute, kwargs=kwargs, meta=meta, **rq_options)
+
     @classmethod
-    def move_to_destination(cls, path, destination, job_id) -> None:
+    def _execute(cls, **kwargs) -> Any:
+        job = get_current_job()
+        if not job:
+            raise Exception("No current job")
+        fields = dataclasses.fields(cls)
+        meta = {}
+        for f in fields:
+            if f.name in job.meta and not f.name.startswith('_'):
+                meta[f.name] = job.meta[f.name]
+        result = cls(**meta, _job=job).execute(**kwargs)
+        return result
+
+    def execute(self):
+        pass
+    
+    @staticmethod
+    def move_to_destination(path, destination, job_id) -> None:
         if destination is None:
             config.read_config()
             for p in Path(path).glob("**/*"):
@@ -75,32 +101,6 @@ class QueryJob():
 
 
 @dataclass
-class ClassBasedRQJob():
-    parent: Optional[str] = None
-    type: str = "unknown"
-    _job: Optional[Job] = None
-    def create(self, rq_options={}, **kwargs):
-        fields = dataclasses.fields(self)
-        meta = {field.name: getattr(self, field.name) for field in fields}
-        return Job.create(self._execute, kwargs=kwargs, meta=meta, **rq_options)
-
-    @classmethod
-    def _execute(cls, **kwargs):
-        job = get_current_job()
-        if not job:
-            raise Exception("No current job")
-        fields = dataclasses.fields(cls)
-        meta = {}
-        for f in fields:
-            if f.name in job.meta and not f.name.startswith('_'):
-                meta[f.name] = job.meta[f.name]
-        cls(**meta, _job=job).execute(**kwargs)
-
-    def execute(self):
-        pass
-
-
-@dataclass
 class CheckAccessionsDicomWebJob(ClassBasedRQJob):
     type: str = "check_accessions_dicomweb"
 
@@ -114,11 +114,10 @@ class CheckAccessionsDicomWebJob(ClassBasedRQJob):
                 if not response:
                     raise ValueError("No series found with accession number {}".format(accession))
             except Exception as e:
-                job = get_current_job()
-                if not job:
-                    raise Exception("No current job found")
+                job = self._job
                 job_parent = queue.fetch_job(job.meta.get('parent'))
                 job_parent.meta['failed_reason'] = f"Accession {accession} not found on node"
+                job_parent.save_meta()
                 queue._enqueue_job(job_parent,at_front=True)
                 raise
         return "Complete"
@@ -183,7 +182,7 @@ class GetAccessionsJob(ClassBasedRQJob):
                 logger.info(progress)
             if job_parent:
                 if job_parent.kwargs["move_promptly"]:
-                    QueryJob.move_to_destination(path, job_parent.kwargs["destination"], job_parent.id)
+                    self.move_to_destination(path, job_parent.kwargs["destination"], job_parent.id)
 
                 job_parent.get_meta() # there is technically a race condition here...
                 job_parent.meta['completed'] += 1
@@ -260,7 +259,7 @@ class MainJob(ClassBasedRQJob):
             for p in Path(path).iterdir():
                 if not p.is_dir():
                     continue
-                cls.move_to_destination(p, destination, job.id)
+                self.move_to_destination(p, destination, job.id)
         logger.info(f"Removing job directory {path}")
         # tree(destination)
         shutil.rmtree(path)
@@ -318,19 +317,6 @@ class WrappedJob():
                 move_promptly = True,
                 rq_options = dict(depends_on=depends, timeout=-1, result_ttl=-1)
             )
-            # full_job = Job.create(JobClass.batch_job, 
-            #                       kwargs=dict(accessions=accessions, 
-            #                                   subjobs=[j.id for j in jobs],
-            #                                   destination=destination_path, 
-            #                                   move_promptly=True), 
-            #                       meta=dict(type="batch", 
-            #                                 started=0,
-            #                                 paused=False, 
-            #                                 completed=0,
-            #                                 total=len(jobs),
-            #                                 offpeak=offpeak),
-            #                       depends_on=depends,
-            #                       timeout=-1, result_ttl=-1)
             check_job.meta["parent"] = full_job.id
             for j in jobs:
                 j.meta["parent"] = full_job.id

@@ -9,7 +9,7 @@ from pynetdicom.status import Status
 from pydicom.uid import generate_uid
 from pydicom.dataset import Dataset, FileMetaDataset
 from rq import Worker
-from webinterface.dashboards.query import GetAccessionsJob, SimpleDicomClient, QueryJob, WrappedJob
+from webinterface.dashboards.query import GetAccessionsJob, SimpleDicomClient, WrappedJob
 from common.types import DicomNode, DicomWebNode
 from webinterface.common import redis, worker_queue
 from pyfakefs import fake_filesystem
