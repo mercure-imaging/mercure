@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import socket
 from typing import Callable, Dict, Any, Iterator, Optional, Tuple
 import uuid
 
@@ -101,7 +102,7 @@ def mercure_config(fs) -> Callable[[Dict], Config]:
     config_path = os.path.realpath(os.path.dirname(os.path.realpath(__file__)) + "/data/test_config.json")
 
     fs.add_real_file(config_path, target_path=config.configuration_filename, read_only=False)
-    for k in ["incoming", "studies", "outgoing", "success", "error", "discard", "processing"]:
+    for k in ["incoming", "studies", "outgoing", "success", "error", "discard", "processing", "jobs"]:
         fs.create_dir(f"/var/{k}")
 
     def set_config(extra: Dict[Any, Any] = {}) -> Config:
@@ -236,3 +237,22 @@ def mock_incoming_uid(config, fs, series_uid, tags={}, name="bar", force_tags_ou
     # ( incoming / "receiver_info").mkdir(exist_ok=True)
     # ( incoming / "receiver_info" / (series_uid+".received")).touch()
     return str(dcm_file), tags_f
+
+def random_port() -> int:
+    """
+    Generate a free port number to use as an ephemeral endpoint.
+    """
+    s = socket.socket() 
+    s.bind(('',0)) # bind to any available port
+    port = s.getsockname()[1] # get the port number
+    s.close()
+    return int(port)
+
+
+@pytest.fixture(scope="module")
+def receiver_port():
+    return random_port()
+
+@pytest.fixture(scope="module")
+def bookkeeper_port():
+    return random_port()

@@ -8,6 +8,7 @@
     "error_folder": "/var/error",
     "discard_folder": "/var/discard",
     "processing_folder": "/var/processing",
+    "jobs_folder": "/var/jobs",
     "bookkeeper": "0.0.0.0:8080",
     "graphite_ip": "",
     "graphite_port": 2003,

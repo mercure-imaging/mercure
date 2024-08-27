@@ -91,7 +91,7 @@ class SimpleDicomClient():
         except KeyError:
             mode_prefix = "UN"
 
-        filename = f"{self.output_dir}/{mode_prefix}.{sop_instance}"
+        filename = f"{self.output_dir}/{mode_prefix}.{sop_instance}.dcm"
         print(f"Storing DICOM file: {filename}")
 
         status_ds = Dataset()
@@ -120,7 +120,7 @@ class SimpleDicomClient():
             # Failed - Out of Resources - Miscellaneous error
             status_ds.Status = 0xA701
 
-        subprocess.run(["/opt/mercure/app/bin/ubuntu22.04/getdcmtags", filename, self.called_aet, "MERCURE"]) 
+        subprocess.run(["./bin/ubuntu22.04/getdcmtags", filename, self.called_aet, "MERCURE"],check=True)
         return status_ds
 
 

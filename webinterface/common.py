@@ -17,9 +17,6 @@ from common.constants import mercure_defs
 from rq_scheduler import Scheduler
 
 redis = Redis()
-
-
-
 worker_queue = Queue(connection=redis)
 worker_scheduler = Scheduler(queue=worker_queue, connection=worker_queue.connection) 
 

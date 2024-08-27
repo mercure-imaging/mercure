@@ -21,7 +21,6 @@ class Compat:
 class EmptyDict(TypedDict):
     pass
 
-
 class Target(BaseModel, Compat):
     contact: Optional[str] = ""
     comment: str = ""
@@ -177,20 +176,59 @@ class ProcessingLogsConfig(BaseModel):
 
 class DicomReceiverConfig(BaseModel):
     additional_tags: Dict[str,str] = {}
-    
-class DicomNode(BaseModel):
+
+
+class DicomNodeBase(BaseModel):
+    name: str
+
+    @classmethod
+    def __get_validators__(cls):
+        # one or more validators may be yielded which will be called in the
+        # order to validate the input, each validator will receive as an input
+        # the value returned from the previous validator
+        yield cls.validate
+
+    @classmethod
+    def validate(cls, v):
+        """Parse the target as any of the known target types."""
+        subclass_dict: typing.Dict[str, Type[DicomNode]] = {sbc.__name__: sbc for sbc in cls.__subclasses__()}
+        for k in subclass_dict:
+            try:
+                return subclass_dict[k](**v)
+            except:
+                pass
+        raise ValueError("Couldn't validate dicom node as any of", list(subclass_dict.keys()))
+
+    @classmethod
+    def get_name(cls) -> str:
+        return cls.construct().node_type  # type: ignore
+
+
+class DicomNode(DicomNodeBase):
+    node_type: Literal["dicom"] = "dicom"
     name: str
     ip: str
     port: int
     aet_target: str
     aet_source: Optional[str] = ""
 
+class DicomWebNode(DicomNodeBase):
+    node_type: Literal["dicomweb"] = "dicomweb"
+    name: str
+    base_url: str
+
+    qido_url_prefix: Optional[str] = None
+    wado_url_prefix: Optional[str] = None
+    access_token: Optional[str] = None
+    ca_bundle: Optional[str] = None
+    cert: Optional[str] = None
+
 class DicomDestination(BaseModel):
     name: str
     path: str
 
 class DicomRetrieveConfig(BaseModel):
-    dicom_nodes: List[DicomNode] = []
+    dicom_nodes: List[DicomNodeBase] = []
     destination_folders: List[DicomDestination] = []
     
 class Config(BaseModel, Compat):
@@ -204,6 +242,7 @@ class Config(BaseModel, Compat):
     error_folder: str
     discard_folder: str
     processing_folder: str
+    jobs_folder: str
     router_scan_interval: int       # in seconds
     dispatcher_scan_interval: int   # in seconds
     cleaner_scan_interval: int      # in seconds
