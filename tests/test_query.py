@@ -9,7 +9,7 @@ from pynetdicom.status import Status
 from pydicom.uid import generate_uid
 from pydicom.dataset import Dataset, FileMetaDataset
 from rq import Worker
-from webinterface.dashboards.query import SimpleDicomClient, QueryJob, WrappedJob
+from webinterface.dashboards.query import GetAccessionsJob, SimpleDicomClient, QueryJob, WrappedJob
 from common.types import DicomNode, DicomWebNode
 from webinterface.common import redis, worker_queue
 from pyfakefs import fake_filesystem
@@ -127,13 +127,8 @@ def test_get_accession_job(dicom_server, tempdir, mercure_config):
     """Test the get_accession_job function."""
     config = mercure_config()
     job_id = "test_job"
-    job_kwargs = {
-        "accession": MOCK_ACCESSION,
-        "node": dicom_server,
-        "path": config.jobs_folder
-    }
     
-    generator = QueryJob.get_accession_job(job_id, job_kwargs)
+    generator = GetAccessionsJob.get_accession(job_id, MOCK_ACCESSION, dicom_server, config.jobs_folder)
     results = list(generator)
     
     # Check that we got some results

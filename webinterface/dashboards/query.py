@@ -1,8 +1,10 @@
 
+from dataclasses import dataclass
+import dataclasses
 import os
 from pathlib import Path
 import shutil
-from typing import Any, Dict, Generator, List, Tuple, Union, cast
+from typing import Any, Dict, Generator, List, Optional, Tuple, Union, cast
 import typing
 
 from dicomweb_client import DICOMfileClient
@@ -54,9 +56,101 @@ def query_dummy(job_id, job_kwargs):
         yield completed, remaining, f"{completed} / {remaining + completed}"
 
 class QueryJob():
-    @classmethod 
-    def get_accession_job(cls, job_id, job_kwargs) -> Generator[Tuple[int,int,str], None, str]:
-        accession, node, path = job_kwargs["accession"], job_kwargs["node"], job_kwargs["path"]
+    @classmethod
+    def move_to_destination(cls, path, destination, job_id) -> None:
+        if destination is None:
+            config.read_config()
+            for p in Path(path).glob("**/*"):
+                if p.is_file():
+                    shutil.move(str(p), config.mercure.incoming_folder) # Move the file to incoming folder
+            # tree(config.mercure.incoming_folder)
+            shutil.rmtree(path)
+        else:
+            dest_folder: Path = Path(destination) / job_id
+            dest_folder.mkdir(exist_ok=True)
+            logger.info(f"moving {path} to {dest_folder}")
+            shutil.move(path, dest_folder)
+            # tree(dest_folder)
+            logger.info(f"moved")
+
+
+@dataclass
+class ClassBasedRQJob():
+    parent: Optional[str] = None
+    type: str = "unknown"
+    _job: Optional[Job] = None
+    def create(self, rq_options={}, **kwargs):
+        fields = dataclasses.fields(self)
+        meta = {field.name: getattr(self, field.name) for field in fields}
+        return Job.create(self._execute, kwargs=kwargs, meta=meta, **rq_options)
+
+    @classmethod
+    def _execute(cls, **kwargs):
+        job = get_current_job()
+        if not job:
+            raise Exception("No current job")
+        fields = dataclasses.fields(cls)
+        meta = {}
+        for f in fields:
+            if f.name in job.meta and not f.name.startswith('_'):
+                meta[f.name] = job.meta[f.name]
+        cls(**meta, _job=job).execute(**kwargs)
+
+    def execute(self):
+        pass
+
+
+@dataclass
+class CheckAccessionsDicomWebJob(ClassBasedRQJob):
+    type: str = "check_accessions_dicomweb"
+
+    def execute(self, *, accessions, node: DicomWebNode, queue=worker_queue): 
+        client = (DICOMfileClient(url=node.base_url, in_memory=True) if node.base_url.startswith("file://") 
+                  else DICOMwebClient(node.base_url))
+        assert isinstance(client, (DICOMwebClient, DICOMfileClient))
+        for accession in accessions:
+            try:
+                response = client.search_for_series(search_filters={'AccessionNumber': accession})
+                if not response:
+                    raise ValueError("No series found with accession number {}".format(accession))
+            except Exception as e:
+                job = get_current_job()
+                if not job:
+                    raise Exception("No current job found")
+                job_parent = queue.fetch_job(job.meta.get('parent'))
+                job_parent.meta['failed_reason'] = f"Accession {accession} not found on node"
+                queue._enqueue_job(job_parent,at_front=True)
+                raise
+        return "Complete"
+
+@dataclass 
+class CheckAccessionsJob(ClassBasedRQJob):
+    type: str = "check_accessions"
+
+    def execute(self, *, accessions, node, queue=worker_queue):
+        """
+        Check if the given accessions exist on the node using a DICOM query.
+        """
+        c = SimpleDicomClient(node.ip, node.port, node.aet_target, None)
+        assert self.parent is not None
+        try:
+            for accession in accessions:
+                result = c.findscu(accession)
+                logger.info(result)
+        except:
+            job_parent = queue.fetch_job(self.parent)
+            job_parent.meta['failed_reason'] = f"Accession {accession} not found on node"
+            queue._enqueue_job(job_parent,at_front=True)
+            raise
+
+@dataclass
+class GetAccessionsJob(ClassBasedRQJob):
+    type: str = "get_accession"
+    paused: bool = False
+    offpeak: bool = False
+
+    @classmethod
+    def get_accession(cls, job_id, accession, node, path) -> Generator[Tuple[int,int,str], None, str]:
         config.read_config()
         c = SimpleDicomClient(node.ip, node.port, node.aet_target, path)
         for identifier in c.getscu(accession):
@@ -65,35 +159,13 @@ class QueryJob():
             yield completed, remaining, progress
         return "Complete"
 
-    @classmethod
-    def check_accessions_exist(cls, *, accessions, node, queue=worker_queue):
-        """
-        Check if the given accessions exist on the node using a DICOM query.
-        """
-        c = SimpleDicomClient(node.ip, node.port, node.aet_target, None)
-        try:
-            for accession in accessions:
-                result = c.findscu(accession)
-                logger.info(result)
-        except:
-            job = get_current_job()
-            if not job:
-                raise Exception("No current job found")
-            job_parent = queue.fetch_job(job.meta.get('parent'))
-            job_parent.meta['failed_reason'] = f"Accession {accession} not found on node"
-            queue._enqueue_job(job_parent,at_front=True)
-            raise
-
-    @classmethod
-    def get_accessions(cls, *,accession, node, path, perform_func=query_dummy,queue=worker_queue):
+    def execute(self, *,accession, node, path, queue=worker_queue):
         print(f"Getting {accession}")
-        job = get_current_job()
-        if not job:
-            raise Exception("No current job")
+        job = self._job
         try:
             Path(path).mkdir(parents=True, exist_ok=True)
             job_parent = None
-            if parent_id := job.meta.get('parent'):
+            if parent_id := self.parent:
                 job_parent = queue.fetch_job(parent_id)
 
             if job_parent:
@@ -103,15 +175,16 @@ class QueryJob():
             job.meta['started'] = 1
             job.meta['progress'] = "0 / Unknown"
             job.save_meta() # type: ignore
-            for completed, remaining, progress in perform_func(job.id, job.kwargs):
+            for completed, remaining, progress in self.get_accession(job.id, accession, node, path):
                 job.meta['remaining'] = remaining
                 job.meta['completed'] = completed
                 job.meta['progress'] = progress
                 job.save_meta() # type: ignore  # Save the updated meta data to the job
                 logger.info(progress)
-            if job_parent.kwargs["move_promptly"]:
-                move_to_destination(path, job_parent.kwargs["destination"], job_parent.id)
             if job_parent:
+                if job_parent.kwargs["move_promptly"]:
+                    QueryJob.move_to_destination(path, job_parent.kwargs["destination"], job_parent.id)
+
                 job_parent.get_meta() # there is technically a race condition here...
                 job_parent.meta['completed'] += 1
                 job_parent.meta['progress'] = f"{job_parent.meta['started'] } / {job_parent.meta['completed'] } / {job_parent.meta['total']}"
@@ -135,10 +208,12 @@ class QueryJob():
 
         return "Job complete"
 
-class DicomWebQueryJob(QueryJob):
-    @classmethod 
-    def get_accession_job(cls, job_id, job_kwargs):
-        accession, node, path = job_kwargs["accession"], job_kwargs["node"], job_kwargs["path"]
+@dataclass
+class GetAccessionsDicomWebJob(GetAccessionsJob):
+    type: str = "get_accession_dicomweb"
+
+    @classmethod
+    def get_accession(cls, job_id, accession, node, path) -> Generator[Tuple[int,int,str], None, None]:
         config.read_config()
         client = (DICOMfileClient(url=node.base_url, in_memory=True) if node.base_url.startswith("file://") 
                   else DICOMwebClient(node.base_url))
@@ -159,82 +234,39 @@ class DicomWebQueryJob(QueryJob):
                 remaining -= 1
                 yield (n, remaining, f'{n} / {n + remaining}')
 
-    @classmethod
-    def check_accessions_exist(cls, *, accessions, node: DicomWebNode, queue=worker_queue): 
-        client = (DICOMfileClient(url=node.base_url, in_memory=True) if node.base_url.startswith("file://") 
-                  else DICOMwebClient(node.base_url))
-        assert isinstance(client, (DICOMwebClient, DICOMfileClient))
+@dataclass
+class MainJob(ClassBasedRQJob):
+    type: str = "batch" 
+    started: int = 0
+    completed: int = 0
+    total: int = 0
+    paused: bool = False 
+    offpeak: bool = False
 
-        for accession in accessions:
-            try:
-                response = client.search_for_series(search_filters={'AccessionNumber': accession})
-                if not response:
-                    print(client.search_for_series())
-                    raise ValueError("No series found with accession number {}".format(accession))
-            except Exception as e:
-                job = get_current_job()
-                if not job:
-                    raise Exception("No current job found")
-                job_parent = queue.fetch_job(job.meta.get('parent'))
-                job_parent.meta['failed_reason'] = f"Accession {accession} not found on node"
-                queue._enqueue_job(job_parent,at_front=True)
-                raise
-        return "Complete"
+    def execute(self, *, accessions, subjobs, path, destination, move_promptly, queue=worker_queue) -> str:
+        job = self._job
+        job.get_meta()
+        for job_id in job.kwargs.get('subjobs',[]):
+            subjob = queue.fetch_job(job_id)
+            if (status := subjob.get_status()) != 'finished':
+                raise Exception(f"Subjob {subjob.id} is {status}")
+            if job.kwargs.get('failed', False):
+                raise Exception(f"Failed")
 
-# def tree(path, prefix='', level=0) -> None:
-#     if level==0:
-#         logger.info(path)
-#     entries = list(os.listdir(path))
-#     entries = sorted(entries, key=lambda e: (e.is_file(), e.name))
-#     if not entries and level==0:
-#         logger.info(prefix + "[[ empty ]]")
-#     for i, entry in enumerate(entries):
-#         conn = '└── ' if i == len(entries) - 1 else '├── '
-#         logger.info(f'{prefix}{conn}{entry.name}')
-#         if entry.is_dir():
-#             tree(entry.path, prefix + ('    ' if i == len(entries) - 1 else '│   '), level+1)
+        logger.info(f"Job completing {job.id}")
 
-def move_to_destination(path, destination, job_id) -> None:
-    if destination is None:
-        config.read_config()
-        for p in Path(path).glob("**/*"):
-            if p.is_file():
-                shutil.move(str(p), config.mercure.incoming_folder) # Move the file to incoming folder
-        # tree(config.mercure.incoming_folder)
+        if not move_promptly:
+            logger.info("Moving files during completion as move_promptly==False")
+            for p in Path(path).iterdir():
+                if not p.is_dir():
+                    continue
+                cls.move_to_destination(p, destination, job.id)
+        logger.info(f"Removing job directory {path}")
+        # tree(destination)
         shutil.rmtree(path)
-    else:
-        dest_folder: Path = Path(destination) / job_id
-        dest_folder.mkdir(exist_ok=True)
-        logger.info(f"moving {path} to {dest_folder}")
-        shutil.move(path, dest_folder)
-        # tree(dest_folder)
-        logger.info(f"moved")
 
-def batch_job(*, accessions, subjobs, path, destination, move_promptly, queue=worker_queue) -> str:
-    job = get_current_job()
-    if not job:
-        raise Exception("No current job")
-    job.get_meta()
-    for job_id in job.kwargs.get('subjobs',[]):
-        subjob = queue.fetch_job(job_id)
-        if (status := subjob.get_status()) != 'finished':
-            raise Exception(f"Subjob {subjob.id} is {status}")
-        if job.kwargs.get('failed', False):
-            raise Exception(f"Failed")
+        return "Job complete"
 
-    logger.info(f"Job completing {job.id}")
-
-    if not move_promptly:
-        logger.info("Moving files during completion as move_promptly==False")
-        for p in Path(path).iterdir():
-            if not p.is_dir():
-                continue
-            move_to_destination(p, destination, job.id)
-    logger.info(f"Removing job directory {path}")
-    # tree(destination)
-    shutil.rmtree(path)
-
-    return "Job complete"
 
 def monitor_job():
     print("monitoring")
@@ -245,6 +277,7 @@ class WrappedJob():
             self.job = queue.fetch_job(job)
         else:
             self.job = job
+        assert self.job.meta.get('type') == 'batch', f"Job type must be batch, got {self.job.meta['type']}"
         self.queue = queue
 
     @classmethod
@@ -253,33 +286,51 @@ class WrappedJob():
         Create a job to process the given accessions and store them in the specified destination path.
         """
         if isinstance(dicom_node, DicomNode):
-            JobClass = QueryJob 
+            CheckJob = CheckAccessionsJob
+            GetJob = GetAccessionsJob
         elif isinstance(dicom_node, DicomWebNode):
-            JobClass = DicomWebQueryJob
+            CheckJob = CheckAccessionsDicomWebJob
+            GetJob = GetAccessionsDicomWebJob
+        #     JobClass = DicomWebQueryJob
 
         with Connection(redis):
             jobs: List[Job] = []
-            check_job = Job.create(JobClass.check_accessions_exist, kwargs=dict(accessions=accessions,node=dicom_node), meta=dict(parent=None))
-
+            check_job = CheckJob().create(accessions=accessions, node=dicom_node)
             for accession in accessions:
-                job = Job.create(JobClass.get_accessions, 
-                                kwargs=dict(perform_func=JobClass.get_accession_job, accession=accession, node=dicom_node), timeout=30*60, result_ttl=-1, 
-                                meta=dict(type="get_accession_batch",parent=None, paused=False, offpeak=offpeak),
-                                depends_on=cast(List[Union[Dependency, Job]],[check_job])
-                                )
+                job = GetJob(offpeak=offpeak).create(
+                    accession=accession, 
+                    node=dicom_node,
+                    rq_options=dict(
+                        depends_on=cast(List[Union[Dependency, Job]],[check_job]),
+                        timeout=30*60,
+                        result_ttl=-1
+                        )
+                    )
                 jobs.append(job)
             depends = Dependency(
                 jobs=cast(List[Union[Job,str]],jobs),
                 allow_failure=True,    # allow_failure defaults to False
             )
-            full_job = Job.create(batch_job, 
-                                  kwargs=dict(accessions=accessions, 
-                                              subjobs=[j.id for j in jobs],
-                                              destination=destination_path, 
-                                              move_promptly=True), 
-                                  meta=dict(type="batch", started=0, paused=False,completed=0, total=len(jobs), offpeak=offpeak),
-                                  depends_on=depends,
-                                  timeout=-1, result_ttl=-1)
+            full_job = MainJob(total=len(jobs), offpeak=offpeak).create(
+                accessions = accessions,
+                subjobs = [j.id for j in jobs],
+                destination = destination_path,
+                move_promptly = True,
+                rq_options = dict(depends_on=depends, timeout=-1, result_ttl=-1)
+            )
+            # full_job = Job.create(JobClass.batch_job, 
+            #                       kwargs=dict(accessions=accessions, 
+            #                                   subjobs=[j.id for j in jobs],
+            #                                   destination=destination_path, 
+            #                                   move_promptly=True), 
+            #                       meta=dict(type="batch", 
+            #                                 started=0,
+            #                                 paused=False, 
+            #                                 completed=0,
+            #                                 total=len(jobs),
+            #                                 offpeak=offpeak),
+            #                       depends_on=depends,
+            #                       timeout=-1, result_ttl=-1)
             check_job.meta["parent"] = full_job.id
             for j in jobs:
                 j.meta["parent"] = full_job.id
@@ -346,6 +397,33 @@ class WrappedJob():
                 self.queue.enqueue_job(subjob)
         self.queue.enqueue_job(self.job)
 
+    @classmethod
+    def update_all_jobs_offpeak(cls,queue=worker_queue) -> None:
+        """
+        Resume or pause offpeak jobs based on whether the current time is within offpeak hours.
+        """
+        config.read_config()
+        is_offpeak = _is_offpeak(config.mercure.offpeak_start, config.mercure.offpeak_end, datetime.now().time())
+        logger.info(f"is_offpeak {is_offpeak}")
+        for job in WrappedJob.get_all_jobs(queue=queue):
+            job.update_offpeak(is_offpeak)
+
+    def update_offpeak(self, is_offpeak) -> None:
+        if not self.meta.get("offpeak"):
+            return
+        if self.get_status() not in ("waiting", "running", "queued", "deferred"):
+            return
+
+        if is_offpeak:
+            # logger.info(f"{job.meta}, {job.get_status()}")
+            if self.is_paused:
+                logger.info("Resuming")
+                self.resume()
+        else:
+            if not self.is_paused:
+                logger.info("Pausing")
+                self.pause()
+
     def get_subjobs(self) -> Generator[Job, None, None]:
         return (self.queue.fetch_job(job) for job in self.job.kwargs.get('subjobs', []) if job)
 
@@ -367,6 +445,10 @@ class WrappedJob():
     def is_finished(self) -> bool:
         return cast(bool,self.job.is_finished)
     
+    @property
+    def is_paused(self) -> bool:
+        return cast(bool,self.meta.get("paused",False))
+
     @property
     def id(self) -> str:
         return cast(str,self.job.id)
@@ -423,28 +505,6 @@ def _is_offpeak(offpeak_start: str, offpeak_end: str, current_time) -> bool:
     # End time is after midnight
     return bool(current_time >= start_time or current_time <= end_time)
 
-def update_jobs_offpeak(queue=worker_queue):
-    """
-    Resume or pause offpeak jobs based on whether the current time is within offpeak hours.
-    """
-    config.read_config()
-    is_offpeak = _is_offpeak(config.mercure.offpeak_start, config.mercure.offpeak_end, datetime.now().time())
-    logger.info(f"is_offpeak {is_offpeak}")
-    for job in WrappedJob.get_all_jobs(queue=queue):
-        if not job.meta.get("offpeak"):
-            continue
-        if job.get_status() not in ("waiting", "running", "queued", "deferred"):
-            continue
-
-        if is_offpeak:
-            logger.info(f"{job.meta}, {job.get_status()}")
-            if job.meta.get("paused", False):
-                logger.info("Resuming")
-                job.resume()
-        else:
-            if not job.meta.get("paused", False):
-                logger.info("Pausing")
-                job.pause()
  
 @router.post("/query/retry_job")
 @requires(["authenticated", "admin"], redirect="login")
