@@ -9,7 +9,7 @@ from pynetdicom.status import Status
 from pydicom.uid import generate_uid
 from pydicom.dataset import Dataset, FileMetaDataset
 from rq import Worker
-from webinterface.dashboards.query import GetAccessionsJob, SimpleDicomClient, WrappedJob
+from webinterface.dashboards.query import GetAccessionJob, GetAccessionDicomWebJob, SimpleDicomClient, WrappedJob
 from common.types import DicomNode, DicomWebNode
 from webinterface.common import redis, worker_queue
 from pyfakefs import fake_filesystem
@@ -110,6 +110,20 @@ def dicom_server(mock_node, dummy_dataset):
     yield mock_node
     server.stop()
 
+@pytest.fixture(scope="function")
+def dicomweb_server(dummy_dataset, tempdir):
+    ds = dummy_dataset.copy()
+    ds.SOPClassUID = CTImageStorage  # CT Image Storage
+    ds.SOPInstanceUID = generate_uid()
+    ds.StudyInstanceUID = generate_uid()
+    ds.file_meta = FileMetaDataset()
+    ds.file_meta.TransferSyntaxUID = ExplicitVRLittleEndian
+    
+    (tempdir / "dicomweb").mkdir()
+    ds.save_as(tempdir / "dicomweb" / "dummy.dcm", write_like_original=False)
+
+    yield DicomWebNode(name="dicomweb_dummy", base_url=f"file://{tempdir}/dicomweb")
+
 def test_simple_dicom_client(dicom_server):
     """Test the SimpleDicomClient can connect to and query the DICOM server."""
     client = SimpleDicomClient(dicom_server.ip, dicom_server.port, dicom_server.aet_target, None)
@@ -123,18 +137,18 @@ def tempdir():
     with tempfile.TemporaryDirectory(prefix="mercure_temp") as d:
         yield Path(d)
 
-def test_get_accession_job(dicom_server, tempdir, mercure_config):
+def test_get_accession_job(dicom_server, dicomweb_server, mercure_config):
     """Test the get_accession_job function."""
     config = mercure_config()
     job_id = "test_job"
     
-    generator = GetAccessionsJob.get_accession(job_id, MOCK_ACCESSION, dicom_server, config.jobs_folder)
-    results = list(generator)
-    
-    # Check that we got some results
-    assert len(results) > 0
-    assert results[0][1] == 0
-    assert pydicom.dcmread(next(k for k in Path(config.jobs_folder).iterdir()))['AccessionNumber'].value == MOCK_ACCESSION
+    for server,job in ((dicom_server, GetAccessionJob), (dicomweb_server, GetAccessionDicomWebJob)):
+        generator = job.get_accession(job_id, MOCK_ACCESSION, server, config.jobs_folder)
+        results = list(generator)
+        # Check that we got some results
+        assert len(results) > 0
+        assert results[0][1] == 0
+        assert pydicom.dcmread(next(k for k in Path(config.jobs_folder).iterdir()))['AccessionNumber'].value == MOCK_ACCESSION
 
 def test_query_job(dicom_server, tempdir):
     """

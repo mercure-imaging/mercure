@@ -143,7 +143,7 @@ class CheckAccessionsJob(ClassBasedRQJob):
             raise
 
 @dataclass
-class GetAccessionsJob(ClassBasedRQJob):
+class GetAccessionJob(ClassBasedRQJob):
     type: str = "get_accession"
     paused: bool = False
     offpeak: bool = False
@@ -208,12 +208,13 @@ class GetAccessionsJob(ClassBasedRQJob):
         return "Job complete"
 
 @dataclass
-class GetAccessionsDicomWebJob(GetAccessionsJob):
+class GetAccessionDicomWebJob(GetAccessionJob):
     type: str = "get_accession_dicomweb"
 
     @classmethod
     def get_accession(cls, job_id, accession, node, path) -> Generator[Tuple[int,int,str], None, None]:
         config.read_config()
+        assert isinstance(node, DicomWebNode), f"Invalid node type {type(node)}: expected DicomWebNode"
         client = (DICOMfileClient(url=node.base_url, in_memory=True) if node.base_url.startswith("file://") 
                   else DICOMwebClient(node.base_url))
         assert isinstance(client, (DICOMwebClient, DICOMfileClient))
@@ -270,6 +271,14 @@ class MainJob(ClassBasedRQJob):
 def monitor_job():
     print("monitoring")
 
+class DicomQueryFlow():
+    CheckAccessions = CheckAccessionsJob
+    GetAccession = GetAccessionJob
+
+class DicomWebQueryFlow():
+    CheckAccessions = CheckAccessionsDicomWebJob
+    GetAccession = GetAccessionDicomWebJob
+
 class WrappedJob():
     def __init__(self, job: Union[Job,str], queue):
         if isinstance(job, str):
@@ -285,18 +294,15 @@ class WrappedJob():
         Create a job to process the given accessions and store them in the specified destination path.
         """
         if isinstance(dicom_node, DicomNode):
-            CheckJob = CheckAccessionsJob
-            GetJob = GetAccessionsJob
+            DicomFlow = DicomQueryFlow
         elif isinstance(dicom_node, DicomWebNode):
-            CheckJob = CheckAccessionsDicomWebJob
-            GetJob = GetAccessionsDicomWebJob
-        #     JobClass = DicomWebQueryJob
+            DicomFlow = DicomWebQueryFlow
 
         with Connection(redis):
             jobs: List[Job] = []
-            check_job = CheckJob().create(accessions=accessions, node=dicom_node)
+            check_job = DicomFlow.CheckAccessions().create(accessions=accessions, node=dicom_node)
             for accession in accessions:
-                job = GetJob(offpeak=offpeak).create(
+                job = DicomFlow.GetAccession(offpeak=offpeak).create(
                     accession=accession, 
                     node=dicom_node,
                     rq_options=dict(
