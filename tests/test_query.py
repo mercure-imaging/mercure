@@ -9,10 +9,9 @@ from pynetdicom.status import Status
 from pydicom.uid import generate_uid
 from pydicom.dataset import Dataset, FileMetaDataset
 from rq import Worker
-from webinterface.dashboards.query import GetAccessionJob, GetAccessionDicomWebJob, SimpleDicomClient, WrappedJob
-from common.types import DicomNode, DicomWebNode
+from webinterface.dashboards.query import GetAccessionJob, SimpleDicomClient, WrappedJob
+from common.types import DicomTarget, DicomWebTarget
 from webinterface.common import redis, worker_queue
-from pyfakefs import fake_filesystem
 
 from pydicom.uid import ExplicitVRLittleEndian, ImplicitVRLittleEndian
 from testing_common import receiver_port, mercure_config
@@ -26,11 +25,13 @@ MOCK_ACCESSION = "12345"
 
 @pytest.fixture(scope="module")
 def mock_node(receiver_port):
-    return DicomNode(name="TestNode", ip="127.0.0.1", port=receiver_port, aet_target="TEST")
+    return DicomTarget(ip="127.0.0.1", port=str(receiver_port), aet_target="TEST")
 
 class DummyDICOMServer:
     """A simple DICOM server for testing purposes."""
-    def __init__(self, port, dataset:Dataset):
+    def __init__(self, port:int, dataset:Dataset):
+        assert isinstance(port, int), "Port must be an integer"
+        assert isinstance(dataset, Dataset), "Dataset must be a pydicom Dataset"
         self.ae = AE()
         # Add support for DICOM verification
         self.ae.add_supported_context(Verification)
@@ -106,7 +107,7 @@ def dicom_server(mock_node, dummy_dataset):
     Pytest fixture to start a DICOM server before tests and stop it after.
     This fixture has module scope, so the server will be started once for all tests in the module.
     """
-    server = DummyDICOMServer(mock_node.port, dummy_dataset)
+    server = DummyDICOMServer(int(mock_node.port), dummy_dataset)
     yield mock_node
     server.stop()
 
@@ -122,7 +123,7 @@ def dicomweb_server(dummy_dataset, tempdir):
     (tempdir / "dicomweb").mkdir()
     ds.save_as(tempdir / "dicomweb" / "dummy.dcm", write_like_original=False)
 
-    yield DicomWebNode(name="dicomweb_dummy", base_url=f"file://{tempdir}/dicomweb")
+    yield DicomWebTarget(url=f"file://{tempdir}/dicomweb")
 
 def test_simple_dicom_client(dicom_server):
     """Test the SimpleDicomClient can connect to and query the DICOM server."""
@@ -142,12 +143,12 @@ def test_get_accession_job(dicom_server, dicomweb_server, mercure_config):
     config = mercure_config()
     job_id = "test_job"
     
-    for server,job in ((dicom_server, GetAccessionJob), (dicomweb_server, GetAccessionDicomWebJob)):
-        generator = job.get_accession(job_id, MOCK_ACCESSION, server, config.jobs_folder)
+    for server,job in ((dicom_server, GetAccessionJob), (dicomweb_server, GetAccessionJob)):
+        generator = GetAccessionJob.get_accession(job_id, MOCK_ACCESSION, server, config.jobs_folder)
         results = list(generator)
         # Check that we got some results
         assert len(results) > 0
-        assert results[0][1] == 0
+        assert results[0].remaining == 0
         assert pydicom.dcmread(next(k for k in Path(config.jobs_folder).iterdir()))['AccessionNumber'].value == MOCK_ACCESSION
 
 def test_query_job(dicom_server, tempdir):
@@ -177,27 +178,16 @@ def tree(path, prefix='', level=0) -> None:
         if entry.is_dir():
             tree(entry.path, prefix + ('    ' if i == len(entries) - 1 else '│   '), level+1)
 
-def test_query_dicomweb(receiver_port, tempdir, dummy_dataset, fs):
-    assert isinstance(os, fake_filesystem.FakeOsModule)
-    ds = dummy_dataset.copy()
-    ds.SOPClassUID = CTImageStorage  # CT Image Storage
-    ds.SOPInstanceUID = generate_uid()
-    ds.StudyInstanceUID = generate_uid()
-    ds.file_meta = FileMetaDataset()
-    ds.file_meta.TransferSyntaxUID = ExplicitVRLittleEndian
-    
-    (tempdir / "dicomweb").mkdir()
-    ds.save_as(tempdir / "dicomweb" / "dummy.dcm", write_like_original=False)
-
-    node = DicomWebNode(name="dummy", base_url=f"file://{tempdir}/dicomweb")
+def test_query_dicomweb(dicomweb_server, tempdir, dummy_dataset, fs):
     (tempdir / "outdir").mkdir()
-
-
     queue = Queue(connection=redis)
-    job = WrappedJob.create([MOCK_ACCESSION], node, (tempdir / "outdir"), queue=queue)
-    assert job is not None
+    wrapped_job = WrappedJob.create([MOCK_ACCESSION], dicomweb_server, (tempdir / "outdir"), queue=queue)
+    assert wrapped_job
     w = SimpleWorker([queue], connection=redis)
     w.work(burst=True)
     # tree(tempdir / "outdir")
-    outfile = (tempdir / "outdir" / job.id / ds.AccessionNumber /  f"{ds.SOPInstanceUID}.dcm")
-    assert outfile.exists()
+    outfile = (tempdir / "outdir" / wrapped_job.id / dummy_dataset.AccessionNumber /  f"{dummy_dataset.SOPInstanceUID}.dcm")
+    assert outfile.exists(), f"File {outfile} does not exist."
+    wrapped_job.get_meta()
+    assert wrapped_job.meta['completed'] == 1
+    assert wrapped_job.meta['total'] == 1

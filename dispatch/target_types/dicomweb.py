@@ -1,9 +1,11 @@
 from pathlib import Path
+from typing import Dict, Generator, List
+from dicomweb_client import DICOMfileClient
 from requests.exceptions import HTTPError
 
 import pydicom
 from common.types import DicomWebTarget, TaskDispatch, Task
-from .base import TargetHandler
+from .base import ProgressInfo, TargetHandler
 from .registry import handler_for
 
 from dicomweb_client.api import DICOMwebClient
@@ -26,6 +28,9 @@ class DicomWebTargetHandler(TargetHandler[DicomWebTarget]):
     def create_client(self, target: DicomWebTarget):
         session = None
         headers = None
+        if target.url.startswith("file://"):
+            return DICOMfileClient(url=target.url, in_memory=True)
+          
         if target.http_user and target.http_password:
             session = create_session_from_user_pass(username=target.http_user, password=target.http_password)
         elif target.access_token:
@@ -40,6 +45,29 @@ class DicomWebTargetHandler(TargetHandler[DicomWebTarget]):
             headers=headers,
         )
         return client
+
+    def find_from_target(self, target: DicomWebTarget, accession: str) -> List[Dict[str,dict]]:
+        client = self.create_client(target)
+        return client.search_for_series(search_filters={'AccessionNumber': accession})
+
+
+    def get_from_target(self, target: DicomWebTarget, accession, path) -> Generator[ProgressInfo, None, None]:
+        client = self.create_client(target)
+        series = client.search_for_series(search_filters={'AccessionNumber': accession})
+        if not series:
+            raise ValueError("No series found with accession number {}".format(accession))
+        n = 0
+        remaining = 0
+        for s in series:
+            instances = client.retrieve_series(s['0020000D']['Value'][0], s['0020000E']['Value'][0])
+            remaining += len(instances)
+            for instance in instances:
+                sop_instance_uid = instance.get('SOPInstanceUID')
+                filename = f"{path}/{sop_instance_uid}.dcm"
+                instance.save_as(filename)
+                n += 1
+                remaining -= 1
+                yield ProgressInfo(n, remaining, f'{n} / {n + remaining}')
 
     def send_to_target(
         self, task_id: str, target: DicomWebTarget, dispatch_info: TaskDispatch, source_folder: Path, task: Task

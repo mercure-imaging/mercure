@@ -1,8 +1,9 @@
+from dataclasses import dataclass
 from common.types import Task, TaskDispatch, TaskInfo, Rule, Target
 import common.config as config
 from subprocess import CalledProcessError, check_output
 from starlette.responses import JSONResponse
-from typing import Any, TypeVar, Generic, cast
+from typing import Any, Generator, TypeVar, Generic, cast
 
 from pathlib import Path
 import subprocess
@@ -11,6 +12,12 @@ logger = config.get_logger()
 
 TargetTypeVar = TypeVar("TargetTypeVar")
 
+
+@dataclass
+class ProgressInfo():
+    completed: int = 0
+    remaining: int = 0
+    progress: str = ""
 
 class TargetHandler(Generic[TargetTypeVar]):
     test_template = "targets/base-test.html"
@@ -27,6 +34,12 @@ class TargetHandler(Generic[TargetTypeVar]):
         task: Task,
     ) -> str:
         return ""
+
+    def get_from_target(self, target: TargetTypeVar, accession: str, path:str) -> Generator[ProgressInfo, None, None]:
+        raise Exception()
+
+    def find_from_target(self, target: TargetTypeVar, accession: str) -> bool:
+        raise Exception()
 
     def handle_error(self, e, command) -> None:
         pass
@@ -68,6 +81,7 @@ class SubprocessTargetHandler(TargetHandler[TargetTypeVar]):
                 self.handle_error(e, command)
                 raise
         return result
+
 
     def handle_error(self, e: CalledProcessError, command) -> None:
         logger.error(e.output)

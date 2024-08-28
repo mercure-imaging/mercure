@@ -22,6 +22,7 @@ class EmptyDict(TypedDict):
     pass
 
 class Target(BaseModel, Compat):
+    target_type: Any
     contact: Optional[str] = ""
     comment: str = ""
 
@@ -98,12 +99,12 @@ class XnatTarget(Target):
 class DicomWebTarget(Target):
     target_type: Literal["dicomweb"] = "dicomweb"
     url: str
-    qido_url_prefix: Optional[str]
-    wado_url_prefix: Optional[str]
-    stow_url_prefix: Optional[str]
-    access_token: Optional[str]
-    http_user: Optional[str]
-    http_password: Optional[str]
+    qido_url_prefix: Optional[str] = None
+    wado_url_prefix: Optional[str] = None
+    stow_url_prefix: Optional[str] = None
+    access_token: Optional[str] = None
+    http_user: Optional[str] = None
+    http_password: Optional[str] = None
 
 
 class S3Target(Target):
@@ -202,26 +203,6 @@ class DicomNodeBase(BaseModel):
     @classmethod
     def get_name(cls) -> str:
         return cls.construct().node_type  # type: ignore
-
-
-class DicomNode(DicomNodeBase):
-    node_type: Literal["dicom"] = "dicom"
-    name: str
-    ip: str
-    port: int
-    aet_target: str
-    aet_source: Optional[str] = ""
-
-class DicomWebNode(DicomNodeBase):
-    node_type: Literal["dicomweb"] = "dicomweb"
-    name: str
-    base_url: str
-
-    qido_url_prefix: Optional[str] = None
-    wado_url_prefix: Optional[str] = None
-    access_token: Optional[str] = None
-    ca_bundle: Optional[str] = None
-    cert: Optional[str] = None
 
 class DicomDestination(BaseModel):
     name: str

@@ -36,7 +36,7 @@
                     <div class="select">
                         <select name="dicom_node">
                           {% for node in dicom_nodes %}
-                          <option>{{ node.name }}</option>
+                          <option>{{ node }}</option>
                           {% endfor %}
                         </select>
                       </div>
@@ -56,7 +56,7 @@
                           <option>Mercure</option>
                           <option disabled>————————</option>
                           {% for destination in destination_folders %}
-                          <option>{{ destination.name }}</option>
+                          <option>{{ destination }}</option>
                           {% endfor %}
                         </select>
                       </div>

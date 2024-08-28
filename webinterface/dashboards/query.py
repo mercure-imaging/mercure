@@ -4,11 +4,14 @@ import dataclasses
 import os
 from pathlib import Path
 import shutil
-from typing import Any, Dict, Generator, List, Optional, Tuple, Union, cast
+from typing import Any, Dict, Generator, List, Optional, Tuple, Type, Union, cast
 import typing
+from typing_extensions import Literal
 
 from dicomweb_client import DICOMfileClient
-from common.types import DicomNode, DicomNodeBase, DicomWebNode
+from common.types import DicomTarget, DicomWebTarget, FolderTarget
+from dispatch.target_types.base import ProgressInfo
+from dispatch.target_types.registry import get_handler
 from webinterface.query import SimpleDicomClient
 # Standard python includes
 from datetime import datetime
@@ -79,7 +82,7 @@ class ClassBasedRQJob():
         result = cls(**meta, _job=job).execute(**kwargs)
         return result
 
-    def execute(self):
+    def execute(self, *args, **kwargs) -> Any:
         pass
     
     @staticmethod
@@ -100,27 +103,27 @@ class ClassBasedRQJob():
             logger.info(f"moved")
 
 
-@dataclass
-class CheckAccessionsDicomWebJob(ClassBasedRQJob):
-    type: str = "check_accessions_dicomweb"
+# @dataclass
+# class CheckAccessionsDicomWebJob(ClassBasedRQJob):
+#     type: str = "check_accessions_dicomweb"
 
-    def execute(self, *, accessions, node: DicomWebNode, queue=worker_queue): 
-        client = (DICOMfileClient(url=node.base_url, in_memory=True) if node.base_url.startswith("file://") 
-                  else DICOMwebClient(node.base_url))
-        assert isinstance(client, (DICOMwebClient, DICOMfileClient))
-        for accession in accessions:
-            try:
-                response = client.search_for_series(search_filters={'AccessionNumber': accession})
-                if not response:
-                    raise ValueError("No series found with accession number {}".format(accession))
-            except Exception as e:
-                job = self._job
-                job_parent = queue.fetch_job(job.meta.get('parent'))
-                job_parent.meta['failed_reason'] = f"Accession {accession} not found on node"
-                job_parent.save_meta()
-                queue._enqueue_job(job_parent,at_front=True)
-                raise
-        return "Complete"
+#     def execute(self, *, accessions, node: DicomWebTarget, queue=worker_queue): 
+#         client = (DICOMfileClient(url=node.url, in_memory=True) if node.url.startswith("file://") 
+#                   else DICOMwebClient(node.url))
+#         assert isinstance(client, (DICOMwebClient, DICOMfileClient))
+#         for accession in accessions:
+#             try:
+#                 response = client.search_for_series(search_filters={'AccessionNumber': accession})
+#                 if not response:
+#                     raise ValueError("No series found with accession number {}".format(accession))
+#             except Exception as e:
+#                 job = cast(Job,self._job)
+#                 job_parent = queue.fetch_job(job.meta.get('parent'))
+#                 job_parent.meta['failed_reason'] = f"Accession {accession} not found on node"
+#                 job_parent.save_meta()
+#                 queue._enqueue_job(job_parent,at_front=True)
+#                 raise
+#         return "Complete"
 
 @dataclass 
 class CheckAccessionsJob(ClassBasedRQJob):
@@ -130,12 +133,15 @@ class CheckAccessionsJob(ClassBasedRQJob):
         """
         Check if the given accessions exist on the node using a DICOM query.
         """
-        c = SimpleDicomClient(node.ip, node.port, node.aet_target, None)
-        assert self.parent is not None
+        # c = SimpleDicomClient(node.ip, node.port, node.aet_target, None)
+        # assert self.parent is not None
         try:
             for accession in accessions:
-                result = c.findscu(accession)
-                logger.info(result)
+                result = get_handler(node).find_from_target(node, accession)
+                if not result:
+                    raise ValueError("No series found with accession number {}".format(accession))
+                # result = c.findscu(accession)
+                # logger.info(result)
         except:
             job_parent = queue.fetch_job(self.parent)
             job_parent.meta['failed_reason'] = f"Accession {accession} not found on node"
@@ -149,18 +155,19 @@ class GetAccessionJob(ClassBasedRQJob):
     offpeak: bool = False
 
     @classmethod
-    def get_accession(cls, job_id, accession, node, path) -> Generator[Tuple[int,int,str], None, str]:
-        config.read_config()
-        c = SimpleDicomClient(node.ip, node.port, node.aet_target, path)
-        for identifier in c.getscu(accession):
-            completed, remaining = identifier.NumberOfCompletedSuboperations, identifier.NumberOfRemainingSuboperations, 
-            progress = f"{ completed } / { completed + remaining }" 
-            yield completed, remaining, progress
-        return "Complete"
+    def get_accession(cls, job_id, accession, node, path) -> Generator[ProgressInfo, None, str]:
+        yield from get_handler(node).get_from_target(node, accession, path)
+        # config.read_config()
+        # c = SimpleDicomClient(node.ip, node.port, node.aet_target, path)
+        # for identifier in c.getscu(accession):
+        #     completed, remaining = identifier.NumberOfCompletedSuboperations, identifier.NumberOfRemainingSuboperations, 
+        #     progress = f"{ completed } / { completed + remaining }" 
+        #     yield completed, remaining, progress
+        # return "Complete"
 
     def execute(self, *,accession, node, path, queue=worker_queue):
         print(f"Getting {accession}")
-        job = self._job
+        job = cast(Job,self._job)
         try:
             Path(path).mkdir(parents=True, exist_ok=True)
             job_parent = None
@@ -174,12 +181,12 @@ class GetAccessionJob(ClassBasedRQJob):
             job.meta['started'] = 1
             job.meta['progress'] = "0 / Unknown"
             job.save_meta() # type: ignore
-            for completed, remaining, progress in self.get_accession(job.id, accession, node, path):
-                job.meta['remaining'] = remaining
-                job.meta['completed'] = completed
-                job.meta['progress'] = progress
+            for info in get_handler(node).get_from_target(node, accession, path):
+                job.meta['remaining'] = info.remaining
+                job.meta['completed'] = info.completed 
+                job.meta['progress'] = info.progress
                 job.save_meta() # type: ignore  # Save the updated meta data to the job
-                logger.info(progress)
+                logger.info(info.progress)
             if job_parent:
                 if job_parent.kwargs["move_promptly"]:
                     self.move_to_destination(path, job_parent.kwargs["destination"], job_parent.id)
@@ -207,33 +214,34 @@ class GetAccessionJob(ClassBasedRQJob):
 
         return "Job complete"
 
-@dataclass
-class GetAccessionDicomWebJob(GetAccessionJob):
-    type: str = "get_accession_dicomweb"
+# @dataclass
+# class GetAccessionDicomWebJob(GetAccessionJob):
+#     type: str = "get_accession_dicomweb"
 
-    @classmethod
-    def get_accession(cls, job_id, accession, node, path) -> Generator[Tuple[int,int,str], None, None]:
-        config.read_config()
-        assert isinstance(node, DicomWebNode), f"Invalid node type {type(node)}: expected DicomWebNode"
-        client = (DICOMfileClient(url=node.base_url, in_memory=True) if node.base_url.startswith("file://") 
-                  else DICOMwebClient(node.base_url))
-        assert isinstance(client, (DICOMwebClient, DICOMfileClient))
-        series = client.search_for_series(search_filters={'AccessionNumber': accession})
-        if not series:
-            raise ValueError("No series found with accession number {}".format(accession))
-        n = 0
-        remaining = 0
-        for s in series:
-            instances = client.retrieve_series(s['0020000D']['Value'][0], s['0020000E']['Value'][0])
-            remaining += len(instances)
-            for instance in instances:
-                sop_instance_uid = instance.get('SOPInstanceUID')
-                filename = f"{path}/{sop_instance_uid}.dcm"
-                instance.save_as(filename)
-                n += 1
-                remaining -= 1
-                yield (n, remaining, f'{n} / {n + remaining}')
-
+#     @classmethod
+#     def get_accession(cls, job_id, accession:str, node: DicomWebTarget, path) -> Generator[Tuple[int,int,str], None, str]:
+#         config.read_config()
+#         handler = get_handler(node)
+#         assert isinstance(node, DicomWebTarget), f"Invalid node type {type(node)}: expected DicomWebTarget"
+#         client = (DICOMfileClient(url=node.url, in_memory=True) if node.url.startswith("file://") 
+#                   else DICOMwebClient(node.url))
+#         assert isinstance(client, (DICOMwebClient, DICOMfileClient))
+#         series = client.search_for_series(search_filters={'AccessionNumber': accession})
+#         if not series:
+#             raise ValueError("No series found with accession number {}".format(accession))
+#         n = 0
+#         remaining = 0
+#         for s in series:
+#             instances = client.retrieve_series(s['0020000D']['Value'][0], s['0020000E']['Value'][0])
+#             remaining += len(instances)
+#             for instance in instances:
+#                 sop_instance_uid = instance.get('SOPInstanceUID')
+#                 filename = f"{path}/{sop_instance_uid}.dcm"
+#                 instance.save_as(filename)
+#                 n += 1
+#                 remaining -= 1
+#                 yield (n, remaining, f'{n} / {n + remaining}')
+#         return f'Downloaded {n} instances from accession number {accession}'
 @dataclass
 class MainJob(ClassBasedRQJob):
     type: str = "batch" 
@@ -244,7 +252,7 @@ class MainJob(ClassBasedRQJob):
     offpeak: bool = False
 
     def execute(self, *, accessions, subjobs, path, destination, move_promptly, queue=worker_queue) -> str:
-        job = self._job
+        job = cast(Job,self._job)
         job.get_meta()
         for job_id in job.kwargs.get('subjobs',[]):
             subjob = queue.fetch_job(job_id)
@@ -271,13 +279,13 @@ class MainJob(ClassBasedRQJob):
 def monitor_job():
     print("monitoring")
 
-class DicomQueryFlow():
-    CheckAccessions = CheckAccessionsJob
-    GetAccession = GetAccessionJob
+# class DicomQueryFlow():
+#     CheckAccessions = CheckAccessionsJob
+#     GetAccession = GetAccessionJob
 
-class DicomWebQueryFlow():
-    CheckAccessions = CheckAccessionsDicomWebJob
-    GetAccession = GetAccessionDicomWebJob
+# class DicomWebQueryFlow():
+#     CheckAccessions = CheckAccessionsDicomWebJob
+#     GetAccession = GetAccessionDicomWebJob
 
 class WrappedJob():
     def __init__(self, job: Union[Job,str], queue):
@@ -289,20 +297,23 @@ class WrappedJob():
         self.queue = queue
 
     @classmethod
-    def create(cls, accessions, dicom_node: DicomNodeBase, destination_path, offpeak=False, queue=worker_queue) -> 'WrappedJob':
+    def create(cls, accessions, dicom_node: Union[DicomWebTarget, DicomTarget], destination_path, offpeak=False, queue=worker_queue) -> 'WrappedJob':
         """
         Create a job to process the given accessions and store them in the specified destination path.
         """
-        if isinstance(dicom_node, DicomNode):
-            DicomFlow = DicomQueryFlow
-        elif isinstance(dicom_node, DicomWebNode):
-            DicomFlow = DicomWebQueryFlow
+        # DicomFlow:Union[Type[DicomQueryFlow], Type[DicomWebQueryFlow]]
+        # if isinstance(dicom_node, DicomTarget):
+        #     DicomFlow = DicomQueryFlow
+        # elif isinstance(dicom_node, DicomWebTarget):
+        #     DicomFlow = DicomWebQueryFlow
+        # else:
+        #     raise ValueError("Invalid dicom_node type {}".format(type(dicom_node)))
 
         with Connection(redis):
             jobs: List[Job] = []
-            check_job = DicomFlow.CheckAccessions().create(accessions=accessions, node=dicom_node)
+            check_job = CheckAccessionsJob().create(accessions=accessions, node=dicom_node)
             for accession in accessions:
-                job = DicomFlow.GetAccession(offpeak=offpeak).create(
+                job = GetAccessionJob(offpeak=offpeak).create(
                     accession=accession, 
                     node=dicom_node,
                     rq_options=dict(
@@ -564,37 +575,36 @@ async def query_post_batch(request):
     Starts a new query job for the given accession number and DICOM node.
     """
     form = await request.form()
-    for n in config.mercure.dicom_retrieve.dicom_nodes:
-        if n.name == form.get("dicom_node"):
-            node = n
-            break
-    destination = form.get("destination")
-    dest_path = None
-    for d in config.mercure.dicom_retrieve.destination_folders:
-        if d.name == destination:
-            dest_path = d.path
-            break
 
+    node = config.mercure.targets.get(form.get("dicom_node"))
+    if not isinstance(node, (DicomWebTarget, DicomTarget)):
+        return JSONResponse({"error": f"Invalid DICOM node"}, status_code=400)
+
+    destination = config.mercure.targets.get(form.get("destination"))
+    if destination and isinstance(destination, FolderTarget):
+        dest_path = destination.folder
+    else:
+        return JSONResponse({"error": "Invalid destination"}, status_code=400)
     # random_accessions = ["".join(random.choices([str(i) for i in range(10)], k=10)) for _ in range(3)]
     offpeak = 'offpeak' in form
     WrappedJob.create(form.get("accession").split(","), node, dest_path, offpeak=offpeak)
     # worker_scheduler.schedule(scheduled_time=datetime.utcnow(), func=monitor_job, interval=10, repeat=10, result_ttl=-1)
     return PlainTextResponse()
  
-@router.post("/query_single")
-@requires(["authenticated", "admin"], redirect="login")
-async def query_post(request):
-    """
-    Starts a new query job for the given accession number and DICOM node.
-    """
-    form = await request.form()
-    for n in config.mercure.dicom_retrieve.dicom_nodes:
-        if n.name == form.get("dicom_node"):
-            node = n
-            break
+# @router.post("/query_single")
+# @requires(["authenticated", "admin"], redirect="login")
+# async def query_post(request):
+#     """
+#     Starts a new query job for the given accession number and DICOM node.
+#     """
+#     form = await request.form()
+#     for n in config.mercure.dicom_retrieve.dicom_nodes:
+#         if n.name == form.get("dicom_node"):
+#             node = n
+#             break
     
-    worker_queue.enqueue_call(QueryJob.get_accession_job, kwargs=dict(accession=form.get("accession"), node=node), timeout=30*60, result_ttl=-1, meta=dict(type="get_accession_single"))
-    return PlainTextResponse()
+#     worker_queue.enqueue_call(QueryJob.get_accession_job, kwargs=dict(accession=form.get("accession"), node=node), timeout=30*60, result_ttl=-1, meta=dict(type="get_accession_single"))
+#     return PlainTextResponse()
 
 
 @router.get("/query/jobs")
@@ -648,10 +658,12 @@ async def query_jobs(request):
 @requires(["authenticated", "admin"], redirect="login")
 async def query(request):
     template = "dashboards/query.html"
+    dicom_nodes = [name for name,node in config.mercure.targets.items() if type(node) in (DicomTarget, DicomWebTarget)]
+    destination_folders = [name for name,node in config.mercure.targets.items() if type(node) == FolderTarget]
     context = {
         "request": request,
-        "destination_folders": config.mercure.dicom_retrieve.destination_folders,
-        "dicom_nodes": config.mercure.dicom_retrieve.dicom_nodes,
+        "destination_folders": destination_folders,
+        "dicom_nodes": dicom_nodes,
         "page": "query",
     }
     return templates.TemplateResponse(template, context)

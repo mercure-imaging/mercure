@@ -60,7 +60,7 @@ class SimpleDicomClient():
     output_dir: str
     def __init__(self, host, port, called_aet, out_dir) -> None:
         self.host = host
-        self.port = port
+        self.port = int(port)
         self.called_aet = called_aet
         self.output_dir = out_dir
     
