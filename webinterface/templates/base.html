@@ -130,6 +130,7 @@
 
         document.body.addEventListener('htmx:afterRequest', function (evt) {
           if (evt.detail.xhr.status != 200) {
+            let message;
             if ( evt.detail.xhr.responseText == "Internal Server Error" ) {
               message = "Unexpected server error, please check server logs.";
               console.error(message);

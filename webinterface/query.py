@@ -183,7 +183,7 @@ class SimpleDicomClient():
 
         assoc.release()
 
-    def findscu(self,accession_number) -> Optional[Dataset]:
+    def findscu(self,accession_number) -> List[Dataset]:
         # Create application entity
         ae = AE(ae_title="MERCURE")
 
@@ -207,7 +207,7 @@ class SimpleDicomClient():
                 ds,
                 StudyRootQueryRetrieveInformationModelFind
             )
-
+            results = []
             for (status, identifier) in responses:
                 if not status:
                     print('Connection timed out, was aborted or received invalid response')
@@ -215,11 +215,13 @@ class SimpleDicomClient():
 
                 if status.Status in [0xFF00, 0xFF01]:
                     # print('C-FIND query status: 0x{0:04x}'.format(status.Status))
-                    return identifier
+                    results.append(identifier)
                 # elif status.Status == 0x0000:
                 #     print("Success")
                 #     break
-            raise DicomClientCouldNotFind()
+            if not results:
+                raise DicomClientCouldNotFind()
+            return results
         finally:
             assoc.release()
 

@@ -854,7 +854,7 @@ app.mount("/dashboards", dashboards.dashboards_app)
 
 async def emergency_response(request) -> Response:
     """Shows emergency message about invalid configuration."""
-    return PlainTextResponse("ERROR: mercure configuration is invalid. Check configuration and restart webgui service.")
+    return PlainTextResponse("ERROR: mercure configuration is invalid. Check configuration and restart webgui service.", status_code=500)
 
 
 def launch_emergency_app() -> None:

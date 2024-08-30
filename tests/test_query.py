@@ -131,7 +131,7 @@ def test_simple_dicom_client(dicom_server):
 
     result = client.findscu(MOCK_ACCESSION)
     assert result is not None  # We expect some result, even if it's an empty dataset
-    assert result['AccessionNumber'].value == MOCK_ACCESSION  # Check if the accession number matches
+    assert result[0].AccessionNumber == MOCK_ACCESSION  # Check if the accession number matches
 
 @pytest.fixture(scope="function")
 def tempdir():
@@ -149,7 +149,7 @@ def test_get_accession_job(dicom_server, dicomweb_server, mercure_config):
         # Check that we got some results
         assert len(results) > 0
         assert results[0].remaining == 0
-        assert pydicom.dcmread(next(k for k in Path(config.jobs_folder).iterdir()))['AccessionNumber'].value == MOCK_ACCESSION
+        assert pydicom.dcmread(next(k for k in Path(config.jobs_folder).iterdir())).AccessionNumber == MOCK_ACCESSION
 
 def test_query_job(dicom_server, tempdir):
     """
@@ -163,7 +163,7 @@ def test_query_job(dicom_server, tempdir):
     w.work(burst=True)
     # assert len(list(Path(config.mercure.jobs_folder).iterdir())) == 1
     print([k for k in Path(tempdir).rglob('*')])
-    assert pydicom.dcmread(next(k for k in Path(tempdir).rglob("*.dcm")))['AccessionNumber'].value == MOCK_ACCESSION
+    assert pydicom.dcmread(next(k for k in Path(tempdir).rglob("*.dcm"))).AccessionNumber == MOCK_ACCESSION
 
 def tree(path, prefix='', level=0) -> None:
     if level==0:

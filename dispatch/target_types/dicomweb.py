@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Dict, Generator, List
 from dicomweb_client import DICOMfileClient
 from requests.exceptions import HTTPError
-
+import time
 import pydicom
 from common.types import DicomWebTarget, TaskDispatch, Task
 from .base import ProgressInfo, TargetHandler
@@ -29,7 +29,7 @@ class DicomWebTargetHandler(TargetHandler[DicomWebTarget]):
         session = None
         headers = None
         if target.url.startswith("file://"):
-            return DICOMfileClient(url=target.url, in_memory=True)
+            return DICOMfileClient(url=target.url, in_memory=True, update_db=True)
           
         if target.http_user and target.http_password:
             session = create_session_from_user_pass(username=target.http_user, password=target.http_password)
@@ -46,14 +46,14 @@ class DicomWebTargetHandler(TargetHandler[DicomWebTarget]):
         )
         return client
 
-    def find_from_target(self, target: DicomWebTarget, accession: str) -> List[Dict[str,dict]]:
+    def find_from_target(self, target: DicomWebTarget, accession: str) -> List[pydicom.Dataset]:
         client = self.create_client(target)
-        return client.search_for_series(search_filters={'AccessionNumber': accession})
-
+        metadata = client.search_for_series(search_filters={'AccessionNumber': accession}, get_remaining=True)
+        return [pydicom.Dataset.from_json(ds) for ds in metadata]
 
     def get_from_target(self, target: DicomWebTarget, accession, path) -> Generator[ProgressInfo, None, None]:
         client = self.create_client(target)
-        series = client.search_for_series(search_filters={'AccessionNumber': accession})
+        series = client.search_for_series(search_filters={'AccessionNumber': accession}, get_remaining=True)
         if not series:
             raise ValueError("No series found with accession number {}".format(accession))
         n = 0
@@ -67,7 +67,9 @@ class DicomWebTargetHandler(TargetHandler[DicomWebTarget]):
                 instance.save_as(filename)
                 n += 1
                 remaining -= 1
+                time.sleep(1)
                 yield ProgressInfo(n, remaining, f'{n} / {n + remaining}')
+        time.sleep(1)
 
     def send_to_target(
         self, task_id: str, target: DicomWebTarget, dispatch_info: TaskDispatch, source_folder: Path, task: Task
