@@ -9,7 +9,9 @@ from pynetdicom.status import Status
 from pydicom.uid import generate_uid
 from pydicom.dataset import Dataset, FileMetaDataset
 from rq import Worker
-from webinterface.dashboards.query import GetAccessionJob, SimpleDicomClient, WrappedJob
+from webinterface.dashboards.query.jobs import GetAccessionJob, WrappedJob
+from webinterface.query import SimpleDicomClient
+
 from common.types import DicomTarget, DicomWebTarget
 from webinterface.common import redis, worker_queue
 
@@ -128,7 +130,7 @@ def dicomweb_server(dummy_dataset, tempdir):
 def test_simple_dicom_client(dicom_server):
     """Test the SimpleDicomClient can connect to and query the DICOM server."""
     client = SimpleDicomClient(dicom_server.ip, dicom_server.port, dicom_server.aet_target, None)
-
+    
     result = client.findscu(MOCK_ACCESSION)
     assert result is not None  # We expect some result, even if it's an empty dataset
     assert result[0].AccessionNumber == MOCK_ACCESSION  # Check if the accession number matches
@@ -142,14 +144,17 @@ def test_get_accession_job(dicom_server, dicomweb_server, mercure_config):
     """Test the get_accession_job function."""
     config = mercure_config()
     job_id = "test_job"
-    
-    for server,job in ((dicom_server, GetAccessionJob), (dicomweb_server, GetAccessionJob)):
-        generator = GetAccessionJob.get_accession(job_id, MOCK_ACCESSION, server, config.jobs_folder)
+    print(config.jobs_folder)
+    assert(Path(config.jobs_folder)).exists()
+    (Path(config.jobs_folder) / "foo/").touch()
+    for server in (dicom_server, dicomweb_server):
+        
+        generator = GetAccessionJob.get_accession(job_id, MOCK_ACCESSION, server, search_filters={}, path=config.jobs_folder)
         results = list(generator)
         # Check that we got some results
         assert len(results) > 0
         assert results[0].remaining == 0
-        assert pydicom.dcmread(next(k for k in Path(config.jobs_folder).iterdir())).AccessionNumber == MOCK_ACCESSION
+        assert pydicom.dcmread(next(k for k in Path(config.jobs_folder).rglob("*.dcm"))).AccessionNumber == MOCK_ACCESSION
 
 def test_query_job(dicom_server, tempdir):
     """
@@ -157,7 +162,7 @@ def test_query_job(dicom_server, tempdir):
     We use mocker to mock the queue and avoid actually creating jobs.
     """
     queue = Queue(connection=redis)
-    job = WrappedJob.create([MOCK_ACCESSION], dicom_server, str(tempdir), queue=queue)
+    job = WrappedJob.create([MOCK_ACCESSION], {}, dicom_server, str(tempdir), queue=queue)
     assert job
     w = SimpleWorker([queue], connection=redis)
     w.work(burst=True)
@@ -181,13 +186,13 @@ def tree(path, prefix='', level=0) -> None:
 def test_query_dicomweb(dicomweb_server, tempdir, dummy_dataset, fs):
     (tempdir / "outdir").mkdir()
     queue = Queue(connection=redis)
-    wrapped_job = WrappedJob.create([MOCK_ACCESSION], dicomweb_server, (tempdir / "outdir"), queue=queue)
+    wrapped_job = WrappedJob.create([MOCK_ACCESSION], {}, dicomweb_server, (tempdir / "outdir"), queue=queue)
     assert wrapped_job
     w = SimpleWorker([queue], connection=redis)
     w.work(burst=True)
     # tree(tempdir / "outdir")
     outfile = (tempdir / "outdir" / wrapped_job.id / dummy_dataset.AccessionNumber /  f"{dummy_dataset.SOPInstanceUID}.dcm")
-    assert outfile.exists(), f"File {outfile} does not exist."
+    assert outfile.exists(), f"Expected output file {outfile} does not exist."
     wrapped_job.get_meta()
     assert wrapped_job.meta['completed'] == 1
     assert wrapped_job.meta['total'] == 1

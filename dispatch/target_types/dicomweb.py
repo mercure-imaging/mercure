@@ -1,5 +1,6 @@
 from pathlib import Path
-from typing import Dict, Generator, List
+import sqlite3
+from typing import Any, Dict, Generator, List, Union
 from dicomweb_client import DICOMfileClient
 from requests.exceptions import HTTPError
 import time
@@ -25,11 +26,17 @@ class DicomWebTargetHandler(TargetHandler[DicomWebTarget]):
     icon = "fa-share-alt"
     display_name = "DICOMweb"
 
-    def create_client(self, target: DicomWebTarget):
+    def create_client(self, target: DicomWebTarget) -> Union[DICOMfileClient, DICOMwebClient]:
         session = None
         headers = None
         if target.url.startswith("file://"):
-            return DICOMfileClient(url=target.url, in_memory=True, update_db=True)
+            try:
+                return DICOMfileClient(url=target.url, in_memory=False, update_db=True)
+            except sqlite3.OperationalError as e: 
+                # if sqlite3.OperationalError, try in-memory database
+                # Todo: store the db elsewhere if we don't have write access to this folder
+                # This also makes it possible to run tests under pyfakefs since it can't patch sqlite3 
+                return DICOMfileClient(url=target.url, in_memory=True, update_db=True)
           
         if target.http_user and target.http_password:
             session = create_session_from_user_pass(username=target.http_user, password=target.http_password)
@@ -44,32 +51,57 @@ class DicomWebTargetHandler(TargetHandler[DicomWebTarget]):
             session=session,
             headers=headers,
         )
+        client.set_http_retry_params(retry=False, max_attempts=2, wait_exponential_multiplier=100)
+        logger.info(client)
         return client
 
-    def find_from_target(self, target: DicomWebTarget, accession: str) -> List[pydicom.Dataset]:
+    def find_from_target(self, target: DicomWebTarget, accession: str, search_filters: Dict[str,List[str]]={}) -> List[pydicom.Dataset]:
+        super().find_from_target(target, accession, search_filters)
         client = self.create_client(target)
-        metadata = client.search_for_series(search_filters={'AccessionNumber': accession}, get_remaining=True)
-        return [pydicom.Dataset.from_json(ds) for ds in metadata]
+        use_filters = {'AccessionNumber': accession}
 
-    def get_from_target(self, target: DicomWebTarget, accession, path) -> Generator[ProgressInfo, None, None]:
-        client = self.create_client(target)
-        series = client.search_for_series(search_filters={'AccessionNumber': accession}, get_remaining=True)
+        # If there more one value per filter, just get metadata for the entire accession and filter it after.
+        # Some DICOM servers do actually support filtering on lists, but DICOMwebClient does not seem to support this.
+        # See: https://dicom.nema.org/medical/dicom/current/output/html/part18.html#sect_8.3.4.6
+        for filter_values in search_filters.values():
+            if len(filter_values) > 1:
+                break
+        else:
+            use_filters.update({k: v[0] for k,v in search_filters.items()})
+        
+        metadata = client.search_for_series(search_filters=use_filters, get_remaining=True, fields=['StudyInstanceUID', 'SeriesInstanceUID', 'NumberOfSeriesRelatedInstances'] + list(search_filters.keys()))
+        meta_datasets = [pydicom.Dataset.from_json(ds) for ds in metadata]
+        result = []
+        
+         # In case the server didn't filter as strictly as we expected it to, filter again
+        for d in meta_datasets:
+            for filter in search_filters:
+                if d.get(filter) not in search_filters[filter]:
+                    break
+            else:
+                result.append(d)
+        print(result)
+        return result
+
+    def get_from_target(self, target: DicomWebTarget, accession, search_filters, path) -> Generator[ProgressInfo, None, None]:
+        series = self.find_from_target(target, accession, search_filters=search_filters)
         if not series:
             raise ValueError("No series found with accession number {}".format(accession))
         n = 0
-        remaining = 0
+        remaining = sum([int(x.NumberOfSeriesRelatedInstances) for x in series])
+        client = self.create_client(target)
         for s in series:
-            instances = client.retrieve_series(s['0020000D']['Value'][0], s['0020000E']['Value'][0])
-            remaining += len(instances)
+            instances = client.retrieve_series(s.StudyInstanceUID, s.SeriesInstanceUID)
+            # remaining += len(instances)
             for instance in instances:
                 sop_instance_uid = instance.get('SOPInstanceUID')
                 filename = f"{path}/{sop_instance_uid}.dcm"
                 instance.save_as(filename)
                 n += 1
                 remaining -= 1
-                time.sleep(1)
+                time.sleep(0.5)
                 yield ProgressInfo(n, remaining, f'{n} / {n + remaining}')
-        time.sleep(1)
+        time.sleep(0.5)
 
     def send_to_target(
         self, task_id: str, target: DicomWebTarget, dispatch_info: TaskDispatch, source_folder: Path, task: Task

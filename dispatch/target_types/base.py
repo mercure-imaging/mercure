@@ -1,9 +1,12 @@
 from dataclasses import dataclass
+
+from pydicom import Dataset
 from common.types import Task, TaskDispatch, TaskInfo, Rule, Target
 import common.config as config
 from subprocess import CalledProcessError, check_output
 from starlette.responses import JSONResponse
-from typing import Any, Generator, TypeVar, Generic, cast
+from typing import Any, Dict, Generator, List, TypeVar, Generic, cast
+from pydicom.datadict import dictionary_VR, keyword_for_tag, tag_for_keyword
 
 from pathlib import Path
 import subprocess
@@ -35,12 +38,18 @@ class TargetHandler(Generic[TargetTypeVar]):
     ) -> str:
         return ""
 
-    def get_from_target(self, target: TargetTypeVar, accession: str, path:str) -> Generator[ProgressInfo, None, None]:
+    class NoSuchTagException(Exception):
+        pass
+    def get_from_target(self, target: TargetTypeVar, accession: str, search_filters: Dict[str,List[str]], path:str) -> Generator[ProgressInfo, None, None]:
         raise Exception()
 
-    def find_from_target(self, target: TargetTypeVar, accession: str) -> bool:
-        raise Exception()
-
+    def find_from_target(self, target: TargetTypeVar, accession: str, search_filters:Dict[str,List[str]]) -> List[Dataset]:
+        if self is TargetHandler:
+            raise Exception("This method should be overridden by a subclass")
+        for t in search_filters.keys():
+            if not tag_for_keyword(t):
+                raise TargetHandler.NoSuchTagException(f"Invalid search filter: no such tag '{t}'")
+        return []
     def handle_error(self, e, command) -> None:
         pass
 

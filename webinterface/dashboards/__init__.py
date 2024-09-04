@@ -1,5 +1,5 @@
 from .common import router
-from . import query, simple
+from . import query_routes, simple
 from starlette.applications import Starlette
 
 

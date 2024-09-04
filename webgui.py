@@ -67,7 +67,7 @@ import webinterface.queue as queue
 import webinterface.api as api
 import webinterface.dashboards as dashboards
 from webinterface.common import *
-
+from webinterface.dashboards.query.jobs import WrappedJob
 from decoRouter import Router as decoRouter
 router = decoRouter()
 
@@ -142,7 +142,7 @@ def startup() -> None:
         worker_scheduler.cancel(job)
     worker_scheduler.schedule(
         scheduled_time=datetime.datetime.utcnow(),
-        func=dashboards.query.WrappedJob.update_all_jobs_offpeak,
+        func=WrappedJob.update_all_jobs_offpeak,
         interval=60,
         meta={"type": "offpeak"},
         repeat=None

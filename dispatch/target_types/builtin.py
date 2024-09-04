@@ -1,4 +1,4 @@
-from typing import Generator, Optional
+from typing import Any, Dict, Generator, List, Optional
 
 from pydicom import Dataset
 from common.types import DicomTarget, DicomTLSTarget, SftpTarget, DummyTarget, Task
@@ -13,7 +13,7 @@ from shlex import split
 
 from starlette.responses import JSONResponse
 
-from webinterface.query import SimpleDicomClient
+from webinterface.query import DicomClientCouldNotFind, SimpleDicomClient
 
 from .registry import handler_for
 from .base import ProgressInfo, SubprocessTargetHandler, TargetHandler
@@ -59,15 +59,17 @@ class DicomTargetHandler(SubprocessTargetHandler[DicomTarget]):
         )
         return command, {}
 
-    def find_from_target(self, target: DicomTarget, accession: str) -> Optional[Dataset]:
+    def find_from_target(self, target: DicomTarget, accession: str,  search_filters:Dict[str,List[str]]) -> List[Dataset]:
         c = SimpleDicomClient(target.ip, target.port, target.aet_target, None)
-        return c.findscu(accession)
-        raise NotImplementedError("DicomTarget does not support find_from_target.")
-
-    def get_from_target(self, target: DicomTarget, accession, path) -> Generator[ProgressInfo, None, None]:
+        try:
+            return c.findscu(accession, search_filters)
+        except DicomClientCouldNotFind as e:
+            return []
+        
+    def get_from_target(self, target: DicomTarget, accession:str, search_filters:Dict[str,List[str]], path) -> Generator[ProgressInfo, None, None]:
         config.read_config()
         c = SimpleDicomClient(target.ip, target.port, target.aet_target, path)
-        for identifier in c.getscu(accession):
+        for identifier in c.getscu(accession, search_filters):
             completed, remaining = identifier.NumberOfCompletedSuboperations, identifier.NumberOfRemainingSuboperations, 
             progress = f"{ completed } / { completed + remaining }" 
             yield ProgressInfo(completed, remaining, progress)

@@ -1,4 +1,5 @@
 
+
 from dataclasses import dataclass
 import dataclasses
 import os
@@ -6,34 +7,27 @@ from pathlib import Path
 import shutil
 from typing import Any, Dict, Generator, List, Optional, Tuple, Type, Union, cast
 import typing
-from typing_extensions import Literal
+
 
 from dicomweb_client import DICOMfileClient
 from common.types import DicomTarget, DicomWebTarget, FolderTarget
 from dispatch.target_types.base import ProgressInfo
 from dispatch.target_types.registry import get_handler
-from webinterface.query import SimpleDicomClient
 # Standard python includes
 from datetime import datetime
-import time, random
+import time
 # Starlette-related includes
-from starlette.authentication import requires
 
 # App-specific includes
-from common.constants import mercure_defs
-from webinterface.common import templates
 import common.config as config
-from starlette.responses import PlainTextResponse, JSONResponse
 from webinterface.common import worker_queue, redis
 from rq import Connection 
 from rq.job import Dependency, JobStatus
-from rq import get_current_job
 from rq.job import Job
-from .common import router
-from dicomweb_client.api import DICOMwebClient
+from rq import get_current_job
+
 
 logger = config.get_logger()
-
 
 
 
@@ -82,6 +76,8 @@ class ClassBasedRQJob():
             if f.name in job.meta and not f.name.startswith('_'):
                 meta[f.name] = job.meta[f.name]
         result = cls(**meta, _job=job).execute(**kwargs)
+        if result is None:
+            return b""
         return result
 
     def execute(self, *args, **kwargs) -> Any:
@@ -108,24 +104,36 @@ class ClassBasedRQJob():
 class CheckAccessionsJob(ClassBasedRQJob):
     type: str = "check_accessions"
 
-    def execute(self, *, accessions: List[str], node: Union[DicomTarget, DicomWebTarget], queue=worker_queue):
+    def execute(self, *, accessions: List[str], node: Union[DicomTarget, DicomWebTarget], search_filters:Dict[str,List[str]]={}, queue=worker_queue):
         """
         Check if the given accessions exist on the node using a DICOM query.
         """
         # c = SimpleDicomClient(node.ip, node.port, node.aet_target, None)
         # assert self.parent is not None
+        results = []
         try:
             for accession in accessions:
-                result = get_handler(node).find_from_target(node, accession)
-                logger.info(result)
-                if not result:
+                found_ds_list = get_handler(node).find_from_target(node, accession, search_filters)
+                if not found_ds_list:
                     raise ValueError("No series found with accession number {}".format(accession))
-                # result = c.findscu(accession)
-                # logger.info(result)
+                results.extend(found_ds_list)
+            return results
+        except ValueError as e:
+            self._job.meta['failed_reason'] = e.args[0]
+            self._job.save_meta()
+            if self.parent and (job_parent := queue.fetch_job(self.parent)):
+                job_parent.meta['failed_reason'] = e.args[0]
+                job_parent.save_meta()
+                queue._enqueue_job(job_parent,at_front=True)
+
+            raise
         except:
-            job_parent = queue.fetch_job(self.parent)
-            job_parent.meta['failed_reason'] = f"Accession {accession} not found on node"
-            queue._enqueue_job(job_parent,at_front=True)
+            self._job.meta['failed_reason'] = f"Unexpected error"
+            self._job.save_meta()
+            if self.parent and (job_parent := queue.fetch_job(self.parent)):
+                job_parent.meta['failed_reason'] = "Unknown"
+                job_parent.save_meta()
+                queue._enqueue_job(job_parent,at_front=True)
             raise
 
 @dataclass
@@ -135,10 +143,10 @@ class GetAccessionJob(ClassBasedRQJob):
     offpeak: bool = False
 
     @classmethod
-    def get_accession(cls, job_id, accession: str, node: Union[DicomTarget, DicomWebTarget], path) -> Generator[ProgressInfo, None, None]:
-        yield from get_handler(node).get_from_target(node, accession, path)
+    def get_accession(cls, job_id, accession: str, node: Union[DicomTarget, DicomWebTarget], search_filters: Dict[str, List[str]], path) -> Generator[ProgressInfo, None, None]:
+        yield from get_handler(node).get_from_target(node, accession, search_filters, path)
 
-    def execute(self, *, accession:str, node: Union[DicomTarget, DicomWebTarget], path: str, queue=worker_queue):
+    def execute(self, *, accession:str, node: Union[DicomTarget, DicomWebTarget], search_filters:Dict[str, List[str]], path: str, queue=worker_queue):
         print(f"Getting {accession}")
         job = cast(Job,self._job)
         try:
@@ -154,7 +162,7 @@ class GetAccessionJob(ClassBasedRQJob):
             job.meta['started'] = 1
             job.meta['progress'] = "0 / Unknown"
             job.save_meta() # type: ignore
-            for info in self.get_accession(job.id, accession=accession, node=node, path=path):
+            for info in self.get_accession(job.id, accession=accession, node=node, search_filters=search_filters, path=path):
                 job.meta['remaining'] = info.remaining
                 job.meta['completed'] = info.completed 
                 job.meta['progress'] = info.progress
@@ -214,23 +222,14 @@ class MainJob(ClassBasedRQJob):
                 if not p.is_dir():
                     continue
                 self.move_to_destination(p, destination, job.id)
+
+        # subprocess.run(["./bin/ubuntu22.04/getdcmtags", filename, self.called_aet, "MERCURE"],check=True)
+
         logger.info(f"Removing job directory {path}")
         # tree(destination)
         shutil.rmtree(path)
 
         return "Job complete"
-
-
-def monitor_job():
-    print("monitoring")
-
-# class DicomQueryFlow():
-#     CheckAccessions = CheckAccessionsJob
-#     GetAccession = GetAccessionJob
-
-# class DicomWebQueryFlow():
-#     CheckAccessions = CheckAccessionsDicomWebJob
-#     GetAccession = GetAccessionDicomWebJob
 
 class WrappedJob():
     def __init__(self, job: Union[Job,str], queue):
@@ -242,18 +241,19 @@ class WrappedJob():
         self.queue = queue
 
     @classmethod
-    def create(cls, accessions, dicom_node: Union[DicomWebTarget, DicomTarget], destination_path, offpeak=False, queue=worker_queue) -> 'WrappedJob':
+    def create(cls, accessions, search_filters:Dict[str, List[str]], dicom_node: Union[DicomWebTarget, DicomTarget], destination_path, offpeak=False, queue=worker_queue) -> 'WrappedJob':
         """
         Create a job to process the given accessions and store them in the specified destination path.
         """
 
         with Connection(redis):
             jobs: List[Job] = []
-            check_job = CheckAccessionsJob().create(accessions=accessions, node=dicom_node)
+            check_job = CheckAccessionsJob().create(accessions=accessions, search_filters=search_filters, node=dicom_node)
             for accession in accessions:
                 job = GetAccessionJob(offpeak=offpeak).create(
                     accession=accession, 
                     node=dicom_node,
+                    search_filters=search_filters,
                     rq_options=dict(
                         depends_on=cast(List[Union[Dependency, Job]],[check_job]),
                         timeout=30*60,
@@ -445,163 +445,3 @@ def _is_offpeak(offpeak_start: str, offpeak_end: str, current_time) -> bool:
         return bool(current_time >= start_time and current_time <= end_time)
     # End time is after midnight
     return bool(current_time >= start_time or current_time <= end_time)
-
- 
-@router.post("/query/retry_job")
-@requires(["authenticated", "admin"], redirect="login")
-async def post_retry_job(request):
-    job = WrappedJob(request.query_params['id'], queue=worker_queue)
-    job.retry()
-    return JSONResponse({})
-
-@router.post("/query/pause_job")
-@requires(["authenticated", "admin"], redirect="login")
-async def post_pause_job(request):
-    job = WrappedJob(request.query_params['id'], queue=worker_queue)
-    if not job:
-        return JSONResponse({'error': 'Job not found'}, status_code=404)
-    if job.is_finished or job.is_failed:
-        return JSONResponse({'error': 'Job is already finished'}, status_code=400)
-    job.pause()
-    return JSONResponse({'status': 'success'}, status_code=200)
-
-@router.post("/query/resume_job")
-@requires(["authenticated", "admin"], redirect="login")
-async def post_resume_job(request):
-    job = WrappedJob(request.query_params['id'], queue=worker_queue)
-    if not job:
-        return JSONResponse({'error': 'Job not found'}, status_code=404)
-    if job.is_finished or job.is_failed:
-        return JSONResponse({'error': 'Job is already finished'}, status_code=400)
-    
-    job.resume()
-    return JSONResponse({'status': 'success'}, status_code=200)
-
-@router.get("/query/job_info")
-@requires(["authenticated", "admin"], redirect="login")
-async def get_job_info(request):
-    job_id = request.query_params['id']
-    job = WrappedJob(job_id, queue=worker_queue)
-    if not job:
-        return JSONResponse({'error': 'Job not found'}, status_code=404)
-    
-    subjob_info:List[Dict[str,Any]] = []
-    for subjob in job.get_subjobs():
-        if not subjob:
-            continue
-        info = {
-                'id': subjob.get_id(),
-                'ended_at': subjob.ended_at.isoformat().split('.')[0] if subjob.ended_at else "", 
-                'created_at_dt':subjob.created_at,
-                'accession': subjob.kwargs['accession'],
-                'progress': subjob.meta.get('progress'),
-                'paused': subjob.meta.get('paused',False),
-                'status': subjob.get_status()
-            }
-        if info['status'] == 'canceled' and info['paused']:
-            info['status'] = 'paused'
-        subjob_info.append(info)
-    subjob_info = sorted(subjob_info, key=lambda x:x['created_at_dt'])
-    return templates.TemplateResponse("dashboards/query_job_fragment.html", {"request":request,"job":job,"subjob_info":subjob_info})
-
-
-
-@router.post("/query")
-@requires(["authenticated", "admin"], redirect="login")
-async def query_post_batch(request):
-    """
-    Starts a new query job for the given accession number and DICOM node.
-    """
-    form = await request.form()
-
-    node = config.mercure.targets.get(form.get("dicom_node"))
-    if not isinstance(node, (DicomWebTarget, DicomTarget)):
-        return JSONResponse({"error": f"Invalid DICOM node"}, status_code=400)
-
-    destination = config.mercure.targets.get(form.get("destination"))
-    if destination and isinstance(destination, FolderTarget):
-        dest_path = destination.folder
-    else:
-        return JSONResponse({"error": "Invalid destination"}, status_code=400)
-    # random_accessions = ["".join(random.choices([str(i) for i in range(10)], k=10)) for _ in range(3)]
-    offpeak = 'offpeak' in form
-    WrappedJob.create(form.get("accession").split(","), node, dest_path, offpeak=offpeak)
-    # worker_scheduler.schedule(scheduled_time=datetime.utcnow(), func=monitor_job, interval=10, repeat=10, result_ttl=-1)
-    return PlainTextResponse()
- 
-# @router.post("/query_single")
-# @requires(["authenticated", "admin"], redirect="login")
-# async def query_post(request):
-#     """
-#     Starts a new query job for the given accession number and DICOM node.
-#     """
-#     form = await request.form()
-#     for n in config.mercure.dicom_retrieve.dicom_nodes:
-#         if n.name == form.get("dicom_node"):
-#             node = n
-#             break
-    
-#     worker_queue.enqueue_call(QueryJob.get_accession_job, kwargs=dict(accession=form.get("accession"), node=node), timeout=30*60, result_ttl=-1, meta=dict(type="get_accession_single"))
-#     return PlainTextResponse()
-
-
-@router.get("/query/jobs")
-@requires(["authenticated", "admin"], redirect="login")
-async def query_jobs(request):
-    """
-    Returns a list of all query jobs. 
-    """
-    job_info = []
-    for job in WrappedJob.get_all_jobs():
-        job_dict = dict(id=job.id, 
-                                status=job.get_status(), 
-                                parameters=dict(accession=job.kwargs.get('accession','')), 
-                                created_at=1000*datetime.timestamp(job.created_at) if job.created_at else "",
-                                enqueued_at=1000*datetime.timestamp(job.enqueued_at) if job.enqueued_at else "", 
-                                result=job.result if job.get_status() != "failed" else job.meta.get("failed_reason",""), 
-                                meta=job.meta,
-                                progress="")
-        # if job.meta.get('completed') and job.meta.get('remaining'):
-        #     job_dict["progress"] = f"{job.meta.get('completed')} / {job.meta.get('completed') + job.meta.get('remaining')}"
-        # if job.meta.get('type',None) == "batch":
-        n_started = job.meta.get('started',0)
-        n_completed = job.meta.get('completed',0)
-        n_total = job.meta.get('total',0)
-
-        if job_dict["status"] == "finished":
-            job_dict["progress"] = f"{n_total} / {n_total}"
-        elif job_dict["status"] in ("deferred","started", "paused", "canceled"):
-            job_dict["progress"] = f"{n_completed} / {n_total}"
-        
-        # if job_dict["status"] == "canceled" and 
-        if job_dict["meta"].get('paused', False) and job_dict["status"] not in ("finished", "failed"):
-            if n_started < n_completed: # TODO: this does not work
-                job_dict["status"] = "pausing"
-            else:
-                job_dict["status"] = "paused"
-
-        if job_dict["status"] in ("deferred", "started"):
-            if n_started == 0:
-                job_dict["status"] = "waiting"
-            elif n_completed < n_total:
-                job_dict["status"] = "running" 
-            elif n_completed == n_total:
-                job_dict["status"] = "finishing" 
-
-        job_info.append(job_dict)
-    return JSONResponse(dict(data=job_info))
-    # return PlainTextResponse(",".join([str(j) for j in all_jobs]))
-
-@router.get("/query")
-@requires(["authenticated", "admin"], redirect="login")
-async def query(request):
-    template = "dashboards/query.html"
-    dicom_nodes = [name for name,node in config.mercure.targets.items() if type(node) in (DicomTarget, DicomWebTarget)]
-    destination_folders = [name for name,node in config.mercure.targets.items() if type(node) == FolderTarget]
-    context = {
-        "request": request,
-        "destination_folders": destination_folders,
-        "dicom_nodes": dicom_nodes,
-        "page": "query",
-    }
-    return templates.TemplateResponse(template, context)

@@ -1,6 +1,6 @@
 import os
 import re
-from typing import Any, Iterator, List, Optional, Sequence, cast
+from typing import Any, Dict, Iterator, List, Optional, Sequence, cast
 from pynetdicom import (
         AE,
         QueryRetrievePresentationContexts, BasicWorklistManagementPresentationContexts, UnifiedProcedurePresentationContexts,
@@ -120,11 +120,10 @@ class SimpleDicomClient():
             # Failed - Out of Resources - Miscellaneous error
             status_ds.Status = 0xA701
 
-        subprocess.run(["./bin/ubuntu22.04/getdcmtags", filename, self.called_aet, "MERCURE"],check=True)
         return status_ds
 
 
-    def getscu(self, accession_number) -> Iterator[Dataset]:
+    def getscu(self, accession_number: str, search_filters: Dict[str, List[str]]) -> Iterator[Dataset]:
         # Exclude these SOP Classes
         _exclusion = [
             EncapsulatedSTLStorage,
@@ -164,8 +163,10 @@ class SimpleDicomClient():
             # Send query
 
         ds = Dataset()
-        ds.QueryRetrieveLevel = 'STUDY'
+        ds.QueryRetrieveLevel = 'SERIES'
         ds.AccessionNumber = accession_number
+        for key in search_filters:
+            setattr(ds, key, "\\".join(search_filters.get(key,[])))
 
         responses = assoc.send_c_get(ds, query_model)
         success = False
@@ -183,7 +184,7 @@ class SimpleDicomClient():
 
         assoc.release()
 
-    def findscu(self,accession_number) -> List[Dataset]:
+    def findscu(self,accession_number, search_filters={}) -> List[Dataset]:
         # Create application entity
         ae = AE(ae_title="MERCURE")
 
@@ -197,8 +198,15 @@ class SimpleDicomClient():
         assoc = ae.associate(self.host, self.port, ae_title=self.called_aet, max_pdu=0, ext_neg=[])
 
         ds = Dataset()
-        ds.QueryRetrieveLevel = 'STUDY'
+        ds.QueryRetrieveLevel = 'SERIES'
         ds.AccessionNumber = accession_number
+        ds.SeriesInstanceUID = ''
+        ds.StudyInstanceUID = ''
+        ds.Modality = ''
+        ds.NumberOfSeriesRelatedInstances = ''
+        for key in search_filters:
+            setattr(ds, key, "\\".join(search_filters.get(key,[])))
+
         if not assoc.is_established:
             raise DicomClientCouldNotAssociate()
 

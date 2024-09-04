@@ -26,6 +26,37 @@
                 </div>
               </div>
             </div>
+
+            <div class="field is-horizontal">
+              <div class="field-label is-normal">
+                <label class="label">Study Description</label>
+              </div>
+              <div class="field-body">
+                <div class="field">
+                  <div class="control is-expanded">
+                    <div class="control">
+                        <input name="study_description" class="input" type="text" placeholder="" value="">
+                      </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="field is-horizontal">
+              <div class="field-label is-normal">
+                <label class="label">Series Description</label>
+              </div>
+              <div class="field-body">
+                <div class="field">
+                  <div class="control is-expanded">
+                    <div class="control">
+                        <input name="series_description" class="input" type="text" placeholder="" value="">
+                      </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div class="field is-horizontal">
               <div class="field-label is-normal">
                 <label class="label">Dicom Node</label>
@@ -74,7 +105,7 @@
                   <div class="control is-expanded">
                     <label class="checkbox">
                       <input type="checkbox" id="offpeak" name="offpeak" value="">
-                    </div>
+                    </label>
                   </div>
                 </div>
               </div>
@@ -90,13 +121,28 @@
                     <button type="submit" class="button is-primary">
                       Query
                     </button>
+                    <button type="button" id="check-accessions" class="button is-info">
+                      Check Accessions
+                    </button>
                   </div>
                 </div>
               </div>
             </div>
           </form>
           <div id="query_result"></div>
-        <div class="columns">
+          <div id="check-accessions-result" style="display: none;">
+            <table id="check-accessions-table" class="table is-narrow is-hoverable is-fullwidth">
+              <thead>
+                <tr>
+                  <th>Accession</th>
+                  <th>Study Description</th>
+                  <th>Series Description</th>
+                  <th>Instances</th>
+                </tr>
+              </thead>
+            </table>
+          </div>
+          <div class="columns">
 
         <div class="column">
             <table class="table is-narrow is-hoverable is-fullwidth jobtable" id="casetable">
@@ -244,6 +290,57 @@ $(document).ready(function () {
         initComplete: function() {             
         }
     });
+    var jobId;
+    var errMessage;
+    $('#check-accessions').on('click', function(e) {
+        e.preventDefault();
+        var accessions = $('input[name="accession"]').val();
+        var dicomNode = $('select[name="dicom_node"]').val();
+        errMessage = null;
+        $('#check-accessions-result').show();
+
+        if ($.fn.DataTable.isDataTable('#check-accessions-table')) {
+            $('#check-accessions-table').DataTable().destroy();
+        }
+
+        $('#check-accessions-table').DataTable({
+            ajax: {
+                url: "query/check_accessions",
+                type: "POST",
+                data: function(d) {
+                    return {
+                        accessions: accessions,
+                        series_description: $('input[name="series_description"]').val(),
+                        study_description: $('input[name="study_description"]').val(),
+                        dicom_node: dicomNode,
+                        job_id: jobId
+                    };
+                },
+                dataSrc: function(json) {
+                    console.log("Data: ", json)
+                    if (json.status === "pending") {
+                        jobId = json.job_id;
+                        setTimeout(function() {
+                            $('#check-accessions-table').DataTable().ajax.reload();
+                        }, 1000);
+                        return [];
+                    } else if (json.status === "completed") {
+                      jobId = null;
+                      return json.result
+                    } else if (json.status === "failed") {
+                      jobId = null;
+                      errMessage = json.info;
+                      return [];
+                    }
+                }
+            },
+            columns: [{ data: 'AccessionNumber' }, {data: 'StudyDescription'},  { data: 'SeriesDescription' }, {data: 'NumberOfSeriesRelatedInstances'}], 
+            order: [[0, 'asc']],
+            pageLength: 25,
+            language: { "emptyTable": ()=> errMessage || "No series found or query in progress." } 
+            }); 
+    });
+
     window.datatable.on('click', 'td.dt-control', function (e) {
       let tr = e.target.closest('tr');
       let row = window.datatable.row(tr);
