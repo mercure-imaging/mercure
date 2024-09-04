@@ -178,7 +178,7 @@ async def query_jobs(request):
 @requires(["authenticated", "admin"], redirect="login")
 async def query(request):
     template = "dashboards/query.html"
-    dicom_nodes = [name for name,node in config.mercure.targets.items() if type(node) in (DicomTarget, DicomWebTarget)]
+    dicom_nodes = [name for name,node in config.mercure.targets.items() if type(node) in (DicomTarget, DicomWebTarget) and node.direction in ("pull", "both")]
     destination_folders = [name for name,node in config.mercure.targets.items() if type(node) == FolderTarget]
     context = {
         "request": request,

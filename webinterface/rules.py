@@ -114,7 +114,7 @@ async def rules_edit(request) -> Response:
         "request": request,
         "page": "rules",
         "rules": config.mercure.rules,
-        "targets": config.mercure.targets,
+        "targets": [t for t in config.mercure.targets if config.mercure.targets[t].direction in ("push", "both")],
         "modules": config.mercure.modules,
         "rule": rule,
         "alltags": tagslist.alltags,

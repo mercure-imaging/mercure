@@ -25,6 +25,7 @@ class Target(BaseModel, Compat):
     target_type: Any
     contact: Optional[str] = ""
     comment: str = ""
+    direction: Optional[Literal["pull", "push", "both"]] = "push"
 
     @classmethod
     def __get_validators__(cls):

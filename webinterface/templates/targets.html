@@ -23,6 +23,10 @@
                         <col width="150">
                         {% include get_target_handler(targets[x]).view_template %}
                         <tr>
+                            <td>Direction:</td>
+                            <td>{{ targets[x].direction }}</td>
+                        </tr>
+                        <tr>
                             <td>Contact:</td>
                             <td>{{ targets[x].contact }}</td>
                         </tr>

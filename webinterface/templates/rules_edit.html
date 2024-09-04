@@ -293,8 +293,7 @@
                             <div class="control">
                                 <select name="target">
                                     {% for t in targets %}
-                                    <option value="{{t}}" {% if rules[rule]['target']==t %}selected{% endif%}>{{ t }}
-                                    </option>
+                                    <option value="{{t}}" {% if rules[rule]['target']==t %}selected{% endif%}>{{ t }}</option>
                                     {% endfor %}
                                 </select>
                             </div>
