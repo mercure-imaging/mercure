@@ -25,7 +25,8 @@ class DicomWebTargetHandler(TargetHandler[DicomWebTarget]):
     # test_template = "targets/dicomweb-test.html"
     icon = "fa-share-alt"
     display_name = "DICOMweb"
-
+    can_pull = True
+    
     def create_client(self, target: DicomWebTarget) -> Union[DICOMfileClient, DICOMwebClient]:
         session = None
         headers = None

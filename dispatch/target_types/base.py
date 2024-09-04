@@ -24,7 +24,7 @@ class ProgressInfo():
 
 class TargetHandler(Generic[TargetTypeVar]):
     test_template = "targets/base-test.html"
-
+    can_pull = False
     def __init__(self):
         pass
 

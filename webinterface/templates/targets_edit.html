@@ -40,24 +40,22 @@
                             </div>
                         </div>
                     </div>
-
-
-                    <div class="field">
-                        <label class="label">Direction</label>
-                        <div class="select">
-                            <div class="control">
-                                <select name="direction" id="direction" value="{{targets[edittarget].direction}}">
-                                    <option value="push" {% if targets[edittarget].direction=="push" %}selected=true {%endif%}>push</option>
-                                    <option value="pull" {% if targets[edittarget].direction=="pull" %}selected=true {%endif%}>pull</option>
-                                    <option value="both" {% if targets[edittarget].direction=="both" %}selected=true {%endif%}>both</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-
-
                     {% for t in target_types %}
                     <div id="form-{{t.get_name()}}" class="target-form {% if not loop.index0 %}is-hidden{% endif %}">
+                        {% if get_target_handler(t).can_pull %}
+                        <div class="field">
+                            <label class="label">Direction</label>
+                            <div class="select">
+                                <div class="control">
+                                    <select name="direction" id="direction" value="{{targets[edittarget].direction}}">
+                                        <option value="push" {% if targets[edittarget].direction=="push" %}selected=true {%endif%}>push</option>
+                                        <option value="pull" {% if targets[edittarget].direction=="pull" %}selected=true {%endif%}>pull</option>
+                                        <option value="both" {% if targets[edittarget].direction=="both" %}selected=true {%endif%}>both</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
                         {% include get_target_handler(t).edit_template %}
                     </div>
                     {%endfor%}

@@ -39,6 +39,7 @@ class DicomTargetHandler(SubprocessTargetHandler[DicomTarget]):
     test_template = "targets/dicom-test.html"
     icon = "fa-database"
     display_name = "DICOM"
+    can_pull = True
 
     def _create_command(self, target: DicomTarget, source_folder: Path, task: Task):
         target_ip = target.ip
