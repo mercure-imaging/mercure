@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 import sqlite3
 from typing import Any, Dict, Generator, List, Union
@@ -134,20 +135,31 @@ class DicomWebTargetHandler(TargetHandler[DicomWebTarget]):
     async def test_connection(self, target: DicomWebTarget, target_name: str):
         client = self.create_client(target)
 
-        results = {}
-        try:
-            result = client._http_get(target.url)
-            results["authentication"] = True
-        except HTTPError as e:
-            if e.errno == 401:
-                results["authentication"] = False
+        results: Dict[str, Union[bool, str, None]] = {}
+        results["Authentication"] = None
+        if isinstance(client, DICOMwebClient):
+            try:
+                result = client._http_get(target.url)
+                results["Authentication"] = True
+            except HTTPError as e:
+                if e.errno == 401:
+                    results["Authentication"] = False
+                else:
+                    results["Authentication"] = True
+        elif isinstance(client, DICOMfileClient):
+            folder = Path(target.url[7:])
+            if not folder.exists() or not folder.is_dir():
+                results["Authentication"] = f"No such folder {folder}"
+            elif target.direction in ("pull", "both") and not os.access(folder, os.R_OK):
+                results["Authentication"] = f"No read access to folder {folder}"
+            elif target.direction in ("push", "both") and not os.access(folder, os.W_OK):
+                results["Authentication"] = f"No write access to folder {folder}"
             else:
-                results["authentication"] = True
-
+                results["Authentication"] = True
         try:
             client.search_for_studies(limit=1)
-            results["QIDO_query"] = True
+            results["QIDO query"] = True
         except HTTPError as e:
-            results["QIDO_query"] = False
+            results["QIDO query"] = False
 
         return results

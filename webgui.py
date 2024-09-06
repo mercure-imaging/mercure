@@ -135,12 +135,12 @@ async def lifespan(app):
 
 
 def startup() -> None:
-    scheduled_jobs = worker_scheduler.get_jobs()
+    scheduled_jobs = rq_fast_scheduler.get_jobs()
     for job in scheduled_jobs: 
         if job.meta.get("type") != "offpeak":
             continue
-        worker_scheduler.cancel(job)
-    worker_scheduler.schedule(
+        rq_fast_scheduler.cancel(job)
+    rq_fast_scheduler.schedule(
         scheduled_time=datetime.datetime.utcnow(),
         func=WrappedJob.update_all_jobs_offpeak,
         interval=60,

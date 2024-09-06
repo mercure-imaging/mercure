@@ -20,12 +20,9 @@ import time
 
 # App-specific includes
 import common.config as config
-from webinterface.common import worker_queue, redis
-from rq import Connection 
-from rq.job import Dependency, JobStatus
-from rq.job import Job
-from rq import get_current_job
-
+from webinterface.common import redis, rq_fast_queue, rq_slow_queue
+from rq.job import Dependency, JobStatus, Job
+from rq import Connection, Queue, get_current_job
 
 logger = config.get_logger()
 
@@ -58,8 +55,12 @@ class ClassBasedRQJob():
     parent: Optional[str] = None
     type: str = "unknown"
     _job: Optional[Job] = None
+    _queue: str = ''
 
-    
+    @classmethod
+    def queue(cls) -> Queue:
+        return Queue(cls._queue, connection=redis)
+
     def create(self, rq_options={}, **kwargs) -> Job:
         fields = dataclasses.fields(self)
         meta = {field.name: getattr(self, field.name) for field in fields}
@@ -103,8 +104,9 @@ class ClassBasedRQJob():
 @dataclass 
 class CheckAccessionsJob(ClassBasedRQJob):
     type: str = "check_accessions"
-
-    def execute(self, *, accessions: List[str], node: Union[DicomTarget, DicomWebTarget], search_filters:Dict[str,List[str]]={}, queue=worker_queue):
+    _queue: str = rq_fast_queue.name
+    
+    def execute(self, *, accessions: List[str], node: Union[DicomTarget, DicomWebTarget], search_filters:Dict[str,List[str]]={}):
         """
         Check if the given accessions exist on the node using a DICOM query.
         """
@@ -118,46 +120,42 @@ class CheckAccessionsJob(ClassBasedRQJob):
                     raise ValueError("No series found with accession number {}".format(accession))
                 results.extend(found_ds_list)
             return results
-        except ValueError as e:
-            self._job.meta['failed_reason'] = e.args[0]
-            self._job.save_meta()
-            if self.parent and (job_parent := queue.fetch_job(self.parent)):
+        except Exception as e:
+            if not self._job:
+                raise
+            self._job.meta['failed_reason'] = str(e)
+            self._job.save_meta() # type: ignore
+            if self.parent and (job_parent := Job.fetch(self.parent)):
                 job_parent.meta['failed_reason'] = e.args[0]
-                job_parent.save_meta()
-                queue._enqueue_job(job_parent,at_front=True)
+                job_parent.save_meta() # type: ignore
+                Queue(job_parent.origin)._enqueue_job(job_parent,at_front=True)
 
             raise
-        except:
-            self._job.meta['failed_reason'] = f"Unexpected error"
-            self._job.save_meta()
-            if self.parent and (job_parent := queue.fetch_job(self.parent)):
-                job_parent.meta['failed_reason'] = "Unknown"
-                job_parent.save_meta()
-                queue._enqueue_job(job_parent,at_front=True)
-            raise
+
 
 @dataclass
 class GetAccessionJob(ClassBasedRQJob):
     type: str = "get_accession"
     paused: bool = False
     offpeak: bool = False
+    _queue: str = rq_slow_queue.name
 
     @classmethod
     def get_accession(cls, job_id, accession: str, node: Union[DicomTarget, DicomWebTarget], search_filters: Dict[str, List[str]], path) -> Generator[ProgressInfo, None, None]:
         yield from get_handler(node).get_from_target(node, accession, search_filters, path)
 
-    def execute(self, *, accession:str, node: Union[DicomTarget, DicomWebTarget], search_filters:Dict[str, List[str]], path: str, queue=worker_queue):
+    def execute(self, *, accession:str, node: Union[DicomTarget, DicomWebTarget], search_filters:Dict[str, List[str]], path: str):
         print(f"Getting {accession}")
         job = cast(Job,self._job)
         try:
             Path(path).mkdir(parents=True, exist_ok=True)
             job_parent = None
             if parent_id := self.parent:
-                job_parent = queue.fetch_job(parent_id)
+                job_parent = Job.fetch(parent_id)
 
             if job_parent:
                 job_parent.meta['started'] = job_parent.meta.get('started',0) + 1
-                job_parent.save_meta()
+                job_parent.save_meta() # type: ignore
 
             job.meta['started'] = 1
             job.meta['progress'] = "0 / Unknown"
@@ -175,7 +173,7 @@ class GetAccessionJob(ClassBasedRQJob):
                 job_parent.get_meta() # there is technically a race condition here...
                 job_parent.meta['completed'] += 1
                 job_parent.meta['progress'] = f"{job_parent.meta['started'] } / {job_parent.meta['completed'] } / {job_parent.meta['total']}"
-                job_parent.save_meta()
+                job_parent.save_meta() # type: ignore
         except:
             if not job_parent:
                 raise
@@ -184,13 +182,13 @@ class GetAccessionJob(ClassBasedRQJob):
             for subjob_id in job_parent.kwargs.get('subjobs',[]):
                 if subjob_id == job.id:
                     continue
-                subjob = queue.fetch_job(subjob_id)
+                subjob = Job.fetch(subjob_id)
                 if subjob.get_status() not in ('finished', 'canceled','failed'):
                     subjob.cancel()
             job_parent.get_meta() 
             logger.info("Cancelled sibling jobs.")
             job_parent.meta["failed_reason"] = f"Failed to retrieve {accession}"
-            queue._enqueue_job(job_parent,at_front=True) # Force the parent job to run and fail itself
+            Queue(job_parent.origin)._enqueue_job(job_parent,at_front=True) # Force the parent job to run and fail itself
             raise
 
         return "Job complete"
@@ -203,12 +201,13 @@ class MainJob(ClassBasedRQJob):
     total: int = 0
     paused: bool = False 
     offpeak: bool = False
+    _queue: str = rq_fast_queue.name
 
-    def execute(self, *, accessions, subjobs, path, destination, move_promptly, queue=worker_queue) -> str:
+    def execute(self, *, accessions, subjobs, path, destination, move_promptly) -> str:
         job = cast(Job,self._job)
         job.get_meta()
         for job_id in job.kwargs.get('subjobs',[]):
-            subjob = queue.fetch_job(job_id)
+            subjob = Job.fetch(job_id)
             if (status := subjob.get_status()) != 'finished':
                 raise Exception(f"Subjob {subjob.id} is {status}")
             if job.kwargs.get('failed', False):
@@ -232,22 +231,25 @@ class MainJob(ClassBasedRQJob):
         return "Job complete"
 
 class WrappedJob():
-    def __init__(self, job: Union[Job,str], queue):
+    job: Job
+    def __init__(self, job: Union[Job,str]):
         if isinstance(job, str):
-            self.job = queue.fetch_job(job)
+            if not (result:=Job.fetch(job)):
+                raise Exception("Invalid Job ID")
+            self.job = result
         else:
             self.job = job
+        
         assert self.job.meta.get('type') == 'batch', f"Job type must be batch, got {self.job.meta['type']}"
-        self.queue = queue
 
     @classmethod
-    def create(cls, accessions, search_filters:Dict[str, List[str]], dicom_node: Union[DicomWebTarget, DicomTarget], destination_path, offpeak=False, queue=worker_queue) -> 'WrappedJob':
+    def create(cls, accessions, search_filters:Dict[str, List[str]], dicom_node: Union[DicomWebTarget, DicomTarget], destination_path, offpeak=False) -> 'WrappedJob':
         """
         Create a job to process the given accessions and store them in the specified destination path.
         """
 
         with Connection(redis):
-            jobs: List[Job] = []
+            get_accession_jobs: List[Job] = []
             check_job = CheckAccessionsJob().create(accessions=accessions, search_filters=search_filters, node=dicom_node)
             for accession in accessions:
                 job = GetAccessionJob(offpeak=offpeak).create(
@@ -260,32 +262,32 @@ class WrappedJob():
                         result_ttl=-1
                         )
                     )
-                jobs.append(job)
+                get_accession_jobs.append(job)
             depends = Dependency(
-                jobs=cast(List[Union[Job,str]],jobs),
+                jobs=cast(List[Union[Job,str]],get_accession_jobs),
                 allow_failure=True,    # allow_failure defaults to False
             )
-            full_job = MainJob(total=len(jobs), offpeak=offpeak).create(
+            full_job = MainJob(total=len(get_accession_jobs), offpeak=offpeak).create(
                 accessions = accessions,
-                subjobs = [j.id for j in jobs],
+                subjobs = [j.id for j in get_accession_jobs],
                 destination = destination_path,
                 move_promptly = True,
                 rq_options = dict(depends_on=depends, timeout=-1, result_ttl=-1)
             )
             check_job.meta["parent"] = full_job.id
-            for j in jobs:
+            for j in get_accession_jobs:
                 j.meta["parent"] = full_job.id
                 j.kwargs["path"] = Path(config.mercure.jobs_folder) / full_job.id / j.kwargs['accession']
                 j.kwargs["path"].mkdir(parents=True)
 
             full_job.kwargs["path"] = Path(config.mercure.jobs_folder) / full_job.id
 
-        queue.enqueue_job(check_job)
-        for j in jobs:
-            queue.enqueue_job(j)
-        queue.enqueue_job(full_job)
+        CheckAccessionsJob.queue().enqueue_job(check_job)
+        for j in get_accession_jobs:
+            GetAccessionJob.queue().enqueue_job(j)
+        MainJob.queue().enqueue_job(full_job)
 
-        wrapped_job = WrappedJob(full_job, queue=queue)
+        wrapped_job = WrappedJob(full_job)
         if offpeak and not _is_offpeak(config.mercure.offpeak_start, config.mercure.offpeak_end, datetime.now().time()):
             wrapped_job.pause()
 
@@ -299,7 +301,7 @@ class WrappedJob():
         Pause the current job, including all its subjobs.
         """
         for job_id in self.job.kwargs.get('subjobs',[]):
-            subjob = self.queue.fetch_job(job_id)
+            subjob = Job.fetch(job_id)
             if subjob and (subjob.is_deferred or subjob.is_queued):
                 subjob.meta['paused'] = True
                 subjob.save_meta() # type: ignore
@@ -313,11 +315,11 @@ class WrappedJob():
         Resume a paused job by unpausing all its subjobs
         """
         for subjob_id in self.job.kwargs.get('subjobs',[]):
-            subjob = self.job.fetch_job(subjob_id)
+            subjob = Job.fetch(subjob_id)
             if subjob and subjob.meta.get('paused', None):
                 subjob.meta['paused'] = False
                 subjob.save_meta() # type: ignore
-                self.queue.canceled_job_registry.requeue(subjob_id)
+                Queue(subjob.origin).canceled_job_registry.requeue(subjob_id)
         self.job.get_meta()
         self.job.meta['paused'] = False
         self.job.save_meta() # type: ignore
@@ -335,18 +337,18 @@ class WrappedJob():
                 logger.info(f"Retrying {subjob}")
                 if status == "failed" and (job_path:=Path(subjob.kwargs['path'])).exists():
                     shutil.rmtree(job_path) # Clean up after a failed job
-                self.queue.enqueue_job(subjob)
-        self.queue.enqueue_job(self.job)
+                Queue(subjob.origin).enqueue_job(subjob)
+        Queue(self.job.origin).enqueue_job(self.job)
 
     @classmethod
-    def update_all_jobs_offpeak(cls,queue=worker_queue) -> None:
+    def update_all_jobs_offpeak(cls) -> None:
         """
         Resume or pause offpeak jobs based on whether the current time is within offpeak hours.
         """
         config.read_config()
         is_offpeak = _is_offpeak(config.mercure.offpeak_start, config.mercure.offpeak_end, datetime.now().time())
         logger.info(f"is_offpeak {is_offpeak}")
-        for job in WrappedJob.get_all_jobs(queue=queue):
+        for job in WrappedJob.get_all_jobs():
             job.update_offpeak(is_offpeak)
 
     def update_offpeak(self, is_offpeak) -> None:
@@ -366,7 +368,7 @@ class WrappedJob():
                 self.pause()
 
     def get_subjobs(self) -> Generator[Job, None, None]:
-        return (self.queue.fetch_job(job) for job in self.job.kwargs.get('subjobs', []) if job)
+        return (Job.fetch(job) for job in self.job.kwargs.get('subjobs', []) if job)
 
     def get_status(self) -> JobStatus:
         return cast(JobStatus,self.job.get_status())
@@ -411,27 +413,27 @@ class WrappedJob():
         return cast(datetime,self.job.enqueued_at)
 
     @classmethod
-    def get_all_jobs(cls, type:str="batch", queue=worker_queue) -> Generator['WrappedJob', None, None]:
+    def get_all_jobs(cls, type:str="batch") -> Generator['WrappedJob', None, None]:
         """
         Get all jobs of a given type from the queue
         """
         registries = [
-            queue.started_job_registry,     # Returns StartedJobRegistry
-            queue.deferred_job_registry,    # Returns DeferredJobRegistry
-            queue.finished_job_registry,    # Returns FinishedJobRegistry
-            queue.failed_job_registry,      # Returns FailedJobRegistry 
-            queue.scheduled_job_registry,   # Returns ScheduledJobRegistry
-            queue.canceled_job_registry,    # Returns CanceledJobRegistry
+            rq_slow_queue.started_job_registry,     # Returns StartedJobRegistry
+            rq_slow_queue.deferred_job_registry,    # Returns DeferredJobRegistry
+            rq_slow_queue.finished_job_registry,    # Returns FinishedJobRegistry
+            rq_slow_queue.failed_job_registry,      # Returns FailedJobRegistry 
+            rq_slow_queue.scheduled_job_registry,   # Returns ScheduledJobRegistry
+            rq_slow_queue.canceled_job_registry,    # Returns CanceledJobRegistry
         ]
         job_ids = set()
         for registry in registries:
             for j_id in registry.get_job_ids():
                 job_ids.add(j_id)
-        for j_id in queue.job_ids:
+        for j_id in rq_slow_queue.job_ids:
             job_ids.add(j_id)
-        jobs = (queue.fetch_job(j_id) for j_id in job_ids)
+        jobs = (Job.fetch(j_id) for j_id in job_ids)
 
-        return (WrappedJob(j,queue) for j in jobs if j and j.get_meta().get("type") == type)
+        return (WrappedJob(j) for j in jobs if j and j.get_meta().get("type") == type)
 
 def _is_offpeak(offpeak_start: str, offpeak_end: str, current_time) -> bool:
     try:

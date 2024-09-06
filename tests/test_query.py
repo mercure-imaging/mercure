@@ -13,7 +13,7 @@ from webinterface.dashboards.query.jobs import GetAccessionJob, WrappedJob
 from webinterface.query import SimpleDicomClient
 
 from common.types import DicomTarget, DicomWebTarget
-from webinterface.common import redis, worker_queue
+from webinterface.common import redis
 
 from pydicom.uid import ExplicitVRLittleEndian, ImplicitVRLittleEndian
 from testing_common import receiver_port, mercure_config
@@ -161,10 +161,9 @@ def test_query_job(dicom_server, tempdir):
     Test the create_job function.
     We use mocker to mock the queue and avoid actually creating jobs.
     """
-    queue = Queue(connection=redis)
-    job = WrappedJob.create([MOCK_ACCESSION], {}, dicom_server, str(tempdir), queue=queue)
+    job = WrappedJob.create([MOCK_ACCESSION], {}, dicom_server, str(tempdir))
     assert job
-    w = SimpleWorker([queue], connection=redis)
+    w = SimpleWorker(["mercure_fast", "mercure_slow"], connection=redis)
     w.work(burst=True)
     # assert len(list(Path(config.mercure.jobs_folder).iterdir())) == 1
     print([k for k in Path(tempdir).rglob('*')])
@@ -185,10 +184,9 @@ def tree(path, prefix='', level=0) -> None:
 
 def test_query_dicomweb(dicomweb_server, tempdir, dummy_dataset, fs):
     (tempdir / "outdir").mkdir()
-    queue = Queue(connection=redis)
-    wrapped_job = WrappedJob.create([MOCK_ACCESSION], {}, dicomweb_server, (tempdir / "outdir"), queue=queue)
+    wrapped_job = WrappedJob.create([MOCK_ACCESSION], {}, dicomweb_server, (tempdir / "outdir"))
     assert wrapped_job
-    w = SimpleWorker([queue], connection=redis)
+    w = SimpleWorker(["mercure_fast", "mercure_slow"], connection=redis)
     w.work(burst=True)
     # tree(tempdir / "outdir")
     outfile = (tempdir / "outdir" / wrapped_job.id / dummy_dataset.AccessionNumber /  f"{dummy_dataset.SOPInstanceUID}.dcm")

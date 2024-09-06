@@ -221,7 +221,7 @@ class SimpleDicomClient():
                     print('Connection timed out, was aborted or received invalid response')
                     break
 
-                if status.Status in [0xFF00, 0xFF01]:
+                if status.Status in [0xFF00, 0xFF01] and identifier:
                     # print('C-FIND query status: 0x{0:04x}'.format(status.Status))
                     results.append(identifier)
                 # elif status.Status == 0x0000:
@@ -245,4 +245,4 @@ if __name__ == "__main__":
     c = SimpleDicomClient(remote_host, remote_port, called_aet, "/tmp/test-move")
     # study_uid = c.get_study_uid(accession_number)
     # print(study_uid)
-    c.getscu(accession_number)
+    c.getscu(accession_number, {})

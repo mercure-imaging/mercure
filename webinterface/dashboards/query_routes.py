@@ -14,7 +14,7 @@ from starlette.authentication import requires
 from webinterface.common import templates
 import common.config as config
 from starlette.responses import PlainTextResponse, JSONResponse
-from webinterface.common import worker_queue, redis
+from webinterface.common import redis
 from .common import router
 
 logger = config.get_logger()
@@ -24,14 +24,14 @@ from .query.jobs import CheckAccessionsJob, WrappedJob
 @router.post("/query/retry_job")
 @requires(["authenticated", "admin"], redirect="login")
 async def post_retry_job(request):
-    job = WrappedJob(request.query_params['id'], queue=worker_queue)
+    job = WrappedJob(request.query_params['id'])
     job.retry()
     return JSONResponse({})
 
 @router.post("/query/pause_job")
 @requires(["authenticated", "admin"], redirect="login")
 async def post_pause_job(request):
-    job = WrappedJob(request.query_params['id'], queue=worker_queue)
+    job = WrappedJob(request.query_params['id'])
     if not job:
         return JSONResponse({'error': 'Job not found'}, status_code=404)
     if job.is_finished or job.is_failed:
@@ -42,7 +42,7 @@ async def post_pause_job(request):
 @router.post("/query/resume_job")
 @requires(["authenticated", "admin"], redirect="login")
 async def post_resume_job(request):
-    job = WrappedJob(request.query_params['id'], queue=worker_queue)
+    job = WrappedJob(request.query_params['id'])
     if not job:
         return JSONResponse({'error': 'Job not found'}, status_code=404)
     if job.is_finished or job.is_failed:
@@ -55,7 +55,7 @@ async def post_resume_job(request):
 @requires(["authenticated", "admin"], redirect="login")
 async def get_job_info(request):
     job_id = request.query_params['id']
-    job = WrappedJob(job_id, queue=worker_queue)
+    job = WrappedJob(job_id)
     if not job:
         return JSONResponse({'error': 'Job not found'}, status_code=404)
     
@@ -187,8 +187,9 @@ async def query(request):
         "page": "query",
     }
     return templates.TemplateResponse(template, context)
-from webinterface.common import worker_queue, redis
-from rq import Connection 
+from webinterface.common import rq_fast_queue, redis
+from rq.job import Job
+from rq import Connection
 
 @router.post("/query/check_accessions")
 @requires(["authenticated", "admin"], redirect="login")
@@ -198,7 +199,7 @@ async def check_accessions(request):
 
     if job_id:
         # Retrieve results for an existing job
-        job = worker_queue.fetch_job(job_id)
+        job = Job.fetch(job_id, redis)
         if not job:
             return JSONResponse({"error": "Job not found"}, status_code=404)
         elif job.is_failed:
@@ -235,5 +236,5 @@ async def check_accessions(request):
     
     with Connection(redis):
         job = CheckAccessionsJob().create(accessions=accessions, node=node, search_filters=search_filters)
-        worker_queue.enqueue_job(job)
+        CheckAccessionsJob.queue().enqueue_job(job)
     return JSONResponse({"status": "pending", "job_id": job.id})

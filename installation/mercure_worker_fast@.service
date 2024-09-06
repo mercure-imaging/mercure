@@ -1,0 +1,17 @@
+[Unit]
+Description=Mercure RQ Worker (Fast) %i
+Documentation=https://mercure-imaging.org/docs
+After=network.target mercure_ui.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/mercure/app
+ExecStart=/opt/mercure/env/bin/rq worker mercure_fast
+ExecReload=/bin/kill -s HUP $MAINPID
+ExecStop=/bin/kill -s TERM $MAINPID
+User=mercure
+PrivateTmp=true
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

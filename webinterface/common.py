@@ -17,8 +17,12 @@ from common.constants import mercure_defs
 from rq_scheduler import Scheduler
 
 redis = Redis()
-worker_queue = Queue(connection=redis)
-worker_scheduler = Scheduler(queue=worker_queue, connection=worker_queue.connection) 
+rq_slow_queue = Queue(name="mercure_slow", connection=redis)
+rq_fast_queue = Queue(name="mercure_fast", connection=redis)
+rq_fast_scheduler = Scheduler(queue=rq_fast_queue, connection=rq_fast_queue.connection) 
+
+
+
 
 def get_user_information(request) -> dict:
     """Returns dictionary of values that should always be passed to the templates when the user is logged in."""
