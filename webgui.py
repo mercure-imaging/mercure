@@ -272,6 +272,7 @@ async def show_log(request) -> Response:
             return_code = 0
         except:
             pass
+        sub_services = []
     elif runtime == "systemd":
         start_date_cmd = ""
         end_date_cmd = ""
@@ -280,20 +281,37 @@ async def show_log(request) -> Response:
         if end_timestamp:
             end_date_cmd = f'--until "{end_timestamp}"'
 
+        service_name_or_list = services.services_list[requested_service]["systemd_service"]
+        if isinstance(service_name_or_list, list):
+            service_name = request.query_params.get("subservice", service_name_or_list[0])
+            sub_services = service_name_or_list
+        else:
+            service_name = service_name_or_list
+            sub_services = []
         run_result = await async_run(
             f"sudo journalctl -n 1000 -u "
-            f'{services.services_list[requested_service]["systemd_service"]} '
+            f'{service_name} '
             f"{start_date_cmd} {end_date_cmd}"
         )
         return_code = -1 if run_result[0] is None else run_result[0]
         raw_logs = run_result[1]
+
     elif runtime == "docker":
         client = docker.from_env() # type: ignore
         try:
-            container = client.containers.get(services.services_list[requested_service]["docker_service"])
+            service_name_or_list = services.services_list[requested_service]["systemd_service"]
+            if isinstance(service_name_or_list, list):
+                service_name = request.query_params.get("subservice", service_name_or_list[0])
+                sub_services = service_name_or_list
+            else:
+                service_name = service_name_or_list
+                sub_services = []
+
+            container = client.containers.get(service_name)
             container.reload()
             raw_logs = container.logs(since=start_obj)
             return_code = 0
+            sub_services = services.services_list[requested_service]["docker_service"]
         except (docker.errors.NotFound, docker.errors.APIError): # type: ignore
             return_code = 1
 
@@ -326,6 +344,8 @@ async def show_log(request) -> Response:
         "end_time": end_time,
         "end_time_available": runtime == "systemd",
         "start_time_available": runtime in ("docker", "systemd"),
+        "sub_services": sub_services,
+        "subservice": request.query_params.get("subservice", None)
     }
     return templates.TemplateResponse(template, context)
 
@@ -688,18 +708,32 @@ async def homepage(request) -> Response:
         running_status: Optional[bool] = False
 
         if runtime == "systemd":
-            if (await async_run("systemctl is-active " + services.services_list[service]["systemd_service"]))[0] == 0:
-                running_status = True
+            systemd_services = services.services_list[service]["systemd_service"]
+            if not isinstance(systemd_services, list):
+                systemd_services = [systemd_services]
+
+            for service_name in systemd_services:
+                exit_code, _, _ = await async_run(f"systemctl is-active {service_name}")
+                if exit_code == 0:
+                    running_status = True
+                else:
+                    running_status = False
+                    break
 
         elif runtime == "docker":
             client = docker.from_env() # type: ignore
+            docker_services = services.services_list[service]["docker_service"]
+            if not isinstance(docker_services, list):
+                docker_services = [docker_services]
+
             try:
-                container = client.containers.get(services.services_list[service]["docker_service"])
-                container.reload()
-                status = container.status
-                """restarting, running, paused, exited"""
-                if status == "running":
-                    running_status = True
+                for service in docker_services:
+                    container = client.containers.get(service)
+                    container.reload()
+                    status = container.status
+                    """restarting, running, paused, exited"""
+                    if status == "running":
+                        running_status = True
 
             except (docker.errors.NotFound, docker.errors.APIError): # type: ignore
                 running_status = False
@@ -715,8 +749,9 @@ async def homepage(request) -> Response:
                     alloc = running_alloc[0]
                     if not alloc["TaskStates"].get(service):
                         running_status = False
-                    else:
+                    else: # TODO: fix this for workers?
                         running_status = alloc["TaskStates"][service]["State"] == "running"
+
         service_status[service] = {
             "id": service,
             "name": services.services_list[service]["name"],
@@ -761,27 +796,36 @@ async def control_services(request) -> Response:
                 continue
 
             if runtime == "systemd":
-                command = "sudo systemctl " + action + " " + services.services_list[service]["systemd_service"]
-                logger.info(f"Executing: {command}")
-                await async_run(command)
+                systemd_services = services.services_list[service]["systemd_service"]
+                if not isinstance(systemd_services, list):
+                    systemd_services = [systemd_services]
+
+                for service_name in systemd_services:
+                    command = "sudo systemctl " + action + " " + service_name
+                    logger.info(f"Executing: {command}")
+                    await async_run(command)
 
             elif runtime == "docker":
                 client = docker.from_env() # type: ignore
-                logger.info(f'Executing: {action} on {services.services_list[service]["docker_service"]}')
-                try:
-                    container = client.containers.get(services.services_list[service]["docker_service"])
-                    container.reload()
-                    if action == "start":
-                        container.start()
-                    if action == "stop":
-                        container.stop()
-                    if action == "restart":
-                        container.restart()
-                    if action == "kill":
-                        container.kill()
-                except (docker.errors.NotFound, docker.errors.APIError) as docker_error: # type: ignore
-                    logger.error(f"{docker_error}")
-                    pass
+                docker_services = services.services_list[service]["docker_service"]
+                if not isinstance(docker_services, list):
+                    docker_services = [docker_services]
+                for service_name in docker_services:
+                    logger.info(f'Executing: {action} on {service_name}')
+                    try:
+                        container = client.containers.get(service_name)
+                        container.reload()
+                        if action == "start":
+                            container.start()
+                        if action == "stop":
+                            container.stop()
+                        if action == "restart":
+                            container.restart()
+                        if action == "kill":
+                            container.kill()
+                    except (docker.errors.NotFound, docker.errors.APIError) as docker_error: # type: ignore
+                        logger.error(f"{docker_error}")
+                        pass
 
             else:
                 # The Nomad mode currently does not support shutting down services
