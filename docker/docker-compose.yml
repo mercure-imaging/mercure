@@ -25,6 +25,12 @@ services:
       db:
         condition: service_healthy
       redis:
+        condition: service_started
+      worker_fast:
+        condition: service_started
+      worker_slow:
+        condition: service_started
+      
     image: mercureimaging/mercure-ui${IMAGE_TAG}
     restart: always
     ports:
@@ -118,6 +124,8 @@ services:
     <<: *user
     image: mercureimaging/mercure-worker${IMAGE_TAG}
     restart: always
+    depends_on:
+      - redis
     deploy:
       replicas: 2
     environment:
@@ -129,6 +137,8 @@ services:
     <<: *user
     image: mercureimaging/mercure-worker${IMAGE_TAG}
     restart: always
+    depends_on:
+      - redis
     deploy:
       replicas: 2
     environment:

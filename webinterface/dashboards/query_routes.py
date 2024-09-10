@@ -137,7 +137,10 @@ async def query_jobs(request):
     Returns a list of all query jobs. 
     """
     job_info = []
-    for job in WrappedJob.get_all_jobs():
+    with Connection(redis):
+        jobs = list(WrappedJob.get_all_jobs())
+
+    for job in jobs:
         job_dict = dict(id=job.id, 
                                 status=job.get_status(), 
                                 parameters=dict(accession=job.kwargs.get('accession','')), 

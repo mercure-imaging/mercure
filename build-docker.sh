@@ -84,7 +84,7 @@ build_component () {
 
 docker build $CACHE -t $PREFIX/mercure-base:$TAG -t $PREFIX/mercure-base:latest -f docker/base/Dockerfile .
 
-for component in ui bookkeeper receiver router processor dispatcher cleaner
+for component in ui bookkeeper receiver router processor dispatcher cleaner worker
 do
   build_component $component
 done

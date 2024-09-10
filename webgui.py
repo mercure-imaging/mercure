@@ -299,7 +299,7 @@ async def show_log(request) -> Response:
     elif runtime == "docker":
         client = docker.from_env() # type: ignore
         try:
-            service_name_or_list = services.services_list[requested_service]["systemd_service"]
+            service_name_or_list = services.services_list[requested_service]["docker_service"]
             if isinstance(service_name_or_list, list):
                 service_name = request.query_params.get("subservice", service_name_or_list[0])
                 sub_services = service_name_or_list
@@ -311,8 +311,8 @@ async def show_log(request) -> Response:
             container.reload()
             raw_logs = container.logs(since=start_obj)
             return_code = 0
-            sub_services = services.services_list[requested_service]["docker_service"]
-        except (docker.errors.NotFound, docker.errors.APIError): # type: ignore
+        except (docker.errors.NotFound, docker.errors.APIError) as e: # type: ignore
+            logger.error(e)
             return_code = 1
 
     # return_code, raw_logs = (await async_run("/usr/bin/nomad alloc logs -job -stderr -f -tail mercure router"))[:2]
@@ -735,7 +735,7 @@ async def get_service_status(runtime) -> List[Dict[str, Any]]:
                         else: # TODO: fix this for workers?
                             running_status = alloc["TaskStates"][service_id]["State"] == "running"
 
-            service_status[service_id].running = running_status
+            service_status[service_id]["running"] = running_status
     except:
         logger.exception("Failed to get service status.")
     finally:

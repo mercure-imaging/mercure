@@ -25,9 +25,6 @@
             </div>
           </div>
           {% endfor %}
-          {% if users|selectattr("running", "boolean")|list|length == 0 %}
-            Unable to retrieve service statuses, possible permissions issue. Please check the logs. {% if is_admin %} Service control probably does not function. {% endif %}
-          {% endif %}
         </div>
         <h5 class="title is-5 configtitle" style="margin-top: 40px; margin-bottom: 0px !important;"><i
             class="fas fa-heartbeat has-text-success"></i>&nbsp;&nbsp;Server Health</h5>
