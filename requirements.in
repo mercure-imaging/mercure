@@ -52,6 +52,7 @@ python-nomad
 
 # other
 pydicom ~= 2.4.1
+pynetdicom ~= 2.0.2
 pydantic >= 1.10.9, <2.0.0
 pillow >= 10.0.1
 dicomweb-client

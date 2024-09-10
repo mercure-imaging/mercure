@@ -5,10 +5,11 @@ Helper functions for the graphical user interface of mercure.
 """
 
 # Standard python includes
+import os
 from typing import Optional, Tuple
 import asyncio
 from redis import Redis
-from rq import Queue, Connection
+from rq import Queue
 
 # Starlette-related includes
 from starlette.templating import Jinja2Templates
@@ -16,13 +17,10 @@ from starlette.templating import Jinja2Templates
 from common.constants import mercure_defs
 from rq_scheduler import Scheduler
 
-redis = Redis()
+redis = Redis.from_url(os.getenv("REDIS_URL","http://localhost:6379/0"))
 rq_slow_queue = Queue(name="mercure_slow", connection=redis)
 rq_fast_queue = Queue(name="mercure_fast", connection=redis)
 rq_fast_scheduler = Scheduler(queue=rq_fast_queue, connection=rq_fast_queue.connection) 
-
-
-
 
 def get_user_information(request) -> dict:
     """Returns dictionary of values that should always be passed to the templates when the user is logged in."""

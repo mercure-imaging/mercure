@@ -13,7 +13,7 @@ from shlex import split
 
 from starlette.responses import JSONResponse
 
-from webinterface.query import DicomClientCouldNotFind, SimpleDicomClient
+from webinterface.dicom_client import DicomClientCouldNotFind, SimpleDicomClient
 
 from .registry import handler_for
 from .base import ProgressInfo, SubprocessTargetHandler, TargetHandler

@@ -26,7 +26,7 @@ import datetime
 import daiquiri
 import html
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 import docker
 import hupper
 import nomad
@@ -678,6 +678,68 @@ async def settings_edit(request) -> Response:
 ## Homepage endpoints
 ###################################################################################
 
+async def get_service_status(runtime) -> List[Dict[str, Any]]:
+    service_status = {service: {
+            "id": service,
+            "name": value["name"],
+            "running": None
+    } for service, value in services.services_list.items()}
+    logger.warning(service_status)
+    logger.warning(services.services_list)
+    try:
+        for service_id, service_info in services.services_list.items():
+            running_status: Optional[bool] = False
+
+            if runtime == "systemd":
+                systemd_services = service_info["systemd_service"]
+                if not isinstance(systemd_services, list):
+                    systemd_services = [systemd_services]
+
+                for service_name in systemd_services:
+                    exit_code, _, _ = await async_run(f"systemctl is-active {service_name}")
+                    if exit_code == 0:
+                        running_status = True
+                    else:
+                        running_status = False
+                        break
+
+            elif runtime == "docker":
+                client = docker.from_env() # type: ignore
+                docker_services = service_info["docker_service"]
+                if not isinstance(docker_services, list):
+                    docker_services = [docker_services]
+
+                try:
+                    for docker_service in docker_services:
+                        container = client.containers.get(docker_service)
+                        container.reload()
+                        status = container.status
+                        """restarting, running, paused, exited"""
+                        if status == "running":
+                            running_status = True
+
+                except (docker.errors.NotFound, docker.errors.APIError): # type: ignore
+                    running_status = False
+            elif runtime == "nomad":
+                if nomad_connection is None:
+                    running_status = None
+                else:
+                    allocations = nomad_connection.job.get_allocations("mercure")
+                    running_alloc = [a for a in allocations if a["ClientStatus"] == "running"]
+                    if not running_alloc:
+                        running_status = False
+                    else:
+                        alloc = running_alloc[0]
+                        if not alloc["TaskStates"].get(service_id):
+                            running_status = False
+                        else: # TODO: fix this for workers?
+                            running_status = alloc["TaskStates"][service_id]["State"] == "running"
+
+            service_status[service_id].running = running_status
+    except:
+        logger.exception("Failed to get service status.")
+    finally:
+        return service_status.values()
 
 @router.get("/")
 @requires("authenticated", redirect="login")
@@ -703,60 +765,11 @@ async def homepage(request) -> Response:
         free_space = "N/A"
         disk_total = "N/A"
 
-    service_status = {}
-    for service in services.services_list:
-        running_status: Optional[bool] = False
-
-        if runtime == "systemd":
-            systemd_services = services.services_list[service]["systemd_service"]
-            if not isinstance(systemd_services, list):
-                systemd_services = [systemd_services]
-
-            for service_name in systemd_services:
-                exit_code, _, _ = await async_run(f"systemctl is-active {service_name}")
-                if exit_code == 0:
-                    running_status = True
-                else:
-                    running_status = False
-                    break
-
-        elif runtime == "docker":
-            client = docker.from_env() # type: ignore
-            docker_services = services.services_list[service]["docker_service"]
-            if not isinstance(docker_services, list):
-                docker_services = [docker_services]
-
-            try:
-                for service in docker_services:
-                    container = client.containers.get(service)
-                    container.reload()
-                    status = container.status
-                    """restarting, running, paused, exited"""
-                    if status == "running":
-                        running_status = True
-
-            except (docker.errors.NotFound, docker.errors.APIError): # type: ignore
-                running_status = False
-        elif runtime == "nomad":
-            if nomad_connection is None:
-                running_status = None
-            else:
-                allocations = nomad_connection.job.get_allocations("mercure")
-                running_alloc = [a for a in allocations if a["ClientStatus"] == "running"]
-                if not running_alloc:
-                    running_status = False
-                else:
-                    alloc = running_alloc[0]
-                    if not alloc["TaskStates"].get(service):
-                        running_status = False
-                    else: # TODO: fix this for workers?
-                        running_status = alloc["TaskStates"][service]["State"] == "running"
-
-        service_status[service] = {
-            "id": service,
-            "name": services.services_list[service]["name"],
-            "running": running_status,
-        }
+    try:
+        service_status = await get_service_status(runtime)
+    except Exception as e:
+        logger.error(f"Error getting service status: {e}")
+        service_status = {}
 
     template = "index.html"
     context = {
@@ -927,8 +940,11 @@ def main(args=sys.argv[1:]) -> None:
         logging.getLogger("watchdog").setLevel(logging.WARNING)
     try:
         services.read_services()
-        config.read_config()
+        config_ = config.read_config()
         users.read_users()
+        success, error = helper.validate_folders(config_)
+        if not success:
+            raise ValueError(f"Invalid configuration folder structure: {error}")
         if str(SECRET_KEY) == "PutSomethingRandomHere":
             logger.error("You need to change the SECRET_KEY in configuration/webgui.env")
             raise Exception("Invalid or missing SECRET_KEY in webgui.env")

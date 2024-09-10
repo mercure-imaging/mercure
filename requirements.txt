@@ -158,10 +158,13 @@ pydicom==2.4.4
     # via
     #   -r requirements.in
     #   dicomweb-client
+    #   pynetdicom
 pyfakefs==4.5.6
     # via -r requirements.in
 pygments==2.18.0
     # via sphinx
+pynetdicom==2.0.2
+    # via -r requirements.in
 pytest==8.2.2
     # via
     #   -r requirements.in
@@ -206,8 +209,6 @@ rq-scheduler==0.13.1
     # via -r requirements.in
 s3transfer==0.10.0
     # via boto3
-setuptools==70.0.0
-    # via influxdb-client
 six==1.16.0
     # via
     #   python-dateutil
@@ -287,3 +288,6 @@ wheel==0.43.0
     # via -r requirements.in
 yarl==1.9.4
     # via aiohttp
+
+# The following packages are considered to be unsafe in a requirements file:
+# setuptools

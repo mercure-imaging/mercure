@@ -2,7 +2,7 @@ version: "3.9"
 x-env: &env
   environment:
     MERCURE_RUNNER: docker
-
+    REDIS_URL: redis://redis:6379/0
 x-volumes: &volumes
   volumes:
     - config:/opt/mercure/config
@@ -24,6 +24,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
     image: mercureimaging/mercure-ui${IMAGE_TAG}
     restart: always
     ports:
@@ -107,6 +108,33 @@ services:
         condition: service_healthy
     <<: *volumes
     <<: *env
+  
+  redis:
+    <<: *user
+    image: redis
+    restart: always
+
+  worker_fast:
+    <<: *user
+    image: mercureimaging/mercure-worker${IMAGE_TAG}
+    restart: always
+    deploy:
+      replicas: 2
+    environment:
+      WORKER_QUEUE: mercure_fast
+      REDIS_URL: redis://redis:6379/0
+    <<: *volumes
+
+  worker_slow:
+    <<: *user
+    image: mercureimaging/mercure-worker${IMAGE_TAG}
+    restart: always
+    deploy:
+      replicas: 2
+    environment:
+      WORKER_QUEUE: mercure_slow
+      REDIS_URL: redis://redis:6379/0
+    <<: *volumes
 
 volumes:
   db-data:

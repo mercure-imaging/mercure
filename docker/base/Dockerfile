@@ -31,7 +31,8 @@ RUN chmod -R o+rx /opt/mercure/app && \
           /opt/mercure/data/success \
           /opt/mercure/data/error \
           /opt/mercure/data/discard \
-          /opt/mercure/data/processing && \
+          /opt/mercure/data/processing \
+          /opt/mercure/data/jobs && \
     chown -R mercure /opt/mercure/data
 # Export the configuration and data folder as a volume, as multiple scripts will have to read/write there
 VOLUME /opt/mercure/config

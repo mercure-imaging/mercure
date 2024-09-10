@@ -15,6 +15,9 @@ from webinterface.common import templates
 import common.config as config
 from starlette.responses import PlainTextResponse, JSONResponse
 from webinterface.common import redis
+from rq.job import Job
+from rq import Connection
+
 from .common import router
 
 logger = config.get_logger()
@@ -187,9 +190,6 @@ async def query(request):
         "page": "query",
     }
     return templates.TemplateResponse(template, context)
-from webinterface.common import rq_fast_queue, redis
-from rq.job import Job
-from rq import Connection
 
 @router.post("/query/check_accessions")
 @requires(["authenticated", "admin"], redirect="login")

@@ -10,7 +10,7 @@ from pydicom.uid import generate_uid
 from pydicom.dataset import Dataset, FileMetaDataset
 from rq import Worker
 from webinterface.dashboards.query.jobs import GetAccessionJob, WrappedJob
-from webinterface.query import SimpleDicomClient
+from webinterface.dicom_client import SimpleDicomClient
 
 from common.types import DicomTarget, DicomWebTarget
 from webinterface.common import redis
