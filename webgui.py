@@ -26,7 +26,7 @@ import datetime
 import daiquiri
 import html
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, TypedDict, Union
 import docker
 import hupper
 import nomad
@@ -129,27 +129,39 @@ DEBUG_MODE = webgui_config("DEBUG", cast=bool, default=True)
 
 @contextlib.asynccontextmanager
 async def lifespan(app):
-    startup()
-    yield
+    result = startup(app)
+    yield result
     await shutdown()
 
 
-def startup() -> None:
-    scheduled_jobs = rq_fast_scheduler.get_jobs()
-    for job in scheduled_jobs: 
-        if job.meta.get("type") != "offpeak":
-            continue
-        rq_fast_scheduler.cancel(job)
-    rq_fast_scheduler.schedule(
-        scheduled_time=datetime.datetime.utcnow(),
-        func=WrappedJob.update_all_jobs_offpeak,
-        interval=60,
-        meta={"type": "offpeak"},
-        repeat=None
-    )
+def startup(app: Starlette):
+    state = {"redis_connected": False}
+    try:
+        response = redis.ping()
+        if response:
+            logger.info("Redis connection validated.")
+            state["redis_connected"] = True
+        else:
+            raise Exception("Redis connection failed")
+    except:
+        logger.error("Could not connect to Redis", exc_info=True)
+    
+    if state["redis_connected"]:
+        scheduled_jobs = rq_fast_scheduler.get_jobs()
+        for job in scheduled_jobs: 
+            if job.meta.get("type") != "offpeak":
+                continue
+            rq_fast_scheduler.cancel(job)
+        rq_fast_scheduler.schedule(
+            scheduled_time=datetime.datetime.utcnow(),
+            func=WrappedJob.update_all_jobs_offpeak,
+            interval=60,
+            meta={"type": "offpeak"},
+            repeat=None
+        )
     monitor.configure("webgui", "main", config.mercure.bookkeeper)
     monitor.send_event(monitor.m_events.BOOT, monitor.severity.INFO, f"PID = {os.getpid()}")
-
+    return state
 
 async def shutdown() -> None:
     monitor.send_event(monitor.m_events.SHUTDOWN, monitor.severity.INFO, "")

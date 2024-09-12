@@ -11,6 +11,11 @@
 <main role="main">
     <h1 class="title">DICOM Query</h1>
     <div class="container">
+      {% if not request.state.redis_connected %}
+      <div id="redis-unavailable" class="notification is-danger">
+        Redis connection not available, so this dashboard will not function.
+      </div>
+      {% endif %}
         <form class="box" id="form" hx-post="query" hx-target="#query_result" hx-swap="innerHTML">
             <div class="field is-horizontal">
               <div class="field-label is-normal">
@@ -169,8 +174,8 @@
 </main>
 <script>
 $(document).ready(function () {      
-    $("#form").on('htmx:afterOnLoad', (event) => {
-        datatable.ajax.reload();
+  $("#form").on('htmx:afterOnLoad', (event) => {
+      datatable.ajax.reload();
   });
 
   function namespacedEvents(config) {

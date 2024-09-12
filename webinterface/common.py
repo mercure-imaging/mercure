@@ -17,7 +17,7 @@ from starlette.templating import Jinja2Templates
 from common.constants import mercure_defs
 from rq_scheduler import Scheduler
 
-redis = Redis.from_url(os.getenv("REDIS_URL","http://localhost:6379/0"))
+redis = Redis.from_url(os.getenv("REDIS_URL","redis://localhost:6379/0"))
 rq_slow_queue = Queue(name="mercure_slow", connection=redis)
 rq_fast_queue = Queue(name="mercure_fast", connection=redis)
 rq_fast_scheduler = Scheduler(queue=rq_fast_queue, connection=rq_fast_queue.connection) 

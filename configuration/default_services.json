@@ -33,5 +33,15 @@
         "name": "Workers",
         "systemd_service": ["mercure_worker_fast@1.service", "mercure_worker_fast@2.service", "mercure_worker_slow@1.service", "mercure_worker_slow@2.service"],
         "docker_service": ["mercure_worker_fast_1", "mercure_worker_fast_2", "mercure_worker_slow_1", "mercure_worker_slow_2"]
+    },
+    "redis": {
+        "name": "Redis",
+        "systemd_service": "mercure_redis.service",
+        "docker_service": "mercure_redis_1"
+    },
+    "ui": {
+        "name": "UI",
+        "systemd_service": "mercure_ui.service",
+        "docker_service": "mercure_ui_1"
     }
 }
