@@ -10,6 +10,7 @@
     "error_folder"               : "/opt/mercure/data/error",
     "discard_folder"             : "/opt/mercure/data/discard",
     "processing_folder"          : "/opt/mercure/data/processing",
+    "jobs_folder"                : "/opt/mercure/data/jobs",
     "bookkeeper"                 : "0.0.0.0:8080",
     "bookkeeper_api_key"         : "BOOKKEEPER_TOKEN_PLACEHOLDER",
     "graphite_ip"                :       "",
