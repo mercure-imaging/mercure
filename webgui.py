@@ -67,7 +67,7 @@ import webinterface.queue as queue
 import webinterface.api as api
 import webinterface.dashboards as dashboards
 from webinterface.common import *
-from webinterface.dashboards.query.jobs import WrappedJob
+from webinterface.dashboards.query.jobs import QueryPipeline
 from decoRouter import Router as decoRouter
 router = decoRouter()
 
@@ -154,7 +154,7 @@ def startup(app: Starlette):
             rq_fast_scheduler.cancel(job)
         rq_fast_scheduler.schedule(
             scheduled_time=datetime.datetime.utcnow(),
-            func=WrappedJob.update_all_jobs_offpeak,
+            func=QueryPipeline.update_all_offpeak,
             interval=60,
             meta={"type": "offpeak"},
             repeat=None
@@ -751,7 +751,7 @@ async def get_service_status(runtime) -> List[Dict[str, Any]]:
     except:
         logger.exception("Failed to get service status.")
     finally:
-        return service_status.values()
+        return list(service_status.values())
 
 @router.get("/")
 @requires("authenticated", redirect="login")
@@ -781,7 +781,7 @@ async def homepage(request) -> Response:
         service_status = await get_service_status(runtime)
     except Exception as e:
         logger.error(f"Error getting service status: {e}")
-        service_status = {}
+        service_status = [{}]
 
     template = "index.html"
     context = {

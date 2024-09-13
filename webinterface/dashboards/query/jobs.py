@@ -9,7 +9,6 @@ from typing import Any, Dict, Generator, List, Optional, Tuple, Type, Union, cas
 import typing
 
 
-from dicomweb_client import DICOMfileClient
 from common.types import DicomTarget, DicomWebTarget, FolderTarget
 from dispatch.target_types.base import ProgressInfo
 from dispatch.target_types.registry import get_handler
@@ -51,7 +50,7 @@ def query_dummy(job_id, job_kwargs):
 
 
 @dataclass
-class ClassBasedRQJob():
+class ClassBasedRQTask():
     parent: Optional[str] = None
     type: str = "unknown"
     _job: Optional[Job] = None
@@ -61,7 +60,7 @@ class ClassBasedRQJob():
     def queue(cls) -> Queue:
         return Queue(cls._queue, connection=redis)
 
-    def create(self, rq_options={}, **kwargs) -> Job:
+    def create_job(self, rq_options={}, **kwargs) -> Job:
         fields = dataclasses.fields(self)
         meta = {field.name: getattr(self, field.name) for field in fields}
         return Job.create(self._execute, kwargs=kwargs, meta=meta, **rq_options)
@@ -98,11 +97,10 @@ class ClassBasedRQJob():
             dest_folder.mkdir(exist_ok=True)
             logger.info(f"moving {path} to {dest_folder}")
             shutil.move(path, dest_folder)
-            # tree(dest_folder)
-            logger.info(f"moved")
+
 
 @dataclass 
-class CheckAccessionsJob(ClassBasedRQJob):
+class CheckAccessionsTask(ClassBasedRQTask):
     type: str = "check_accessions"
     _queue: str = rq_fast_queue.name
     
@@ -134,7 +132,7 @@ class CheckAccessionsJob(ClassBasedRQJob):
 
 
 @dataclass
-class GetAccessionJob(ClassBasedRQJob):
+class GetAccessionTask(ClassBasedRQTask):
     type: str = "get_accession"
     paused: bool = False
     offpeak: bool = False
@@ -194,7 +192,7 @@ class GetAccessionJob(ClassBasedRQJob):
         return "Job complete"
 
 @dataclass
-class MainJob(ClassBasedRQJob):
+class MainTask(ClassBasedRQTask):
     type: str = "batch" 
     started: int = 0
     completed: int = 0
@@ -230,7 +228,7 @@ class MainJob(ClassBasedRQJob):
 
         return "Job complete"
 
-class WrappedJob():
+class QueryPipeline():
     job: Job
     def __init__(self, job: Union[Job,str]):
         if isinstance(job, str):
@@ -243,17 +241,17 @@ class WrappedJob():
         assert self.job.meta.get('type') == 'batch', f"Job type must be batch, got {self.job.meta['type']}"
 
     @classmethod
-    def create(cls, accessions, search_filters:Dict[str, List[str]], dicom_node: Union[DicomWebTarget, DicomTarget], destination_path, offpeak=False) -> 'WrappedJob':
+    def create(cls, accessions: List[str], search_filters:Dict[str, List[str]], dicom_node: Union[DicomWebTarget, DicomTarget], destination_path, offpeak=False) -> 'QueryPipeline':
         """
         Create a job to process the given accessions and store them in the specified destination path.
         """
 
         with Connection(redis):
             get_accession_jobs: List[Job] = []
-            check_job = CheckAccessionsJob().create(accessions=accessions, search_filters=search_filters, node=dicom_node)
+            check_job = CheckAccessionsTask().create_job(accessions=accessions, search_filters=search_filters, node=dicom_node)
             for accession in accessions:
-                job = GetAccessionJob(offpeak=offpeak).create(
-                    accession=accession, 
+                get_accession_task = GetAccessionTask(offpeak=offpeak).create_job(
+                    accession=str(accession), 
                     node=dicom_node,
                     search_filters=search_filters,
                     rq_options=dict(
@@ -262,32 +260,32 @@ class WrappedJob():
                         result_ttl=-1
                         )
                     )
-                get_accession_jobs.append(job)
+                get_accession_jobs.append(get_accession_task)
             depends = Dependency(
                 jobs=cast(List[Union[Job,str]],get_accession_jobs),
                 allow_failure=True,    # allow_failure defaults to False
             )
-            full_job = MainJob(total=len(get_accession_jobs), offpeak=offpeak).create(
+            main_job = MainTask(total=len(get_accession_jobs), offpeak=offpeak).create_job(
                 accessions = accessions,
-                subjobs = [j.id for j in get_accession_jobs],
+                subjobs = [check_job.id]+[j.id for j in get_accession_jobs],
                 destination = destination_path,
                 move_promptly = True,
                 rq_options = dict(depends_on=depends, timeout=-1, result_ttl=-1)
             )
-            check_job.meta["parent"] = full_job.id
+            check_job.meta["parent"] = main_job.id
             for j in get_accession_jobs:
-                j.meta["parent"] = full_job.id
-                j.kwargs["path"] = Path(config.mercure.jobs_folder) / full_job.id / j.kwargs['accession']
+                j.meta["parent"] = main_job.id
+                j.kwargs["path"] = Path(config.mercure.jobs_folder) / str(main_job.id) / j.kwargs['accession']
                 j.kwargs["path"].mkdir(parents=True)
 
-            full_job.kwargs["path"] = Path(config.mercure.jobs_folder) / full_job.id
+            main_job.kwargs["path"] = Path(config.mercure.jobs_folder) / str(main_job.id)
 
-        CheckAccessionsJob.queue().enqueue_job(check_job)
+        CheckAccessionsTask.queue().enqueue_job(check_job)
         for j in get_accession_jobs:
-            GetAccessionJob.queue().enqueue_job(j)
-        MainJob.queue().enqueue_job(full_job)
+            GetAccessionTask.queue().enqueue_job(j)
+        MainTask.queue().enqueue_job(main_job)
 
-        wrapped_job = WrappedJob(full_job)
+        wrapped_job = cls(main_job)
         if offpeak and not _is_offpeak(config.mercure.offpeak_start, config.mercure.offpeak_end, datetime.now().time()):
             wrapped_job.pause()
 
@@ -303,6 +301,7 @@ class WrappedJob():
         for job_id in self.job.kwargs.get('subjobs',[]):
             subjob = Job.fetch(job_id)
             if subjob and (subjob.is_deferred or subjob.is_queued):
+                logger.debug(f"Pausing {subjob}")
                 subjob.meta['paused'] = True
                 subjob.save_meta() # type: ignore
                 subjob.cancel()
@@ -341,15 +340,15 @@ class WrappedJob():
         Queue(self.job.origin).enqueue_job(self.job)
 
     @classmethod
-    def update_all_jobs_offpeak(cls) -> None:
+    def update_all_offpeak(cls) -> None:
         """
         Resume or pause offpeak jobs based on whether the current time is within offpeak hours.
         """
         config.read_config()
         is_offpeak = _is_offpeak(config.mercure.offpeak_start, config.mercure.offpeak_end, datetime.now().time())
         logger.info(f"is_offpeak {is_offpeak}")
-        for job in WrappedJob.get_all_jobs():
-            job.update_offpeak(is_offpeak)
+        for pipeline in QueryPipeline.get_all():
+            pipeline.update_offpeak(is_offpeak)
 
     def update_offpeak(self, is_offpeak) -> None:
         if not self.meta.get("offpeak"):
@@ -413,7 +412,7 @@ class WrappedJob():
         return cast(datetime,self.job.enqueued_at)
 
     @classmethod
-    def get_all_jobs(cls, type:str="batch") -> Generator['WrappedJob', None, None]:
+    def get_all(cls, type:str="batch") -> Generator['QueryPipeline', None, None]:
         """
         Get all jobs of a given type from the queue
         """
@@ -433,7 +432,7 @@ class WrappedJob():
             job_ids.add(j_id)
         jobs = (Job.fetch(j_id) for j_id in job_ids)
 
-        return (WrappedJob(j) for j in jobs if j and j.get_meta().get("type") == type)
+        return (QueryPipeline(j) for j in jobs if j and j.get_meta().get("type") == type)
 
 def _is_offpeak(offpeak_start: str, offpeak_end: str, current_time) -> bool:
     try:

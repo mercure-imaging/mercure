@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 import tempfile
+from typing import Dict
 import pydicom
 import pytest
 from pynetdicom import AE, evt, StoragePresentationContexts, build_role
@@ -9,21 +10,26 @@ from pynetdicom.status import Status
 from pydicom.uid import generate_uid
 from pydicom.dataset import Dataset, FileMetaDataset
 from rq import Worker
-from webinterface.dashboards.query.jobs import GetAccessionJob, WrappedJob
+from webinterface.dashboards.query.jobs import GetAccessionTask, QueryPipeline
 from webinterface.dicom_client import SimpleDicomClient
 
 from common.types import DicomTarget, DicomWebTarget
 from webinterface.common import redis
-
 from pydicom.uid import ExplicitVRLittleEndian, ImplicitVRLittleEndian
 from testing_common import receiver_port, mercure_config
 from logging import getLogger
-from rq import SimpleWorker, Queue
+from rq import SimpleWorker, Queue, Connection
 from fakeredis import FakeStrictRedis
 
 getLogger('pynetdicom').setLevel('WARNING')
 # Mock data for testing
-MOCK_ACCESSION = "12345"
+MOCK_ACCESSIONS = ["12345"]
+
+
+@pytest.fixture(scope="module", autouse=True)
+def rq_connection():
+    with Connection(redis):
+        yield redis
 
 @pytest.fixture(scope="module")
 def mock_node(receiver_port):
@@ -31,21 +37,22 @@ def mock_node(receiver_port):
 
 class DummyDICOMServer:
     """A simple DICOM server for testing purposes."""
-    def __init__(self, port:int, dataset:Dataset):
+    def __init__(self, port:int, datasets: Dict[str,Dataset]):
         assert isinstance(port, int), "Port must be an integer"
-        assert isinstance(dataset, Dataset), "Dataset must be a pydicom Dataset"
+        for ds in datasets.values():
+            assert isinstance(ds, Dataset), "Dataset must be a pydicom Dataset"
         self.ae = AE()
         # Add support for DICOM verification
         self.ae.add_supported_context(Verification)
-        self.dataset = dataset
+        self.datasets = datasets
         # Define handler for C-FIND requests
         def handle_find(event):
             ds = event.identifier
 
             # Create a dummy response
             # Check if the request matches our dummy data
-            if 'AccessionNumber' in ds and ds.AccessionNumber == MOCK_ACCESSION:
-                yield (0xFF00, self.dataset)
+            if 'AccessionNumber' in ds and ds.AccessionNumber in MOCK_ACCESSIONS:
+                yield (0xFF00, self.datasets[ds.AccessionNumber])
             else:
                 yield (0x0000, None)  # Status 'Success', but no match
 
@@ -54,11 +61,11 @@ class DummyDICOMServer:
             ds = event.identifier
             # yield 1
             # Check if the request matches our dummy data
-            if 'AccessionNumber' in ds and ds.AccessionNumber == MOCK_ACCESSION:
+            if 'AccessionNumber' in ds and ds.AccessionNumber in MOCK_ACCESSIONS:
                 # Create a dummy DICOM dataset
                 yield 1
 
-                dummy_ds = self.dataset.copy()
+                dummy_ds = self.datasets[ds.AccessionNumber].copy()
                 dummy_ds.SOPClassUID = CTImageStorage  # CT Image Storage
                 dummy_ds.SOPInstanceUID = generate_uid()
                 dummy_ds.file_meta = FileMetaDataset()
@@ -90,40 +97,44 @@ class DummyDICOMServer:
         self.ae.shutdown()
 
 @pytest.fixture(scope="function")
-def dummy_dataset():
-    ds = Dataset()
-    ds.PatientName = "Test^Patient"
-    ds.PatientID = "12345"
-    ds.StudyDescription = "Test Study"
-    ds.StudyDate = "20210101"
-    ds.StudyInstanceUID = generate_uid()
-    ds.SeriesInstanceUID = generate_uid()
-    ds.AccessionNumber = MOCK_ACCESSION
-    ds.is_little_endian = True
-    ds.is_implicit_VR = False
-    return ds
+def dummy_datasets():
+    dss = {}
+    for acc in MOCK_ACCESSIONS:
+        ds = Dataset()
+        ds.PatientName = "Test^Patient"
+        ds.PatientID = "12345"
+        ds.StudyDescription = "Test Study"
+        ds.StudyDate = "20210101"
+        ds.StudyInstanceUID = generate_uid()
+        ds.SeriesInstanceUID = generate_uid()
+        ds.AccessionNumber = acc
+        ds.is_little_endian = True
+        ds.is_implicit_VR = False
+        dss[acc] = ds
+    return dss
 
 @pytest.fixture(scope="function")
-def dicom_server(mock_node, dummy_dataset):
+def dicom_server(mock_node, dummy_datasets):
     """
     Pytest fixture to start a DICOM server before tests and stop it after.
     This fixture has module scope, so the server will be started once for all tests in the module.
     """
-    server = DummyDICOMServer(int(mock_node.port), dummy_dataset)
+    server = DummyDICOMServer(int(mock_node.port), dummy_datasets)
     yield mock_node
     server.stop()
 
 @pytest.fixture(scope="function")
-def dicomweb_server(dummy_dataset, tempdir):
-    ds = dummy_dataset.copy()
-    ds.SOPClassUID = CTImageStorage  # CT Image Storage
-    ds.SOPInstanceUID = generate_uid()
-    ds.StudyInstanceUID = generate_uid()
-    ds.file_meta = FileMetaDataset()
-    ds.file_meta.TransferSyntaxUID = ExplicitVRLittleEndian
-    
+def dicomweb_server(dummy_datasets, tempdir):
     (tempdir / "dicomweb").mkdir()
-    ds.save_as(tempdir / "dicomweb" / "dummy.dcm", write_like_original=False)
+
+    for dummy_dataset in dummy_datasets.values():
+        ds = dummy_dataset.copy()
+        ds.SOPClassUID = CTImageStorage  # CT Image Storage
+        ds.SOPInstanceUID = generate_uid()
+        ds.StudyInstanceUID = generate_uid()
+        ds.file_meta = FileMetaDataset()
+        ds.file_meta.TransferSyntaxUID = ExplicitVRLittleEndian
+        ds.save_as(tempdir / "dicomweb" / ds.SOPInstanceUID, write_like_original=False)
 
     yield DicomWebTarget(url=f"file://{tempdir}/dicomweb")
 
@@ -131,9 +142,9 @@ def test_simple_dicom_client(dicom_server):
     """Test the SimpleDicomClient can connect to and query the DICOM server."""
     client = SimpleDicomClient(dicom_server.ip, dicom_server.port, dicom_server.aet_target, None)
     
-    result = client.findscu(MOCK_ACCESSION)
+    result = client.findscu(MOCK_ACCESSIONS[0])
     assert result is not None  # We expect some result, even if it's an empty dataset
-    assert result[0].AccessionNumber == MOCK_ACCESSION  # Check if the accession number matches
+    assert result[0].AccessionNumber == MOCK_ACCESSIONS[0]  # Check if the accession number matches
 
 @pytest.fixture(scope="function")
 def tempdir():
@@ -149,25 +160,25 @@ def test_get_accession_job(dicom_server, dicomweb_server, mercure_config):
     (Path(config.jobs_folder) / "foo/").touch()
     for server in (dicom_server, dicomweb_server):
         
-        generator = GetAccessionJob.get_accession(job_id, MOCK_ACCESSION, server, search_filters={}, path=config.jobs_folder)
+        generator = GetAccessionTask.get_accession(job_id, MOCK_ACCESSIONS[0], server, search_filters={}, path=config.jobs_folder)
         results = list(generator)
         # Check that we got some results
         assert len(results) > 0
         assert results[0].remaining == 0
-        assert pydicom.dcmread(next(k for k in Path(config.jobs_folder).rglob("*.dcm"))).AccessionNumber == MOCK_ACCESSION
+        assert pydicom.dcmread(next(k for k in Path(config.jobs_folder).rglob("*.dcm"))).AccessionNumber == MOCK_ACCESSIONS[0]
 
 def test_query_job(dicom_server, tempdir):
     """
     Test the create_job function.
     We use mocker to mock the queue and avoid actually creating jobs.
     """
-    job = WrappedJob.create([MOCK_ACCESSION], {}, dicom_server, str(tempdir))
+    job = QueryPipeline.create([MOCK_ACCESSIONS[0]], {}, dicom_server, str(tempdir))
     assert job
     w = SimpleWorker(["mercure_fast", "mercure_slow"], connection=redis)
     w.work(burst=True)
     # assert len(list(Path(config.mercure.jobs_folder).iterdir())) == 1
     print([k for k in Path(tempdir).rglob('*')])
-    assert pydicom.dcmread(next(k for k in Path(tempdir).rglob("*.dcm"))).AccessionNumber == MOCK_ACCESSION
+    assert pydicom.dcmread(next(k for k in Path(tempdir).rglob("*.dcm"))).AccessionNumber == MOCK_ACCESSIONS[0]
 
 def tree(path, prefix='', level=0) -> None:
     if level==0:
@@ -182,15 +193,48 @@ def tree(path, prefix='', level=0) -> None:
         if entry.is_dir():
             tree(entry.path, prefix + ('    ' if i == len(entries) - 1 else '│   '), level+1)
 
-def test_query_dicomweb(dicomweb_server, tempdir, dummy_dataset, fs):
+def test_query_dicomweb(dicomweb_server, tempdir, dummy_datasets, fs):
     (tempdir / "outdir").mkdir()
-    wrapped_job = WrappedJob.create([MOCK_ACCESSION], {}, dicomweb_server, (tempdir / "outdir"))
-    assert wrapped_job
+    ds = list(dummy_datasets.values())[0]
+    task = QueryPipeline.create([ds.AccessionNumber], {}, dicomweb_server, (tempdir / "outdir"))
+    assert task
     w = SimpleWorker(["mercure_fast", "mercure_slow"], connection=redis)
     w.work(burst=True)
     # tree(tempdir / "outdir")
-    outfile = (tempdir / "outdir" / wrapped_job.id / dummy_dataset.AccessionNumber /  f"{dummy_dataset.SOPInstanceUID}.dcm")
+    outfile = (tempdir / "outdir" / task.id / ds.AccessionNumber /  f"{ds.SOPInstanceUID}.dcm")
     assert outfile.exists(), f"Expected output file {outfile} does not exist."
-    wrapped_job.get_meta()
-    assert wrapped_job.meta['completed'] == 1
-    assert wrapped_job.meta['total'] == 1
+    task.get_meta()
+    assert task.meta['completed'] == 1
+    assert task.meta['total'] == 1
+
+def test_query_operations(dicomweb_server, tempdir, dummy_datasets, fs, rq_connection):
+    (tempdir / "outdir").mkdir()
+    task = QueryPipeline.create([ds.AccessionNumber for ds in dummy_datasets.values()], {}, dicomweb_server, (tempdir / "outdir"))
+    assert task
+    assert task.meta['total'] == len(dummy_datasets)
+    assert task.meta['completed'] == 0
+    task.pause()
+    for job in (jobs:=task.get_subjobs()):
+        assert job.meta.get("paused")
+        assert job.get_status() == "canceled"
+    assert jobs
+
+    w = SimpleWorker(["mercure_fast", "mercure_slow"], connection=redis)
+    w.work(burst=True)
+    outfile = (tempdir / "outdir" / task.id)
+    task.get_meta()
+    assert task.meta['completed'] == 0
+    assert not outfile.exists()
+    task.resume()
+
+    for job in task.get_subjobs():
+        assert not job.meta.get("paused")
+        assert job.get_status() == "queued"
+    w = SimpleWorker(["mercure_fast", "mercure_slow"], connection=redis)
+    w.work(burst=True)
+    for ds in dummy_datasets.values():
+        outfile = (tempdir / "outdir" / task.id / ds.AccessionNumber /  f"{ds.SOPInstanceUID}.dcm")
+        assert outfile.exists(), f"Expected output file {outfile} does not exist."
+    task.get_meta()
+    assert task.meta['completed'] == len(dummy_datasets)
+    assert task.meta['total'] == len(dummy_datasets)

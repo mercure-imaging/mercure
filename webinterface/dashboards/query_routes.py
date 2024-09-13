@@ -1,40 +1,36 @@
 
-from dataclasses import dataclass
-from pathlib import Path
 from typing import Any, Dict, List
-
-from common.types import DicomTarget, DicomWebTarget, FolderTarget
-from dispatch.target_types.registry import get_handler
-# Standard python includes
 from datetime import datetime
+
 # Starlette-related includes
 from starlette.authentication import requires
+from starlette.responses import PlainTextResponse, JSONResponse
+
+from rq.job import Job
+from rq import Connection
 
 # App-specific includes
 from webinterface.common import templates
 import common.config as config
-from starlette.responses import PlainTextResponse, JSONResponse
-from webinterface.common import redis
-from rq.job import Job
-from rq import Connection
+from common.types import DicomTarget, DicomWebTarget, FolderTarget
 
+from webinterface.common import redis
 from .common import router
+from .query.jobs import CheckAccessionsTask, QueryPipeline
 
 logger = config.get_logger()
-
-from .query.jobs import CheckAccessionsJob, WrappedJob
  
 @router.post("/query/retry_job")
 @requires(["authenticated", "admin"], redirect="login")
 async def post_retry_job(request):
-    job = WrappedJob(request.query_params['id'])
+    job = QueryPipeline(request.query_params['id'])
     job.retry()
     return JSONResponse({})
 
 @router.post("/query/pause_job")
 @requires(["authenticated", "admin"], redirect="login")
 async def post_pause_job(request):
-    job = WrappedJob(request.query_params['id'])
+    job = QueryPipeline(request.query_params['id'])
     if not job:
         return JSONResponse({'error': 'Job not found'}, status_code=404)
     if job.is_finished or job.is_failed:
@@ -45,7 +41,7 @@ async def post_pause_job(request):
 @router.post("/query/resume_job")
 @requires(["authenticated", "admin"], redirect="login")
 async def post_resume_job(request):
-    job = WrappedJob(request.query_params['id'])
+    job = QueryPipeline(request.query_params['id'])
     if not job:
         return JSONResponse({'error': 'Job not found'}, status_code=404)
     if job.is_finished or job.is_failed:
@@ -58,7 +54,7 @@ async def post_resume_job(request):
 @requires(["authenticated", "admin"], redirect="login")
 async def get_job_info(request):
     job_id = request.query_params['id']
-    job = WrappedJob(job_id)
+    job = QueryPipeline(job_id)
     if not job:
         return JSONResponse({'error': 'Job not found'}, status_code=404)
     
@@ -110,7 +106,7 @@ async def query_post_batch(request):
     if search_filter:= form.get("study_description"):
         search_filters["StudyDescription"] =  [x.strip() for x in search_filter.split(",")]
 
-    WrappedJob.create(form.get("accession").split(","), search_filters, node, dest_path, offpeak=offpeak)
+    QueryPipeline.create(form.get("accession").split(","), search_filters, node, dest_path, offpeak=offpeak)
     # worker_scheduler.schedule(scheduled_time=datetime.utcnow(), func=monitor_job, interval=10, repeat=10, result_ttl=-1)
     return PlainTextResponse()
  
@@ -136,56 +132,55 @@ async def query_jobs(request):
     """
     Returns a list of all query jobs. 
     """
-    job_info = []
+    tasks_info = []
     with Connection(redis):
-        jobs = list(WrappedJob.get_all_jobs())
+        query_tasks = list(QueryPipeline.get_all())
 
-    for job in jobs:
-        job_dict = dict(id=job.id, 
-                                status=job.get_status(), 
-                                parameters=dict(accession=job.kwargs.get('accession','')), 
-                                created_at=1000*datetime.timestamp(job.created_at) if job.created_at else "",
-                                enqueued_at=1000*datetime.timestamp(job.enqueued_at) if job.enqueued_at else "", 
-                                result=job.result if job.get_status() != "failed" else job.meta.get("failed_reason",""), 
-                                meta=job.meta,
+    for task in query_tasks:
+        task_dict: Dict[str,Any] = dict(id=task.id, 
+                                status=task.get_status(), 
+                                parameters=dict(accession=task.kwargs.get('accession','')), 
+                                created_at=1000*datetime.timestamp(task.created_at) if task.created_at else "",
+                                enqueued_at=1000*datetime.timestamp(task.enqueued_at) if task.enqueued_at else "", 
+                                result=task.result if task.get_status() != "failed" else task.meta.get("failed_reason",""), 
+                                meta=task.meta,
                                 progress="")
         # if job.meta.get('completed') and job.meta.get('remaining'):
-        #     job_dict["progress"] = f"{job.meta.get('completed')} / {job.meta.get('completed') + job.meta.get('remaining')}"
+        #     task_dict["progress"] = f"{job.meta.get('completed')} / {job.meta.get('completed') + job.meta.get('remaining')}"
         # if job.meta.get('type',None) == "batch":
-        n_started = job.meta.get('started',0)
-        n_completed = job.meta.get('completed',0)
-        n_total = job.meta.get('total',0)
+        n_started = task.meta.get('started',0)
+        n_completed = task.meta.get('completed',0)
+        n_total = task.meta.get('total',0)
 
-        if job_dict["status"] == "finished":
-            job_dict["progress"] = f"{n_total} / {n_total}"
-        elif job_dict["status"] in ("deferred","started", "paused", "canceled"):
-            job_dict["progress"] = f"{n_completed} / {n_total}"
+        if task_dict["status"] == "finished":
+            task_dict["progress"] = f"{n_total} / {n_total}"
+        elif task_dict["status"] in ("deferred","started", "paused", "canceled"):
+            task_dict["progress"] = f"{n_completed} / {n_total}"
         
-        # if job_dict["status"] == "canceled" and 
-        if job_dict["meta"].get('paused', False) and job_dict["status"] not in ("finished", "failed"):
+        # if task_dict["status"] == "canceled" and 
+        if task.meta.get('paused', False) and task_dict["status"] not in ("finished", "failed"):
             if n_started < n_completed: # TODO: this does not work
-                job_dict["status"] = "pausing"
+                task_dict["status"] = "pausing"
             else:
-                job_dict["status"] = "paused"
+                task_dict["status"] = "paused"
 
-        if job_dict["status"] in ("deferred", "started"):
+        if task_dict["status"] in ("deferred", "started"):
             if n_started == 0:
-                job_dict["status"] = "waiting"
+                task_dict["status"] = "waiting"
             elif n_completed < n_total:
-                job_dict["status"] = "running" 
+                task_dict["status"] = "running" 
             elif n_completed == n_total:
-                job_dict["status"] = "finishing" 
+                task_dict["status"] = "finishing" 
 
-        job_info.append(job_dict)
-    return JSONResponse(dict(data=job_info))
-    # return PlainTextResponse(",".join([str(j) for j in all_jobs]))
+        tasks_info.append(task_dict)
+    return JSONResponse(dict(data=tasks_info))
 
 @router.get("/query")
 @requires(["authenticated", "admin"], redirect="login")
 async def query(request):
     template = "dashboards/query.html"
-    dicom_nodes = [name for name,node in config.mercure.targets.items() if type(node) in (DicomTarget, DicomWebTarget) and node.direction in ("pull", "both")]
-    destination_folders = [name for name,node in config.mercure.targets.items() if type(node) == FolderTarget]
+    dicom_nodes = [name for name,node in config.mercure.targets.items() if isinstance(node, (DicomTarget, DicomWebTarget)) and node.direction in ("pull", "both")]
+    destination_folders = [name for name,node in config.mercure.targets.items() if isinstance(node, FolderTarget)]
     context = {
         "request": request,
         "destination_folders": destination_folders,
@@ -224,9 +219,6 @@ async def check_accessions(request):
     node_name = form.get("dicom_node")
     accessions = form.get("accessions", "").split(",")
     
-    series_descriptions = form.get("series_descriptions")
-    study_descriptions = form.get("study_descriptions")
-
     search_filters = {}
     if search_filter:= form.get("series_description"):
         search_filters["SeriesDescription"] = [x.strip() for x in search_filter.split(",")]
@@ -238,6 +230,6 @@ async def check_accessions(request):
         return JSONResponse({"error": f"Invalid DICOM node"}, status_code=400)
     
     with Connection(redis):
-        job = CheckAccessionsJob().create(accessions=accessions, node=node, search_filters=search_filters)
-        CheckAccessionsJob.queue().enqueue_job(job)
+        job = CheckAccessionsTask().create_job(accessions=accessions, node=node, search_filters=search_filters)
+        CheckAccessionsTask.queue().enqueue_job(job)
     return JSONResponse({"status": "pending", "job_id": job.id})

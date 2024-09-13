@@ -7,7 +7,7 @@ import subprocess
 import sys
 import threading
 import time
-from typing import Any, Callable, Generator, Optional
+from typing import Any, Callable, Dict, Generator, Optional
 import pytest
 import requests
 from supervisor.supervisord import Supervisor
@@ -20,6 +20,7 @@ from common.config import mercure_defaults
 import pydicom
 import socket
 import tempfile
+
 
 # current workding directory
 here = os.path.abspath(os.getcwd())
@@ -61,6 +62,13 @@ file={self.socket}
 serverurl=unix://{self.socket}
 """)
             for service in services:
+                # environment=""
+                # if service.environment:
+                #     environment = ","
+                #     for key, value in service.environment.items():
+                #         environment += f"{key}=\"{value}\","
+                #     if environment[-1] == ',':
+                #         environment = environment[:-1]
                 f.write(f"""
 [program:{service.name}]
 command={service.command}
@@ -235,15 +243,30 @@ def python_bin():
     else:
         yield sys.executable
 
+
 @pytest.fixture(scope="function")
-def mercure(mercure_base, supervisord: Callable[[Any], SupervisorManager], python_bin) -> Generator[Callable[[Any],SupervisorManager], None, None]:
+def mercure_base() -> Generator[Path, None, None]:
+    with tempfile.TemporaryDirectory(prefix='mercure_') as temp_dir:
+        temp_path = Path(temp_dir)
+        for d in ['config','data']:
+            (temp_path / d).mkdir()
+        for k in ["incoming", "studies", "outgoing", "success", "error", "discard", "processing", "jobs"]:
+            (temp_path / 'data' / k).mkdir()
+        yield temp_path
+
+@pytest.fixture(scope="function")
+def mercure(supervisord: Callable[[Any], SupervisorManager], python_bin) -> Generator[Callable[[Any],SupervisorManager], None, None]:
     def py_service(service, **kwargs) -> MercureService:
-        return MercureService(service,f"{python_bin} {here}/{service}.py", **kwargs)
+        if 'command' not in kwargs:
+            kwargs['command'] = f"{python_bin} {here}/{service}.py"
+        return MercureService(service,**kwargs)
     services = [
         py_service("bookkeeper",startsecs=6),
         py_service("router", numprocs=5),
         py_service("processor", numprocs=2),
         py_service("dispatcher", numprocs=5),
+        py_service("worker_fast", command=f"{python_bin} -m rq.cli worker mercure_fast"),
+        py_service("worker_slow", command=f"{python_bin} -m rq.cli worker mercure_slow")
     ]
     services += [MercureService(f"receiver", f"{here}/receiver.sh --inject-errors", stopasgroup=True)]
     supervisor = supervisord(services)
@@ -257,16 +280,6 @@ def mercure(mercure_base, supervisord: Callable[[Any], SupervisorManager], pytho
         print(f"====== {l} ======")
         print(logs[l])
     print("=============")
-
-@pytest.fixture(scope="function")
-def mercure_base() -> Generator[Path, None, None]:
-    with tempfile.TemporaryDirectory(prefix='mercure_') as temp_dir:
-        temp_path = Path(temp_dir)
-        for d in ['config','data']:
-            (temp_path / d).mkdir()
-        for k in ["incoming", "studies", "outgoing", "success", "error", "discard", "processing", "jobs"]:
-            (temp_path / 'data' / k).mkdir()
-        yield temp_path
 
 def random_port() -> int:
     """
