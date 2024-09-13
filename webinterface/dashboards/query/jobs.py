@@ -9,6 +9,7 @@ from typing import Any, Dict, Generator, List, Optional, Tuple, Type, Union, cas
 import typing
 
 
+from common import helper
 from common.types import DicomTarget, DicomWebTarget, FolderTarget
 from dispatch.target_types.base import ProgressInfo
 from dispatch.target_types.registry import get_handler
@@ -286,7 +287,7 @@ class QueryPipeline():
         MainTask.queue().enqueue_job(main_job)
 
         wrapped_job = cls(main_job)
-        if offpeak and not _is_offpeak(config.mercure.offpeak_start, config.mercure.offpeak_end, datetime.now().time()):
+        if offpeak and not helper._is_offpeak(config.mercure.offpeak_start, config.mercure.offpeak_end, datetime.now().time()):
             wrapped_job.pause()
 
         return wrapped_job
@@ -332,7 +333,7 @@ class QueryPipeline():
         #     return False
         logger.info(f"Retrying {self.job}")
         for subjob in self.get_subjobs():
-            if (status:=self.job.get_status()) in ("failed", "canceled"):
+            if (status:=subjob.get_status()) in ("failed", "canceled"):
                 logger.info(f"Retrying {subjob}")
                 if status == "failed" and (job_path:=Path(subjob.kwargs['path'])).exists():
                     shutil.rmtree(job_path) # Clean up after a failed job
@@ -345,8 +346,7 @@ class QueryPipeline():
         Resume or pause offpeak jobs based on whether the current time is within offpeak hours.
         """
         config.read_config()
-        is_offpeak = _is_offpeak(config.mercure.offpeak_start, config.mercure.offpeak_end, datetime.now().time())
-        logger.info(f"is_offpeak {is_offpeak}")
+        is_offpeak = helper._is_offpeak(config.mercure.offpeak_start, config.mercure.offpeak_end, datetime.now().time())
         for pipeline in QueryPipeline.get_all():
             pipeline.update_offpeak(is_offpeak)
 
@@ -433,16 +433,3 @@ class QueryPipeline():
         jobs = (Job.fetch(j_id) for j_id in job_ids)
 
         return (QueryPipeline(j) for j in jobs if j and j.get_meta().get("type") == type)
-
-def _is_offpeak(offpeak_start: str, offpeak_end: str, current_time) -> bool:
-    try:
-        start_time = datetime.strptime(offpeak_start, "%H:%M").time()
-        end_time = datetime.strptime(offpeak_end, "%H:%M").time()
-    except Exception as e:
-        logger.error(f"Unable to parse offpeak time: {offpeak_start}, {offpeak_end}", None)  # handle_error
-        return True
-
-    if start_time < end_time:
-        return bool(current_time >= start_time and current_time <= end_time)
-    # End time is after midnight
-    return bool(current_time >= start_time or current_time <= end_time)

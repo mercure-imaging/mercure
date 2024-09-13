@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 import tempfile
-from typing import Dict
+from typing import Dict, Optional
 import pydicom
 import pytest
 from pynetdicom import AE, evt, StoragePresentationContexts, build_role
@@ -23,7 +23,7 @@ from fakeredis import FakeStrictRedis
 
 getLogger('pynetdicom').setLevel('WARNING')
 # Mock data for testing
-MOCK_ACCESSIONS = ["12345"]
+MOCK_ACCESSIONS = ["1","2","3"]
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -36,6 +36,7 @@ def mock_node(receiver_port):
     return DicomTarget(ip="127.0.0.1", port=str(receiver_port), aet_target="TEST")
 
 class DummyDICOMServer:
+    remaining_allowed_accessions: Optional[int] = None
     """A simple DICOM server for testing purposes."""
     def __init__(self, port:int, datasets: Dict[str,Dataset]):
         assert isinstance(port, int), "Port must be an integer"
@@ -61,7 +62,8 @@ class DummyDICOMServer:
             ds = event.identifier
             # yield 1
             # Check if the request matches our dummy data
-            if 'AccessionNumber' in ds and ds.AccessionNumber in MOCK_ACCESSIONS:
+            if 'AccessionNumber' in ds and ds.AccessionNumber in MOCK_ACCESSIONS \
+                    and ( self.remaining_allowed_accessions is None or  self.remaining_allowed_accessions > 0 ):
                 # Create a dummy DICOM dataset
                 yield 1
 
@@ -72,8 +74,11 @@ class DummyDICOMServer:
                 dummy_ds.file_meta.TransferSyntaxUID = ExplicitVRLittleEndian
 
                 # Yield the dataset
+                if self.remaining_allowed_accessions:
+                    self.remaining_allowed_accessions = self.remaining_allowed_accessions - 1
                 yield (0xFF00, dummy_ds)
             else:
+                yield 0
                 yield (0x0000, None)  # Status 'Success', but no match
         # Bind the C-FIND handler
 
@@ -122,6 +127,17 @@ def dicom_server(mock_node, dummy_datasets):
     server = DummyDICOMServer(int(mock_node.port), dummy_datasets)
     yield mock_node
     server.stop()
+
+@pytest.fixture(scope="function")
+def dicom_server_2(mock_node, dummy_datasets):
+    """
+    Pytest fixture to start a DICOM server before tests and stop it after.
+    This fixture has module scope, so the server will be started once for all tests in the module.
+    """
+    server = DummyDICOMServer(int(mock_node.port), dummy_datasets)
+    yield mock_node, server
+    server.stop()
+
 
 @pytest.fixture(scope="function")
 def dicomweb_server(dummy_datasets, tempdir):
@@ -213,7 +229,7 @@ def test_query_operations(dicomweb_server, tempdir, dummy_datasets, fs, rq_conne
     assert task
     assert task.meta['total'] == len(dummy_datasets)
     assert task.meta['completed'] == 0
-    task.pause()
+    task.pause()    
     for job in (jobs:=task.get_subjobs()):
         assert job.meta.get("paused")
         assert job.get_status() == "canceled"
@@ -238,3 +254,19 @@ def test_query_operations(dicomweb_server, tempdir, dummy_datasets, fs, rq_conne
     task.get_meta()
     assert task.meta['completed'] == len(dummy_datasets)
     assert task.meta['total'] == len(dummy_datasets)
+
+def test_query_retry(dicom_server_2: tuple[DicomTarget,DummyDICOMServer], tempdir, dummy_datasets, fs, rq_connection):
+    (tempdir / "outdir").mkdir()
+    target, server = dicom_server_2
+    task = QueryPipeline.create([ds.AccessionNumber for ds in dummy_datasets.values()], {}, target, (tempdir / "outdir"))
+    server.remaining_allowed_accessions = 1
+    w = SimpleWorker(["mercure_fast", "mercure_slow"], connection=redis)
+    w.work(burst=True)
+    task.get_meta()
+    assert task.meta['completed'] == 1
+    assert task.meta['total'] == len(dummy_datasets)
+    server.remaining_allowed_accessions = None
+    task.retry()
+    w.work(burst=True)
+    task.get_meta()
+    assert task.meta['completed'] == len(dummy_datasets)
