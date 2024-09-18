@@ -562,3 +562,48 @@ body {
 
 .queueArchiveFilter {
 }
+
+.select select[multiple] option::before {
+  font-family: "Font Awesome 5 Free"; 
+  font-weight: 900; 
+  content: "\f00c";
+  margin-right: 10px;
+  color: #FFF;
+}
+
+.select select[multiple] option:checked::before {
+  font-family: "Font Awesome 5 Free"; 
+  font-weight: 900; 
+  content: "\f00c";
+  margin-right: 10px;
+  color: unset;
+}
+
+.target_select {
+  overflow-y: auto;
+  width: 100%;
+}
+
+.target_select::-webkit-scrollbar-track,
+.target_select::-webkit-scrollbar-corner {
+  background-color: none;
+}
+
+.target_select::-webkit-scrollbar-thumb {
+  background: rgb(219,219,219);
+  border-radius: 10px;
+  border: 4px solid transparent;
+  background-clip: content-box;
+}
+
+.target_select::-webkit-scrollbar-thumb:hover {
+  background: #2f2f2f;
+  background: rgb(219,219,219);
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+
+.target_select::-webkit-scrollbar {
+  width: 14px;
+  height: 14px;
+}

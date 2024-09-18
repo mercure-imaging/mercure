@@ -28,6 +28,7 @@ from common.constants import (
     mercure_options,
     mercure_actions,
 )
+from common.helper import get_now_str
 
 
 # Create local logger instance
@@ -149,7 +150,7 @@ def add_study(
 
 
 def add_dispatching(
-    task_id: str, uid: str, applied_rule: str, tags_list: Dict[str, str], target: str
+    task_id: str, uid: str, applied_rule: str, tags_list: Dict[str, str], target: Union[str,List[str]]
 ) -> Optional[TaskDispatch]:
     """
     Adds information about the desired dispatching step into the task file, which is evaluated by the dispatcher. For series-level dispatching,
@@ -164,21 +165,30 @@ def add_dispatching(
         logger.warning(f"Applied_rule and target empty. Cannot add dispatch information for UID {uid}")
         return None
 
-    target_used: str = target
+    targets_used: List[str] = []
+    if isinstance(target,str):
+        targets_used = [target]
+    else:
+        targets_used = target    
 
     # Check if a target string is provided (i.e., job is from series-level dispatching). If so, the images should be dispatched in any case
-    if target_used:
+    if len(targets_used)>0:
         logger.debug(f"Adding dispatching info because series-level target {target} specified")
         perform_dispatch = True
     else:
         # If no target string is provided, read the target defined in the provided applied rule
-        target_used = config.mercure.rules[applied_rule].get("target", "")
+        rule_target = config.mercure.rules[applied_rule].target
+        if isinstance(rule_target, str):
+            targets_used = [rule_target]
+        else:
+            targets_used = rule_target
+
         # Applied_rule involves dispatching and target has been set? Then go forward with dispatching
         if (
             config.mercure.rules[applied_rule].get(mercure_rule.ACTION, mercure_actions.PROCESS)
             in (mercure_actions.ROUTE, mercure_actions.BOTH)
-        ) and target_used:
-            logger.debug(f"Adding dispatching info because rule target {target} specified")
+        ) and len(targets_used)>0:
+            logger.debug(f"Adding dispatching info because rule specified target {target}")
             perform_dispatch = True
 
     # If dispatching should not be performed, just return
@@ -186,15 +196,19 @@ def add_dispatching(
         logger.debug("Not adding dispatch information.")
         return None
 
-    # Check if the selected target actually exists in the configuration (could have been deleted by now)
-    if not config.mercure.targets.get(target_used, {}):
-        logger.error(f"Target {target_used} does not exist for UID {uid}", task_id)  # handle_error
-        return None
+    target_status : Dict[str, TaskDispatchStatus] = {}
+    current_time=get_now_str() 
+    for target_item in targets_used:
+        # Check if all selected targets actually exist in the configuration (could have been deleted by now)
+        if not config.mercure.targets.get(target_item, {}):
+            logger.error(f"Target {target_item} does not exist for UID {uid}", task_id)  # handle_error
+            return None            
+        target_status[target_item]=TaskDispatchStatus(state="waiting", time=current_time)
 
     # All looks good, fill the dispatching section and return it
-    target_info = config.mercure.targets[target_used]
     return TaskDispatch(
-        target_name=target_used,
+        target_name=targets_used,
+        status=target_status,
         retries=None,
         next_retry_at=None,
     )

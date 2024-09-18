@@ -22,7 +22,10 @@ class FolderTargetTargetHandler(TargetHandler[FolderTarget]):
     def send_to_target(self, task_id: str, target: FolderTarget, dispatch_info: TaskDispatch, source_folder: Path, task: Task) -> str:
         # send dicoms in source-folder to target folder
         new_folder = Path(target.folder) / str(uuid.uuid4())
-        shutil.copytree(source_folder, new_folder)
+        if target.file_filter:
+            shutil.copytree(source_folder, new_folder, ignore=shutil.ignore_patterns(target.file_filter))
+        else:
+            shutil.copytree(source_folder, new_folder)
         (new_folder / ".complete").touch()
         logger.info(f"Copied {source_folder} to {new_folder}")
         return ""

@@ -119,6 +119,7 @@ class S3Target(Target):
 class FolderTarget(Target):
     target_type: Literal["folder"] = "folder"
     folder: str
+    file_filter: Optional[str]
 
 
 class DummyTarget(Target):
@@ -144,7 +145,7 @@ class UnsetRule(TypedDict):
 
 class Rule(BaseModel, Compat):
     rule: str = "False"
-    target: str = ""
+    target: Union[str,List[str]] = ""
     disabled: bool = False
     fallback: bool = False
     contact: str = ""
@@ -226,6 +227,7 @@ class Config(BaseModel, Compat):
     server_time: str = "UTC"
     local_time: str = "UTC"
 
+
 class TaskInfo(BaseModel, Compat):
     action: Literal["route", "both", "process", "discard", "notification"]
     uid: str
@@ -242,8 +244,14 @@ class TaskInfo(BaseModel, Compat):
     device_serial_number: Optional[str] = None
 
 
+class TaskDispatchStatus(BaseModel, Compat):
+    state: Literal["waiting", "complete", "error"]
+    time: str
+
+
 class TaskDispatch(BaseModel, Compat):
-    target_name: str
+    target_name: List[str]
+    status: Dict[str, TaskDispatchStatus]
     retries: Optional[int] = 0
     next_retry_at: Optional[float] = 0
     series_uid: Optional[str]

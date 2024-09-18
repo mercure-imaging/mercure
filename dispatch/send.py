@@ -18,12 +18,12 @@ from typing_extensions import Literal
 
 # App-specific includes
 from common.monitor import task_event, m_events, severity
-from dispatch.retry import increase_retry
+from dispatch.retry import increase_retry, update_dispatch_status
 from dispatch.status import is_ready_for_sending
 from common.constants import mercure_names
 from common.types import (
     DicomTarget, DicomTLSTarget, EmptyDict, SftpTarget,
-    Task, TaskDispatch, TaskInfo, Rule)
+    Task, TaskDispatch, TaskDispatchStatus, TaskInfo, Rule)
 import common.config as config
 import common.monitor as monitor
 import common.notification as notification
@@ -32,6 +32,7 @@ from common.constants import (
     mercure_events,
 )
 import dispatch.target_types as target_types
+from common.helper import get_now_str
 
 # Create local logger instance
 logger = config.get_logger()
@@ -121,10 +122,29 @@ def execute(
         return
 
     uid = task_info.get("uid", "uid-missing")
-    target_name: str = dispatch_info.get("target_name", "target_name-missing")
-
-    if (uid == "uid-missing") or (target_name == "target_name-missing"):
+    if (uid == "uid-missing"):
         logger.warning(f"Missing information for folder {source_folder}", task_content.id)
+
+    if len(dispatch_info.target_name)==0:
+        logger.error(  # handle_error
+            f"No targets provided. Unable to dispatch job {uid}",
+            task_content.id,
+            target="",
+        )
+        _move_sent_directory(task_content.id, source_folder, error_folder)
+        _trigger_notification(task_content, mercure_events.ERROR)
+        return
+
+    for target_item in dispatch_info.target_name:
+        if not config.mercure.targets.get(target_item, None):
+            logger.error(  # handle_error
+                f"Settings for target {target_item} incorrect. Unable to start dispatching of job {uid}",
+                task_content.id,
+                target=target_item,
+            )
+            _move_sent_directory(task_content.id, source_folder, error_folder)
+            _trigger_notification(task_content, mercure_events.ERROR)
+            return
 
     # Create a .processing file to indicate that this folder is being sent,
     # otherwise another dispatcher instance would pick it up again
@@ -137,9 +157,9 @@ def execute(
     except:
         # TODO: Put a limit on these error messages -- log will run full at some point
         logger.error(  # handle_error
-            f"Error sending {uid} to {target_name}, could not create lock file for folder {source_folder}",
+            f"Error sending {uid} to {dispatch_info.target_name}, could not create lock file for folder {source_folder}",
             task_content.id,
-            target=target_name,
+            target=",".join(dispatch_info.target_name),
         )
         return
 
@@ -153,70 +173,87 @@ def execute(
             sendlog.unlink()
         except:
             logger.error(  # handle_error
-                f"Error sending {uid} to {target_name}: unable to remove former sendlog {sendlog}",
+                f"Error sending {uid} to {dispatch_info.target_name}: unable to remove former sendlog {sendlog}",
                 task_content.id,
             )
             return
 
-    # Compose the command for dispatching the results
-    target = config.mercure.targets.get(dispatch_info.get("target_name", ""), None)
+    current_status : Dict[str, TaskDispatchStatus] = dispatch_info.status
+    for target_item in dispatch_info.target_name:
 
-    if target is None:
+        if current_status[target_item] and current_status[target_item].state != "complete":
+
+            # Compose the command for dispatching the results
+            target = config.mercure.targets.get(target_item, None)
+            if not target:
+                logger.error(  # handle_error
+                    f"Error sending {uid} to {target_item}: unable to get target information",
+                    task_content.id,
+                )
+                current_status[target_item] = TaskDispatchStatus(state="error", time=get_now_str())                
+                continue
+
+            try:
+                handler = target_types.get_handler(target)
+                file_count = len(list(Path(source_folder).glob(mercure_names.DCMFILTER)))
+                monitor.send_task_event(
+                    task_event.DISPATCH_BEGIN,
+                    task_content.id,
+                    file_count,
+                    target_item,
+                    "Routing job running",
+                )
+                result = handler.send_to_target(task_content.id, target, cast(TaskDispatch,dispatch_info), source_folder, task_content)
+                monitor.send_task_event(
+                    task_event.DISPATCH_COMPLETE,
+                    task_content.id,
+                    file_count,
+                    target_item,
+                    "Routing job complete",
+                )
+                current_status[target_item] = TaskDispatchStatus(state="complete", time=get_now_str())                
+
+            except Exception as e:
+                logger.error(  # handle_error
+                    f"Error sending uid {uid} in task {task_content.id} to {target_item}:\n {e}",
+                    task_content.id,
+                    target=target_item,
+                )
+                current_status[target_item] = TaskDispatchStatus(state="error", time=get_now_str())                
+
+    dispatch_success = True
+    for item in current_status:
+        if current_status[item].state != "complete":
+            dispatch_success = False
+            break        
+
+    if not update_dispatch_status(source_folder, current_status):
         logger.error(  # handle_error
-            f"Settings for target {target_name} incorrect. Unable to dispatch job {uid}",
+            f"Error updating dispatch status for task {uid}",
             task_content.id,
-            target=target_name,
-        )
-        _move_sent_directory(task_content.id, source_folder, error_folder)
-        _trigger_notification(task_content, mercure_events.ERROR)
-        return
+        )        
 
-    handler = target_types.get_handler(target)
-
-    try:
-        file_count = len(list(Path(source_folder).glob(mercure_names.DCMFILTER)))
-        monitor.send_task_event(
-            task_event.DISPATCH_BEGIN,
-            task_content.id,
-            file_count,
-            target_name,
-            "Routing job running",
-        )
-        result = handler.send_to_target(task_content.id, target, cast(TaskDispatch,dispatch_info), source_folder, task_content)
-        monitor.send_task_event(
-            task_event.DISPATCH_COMPLETE,
-            task_content.id,
-            file_count,
-            "",
-            "Routing job complete",
-        )
-
+    if dispatch_success:
+        # Dispatching of successful
         _move_sent_directory(task_content.id, source_folder, success_folder)
         monitor.send_task_event(task_event.MOVE, task_content.id, 0, str(success_folder)+"/"+str(source_folder.name), "Moved to success folder")
-
         _trigger_notification(task_content, mercure_events.COMPLETED)
         monitor.send_task_event(monitor.task_event.COMPLETE, task_content.id, 0, "", "Task complete")
+        logger.info(f"Done with dispatching folder {source_folder}")
 
-    except Exception as e:
-        logger.error(  # handle_error
-            f"Error sending uid {uid} in task {task_content.id} to {target_name}:\n {e}",
-            task_content.id,
-            target=target_name,
-        )
-
+    else:
+        # Error during dispatching of job
         retry_increased = increase_retry(source_folder, retry_max, retry_delay)
         if retry_increased:
             lock_file.unlink()
         else:
             logger.info(f"Max retries reached, moving to {error_folder}")
-            monitor.send_task_event(task_event.SUSPEND, task_content.id, 0, target_name, "Max retries reached")
+            monitor.send_task_event(task_event.SUSPEND, task_content.id, 0, ",".join(dispatch_info.target_name), "Max retries reached")
             _move_sent_directory(task_content.id, source_folder, error_folder)
             monitor.send_task_event(task_event.MOVE, task_content.id, 0, str(error_folder), "Moved to error folder")
             monitor.send_event(m_events.PROCESSING, severity.ERROR, f"Series suspended after reaching max retries")
             _trigger_notification(task_content, mercure_events.ERROR)
-
-    logger.info(f"Done with dispatching folder {source_folder}")
-        # logger.warning(f"Folder {source_folder} is *not* ready for sending")
+            logger.info(f"Dispatching folder {source_folder} not successful")
 
 
 def _move_sent_directory(task_id, source_folder, destination_folder) -> None:

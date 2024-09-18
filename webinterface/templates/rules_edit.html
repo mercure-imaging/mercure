@@ -32,7 +32,7 @@
                     </a>
                 </li>
                 <li data-tab="routing">
-                    <a>
+                    <a id="routing_id">
                         <span class="icon"><i class="fa fa-directions"></i></span>
                         <span>Routing</span>
                     </a>
@@ -288,12 +288,12 @@
                 </div>
                 <div class="panel" data-content="routing">
                     <div class="field">
-                        <label class="label">Target</label>
-                        <div class="select">
+                        <label class="label">Targets</label>
+                        <div class="select is-multiple" id="target_control" style="width: 100%;">
                             <div class="control">
-                                <select name="target">
+                                <select class="target_select" multiple id="target" name="target" size="{{ [targets|length,16]|min }}">
                                     {% for t in targets %}
-                                    <option value="{{t}}" {% if rules[rule]['target']==t %}selected{% endif%}>{{ t }}
+                                    <option value="{{t}}" {% if t in rules[rule]['target'] %}selected{% endif%}>{{ t }}
                                     </option>
                                     {% endfor %}
                                 </select>
@@ -552,6 +552,18 @@
                 $('#processing_id').click();
                 $('#modules_list .tagsinput').addClass("is-danger");
                 $('#processing_module').focus();
+                return false;
+            }
+        }
+
+        if (($('#action').val() == 'route') || ($('#action').val() == 'both')) {
+            if ($('#target').val() == '') {
+                $('#erroralert').html('<i class="fas fa-bug"></i>&nbsp;&nbsp;Targets cannot be empty. Add at least one target.');
+                $('#erroralert').show();
+                $('#routing_id').click();
+                $('#target').addClass("is-danger");
+                $('#target_control').addClass("is-danger");
+                $('#target').focus();
                 return false;
             }
         }
