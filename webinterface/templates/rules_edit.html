@@ -299,6 +299,7 @@
                                 </select>
                             </div>
                         </div>
+                        <p class="help" style="color: #CCC; margin-top: 4px; text-align: right;">Hold CTRL key and click to select multiple targets.</p>
                         <!--                        
                         <a class="button is-frameless has-tooltip-right has-tooltip-success" data-tooltip="Remove target">
                             <span class="icon is-small">
@@ -628,6 +629,23 @@
             $(this).outerHeight(36).outerHeight(this.scrollHeight + 1);
         }
     });
+
+    /*
+    $("#target").mousedown(function(e){
+        e.preventDefault();        
+        var select = this;
+        var scroll = select.scrollTop;       
+        if (!e.target.selected) {
+            e.target.selected=true;
+        } else {
+            if (document.getElementById("target").selectedOptions.length > 1) {
+                e.target.selected=false;
+            }
+        }
+        setTimeout(function(){select.scrollTop = scroll;}, 0);        
+        $(select).focus();
+    }).mousemove(function(e){e.preventDefault()});
+    */
 
     $(document).ready(function () {
         var quickviews = bulmaQuickview.attach();

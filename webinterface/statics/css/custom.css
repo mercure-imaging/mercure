@@ -607,3 +607,14 @@ body {
   width: 14px;
   height: 14px;
 }
+
+
+#target option:checked {
+  background-color: rgb(50, 115, 220);
+  color: #FFF;
+}
+
+#target option:active,  #target option:focus {
+  background-color: rgb(50, 115, 220);
+  color: #FFF;
+}

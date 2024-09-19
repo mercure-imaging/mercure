@@ -125,6 +125,9 @@ def execute(
     if (uid == "uid-missing"):
         logger.warning(f"Missing information for folder {source_folder}", task_content.id)
 
+    if isinstance(dispatch_info.target_name, str):
+        dispatch_info.target_name = [dispatch_info.target_name]
+
     if len(dispatch_info.target_name)==0:
         logger.error(  # handle_error
             f"No targets provided. Unable to dispatch job {uid}",

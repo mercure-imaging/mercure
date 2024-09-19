@@ -250,7 +250,7 @@ class TaskDispatchStatus(BaseModel, Compat):
 
 
 class TaskDispatch(BaseModel, Compat):
-    target_name: List[str]
+    target_name: Union[str,List[str]]
     status: Dict[str, TaskDispatchStatus]
     retries: Optional[int] = 0
     next_retry_at: Optional[float] = 0

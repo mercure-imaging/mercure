@@ -157,7 +157,10 @@ async def show_jobs_routing(request):
                 with open(task_file, "r") as f:
                     task: Task = Task(**json.load(f))
                     if task.dispatch and task.dispatch.target_name:
-                        job_target = ", ".join(task.dispatch.target_name)
+                        if isinstance(task.dispatch.target_name, str):
+                            job_target = task.dispatch.target_name
+                        else:
+                            job_target = ", ".join(task.dispatch.target_name)
                     job_acc = task.info.acc
                     job_mrn = task.info.mrn
                     if task.info.uid_type == "series":
