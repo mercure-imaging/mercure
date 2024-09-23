@@ -262,7 +262,7 @@ async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_p
         # Print the log out of the module
         logger.info("=== MODULE OUTPUT - BEGIN ========================================")
         if container.logs() is not None:
-            logs = container.logs().decode("utf-8")
+            logs = container.logs(timestamps=True).decode("utf-8")
             if not config.mercure.processing_logs.discard_logs:
                 monitor.send_process_logs(task.id, task_processing.module_name, logs)
             logger.info(logs)
