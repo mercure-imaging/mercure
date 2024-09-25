@@ -280,7 +280,7 @@ async def show_log(request) -> Response:
         try:
             container = client.containers.get(services.services_list[requested_service]["docker_service"])
             container.reload()
-            raw_logs = container.logs(since=start_obj)
+            raw_logs = container.logs(since=start_obj, timestamps=True)
             return_code = 0
         except (docker.errors.NotFound, docker.errors.APIError): # type: ignore
             return_code = 1
