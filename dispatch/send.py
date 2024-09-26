@@ -13,7 +13,7 @@ from datetime import datetime
 from pathlib import Path
 from shlex import split
 from subprocess import PIPE, CalledProcessError, check_output
-from typing import Dict, Tuple, cast
+from typing import Dict, Tuple, cast, Union
 from typing_extensions import Literal
 
 # App-specific includes
@@ -125,6 +125,8 @@ def execute(
     if (uid == "uid-missing"):
         logger.warning(f"Missing information for folder {source_folder}", task_content.id)
 
+    # Ensure that the target_name is a list. Needed just for backwards compatibility 
+    # (i.e., if the task.json file was created with an older mercure version)
     if isinstance(dispatch_info.target_name, str):
         dispatch_info.target_name = [dispatch_info.target_name]
 
@@ -181,10 +183,13 @@ def execute(
             )
             return
 
-    current_status : Dict[str, TaskDispatchStatus] = dispatch_info.status
+    current_status = dispatch_info.status
+    # Needed just for backwards compatibility (i.e., if the task.json file was created with an older mercure version)
+    if len(current_status) != len(dispatch_info.target_name):
+        current_status = {target_item: TaskDispatchStatus(state="waiting", time=get_now_str()) for target_item in dispatch_info.target_name}
+     
     for target_item in dispatch_info.target_name:
-
-        if current_status[target_item] and current_status[target_item].state != "complete":
+        if current_status[target_item] and current_status[target_item].state != "complete": # type: ignore
 
             # Compose the command for dispatching the results
             target = config.mercure.targets.get(target_item, None)
@@ -193,7 +198,7 @@ def execute(
                     f"Error sending {uid} to {target_item}: unable to get target information",
                     task_content.id,
                 )
-                current_status[target_item] = TaskDispatchStatus(state="error", time=get_now_str())                
+                current_status[target_item] = TaskDispatchStatus(state="error", time=get_now_str()) # type: ignore               
                 continue
 
             try:
@@ -214,7 +219,7 @@ def execute(
                     target_item,
                     "Routing job complete",
                 )
-                current_status[target_item] = TaskDispatchStatus(state="complete", time=get_now_str())                
+                current_status[target_item] = TaskDispatchStatus(state="complete", time=get_now_str()) # type: ignore                
 
             except Exception as e:
                 logger.error(  # handle_error
@@ -222,11 +227,11 @@ def execute(
                     task_content.id,
                     target=target_item,
                 )
-                current_status[target_item] = TaskDispatchStatus(state="error", time=get_now_str())                
+                current_status[target_item] = TaskDispatchStatus(state="error", time=get_now_str()) # type: ignore               
 
     dispatch_success = True
     for item in current_status:
-        if current_status[item].state != "complete":
+        if current_status[item].state != "complete": # type: ignore
             dispatch_success = False
             break        
 

@@ -1,7 +1,7 @@
-from typing import cast, Dict
+from typing import cast, Dict, Union
 from typing_extensions import Literal
 
-from common.types import Task, TaskDispatch, TaskDispatchStatus
+from common.types import Task, TaskDispatch, TaskDispatchStatus, EmptyDict
 import json
 import time
 from pathlib import Path
@@ -31,7 +31,7 @@ def increase_retry(source_folder, retry_max, retry_delay) -> bool:
     return True
 
 
-def update_dispatch_status(source_folder: Path, status : Dict[str, TaskDispatchStatus]) -> bool:
+def update_dispatch_status(source_folder: Path, status : Union[Dict[str, TaskDispatchStatus], EmptyDict]) -> bool:
     target_json_path : Path = source_folder / mercure_names.TASKFILE
     try: 
         with open(target_json_path, "r") as file:

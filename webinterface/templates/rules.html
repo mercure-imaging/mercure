@@ -60,7 +60,7 @@
                         {% if (rules[x]['action']=='process') or (rules[x]['action']=='both') %}
                         <tr>
                             <td>Processing:</td>
-                            <td>{% if rules[x]['target'] is string %}
+                            <td>{% if rules[x]['processing_module'] is string %}
                                 {{ rules[x]['processing_module'] }}
                                 {% else %}
                                 {% for i in rules[x]['processing_module'] %} {{ i }} {% if not loop.last %}&#10140; {% endif %} {% endfor %}

@@ -251,7 +251,7 @@ class TaskDispatchStatus(BaseModel, Compat):
 
 class TaskDispatch(BaseModel, Compat):
     target_name: Union[str,List[str]]
-    status: Dict[str, TaskDispatchStatus]
+    status: Union[Dict[str, TaskDispatchStatus], EmptyDict] = cast(EmptyDict, {})
     retries: Optional[int] = 0
     next_retry_at: Optional[float] = 0
     series_uid: Optional[str]

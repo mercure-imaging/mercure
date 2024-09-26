@@ -167,7 +167,9 @@ def add_dispatching(
 
     targets_used: List[str] = []
     if isinstance(target,str):
-        targets_used = [target]
+        # Only insert string into list if it is not empty 
+        if target: 
+            targets_used = [target]
     else:
         targets_used = target    
 
@@ -199,6 +201,7 @@ def add_dispatching(
     target_status : Dict[str, TaskDispatchStatus] = {}
     current_time=get_now_str() 
     for target_item in targets_used:
+        #logger.info(f"Adding target {target_item} to dispatching info")
         # Check if all selected targets actually exist in the configuration (could have been deleted by now)
         if not config.mercure.targets.get(target_item, {}):
             logger.error(f"Target {target_item} does not exist for UID {uid}", task_id)  # handle_error
