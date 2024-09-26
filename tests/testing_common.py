@@ -135,7 +135,7 @@ class FakeDockerContainer:
     def wait(self):
         return {"StatusCode": 0}
 
-    def logs(self):
+    def logs(self, **kwargs):
         test_string = "Log output"
         return test_string.encode(encoding="utf8")
 
