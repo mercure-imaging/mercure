@@ -10,38 +10,50 @@
 <main role="main">
     <div class="container">
         <h1 class="title">DICOM Rules</h1>
-        {% for x in rules %}
-        <div class="card rulecard">
+
+        <div class="field">
+            <div class="control has-icons-left">
+                <input class="input" type="text" id="searchInput" placeholder="Search rules..." value="">
+                <span class="icon is-small is-left">
+                    <i class="fas fa-search"></i>
+                </span>
+            </div>
+        </div>
+    
+
+        {% for rule_name,rule in rules.items() %}
+        <div class="card rulecard" data-name="{{rule_name}}">
             <header class="card-header has-background-light ">
-                <p class="card-header-title card-toggle {% if rules[x]['disabled']==True %}has-text-grey-light{% endif %}">
-                    <span class="icon {% if rules[x]['disabled']!=True %}{% else %}has-text-grey-light{% endif %} has-tooltip-left {% if rules[x]['disabled']!=True %}has-tooltip-success{% endif %}" data-tooltip=
-                    {% if rules[x]['disabled']==True %}
+                <p class="card-header-title card-toggle {% if rule.disabled %}has-text-grey-light{% endif %}">
+                    <span class="icon {% if rule.disabled %}has-text-grey-light{% endif %} has-tooltip-left {% if not rule.disabled %}has-tooltip-success{% endif %}"
+                    data-tooltip=
+                    {% if rule.disabled==True %}
                     "Disabled"
                     {% else %}
-                    {% if rules[x]['action']=='route' %}"Routing Only"
-                    {% elif rules[x]['action']=='both' %}"Processing & Routing"
-                    {% elif rules[x]['action']=='process' %}"Processing Only"
-                    {% elif rules[x]['action']=='notification' %}"Notification Only"
-                    {% elif rules[x]['action']=='discard' %}"Force Discard"
+                    {% if rule.action=='route' %}"Routing Only"
+                    {% elif rule.action=='both' %}"Processing & Routing"
+                    {% elif rule.action=='process' %}"Processing Only"
+                    {% elif rule.action=='notification' %}"Notification Only"
+                    {% elif rule.action=='discard' %}"Force Discard"
                     {% else %}""
                     {% endif %}
                     {% endif %}>
-                    {% if rules[x]['action']=='route' %}<i class="fas fa-directions fa-lg"></i>
-                    {% elif rules[x]['action']=='both' %}<i class="fas fa-layer-group fa-lg"></i>
-                    {% elif rules[x]['action']=='process' %}<i class="fas fa-microchip fa-lg"></i>
-                    {% elif rules[x]['action']=='notification' %}<i class="fas fa-bullhorn fa-lg"></i>
-                    {% elif rules[x]['action']=='discard' %}<i class="fas fa-ban fa-lg"></i>
+                    {% if rule.action=='route' %}<i class="fas fa-directions fa-lg"></i>
+                    {% elif rule.action=='both' %}<i class="fas fa-layer-group fa-lg"></i>
+                    {% elif rule.action=='process' %}<i class="fas fa-microchip fa-lg"></i>
+                    {% elif rule.action=='notification' %}<i class="fas fa-bullhorn fa-lg"></i>
+                    {% elif rule.action=='discard' %}<i class="fas fa-ban fa-lg"></i>
                     {% else %}<i class=" fas fa-robot fa-lg"></i>
-                    {% endif %}</span>&nbsp;&nbsp;{{ x }}<span style="margin-left: auto;"></span>
-                    {% if rules[x]['fallback']==True %}
+                    {% endif %}</span>&nbsp;&nbsp;{{ rule_name }}<span style="margin-left: auto;"></span>
+                    {% if rule.fallback==True %}
                     <span class="has-tooltip-right has-tooltip-success" data-tooltip="Fallback Rule"><i class="fas fa-magnet ruleicon"></i></span>
                     {% endif %}
-                    {% if rules[x]['priority']=='urgent' %}
+                    {% if rule.priority=='urgent' %}
                     <span class="has-tooltip-right has-tooltip-success" data-tooltip="Urgent Processing"><i class="fas fa-shipping-fast ruleicon"></i></span>
-                    {% elif rules[x]['priority']=='offpeak' %}
+                    {% elif rule.priority=='offpeak' %}
                     <span class="has-tooltip-right has-tooltip-success" data-tooltip="Off-Peak Processing"><i class="fas fa-bed ruleicon"></i></span>
                     {% endif %}
-                    {% if rules[x]['notification_webhook']!='' %}
+                    {% if rule.notification_webhook!='' %}
                     <span class="has-tooltip-right has-tooltip-success" data-tooltip="Sending Notification"><i class="fas fa-bell ruleicon"></i></span>
                     {% endif %}
                 </p>
@@ -55,33 +67,33 @@
                         <col width="150">
                         <tr>
                             <td>Rule:</td>
-                            <td>{{ rules[x]['rule'] }}</td>
+                            <td>{{ rule.rule }}</td>
                         </tr>
-                        {% if (rules[x]['action']=='process') or (rules[x]['action']=='both') %}
+                        {% if (rule.action=='process') or (rule.action=='both') %}
                         <tr>
                             <td>Processing:</td>
-                            <td>{% for i in rules[x]['processing_module'] %} {{ i }} {% if not loop.last %}&#10140; {% endif %} {% endfor %}</td>
+                            <td>{% for i in rule.processing_module %} {{ i }} {% if not loop.last %}&#10140; {% endif %} {% endfor %}</td>
                         </tr>
                         {% endif %}
-                        {% if (rules[x]['action']=='route') or (rules[x]['action']=='both') %}
+                        {% if (rule.action=='route') or (rule.action=='both') %}
                         <tr>
                             <td>Target:</td>
-                            <td>{{ rules[x]['target'] }}</td>
+                            <td>{{ rule.target }}</td>
                         </tr>
                         {% endif %}
                         <tr>
                             <td>Contact:</td>
-                            <td>{{ rules[x]['contact'] }}</td>
+                            <td>{{ rule.contact }}</td>
                         </tr>
                         <tr>
                             <td>Comment:</td>
-                            <td>{{ rules[x]['comment'] }}</td>
+                            <td>{{ rule.comment }}</td>
                         </tr>
                     </table>
                     <div class="buttons is-right">
                         {% if is_admin %}
-                        <a class="button is-success" href="/rules/edit/{{x}}"><i class="fas fa-pen"></i>&nbsp;Edit</a>
-                        <button class="button is-danger" id="confirm-me" value="{{x}}"
+                        <a class="button is-success" href="/rules/edit/{{rule_name}}"><i class="fas fa-pen"></i>&nbsp;Edit</a>
+                        <button class="button is-danger" id="confirm-me" value="{{rule_name}}"
                             onclick="confirmDelete(this.value)"><i class="fas fa-trash-alt"></i>&nbsp;Delete</button>
                         {% endif %}
                     </div>
@@ -89,6 +101,11 @@
             </div>
         </div>
         {% endfor %}
+        <nav class="pagination is-centered" role="navigation" aria-label="pagination">
+            <ul class="pagination-list" id="paginationList">
+            </ul>
+        </nav>
+        
         {% if is_admin %}
         <div class="buttons is-left" style="margin-top: 20px;">
             <button class="button is-success" onclick="showAddModal()"><i class="fas fa-plus"></i>&nbsp;Add New</button>
@@ -149,6 +166,7 @@
                 e.currentTarget.parentElement.parentElement.childNodes[3].classList.toggle('is-hidden');
             });
         }
+        paginate(document.getElementsByClassName('rulecard'))
     });
 
     function showAddModal(val) {

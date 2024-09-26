@@ -35,33 +35,30 @@
         </a>
       </div>
       <div id="navbarMainMenu" class="navbar-menu">
+        {% macro highlight(the_page) -%}
+            {% if page != the_page %}has-text-grey-light{% endif %}
+        {%- endmacro %}
         <div class="navbar-start">
           {% if logged_in %}
-          <a class="navbar-item {% if page != 'homepage' %}has-text-grey-light{% endif %}" href="/">
+          <a class="navbar-item {{highlight('homepage')}}" href="/">
             Overview
           </a>
-          <a class="navbar-item {% if page != 'rules' %}has-text-grey-light{% endif %}" href="/rules">
+          <a class="navbar-item {{highlight('queue')}}" href="/queue">
+            Queue
+          </a>
+          <a class="navbar-item {% if page not in ['rules', 'targets','modules', 'users'] %} has-text-grey-light{%endif%}" href="/rules">
             Rules
           </a>
-          <a class="navbar-item {% if page != 'targets' %}has-text-grey-light{% endif %}" href="/targets">
-            Targets
-          </a>
-          <a class="navbar-item {% if page != 'modules' %}has-text-grey-light{% endif %}" href="/modules">
-            Modules
-          </a>
           {% if is_admin %}
-          <a class="navbar-item {% if page != 'users' %}has-text-grey-light{% endif %}" href="/users">
-            Users
-          </a>
-          <a class="navbar-item {% if page != 'logs' %}has-text-grey-light{% endif %}" href="/logs">
+          <a class="navbar-item {{highlight('logs')}}" href="/logs">
             Logs
           </a>
           {% endif %}
-          <a class="navbar-item {% if page != 'configuration' %}has-text-grey-light{% endif %}" href="/configuration">
-            Configuration
+          <a class="navbar-item {{highlight('dashboards')}}" href="/dashboards">
+            Tools
           </a>
-          <a class="navbar-item {% if page != 'queue' %}has-text-grey-light{% endif %}" href="/queue">
-            Queue
+          <a class="navbar-item {{highlight('configuration')}}" href="/configuration">
+            Configuration
           </a>
           {% endif %}
         </div>
@@ -94,7 +91,22 @@
       </div>
     </div>
   </nav>
-  {% block extra_nav %} {% endblock %}
+  {% block extra_nav %} 
+  {% if page in ['rules','targets','modules', 'users'] %}
+  <section>
+    <div class="container tabs">
+        <ul>
+          <li class="{% if page == 'rules' %}is-active{% endif %}"><a href="/rules">Rules</a></li>
+          <li class="{% if page == 'targets' %}is-active{% endif %}"><a href="/targets">Targets</a></li>
+          <li class="{% if page == 'modules' %}is-active{% endif %}"><a href="/modules">Modules</a></li>
+          {% if is_admin %}
+            <li class="{% if page == 'users' %}is-active{% endif %}"><a href="/users">Users</a></li>
+          {% endif %}
+        </ul>
+      </div>
+    </section>
+    {% endif %}
+  {% endblock %}
 
   <section class="section" style="flex: 1;">
     <div class="container">
@@ -117,6 +129,72 @@
   <script type="module">
     import { JSONEditor } from "{{ url_for('static', path='/js/svelte-jsoneditor.js') }}"
 
+    function paginate(cards, items_per_page=10) {
+        const paginationList = document.getElementById('paginationList');
+        const searchInput = document.getElementById('searchInput');
+        searchInput.value = '';
+        const ruleCards = cards;
+        const itemsPerPage = items_per_page; // Adjust this value to change items per page
+        let currentPage = 1;
+
+        function showPage(page) {
+            const startIndex = (page - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            let visibleCount = 0;
+            
+            Array.from(ruleCards).forEach((card, index) => {
+                if (card.style.display !== 'none') {
+                    visibleCount++;
+                    if (visibleCount > startIndex && visibleCount <= endIndex) {
+                        card.classList.remove('is-hidden');
+                    } else {
+                        card.classList.add('is-hidden');
+                    }
+                }
+            });
+
+            updatePagination();
+        }
+
+        function updatePagination() {
+            const visibleCards = Array.from(ruleCards).filter(card => card.style.display !== 'none');
+            const pageCount = Math.ceil(visibleCards.length / itemsPerPage);
+
+            paginationList.innerHTML = '';
+            for (let i = 1; i <= pageCount; i++) {
+                const li = document.createElement('li');
+                const a = document.createElement('a');
+                a.classList.add('pagination-link');
+                if (i === currentPage) {
+                    a.classList.add('is-current');
+                }
+                a.setAttribute('aria-label', `Goto page ${i}`);
+                a.textContent = i;
+                a.addEventListener('click', () => {
+                    currentPage = i;
+                    showPage(currentPage);
+                });
+                li.appendChild(a);
+                paginationList.appendChild(li);
+            }
+        }
+
+        searchInput.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            Array.from(ruleCards).forEach( card => {
+                const ruleName = card.getAttribute('data-name').toLowerCase();
+                if (ruleName.includes(searchTerm)) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+            currentPage = 1;
+            showPage(currentPage);
+        });
+        showPage(currentPage);
+    }
+    window.paginate = paginate;
     $(document).ready(function () {
       // Check for click events on the navbar burger icon
       $(".navbar-burger").click(function () {

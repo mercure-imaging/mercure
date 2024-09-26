@@ -142,7 +142,7 @@ class GetAccessionTask(ClassBasedRQTask):
 
     def execute(self, *, accession:str, node: Union[DicomTarget, DicomWebTarget], search_filters:Dict[str, List[str]], path: str):
         print(f"Getting {accession}")
-        def error_handler(reason):
+        def error_handler(reason) -> None:
             logger.error(reason)
             if not job_parent:
                 raise
@@ -157,7 +157,7 @@ class GetAccessionTask(ClassBasedRQTask):
             logger.info("Cancelled sibling jobs.")
             if not job_parent.meta.get("failed_reason"):
                 job_parent.meta["failed_reason"] = reason
-                job_parent.save_meta()
+                job_parent.save_meta() # type: ignore
                 Queue(job_parent.origin)._enqueue_job(job_parent,at_front=True) # Force the parent job to run and fail itself
 
         job = cast(Job,self._job)
@@ -235,14 +235,14 @@ class MainTask(ClassBasedRQTask):
                     err = f"Failure during move to destination {destination}: {e}" if destination else f"Failure during move to {config.mercure.incoming_folder}: {e}"
                     logger.error(err)
                     job.meta["failed_reason"] = err
-                    job.save_meta()
+                    job.save_meta()  # type: ignore
                     raise
         # subprocess.run(["./bin/ubuntu22.04/getdcmtags", filename, self.called_aet, "MERCURE"],check=True)
 
         logger.info(f"Removing job directory {path}")
         shutil.rmtree(path)
         job.meta["failed_reason"] = None
-        job.save_meta()
+        job.save_meta() # type: ignore
 
         return "Job complete"
 

@@ -28,6 +28,10 @@ class TargetHandler(Generic[TargetTypeVar]):
     def __init__(self):
         pass
 
+    @property
+    def info_short(self) -> str:
+        return ""
+
     def send_to_target(
         self,
         task_id: str,

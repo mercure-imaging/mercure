@@ -6,12 +6,24 @@
 <main role="main">
     <div class="container">
         <h1 class="title">Routing Targets</h1>
+        <div class="field">
+            <div class="control has-icons-left">
+                <input class="input" type="text" id="searchInput" placeholder="Search rules..." value="">
+                <span class="icon is-small is-left">
+                    <i class="fas fa-search"></i>
+                </span>
+            </div>
+        </div>
         <div id="targets">
-        {% for x in targets %}
-        <div class="card rulecard">
+        {% for target_name, target in targets.items() %}
+        <div class="card rulecard" data-name="{{ target_name }}">
             <header class="card-header has-background-light">
                 <p class="card-header-title card-toggle">
-                    <span class="icon has-tooltip-left has-tooltip-success" data-tooltip="{{get_target_handler(targets[x]).display_name}} Target"><i class="fas {{get_target_handler(targets[x]).icon}} fa-lg"></i></span>&nbsp;&nbsp;{{ x }}
+                    <span class="icon has-tooltip-left has-tooltip-success" data-tooltip="{{get_target_handler(target).display_name}} Target"><i class="fas {{get_target_handler(target).icon}} fa-lg"></i></span>
+                    &nbsp;&nbsp;{{ target_name }}<span style="margin-left:auto; font-weight: 200;"> {{target.short_description}}
+                        &nbsp;<i class="has-text-grey fa {% if target.direction=='pull' %}fa-download{%elif target.direction=='push'%}fa-upload{%elif target.direction=='both'%}fa-server{%endif%}"></i>
+
+                    </span>
                 </p>
                 <a class="card-header-icon card-toggle">
                     <i class="fa fa-angle-down"></i>
@@ -21,27 +33,27 @@
                 <div class="content">
                     <table class="table is-narrow" style="margin-bottom: 8px;">
                         <col width="150">
-                        {% include get_target_handler(targets[x]).view_template %}
+                        {% include get_target_handler(target).view_template %}
                         <tr>
                             <td>Direction:</td>
-                            <td>{{ targets[x].direction }}</td>
+                            <td>{{ target.direction }}</td>
                         </tr>
                         <tr>
                             <td>Contact:</td>
-                            <td>{{ targets[x].contact }}</td>
+                            <td>{{ target.contact }}</td>
                         </tr>
                         <tr>
                             <td>Comment:</td>
-                            <td>{{ targets[x].comment }}</td>
+                            <td>{{ target.comment }}</td>
                         </tr>                                
                     </table>
                     <div class="buttons is-right">
-                        <button type="button" class="button is-dark" value="{{x}}" id="testbtn_{{x}}" hx-post="/targets/test/{{x}}" hx-target="#target_test_result"><i class="fas fa-satellite-dish"></i>&nbsp;Test</button>
+                        <button type="button" class="button is-dark" value="{{target_name}}" id="testbtn_{{target_name}}" hx-post="/targets/test/{{target_name}}" hx-target="#target_test_result"><i class="fas fa-satellite-dish"></i>&nbsp;Test</button>
                         {% if is_admin %}
-                        <a class="button is-success" href="/targets/edit/{{x}}"><i class="fas fa-pen"></i>&nbsp;Edit</a>
-                        <button class="button is-danger" id="confirm-me" value="{{x}}"
+                        <a class="button is-success" href="/targets/edit/{{target_name}}"><i class="fas fa-pen"></i>&nbsp;Edit</a>
+                        <button class="button is-danger" id="confirm-me" value="{{target_name}}"
                             onclick="confirmDelete(this.value)" {% if x in used_targets%}disabled
-                            title="Cannot delete because target is used by rule '{{ used_targets[x] }}'" {% endif %}><i
+                            title="Cannot delete because target is used by rule '{{ used_targets[target_name] }}'" {% endif %}><i
                                 class="fas fa-trash-alt"></i>&nbsp;Delete</button>
                         {% endif %}
                     </div>
@@ -49,6 +61,11 @@
             </div>
         </div>
         {% endfor %}
+        <nav class="pagination is-centered" role="navigation" aria-label="pagination">
+            <ul class="pagination-list" id="paginationList">
+            </ul>
+        </nav>
+
         </div>
         {% if is_admin %}
         <div class="buttons is-left" style="margin-top: 20px;">
@@ -132,6 +149,7 @@
                 e.currentTarget.parentElement.parentElement.childNodes[3].classList.toggle('is-hidden');
             });
         }
+        paginate(document.getElementsByClassName('rulecard'))
     });
 
     function showAddModal(val) {

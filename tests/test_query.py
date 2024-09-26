@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 import tempfile
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 import pydicom
 import pytest
 from pynetdicom import AE, evt, StoragePresentationContexts, build_role
@@ -255,7 +255,7 @@ def test_query_operations(dicomweb_server, tempdir, dummy_datasets, fs, rq_conne
     assert task.meta['completed'] == len(dummy_datasets)
     assert task.meta['total'] == len(dummy_datasets)
 
-def test_query_retry(dicom_server_2: tuple[DicomTarget,DummyDICOMServer], tempdir, dummy_datasets, fs, rq_connection):
+def test_query_retry(dicom_server_2: Tuple[DicomTarget,DummyDICOMServer], tempdir, dummy_datasets, fs, rq_connection):
     (tempdir / "outdir").mkdir()
     target, server = dicom_server_2
     task = QueryPipeline.create([ds.AccessionNumber for ds in dummy_datasets.values()], {}, target, (tempdir / "outdir"))

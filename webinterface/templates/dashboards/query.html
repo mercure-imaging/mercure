@@ -5,6 +5,7 @@
 {% block extra_head %}
     <script type="text/javascript" src="{{ url_for('static', path='DataTables/datatables.min.js') }}"></script>
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', path='DataTables/datatables.min.css') }}"/>  
+    <script type="text/javascript" src="{{ url_for('static', path='/js/bulma-quickview.min.js') }}"></script>    
 {% endblock %}
 
 {% block dashboard_content %}
@@ -16,7 +17,7 @@
         Redis connection not available, so this dashboard will not function.
       </div>
       {% endif %}
-        <form class="box" id="form" hx-post="query" hx-target="#query_result" hx-swap="innerHTML">
+        <form class="box" id="form">
             <div class="field is-horizontal">
               <div class="field-label is-normal">
                 <label class="label">Accession</label>
@@ -89,7 +90,7 @@
                   <div class="control is-expanded">
                     <div class="select">
                         <select name="destination">
-                          <option>Mercure</option>
+                          <option value="">Mercure</option>
                           <option disabled>————————</option>
                           {% for destination in destination_folders %}
                           <option>{{ destination }}</option>
@@ -100,10 +101,16 @@
                 </div>
               </div>
             </div>
+            <span class="has-tooltip-right has-tooltip-success" data-tooltip="Fallback Rule"><i class="fas fa-magnet"></i></span>
 
             <div class="field is-horizontal">
               <div class="field-label is-normal">
-                <label class="label">Offpeak</label>
+                <label class="label">Offpeak <i class="fas fa-question-circle"></i></label> 
+                <span class="button has-tooltip-left has-tooltip-success" data-tooltip="Auto Update">
+                  <i class="far fa-clock"></i></span>
+                  <span class="icon has-tooltip-left has-tooltip-success" data-tooltip="Auto Update">
+                    <i class="far fa-clock"></i></span>
+  
               </div>
               <div class="field-body">
                 <div class="field">
@@ -123,34 +130,25 @@
               <div class="field-body">
                 <div class="field">
                   <div class="control">
-                    <button type="submit" class="button is-primary">
-                      Query
-                    </button>
-                    <button type="button" id="check-accessions" class="button is-info">
+                    <button type="button" id="check-accessions-button" class="button is-info">
                       Check Accessions
+                    </button>
+                    <button type="submit" id="get-accessions-button" class="button is-primary">
+                      Get Accessions
                     </button>
                   </div>
                 </div>
               </div>
             </div>
           </form>
-          <div id="query_result"></div>
-          <div id="check-accessions-result" style="display: none;">
-            <table id="check-accessions-table" class="table is-narrow is-hoverable is-fullwidth">
-              <thead>
-                <tr>
-                  <th>Accession</th>
-                  <th>Study Description</th>
-                  <th>Series Description</th>
-                  <th>Instances</th>
-                </tr>
-              </thead>
-            </table>
+          <div class="tabs" id="query_result_tabs">
+            <ul>
+              <li class="is-active"><a data-tab="get-accessions">Get Accessions</a></li>
+              <li><a data-tab="check-accessions">Check Accessions</a></li>
+            </ul>
           </div>
-          <div class="columns">
-
-        <div class="column">
-            <table class="table is-narrow is-hoverable is-fullwidth jobtable" id="casetable">
+          <div id="get-accessions" class="tab-content">
+            <table id="get-accessions-table" class="table is-narrow is-hoverable is-fullwidth jobtable">
                 <thead>
                     <tr>
                         <th></th>
@@ -163,52 +161,100 @@
                         <th>progress</th>
                     </tr>
                 </thead>
-                <tbody>
-                </tbody>
+                <tbody></tbody>
             </table>
-            </div>
-            </div>
+          </div>
+          <div id="check-accessions" class="tab-content" style="display:none;">
+            <table id="check-accessions-table" class="table is-narrow is-hoverable is-fullwidth">
+              <thead>
+                <tr>
+                  <th>Accession</th>
+                  <th>Study Description</th>
+                  <th>Series Description</th>
+                  <th>Instances</th>
+                </tr>
+              </thead>
+            </table>
+          </div>
     </div>
   </div> 
 
 </main>
 <script>
-$(document).ready(function () {      
-  $("#form").on('htmx:afterOnLoad', (event) => {
-      datatable.ajax.reload();
-  });
+$(document).ready(function () {
+    // Add tab functionality
+    $('#query_result_tabs a').on('click', function(e) {
+        e.preventDefault();
+        // Remove active class from all tabs
+        $('#query_result_tabs li').removeClass('is-active');
+        // Add active class to clicked tab
+        $(this).parent().addClass('is-active');
+
+        // Hide all tab content
+        $('.tab-content').hide();
+        // Show corresponding tab content
+        $('#' + $(this).data('tab')).show();
+    });
+
+    // // Show the first tab by default
+    // $('#query-results').show();
+
 
   function namespacedEvents(config) {
-        var unique = config._eventNamespace;
-        return 'draw.dt.DT' + unique + ' select.dt.DT' + unique + ' deselect.dt.DT' + unique;
-  }
+          var unique = config._eventNamespace;
+          return 'draw.dt.DT' + unique + ' select.dt.DT' + unique + ' deselect.dt.DT' + unique;
+    }
     var _buttonNamespace = 0;
     my_selected_button = {
-		text: 'Selected',
-		className: 'buttons-selected',
-        enabled: function(dt,config) {
-           rows = dt.rows({ selected: true });
-           return rows.any();
-        },
-		init: function (dt, node, config) {
-			var that = this;
-			config._eventNamespace = '.select' + _buttonNamespace++;
-			// .DT namespace listeners are removed by DataTables automatically
-			// on table destroy
-      // console.log(config);
-			dt.on(namespacedEvents(config), function () {
-				that.enable(config.enabled(dt, node, config));
-			});
+      text: 'Selected',
+      className: 'buttons-selected',
+          enabled: function(dt,config) {
+              rows = dt.rows({ selected: true });
+              return rows.any();
+          },
+      init: function (dt, node, config) {
+        var that = this;
+        config._eventNamespace = '.select' + _buttonNamespace++;
+        // .DT namespace listeners are removed by DataTables automatically
+        // on table destroy
+        // console.log(config);
+        dt.on(namespacedEvents(config), function () {
+          that.enable(config.enabled(dt, node, config));
+        });
 
-			this.disable();
-		},
-		destroy: function (dt, node, config) {
-			dt.off(config._eventNamespace);
-		}}
+        this.disable();
+      },
+      destroy: function (dt, node, config) {
+        dt.off(config._eventNamespace);
+    }}
 
     $.fn.dataTable.ext.buttons.customEnable = my_selected_button;
+    $('#get-accessions-button').on('click', async function(e) {
+      e.preventDefault();
+      $('a[data-tab="get-accessions"]').click();
+      if (! $('input[name=\'accession\']').val()) { 
+        alert('Accession number required!');
+        return false 
+      };
+      var body = new FormData(document.querySelector("#form"));
+      try {
+        result = await fetch("query", {
+          method:"POST",
+          body: body
+        })
+        result_json = await result.json();
+        if (result_json.error) {
+          alert(`Error: ${result_json.error}`);
+          return;
+        }
+        window.get_accessions_table.ajax.reload();
+      } catch (err) {
+        alert(`Unexpected error`);
+        console.error(err);
+      }
+    });
 
-    window.datatable = $('#casetable').DataTable({           
+    window.get_accessions_table = $('#get-accessions-table').DataTable({           
         dom: "<'row browsertoolbar align-items-end'<'col-sm-12 col-md-7 browserbuttons'B><'col-sm-12 col-md-2'><'col-sm-12 col-md-3'f>>" + "<'row'<'col-sm-12'tr>>" + "<'row browserfooterbar'<'col-sm-12 col-md-5'l><'col-sm-12 col-md-7'p>>",
         ajax: "query/jobs",
         deferRender: true,
@@ -222,7 +268,7 @@ $(document).ready(function () {
             { data: 'id' },
             { data: 'meta', render: data => (data["type"]? data["type"]:"") + (data["offpeak"]? " (offpeak)":"")},
             { data: 'status' },
-            { data: 'created_at', render: data => `<span style="display:none;">${data || Date.now()  }</span>`+(data? new Date(data).toLocaleString("en-US"):"")},
+            { data: 'created_at', render: data => `<span style="display:none;">${data || Date.now()}</span>`+(data? new Date(data).toLocaleString("en-US"):"")},
             { data: 'parameters', render: data => data["accession"] || ""},
             { data: 'result' },
             { data: 'progress'},
@@ -232,123 +278,161 @@ $(document).ready(function () {
             style: 'os'
         },
         language: {
-            "emptyTable": "No messages available on server."
+            "emptyTable": "No query records."
         },
         // filter: true,
         buttons: [
         {
-                    extend: "customEnable",
-                    text: '<i class="fas fa-sync"></i>&nbsp;Retry',
-                    titleAttr: 'test',
-                    enabled: function(dt, node, config) {
-                      let data = dt.row({selected: true}).data();
-                      if (!data) {
-                          return false;
-                      }
-                      return data.status == "failed"
-                    },
-                    action: function ( e, dt, node, config ) {
-                      let data = dt.row({selected: true}).data();
-                      fetch(`query/retry_job?id=${data.id}`, {method:"POST"}).then(()=>{
-                            dt.ajax.reload()
-                        }).catch((err)=>{
-                            console.log("Error: ", err)
-                        })
-                    }
+          text: '<i class="fas fa-sync"></i>&nbsp;Refresh',
+          action: function ( e, dt, button, config ) {
+            dt.ajax.reload();
+          }
+        },
+        {
+          extend: "customEnable",
+          text: '<i class="fas fa-cog"></i>&nbsp;Retry',
+          titleAttr: 'Retry',
+          enabled: function(dt, node, config) {
+            let data = dt.row({selected: true}).data();
+            if (!data) {
+                return false;
+            }
+            return data.status == "failed";
+          },
+          action: function ( e, dt, node, config ) {
+            let data = dt.row({selected: true}).data();
+            fetch(`query/retry_job?id=${data.id}`, {method:"POST"}).then(()=>{
+                  dt.ajax.reload()
+              }).catch((err)=>{
+                  console.log("Error: ", err)
+              })
+          }
           },
           {
-                    extend: "customEnable",
-                    text: '<i class="fas fa-pause"></i>&nbsp;Pause',
-                    titleAttr: 'Pause/Resume',
-                    enabled: function(dt, node, config) {
-                      let data = dt.row({selected: true}).data();
-                      if (!data) {
-                          return false;
-                      }
-                      if (data.status == "paused") {
-                        node.html('<i class="fas fa-play"></i>&nbsp;Resume')
-                      } else {
-                        node.html('<i class="fas fa-pause"></i>&nbsp;Pause')
-                      }
-                      return (data.status == "paused" || data.status == "deferred" || data.status == "queued" || data.status == "running");
-                    },
-                    action: function (e, dt, node, config) {
-                        let data = dt.row({selected: true}).data();
-                        
-                        if (data.status == "paused") {
-                          operation = "resume";
-                        } else if (data.status == "deferred" || data.status == "running" || data.status == "queued")  {
-                          operation = "pause";
-                        } else {
-                          alert("???");
-                          return;
-                        }
-                        fetch(`query/${operation}_job?id=${data.id}`, {method:"POST"}).then(()=>{
-                            dt.ajax.reload()
-                        }).catch((err)=>{
-                            console.log("Error: ", err)
-                        })
-                    }
-                },
+            extend: "customEnable",
+            text: '<i class="fas fa-pause"></i>&nbsp;Pause',
+            titleAttr: 'Pause/Resume',
+            enabled: function(dt, node, config) {
+              let data = dt.row({selected: true}).data();
+              if (!data) {
+                  return false;
+              }
+              if (data.status == "paused") {
+                node.html('<i class="fas fa-play"></i>&nbsp;Resume')
+              } else {
+                node.html('<i class="fas fa-pause"></i>&nbsp;Pause')
+              }
+              return (data.status == "paused" || data.status == "deferred" || data.status == "queued" || data.status == "running");
+            },
+            action: function (e, dt, node, config) {
+                let data = dt.row({selected: true}).data();
+                
+                if (data.status == "paused") {
+                  operation = "resume";
+                } else if (data.status == "deferred" || data.status == "running" || data.status == "queued")  {
+                  operation = "pause";
+                } else {
+                  alert("???");
+                  return;
+                }
+                fetch(`query/${operation}_job?id=${data.id}`, {method:"POST"}).then(()=>{
+                    dt.ajax.reload()
+                }).catch((err)=>{
+                    console.log("Error: ", err)
+                })
+            }
+        },
         ],
         order: [[4, 'desc']],
-        initComplete: function() {             
-        }
+        initComplete: function() {}
     });
     var jobId;
     var errMessage;
-    $('#check-accessions').on('click', function(e) {
+    var accessionTableConfig = {
+        columns: [{ data: 'AccessionNumber' }, {data: 'StudyDescription'},  { data: 'SeriesDescription' }, {data: 'NumberOfSeriesRelatedInstances'}], 
+        order: [[0, 'asc']],
+        pageLength: 25,
+        language: { "emptyTable": ()=> errMessage || "No series found or query in progress." } 
+    }
+    var checkAccessionsTimer;
+    var checkAccessionsTimeout;
+    window.check_accessions_table = $('#check-accessions-table').DataTable(accessionTableConfig);
+    window.check_accessions_table.draw();
+    $('#check-accessions-button').on('click', function(e) {
         e.preventDefault();
+        $('a[data-tab="check-accessions"]').click();
+        if (jobId) {
+          alert("whoops");
+        }
         var accessions = $('input[name="accession"]').val();
         var dicomNode = $('select[name="dicom_node"]').val();
-        errMessage = null;
-        $('#check-accessions-result').show();
 
+        if (!accessions) {
+          alert("Accession number required!");
+          return;
+        }
+        errMessage = null;
         if ($.fn.DataTable.isDataTable('#check-accessions-table')) {
             $('#check-accessions-table').DataTable().destroy();
         }
-
-        $('#check-accessions-table').DataTable({
-            ajax: {
-                url: "query/check_accessions",
-                type: "POST",
-                data: function(d) {
-                    return {
-                        accessions: accessions,
-                        series_description: $('input[name="series_description"]').val(),
-                        study_description: $('input[name="study_description"]').val(),
-                        dicom_node: dicomNode,
-                        job_id: jobId
-                    };
-                },
-                dataSrc: function(json) {
-                    console.log("Data: ", json)
-                    if (json.status === "pending") {
-                        jobId = json.job_id;
-                        setTimeout(function() {
-                            $('#check-accessions-table').DataTable().ajax.reload();
-                        }, 1000);
-                        return [];
-                    } else if (json.status === "completed") {
-                      jobId = null;
-                      return json.result
-                    } else if (json.status === "failed") {
-                      jobId = null;
-                      errMessage = json.info;
-                      return [];
-                    }
-                }
-            },
-            columns: [{ data: 'AccessionNumber' }, {data: 'StudyDescription'},  { data: 'SeriesDescription' }, {data: 'NumberOfSeriesRelatedInstances'}], 
-            order: [[0, 'asc']],
-            pageLength: 25,
-            language: { "emptyTable": ()=> errMessage || "No series found or query in progress." } 
-            }); 
+        checkAccessionsTimeout = setTimeout(function() {
+            if (checkAccessionsTimer) { 
+              clearTimeout(checkAccessionsTimer);
+              checkAccessionsTimer = null;
+              jobId = null;
+              errMessage = "Timeout waiting for response from server. Please try again later.";
+              $('#form button').removeAttr('disabled');
+              window.check_accessions_table.draw();
+            }
+        }, 5000);
+        accessionTableConfig.ajax = {
+          url: "query/check_accessions",
+          type: "POST",
+          data: function(d) {
+              return {
+                  accessions: accessions,
+                  series_description: $('input[name="series_description"]').val(),
+                  study_description: $('input[name="study_description"]').val(),
+                  dicom_node: dicomNode,
+                  job_id: jobId
+              };
+          },
+          dataSrc: function(json) {
+              // console.log("Data: ", json)
+              if (json.status === "pending") {
+                  jobId = json.job_id;
+                  checkAccessionsTimer = setTimeout(function() {
+                      $('#check-accessions-table').DataTable().ajax.reload();
+                  }, 500);
+                  errMessage = "Loading..."
+                  return [];
+              } else if (json.status === "completed") {
+                checkAccessionsTimer = null
+                jobId = null;
+                errMessage = null;
+                clearTimeout(checkAccessionsTimeout)
+                $('#form button').removeAttr('disabled');
+                return json.result;
+              } else if (json.status === "failed") {
+                errMessage = json.info;
+              } else {
+                errMessage = "Unknown error"
+              }
+              $('#form button').removeAttr('disabled');
+              checkAccessionsTimer = null
+              jobId = null;
+              clearTimeout(checkAccessionsTimeout)
+              return [];
+          }
+      }
+      $('#form button').attr('disabled','disabled')
+      window.check_accessions_table = $('#check-accessions-table').DataTable(accessionTableConfig);
+      $('#check-accessions-result').show();
     });
 
-    window.datatable.on('click', 'td.dt-control', function (e) {
+    window.get_accessions_table.on('click', 'td.dt-control', function (e) {
       let tr = e.target.closest('tr');
-      let row = window.datatable.row(tr);
+      let row = window.get_accessions_table.row(tr);
   
       if (row.child.isShown()) {
           // This row is already open - close it
@@ -361,6 +445,8 @@ $(document).ready(function () {
               response => response.text()
             ).then(data=>{
               row.child(data).show();
+            }).catch(err => {
+              console.error('Error:', err); alert(err);
             });
       }
   });

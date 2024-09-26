@@ -12,11 +12,21 @@
     <main role="main">
         <div class="container">
             <h1 class="title">Processing Modules</h1>
-            {% for x in modules %}
-                <div class="card rulecard">
+            <div class="field">
+                <div class="control has-icons-left">
+                    <input class="input" type="text" id="searchInput" placeholder="Search..." value="">
+                    <span class="icon is-small is-left">
+                        <i class="fas fa-search"></i>
+                    </span>
+                </div>
+            </div>
+    
+            {% for module_name, module in modules.items() %}
+                <div class="card rulecard" data-name="{{module_name}}">
                     <header class="card-header has-background-light">
                         <p class="card-header-title card-toggle">
-                            <span class="icon"><i class="fas fa-cogs fa-lg"></i></span>&nbsp;&nbsp;{{ x }}
+                            <span class="icon"><i class="fas fa-cogs fa-lg"></i></span>&nbsp;&nbsp;{{ module_name }}
+                            <span style="margin-left: auto; font-weight: 200;">{{module.docker_tag|truncate(50, True)}}</span>
                         </p>
                         <a class="card-header-icon card-toggle">
                             <i class="fa fa-angle-down"></i>
@@ -28,24 +38,24 @@
                                 <col width="150">
                                 <tr>
                                     <td>Docker Tag:</td>
-                                    <td>{{ modules[x]['docker_tag'] }}</td>
+                                    <td>{{ module.docker_tag }}</td>
                                 </tr>
                                 <tr>
                                     <td>Contact:</td>
-                                    <td>{{ modules[x]['contact'] }}</td>
+                                    <td>{{ module.contact }}</td>
                                 </tr>                                
                                 <tr>
                                     <td>Comment:</td>
-                                    <td>{{ modules[x]['comment'] }}</td>
+                                    <td>{{ module.comment }}</td>
                                 </tr>                                
                             </table>
                             <div class="buttons is-right">
                                 {% if is_admin %}
-                                    <a class="button is-success" href="/modules/edit/{{x}}"><i
+                                    <a class="button is-success" href="/modules/edit/{{module_name}}"><i
                                             class="fas fa-pen"></i>&nbsp;Edit</a>
-                                    <button class="button is-danger" id="confirm-me" value="{{x}}"
-                                            onclick="confirmDelete(this.value)" {% if x in used_modules%}disabled
-                                            title="Cannot delete because target is used by rule '{{ used_modules[x] }}'" {% endif %}><i
+                                    <button class="button is-danger" id="confirm-me" value="{{module_name}}"
+                                            onclick="confirmDelete(this.value)" {% if module_name in used_modules%}disabled
+                                            title="Cannot delete because target is used by rule '{{ used_module }}'" {% endif %}><i
                                             class="fas fa-trash-alt"></i>&nbsp;Delete</button>
                                 {% endif %}
                             </div>
@@ -53,7 +63,11 @@
                     </div>
                 </div>
             {% endfor %}
-
+            <nav class="pagination is-centered" role="navigation" aria-label="pagination">
+                <ul class="pagination-list" id="paginationList">
+                </ul>
+            </nav>
+    
             {% if is_admin %}
                 <div class="buttons is-left" style="margin-top: 20px;">
                     <button class="button is-success" onclick="showAddModal()"><i class="fas fa-plus"></i>&nbsp;Install
@@ -137,6 +151,7 @@
                     e.currentTarget.parentElement.parentElement.childNodes[3].classList.toggle('is-hidden');
                 });
             }
+            paginate(document.getElementsByClassName('rulecard'))
         });
 
         function showAddModal(val) {

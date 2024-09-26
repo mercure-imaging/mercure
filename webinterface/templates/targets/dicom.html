@@ -4,17 +4,17 @@
 </tr>
 <tr>
     <td>Host/IP:</td>
-    <td>{% if targets[x].ip == 'sender' %}<i class="fas fa-exchange-alt fa-lg"></i>&nbsp; Loop back to sender{% else %}{{ targets[x].ip }}{% endif %}</td>
+    <td>{% if target.ip == 'sender' %}<i class="fas fa-exchange-alt fa-lg"></i>&nbsp; Loop back to sender{% else %}{{ target.ip }}{% endif %}</td>
 </tr>
 <tr>
     <td>Port:</td>
-    <td>{{ targets[x].port }}</td>
+    <td>{{ target.port }}</td>
 </tr>
 <tr>
     <td>AET Target:</td>
-    <td>{{ targets[x].aet_target }}</td>
+    <td>{{ target.aet_target }}</td>
 </tr>
 <tr>
     <td>AET Source:</td>
-    <td>{{ targets[x].aet_source }}</td>
+    <td>{{ target.aet_source }}</td>
 </tr>
