@@ -23,7 +23,7 @@ class FolderTargetTargetHandler(TargetHandler[FolderTarget]):
         # send dicoms in source-folder to target folder
         new_folder = Path(target.folder) / str(uuid.uuid4())
         if target.file_filter:
-            shutil.copytree(source_folder, new_folder, ignore=shutil.ignore_patterns(target.file_filter))
+            shutil.copytree(source_folder, new_folder, ignore=shutil.ignore_patterns(*target.file_filter.split(",")))
         else:
             shutil.copytree(source_folder, new_folder)
         (new_folder / ".complete").touch()

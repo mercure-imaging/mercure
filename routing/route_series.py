@@ -474,7 +474,7 @@ def push_serieslevel_outgoing(
     # Determine if the files should be copied or moved. If only one rule triggered, files can
     # safely be moved, otherwise files will be moved and removed in the end
     move_operation = False
-    if len(selected_targets) == 1:
+    if len(triggered_rules) == 1:
         move_operation = True
 
     for i,target in enumerate(selected_targets):
@@ -519,6 +519,7 @@ def push_serieslevel_outgoing(
 
         operation: Callable
         is_operation_move = False
+
         if move_operation:
             # If there are more targets for one rule, then move the files only for the last target
             if i==len(selected_targets)-1:

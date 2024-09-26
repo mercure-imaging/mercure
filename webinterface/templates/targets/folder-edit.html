@@ -10,10 +10,10 @@
     </div>
 </div>
 <div class="field">
-    <label class="label">Filter</label>
+    <label class="label">Exclusion Filter</label>
     <div class="control">
         <input name="file_filter" class="input" autocomplete='off' type="text"
-            placeholder="Filter for filenames (leave empty for none)" value="{% if targets[edittarget]['file_filter'] %}{{targets[edittarget]['file_filter']}}{% endif %}"
+            placeholder="Filter for files that should be ignored (leave empty for none)" value="{% if targets[edittarget]['file_filter'] %}{{targets[edittarget]['file_filter']}}{% endif %}"
             size="15">
     </div>
 </div>
