@@ -149,6 +149,7 @@ class S3Target(Target):
 class FolderTarget(Target):
     target_type: Literal["folder"] = "folder"
     folder: str
+    file_filter: Optional[str]
 
     @property
     def short_description(self) -> str:
@@ -177,7 +178,7 @@ class UnsetRule(TypedDict):
 
 class Rule(BaseModel, Compat):
     rule: str = "False"
-    target: str = ""
+    target: Union[str,List[str]] = ""
     disabled: bool = False
     fallback: bool = False
     contact: str = ""
@@ -247,6 +248,7 @@ class DicomRetrieveConfig(BaseModel):
     
 class Config(BaseModel, Compat):
     appliance_name: str
+    appliance_color: str = "#FFF"
     port: int
     accept_compressed_images: bool
     incoming_folder: str
@@ -293,6 +295,7 @@ class Config(BaseModel, Compat):
     local_time: str = "UTC"
     dicom_retrieve: DicomRetrieveConfig = DicomRetrieveConfig()
 
+
 class TaskInfo(BaseModel, Compat):
     action: Literal["route", "both", "process", "discard", "notification"]
     uid: str
@@ -309,8 +312,14 @@ class TaskInfo(BaseModel, Compat):
     device_serial_number: Optional[str] = None
 
 
+class TaskDispatchStatus(BaseModel, Compat):
+    state: Literal["waiting", "complete", "error"]
+    time: str
+
+
 class TaskDispatch(BaseModel, Compat):
-    target_name: str
+    target_name: Union[str,List[str]]
+    status: Union[Dict[str, TaskDispatchStatus], EmptyDict] = cast(EmptyDict, {})
     retries: Optional[int] = 0
     next_retry_at: Optional[float] = 0
     series_uid: Optional[str]

@@ -6,3 +6,9 @@
     <td>Folder:</td>
     <td>{{ target.folder }}</td>
 </tr>
+{% if target.file_filter %}
+<tr>
+    <td>Exclusion Filter:</td>
+    <td>{{ target.file_filter }}</td>
+</tr>
+{% endif %}

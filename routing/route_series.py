@@ -130,6 +130,8 @@ def route_series(task_id: str, series_UID: str, files:typing.List[Path] = []) ->
         push_series_serieslevel(task_id, triggered_rules, fileList, series_UID, tagsList)
 
         # If more than one rule has triggered, the series files need to be removed
+        # TODO: This can probably be avoided since the files are now contained in a separate folder
+        #       for each series, so that files will be removed automatically by the rmtree call 
         if len(triggered_rules) > 1:
             remove_series(task_id, fileList, series_UID)
 
@@ -338,8 +340,16 @@ def push_serieslevel_routing(
             rule_definition.get("action_trigger", "series") == mercure_options.SERIES
             and rule_definition.get("action") == mercure_actions.ROUTE
         ):
-            target = rule_definition.get("target")
-            if target:
+            targets = []
+            if rule_definition.get("target"):
+                if isinstance(rule_definition.get("target"), str):
+                    # If the target is a string, only add it if it is not empty
+                    if rule_definition.get("target"):
+                        targets.append(rule_definition.get("target"))
+                else:
+                    targets = rule_definition.get("target")
+            
+            for target in targets:
                 if not selected_targets.get(target):
                     selected_targets[target] = [current_rule]
                 else:
@@ -467,9 +477,10 @@ def push_serieslevel_outgoing(
     if len(triggered_rules) == 1:
         move_operation = True
 
-    for target in selected_targets:
+    for i,target in enumerate(selected_targets):
         if not target in config.mercure.targets:
             logger.error(f"Invalid target selected {target}", task_id)  # handle_error
+            # TODO: Better error handling!
             continue
 
         new_task_id = generate_task_id()
@@ -507,8 +518,15 @@ def push_serieslevel_outgoing(
         monitor.send_task_event(monitor.task_event.DELEGATE, task_id, len(file_list), new_task_id, ", ".join(selected_targets[target]))
 
         operation: Callable
+        is_operation_move = False
+
         if move_operation:
-            operation = shutil.move
+            # If there are more targets for one rule, then move the files only for the last target
+            if i==len(selected_targets)-1:
+                operation = shutil.move
+                is_operation_move = True
+            else:
+                operation = shutil.copy
         else:
             operation = shutil.copy
 
@@ -523,7 +541,7 @@ def push_serieslevel_outgoing(
                 )
                 raise
 
-        if move_operation:
+        if is_operation_move:
             monitor.send_task_event(monitor.task_event.MOVE, task_id, len(file_list), str(target_folder), "Moved files")
         else:
             monitor.send_task_event(monitor.task_event.COPY, task_id, len(file_list), str(target_folder), "Copied files")

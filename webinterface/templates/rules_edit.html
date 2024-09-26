@@ -32,7 +32,7 @@
                     </a>
                 </li>
                 <li data-tab="routing">
-                    <a>
+                    <a id="routing_id">
                         <span class="icon"><i class="fa fa-directions"></i></span>
                         <span>Routing</span>
                     </a>
@@ -288,16 +288,18 @@
                 </div>
                 <div class="panel" data-content="routing">
                     <div class="field">
-                        <label class="label">Target</label>
-                        <div class="select">
+                        <label class="label">Targets</label>
+                        <div class="select is-multiple" id="target_control" style="width: 100%;">
                             <div class="control">
-                                <select name="target">
+                                <select class="target_select" multiple id="target" name="target" size="{{ [targets|length,16]|min }}">
                                     {% for t in targets %}
-                                    <option value="{{t}}" {% if rules[rule]['target']==t %}selected{% endif%}>{{ t }}</option>
+                                    <option value="{{t}}" {% if t in rules[rule]['target'] %}selected{% endif%}>{{ t }}
+                                    </option>
                                     {% endfor %}
                                 </select>
                             </div>
                         </div>
+                        <p class="help" style="color: #CCC; margin-top: 4px; text-align: right;">Hold CTRL key and click to select multiple targets.</p>
                         <!--                        
                         <a class="button is-frameless has-tooltip-right has-tooltip-success" data-tooltip="Remove target">
                             <span class="icon is-small">
@@ -555,6 +557,18 @@
             }
         }
 
+        if (($('#action').val() == 'route') || ($('#action').val() == 'both')) {
+            if ($('#target').val() == '') {
+                $('#erroralert').html('<i class="fas fa-bug"></i>&nbsp;&nbsp;Targets cannot be empty. Add at least one target.');
+                $('#erroralert').show();
+                $('#routing_id').click();
+                $('#target').addClass("is-danger");
+                $('#target_control').addClass("is-danger");
+                $('#target').focus();
+                return false;
+            }
+        }
+
         return true;
     }
 
@@ -615,6 +629,23 @@
             $(this).outerHeight(36).outerHeight(this.scrollHeight + 1);
         }
     });
+
+    /*
+    $("#target").mousedown(function(e){
+        e.preventDefault();        
+        var select = this;
+        var scroll = select.scrollTop;       
+        if (!e.target.selected) {
+            e.target.selected=true;
+        } else {
+            if (document.getElementById("target").selectedOptions.length > 1) {
+                e.target.selected=false;
+            }
+        }
+        setTimeout(function(){select.scrollTop = scroll;}, 0);        
+        $(select).focus();
+    }).mousemove(function(e){e.preventDefault()});
+    */
 
     $(document).ready(function () {
         var quickviews = bulmaQuickview.attach();

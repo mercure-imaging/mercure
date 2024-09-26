@@ -31,6 +31,10 @@ def validate_folders(config) -> Tuple[bool, str]:
             return False, f"No read/write access to {folder}"
     return True, ""
 
+def get_now_str() -> str:
+    """Returns the current time as string with mercure-wide formatting"""
+    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
 def get_runner() -> str:
     """Returns the name of the mechanism that is used for running mercure in the current installation (systemd, docker, nomad)."""
     return os.getenv("MERCURE_RUNNER", "systemd")

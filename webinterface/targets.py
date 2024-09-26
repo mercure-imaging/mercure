@@ -44,8 +44,12 @@ async def show_targets(request) -> Response:
 
     used_targets = {}
     for rule in config.mercure.rules:
-        used_target = config.mercure.rules[rule].get("target", "NONE")
-        used_targets[used_target] = rule
+        if isinstance(config.mercure.rules[rule].target,str):
+            used_target = config.mercure.rules[rule].get("target", "NONE")
+            used_targets[used_target] = rule
+        else:
+            for item in config.mercure.rules[rule].target:
+                used_targets[item] = rule
 
     template = "targets.html"
     context = {

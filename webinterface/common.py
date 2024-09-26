@@ -16,6 +16,7 @@ from starlette.templating import Jinja2Templates
 
 from common.constants import mercure_defs
 from rq_scheduler import Scheduler
+import common.config as config
 
 redis = Redis.from_url(os.getenv("REDIS_URL","redis://localhost:6379/0"))
 rq_slow_queue = Queue(name="mercure_slow", connection=redis)
@@ -28,6 +29,8 @@ def get_user_information(request) -> dict:
         "logged_in": request.user.is_authenticated,
         "user": request.user.display_name,
         "is_admin": request.user.is_admin if request.user.is_authenticated else False,
+        "appliance_name": config.mercure.appliance_name,
+        "appliance_color": config.mercure.appliance_color,
     }
 
 def get_mercure_version(request) -> dict:

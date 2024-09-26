@@ -166,21 +166,27 @@ def test_route_series_fail4(fs: FakeFilesystem, mercure_config, mocked):
 
 
 def task_will_dispatch_to(task, config, fake_process) -> None:
-    t = config.targets[task.dispatch.target_name]
-    expect_command = f"dcmsend {t.ip} {t.port} +sd /var/outgoing/{task.id} -aet -aec {t.aet_target} -nuc +sp *.dcm -to 60 +crf /var/outgoing/{task.id}/sent.txt"  # type: ignore
-    fake_process.register(expect_command)  # type: ignore
-    common.monitor.configure("dispatcher", "test", config.bookkeeper)
-    dispatcher.dispatch()
+    for target_item in task.dispatch.target_name:
+        t = config.targets[target_item]
+        expect_command = f"dcmsend {t.ip} {t.port} +sd /var/outgoing/{task.id} -aet -aec {t.aet_target} -nuc +sp *.dcm -to 60 +crf /var/outgoing/{task.id}/sent.txt"  # type: ignore
+        fake_process.register(expect_command)  # type: ignore
+        common.monitor.configure("dispatcher", "test", config.bookkeeper)
+        dispatcher.dispatch()
 
-    assert Path(f"/var/success/{task.id}").is_dir()
+        assert Path(f"/var/success/{task.id}").is_dir()
 
+        common.monitor.send_task_event.assert_has_calls(  # type: ignore
+            [
+                call(task_event.DISPATCH_BEGIN, task.id, 1, target_item, "Routing job running"),
+                call(task_event.DISPATCH_COMPLETE, task.id, 1, target_item, "Routing job complete"),
+            ],
+        )
     common.monitor.send_task_event.assert_has_calls(  # type: ignore
         [
-            call(task_event.DISPATCH_BEGIN, task.id, 1, task.dispatch.target_name, "Routing job running"),
-            call(task_event.DISPATCH_COMPLETE, task.id, 1, "", "Routing job complete"),
             call(task_event.MOVE, task.id, 0, f"/var/success/{task.id}", "Moved to success folder"),
         ],
     )
+
 
 @pytest.mark.asyncio
 async def test_route_study(fs: FakeFilesystem, mercure_config, mocked, fake_process):
@@ -216,7 +222,7 @@ async def test_route_study(fs: FakeFilesystem, mercure_config, mocked, fake_proc
         task: Task = Task(**json.load(e))
 
     assert task.id == task_id
-    assert task.dispatch.target_name == "test_target_2"  # type: ignore
+    assert task.dispatch.target_name == ["test_target_2"]  # type: ignore
     assert task.info.uid == study_uid
     assert task.info.uid_type == "study"
     assert task.info.triggered_rules["route_study"] == True  # type: ignore
@@ -282,7 +288,7 @@ async def test_route_series_success(fs: FakeFilesystem, mercure_config, mocked, 
     with open(out_path / "task.json") as e:
         task: Task = Task(**json.load(e))
     assert task.id == new_task_id
-    assert task.dispatch.target_name == "test_target"  # type: ignore
+    assert task.dispatch.target_name == ["test_target"]  # type: ignore
     assert task.info.uid == series_uid
     assert task.info.uid_type == "series"
     assert task.info.triggered_rules["route_series"] == True  # type: ignore
@@ -329,7 +335,7 @@ async def test_route_series_new_rule(fs: FakeFilesystem, mercure_config, mocked,
     with open(out_path / "task.json") as e:
         task: Task = Task(**json.load(e))
     assert task.id == new_task_id
-    assert task.dispatch.target_name == "test_target"  # type: ignore
+    assert task.dispatch.target_name == ["test_target"]  # type: ignore
     assert task.info.uid == series_uid
     assert task.info.uid_type == "series"
     assert task.info.triggered_rules["route_series_new_rule"] == True  # type: ignore

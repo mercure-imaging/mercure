@@ -5,7 +5,15 @@
     <label class="label">Folder</label>
     <div class="control">
         <input name="folder" class="input" required='true' autocomplete='off' type="text"
-            placeholder="folder" value="{{targets[edittarget]['folder']}}"
+            placeholder="Folder" value="{{targets[edittarget]['folder']}}"
+            size="15">
+    </div>
+</div>
+<div class="field">
+    <label class="label">Exclusion Filter</label>
+    <div class="control">
+        <input name="file_filter" class="input" autocomplete='off' type="text"
+            placeholder="Filter for files that should be ignored (leave empty for none)" value="{% if targets[edittarget]['file_filter'] %}{{targets[edittarget]['file_filter']}}{% endif %}"
             size="15">
     </div>
 </div>

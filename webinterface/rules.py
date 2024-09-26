@@ -142,7 +142,9 @@ async def rules_edit_post(request) -> Response:
         return PlainTextResponse("Rule does not exist anymore.")
 
     try:
-        form = dict(await request.form())
+        form_data = await request.form()
+        form = dict(form_data)
+        target_list = form_data.getlist("target")
     except:
         return PlainTextResponse("Invalid form data.")
 
@@ -159,13 +161,13 @@ async def rules_edit_post(request) -> Response:
             processing_module = ""
     else:
         processing_module = form.get("processing_module", "")
-        
+
     notification_payload = form.get("notification_payload", "")
     notification_payload = notification_payload.strip().lstrip("{").rstrip("}")
 
     new_rule: Rule = Rule(
         rule=form.get("rule", "False"),
-        target=form.get("target", ""),
+        target=target_list,
         disabled=form.get("status_disabled", "False"),
         fallback=form.get("status_fallback", "False"),
         contact=form.get("contact", ""),

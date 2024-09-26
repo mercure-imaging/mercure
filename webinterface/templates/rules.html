@@ -72,13 +72,23 @@
                         {% if (rule.action=='process') or (rule.action=='both') %}
                         <tr>
                             <td>Processing:</td>
-                            <td>{% for i in rule.processing_module %} {{ i }} {% if not loop.last %}&#10140; {% endif %} {% endfor %}</td>
+                            <td>{% if rule.processing_module is string %}
+                                {{ rule.processing_module }}
+                                {% else %}
+                                {% for i in rule.processing_module %} {{ i }} {% if not loop.last %}&#10140; {% endif %} {% endfor %}
+                                {% endif %}</td>
                         </tr>
                         {% endif %}
                         {% if (rule.action=='route') or (rule.action=='both') %}
                         <tr>
                             <td>Target:</td>
                             <td>{{ rule.target }}</td>
+                            <td>Routing:</td>
+                            <td>{% if rule.target is string %}
+                                {{ rule.target }}
+                                {% else %}
+                                {% for i in rule.target %}{{ i }}{% if not loop.last %}, {% endif %}{% endfor %}
+                                {% endif %}</td>
                         </tr>
                         {% endif %}
                         <tr>

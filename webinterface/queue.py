@@ -155,7 +155,10 @@ async def show_jobs_routing(request):
                 with open(task_file, "r") as f:
                     task: Task = Task(**json.load(f))
                     if task.dispatch and task.dispatch.target_name:
-                        job_target = task.dispatch.target_name
+                        if isinstance(task.dispatch.target_name, str):
+                            job_target = task.dispatch.target_name
+                        else:
+                            job_target = ", ".join(task.dispatch.target_name)
                     job_acc = task.info.acc
                     job_mrn = task.info.mrn
                     if task.info.uid_type == "series":
@@ -384,10 +387,8 @@ async def set_queues_status(request):
     processing_halt_file = Path(config.mercure.processing_folder + "/" + mercure_names.HALT)
     routing_halt_file = Path(config.mercure.outgoing_folder + "/" + mercure_names.HALT)
 
-    form = dict(await request.form())
-    print(form)
-
     try:
+        form = dict(await request.form())
         if form.get("suspend_processing", "false") == "true":
             processing_halt_file.touch()
         else:
@@ -406,7 +407,7 @@ async def set_queues_status(request):
     return JSONResponse({"result": "OK"})
 
 
-@router.get("/jobinfo/{category}/{id}")
+@router.post("/jobinfo/{category}/{id}")
 @requires("authenticated", redirect="login")
 async def get_jobinfo(request):
     try:
@@ -423,6 +424,10 @@ async def get_jobinfo(request):
     elif job_category == "routing":
         job_pathstr = config.mercure.outgoing_folder + "/" + job_id
     elif job_category == "studies":
+        # Note: For studies, the job_id contains a dash character, which is removed from the URL. Thus,
+        #       take the information from the request body instead.
+        params = dict(await request.form())
+        job_id = params["jobId"]        
         job_pathstr = config.mercure.studies_folder + "/" + job_id
     elif job_category == "failure":
         job_pathstr = config.mercure.error_folder + "/" + job_id
