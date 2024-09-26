@@ -37,7 +37,7 @@ logger = config.get_logger()
 
 @router.get("/")
 @requires("authenticated", redirect="login")
-async def show_rules(request) -> Response:
+async def rules(request) -> Response:
     """Show all defined routing rules. Can be executed by all logged-in users."""
     try:
         config.read_config()

@@ -246,7 +246,7 @@ def test_query_operations(dicomweb_server, tempdir, dummy_datasets, fs, rq_conne
     for job in task.get_subjobs():
         assert not job.meta.get("paused")
         assert job.get_status() == "queued"
-    w = SimpleWorker(["mercure_fast", "mercure_slow"], connection=redis)
+
     w.work(burst=True)
     for ds in dummy_datasets.values():
         outfile = (tempdir / "outdir" / task.id / ds.AccessionNumber /  f"{ds.SOPInstanceUID}.dcm")
@@ -259,14 +259,18 @@ def test_query_retry(dicom_server_2: tuple[DicomTarget,DummyDICOMServer], tempdi
     (tempdir / "outdir").mkdir()
     target, server = dicom_server_2
     task = QueryPipeline.create([ds.AccessionNumber for ds in dummy_datasets.values()], {}, target, (tempdir / "outdir"))
-    server.remaining_allowed_accessions = 1
+
+    server.remaining_allowed_accessions = 1 # Only one accession is allowed to be retrieved
     w = SimpleWorker(["mercure_fast", "mercure_slow"], connection=redis)
     w.work(burst=True)
     task.get_meta()
     assert task.meta['completed'] == 1
     assert task.meta['total'] == len(dummy_datasets)
+    assert "Failed to retrieve accession" in task.meta['failed_reason']
+    # Retry the query
     server.remaining_allowed_accessions = None
     task.retry()
     w.work(burst=True)
     task.get_meta()
     assert task.meta['completed'] == len(dummy_datasets)
+    assert task.meta['failed_reason'] is None

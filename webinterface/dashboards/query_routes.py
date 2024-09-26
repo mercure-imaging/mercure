@@ -1,10 +1,11 @@
 
+from time import sleep
 from typing import Any, Dict, List
 from datetime import datetime
 
 # Starlette-related includes
 from starlette.authentication import requires
-from starlette.responses import PlainTextResponse, JSONResponse
+from starlette.responses import JSONResponse
 
 from rq.job import Job
 from rq import Connection
@@ -15,7 +16,7 @@ import common.config as config
 from common.types import DicomTarget, DicomWebTarget, FolderTarget
 
 from webinterface.common import redis
-from .common import router
+from .common import router, JSONErrorResponse
 from .query.jobs import CheckAccessionsTask, QueryPipeline
 
 logger = config.get_logger()
@@ -23,58 +24,86 @@ logger = config.get_logger()
 @router.post("/query/retry_job")
 @requires(["authenticated", "admin"], redirect="login")
 async def post_retry_job(request):
-    job = QueryPipeline(request.query_params['id'])
-    job.retry()
+    with Connection(redis):
+        job = QueryPipeline(request.query_params['id'])
+        
+        if not job:
+            return JSONErrorResponse(f"Job with id {request.query_params['id']} not found.", status_code=404)
+        
+        try:
+            job.retry()
+        except Exception as e:
+            logger.exception("Failed to retry job", exc_info=True)
+            return JSONErrorResponse("Failed to retry job",status_code=500)
     return JSONResponse({})
 
 @router.post("/query/pause_job")
 @requires(["authenticated", "admin"], redirect="login")
 async def post_pause_job(request):
-    job = QueryPipeline(request.query_params['id'])
-    if not job:
-        return JSONResponse({'error': 'Job not found'}, status_code=404)
-    if job.is_finished or job.is_failed:
-        return JSONResponse({'error': 'Job is already finished'}, status_code=400)
-    job.pause()
+    with Connection(redis):
+        job = QueryPipeline(request.query_params['id'])
+
+        if not job:
+            return JSONErrorResponse('Job not found', status_code=404)
+        if job.is_finished or job.is_failed:
+            return JSONErrorResponse('Job is already finished', status_code=400)
+
+        try:
+            job.pause()
+        except Exception as e:
+            logger.exception(f"Failed to pause job {request.query_params['id']}")
+            return JSONErrorResponse('Failed to pause job', status_code=500)
     return JSONResponse({'status': 'success'}, status_code=200)
 
 @router.post("/query/resume_job")
 @requires(["authenticated", "admin"], redirect="login")
 async def post_resume_job(request):
-    job = QueryPipeline(request.query_params['id'])
-    if not job:
-        return JSONResponse({'error': 'Job not found'}, status_code=404)
-    if job.is_finished or job.is_failed:
-        return JSONResponse({'error': 'Job is already finished'}, status_code=400)
-    
-    job.resume()
+    with Connection(redis):
+        job = QueryPipeline(request.query_params['id'])
+        if not job:
+            return JSONErrorResponse('Job not found', status_code=404)
+        if job.is_finished or job.is_failed:
+            return JSONErrorResponse('Job is already finished', status_code=400)
+
+        try:
+            job.resume()
+        except Exception as e:
+            logger.exception(f"Failed to resume job {request.query_params['id']}")
+            return JSONErrorResponse('Failed to resume job', status_code=500)
     return JSONResponse({'status': 'success'}, status_code=200)
 
 @router.get("/query/job_info")
 @requires(["authenticated", "admin"], redirect="login")
 async def get_job_info(request):
     job_id = request.query_params['id']
-    job = QueryPipeline(job_id)
-    if not job:
-        return JSONResponse({'error': 'Job not found'}, status_code=404)
-    
-    subjob_info:List[Dict[str,Any]] = []
-    for subjob in job.get_subjobs():
-        if not subjob:
-            continue
-        info = {
-                'id': subjob.get_id(),
-                'ended_at': subjob.ended_at.isoformat().split('.')[0] if subjob.ended_at else "", 
-                'created_at_dt':subjob.created_at,
-                'accession': subjob.kwargs['accession'],
-                'progress': subjob.meta.get('progress'),
-                'paused': subjob.meta.get('paused',False),
-                'status': subjob.get_status()
-            }
-        if info['status'] == 'canceled' and info['paused']:
-            info['status'] = 'paused'
-        subjob_info.append(info)
+    with Connection(redis):
+        job = QueryPipeline(job_id)
+        if not job:
+            return JSONErrorResponse('Job not found', status_code=404)
+        
+        subjob_info:List[Dict[str,Any]] = []
+        for subjob in job.get_subjobs():
+            if not subjob:
+                continue
+            if subjob.meta.get('type') != 'get_accession':
+                continue
+            info = {
+                    'id': subjob.get_id(),
+                    'ended_at': subjob.ended_at.isoformat().split('.')[0] if subjob.ended_at else "", 
+                    'created_at_dt':subjob.created_at,
+                    'accession': subjob.kwargs['accession'],
+                    'progress': subjob.meta.get('progress'),
+                    'paused': subjob.meta.get('paused',False),
+                    'status': subjob.get_status()
+                }
+            if info['status'] == 'canceled' and info['paused']:
+                info['status'] = 'paused'
+            subjob_info.append(info)
+
     subjob_info = sorted(subjob_info, key=lambda x:x['created_at_dt'])
+
+    # generate a bunch of dummy data for testing purposes
+
     return templates.TemplateResponse("dashboards/query_job_fragment.html", {"request":request,"job":job,"subjob_info":subjob_info})
 
 
@@ -85,46 +114,45 @@ async def query_post_batch(request):
     """
     Starts a new query job for the given accession number and DICOM node.
     """
-    form = await request.form()
+    try:
+        form = await request.form()
+    except Exception as e:
+        return JSONErrorResponse("Invalid form data.", status_code=400)
+    accession = form.get("accession")
+    if not accession:
+        return JSONErrorResponse("Accession number is required.", status_code=400)
 
     node = config.mercure.targets.get(form.get("dicom_node"))
+    if not node:
+        return JSONErrorResponse(f"No such DICOM node {form.get('dicom_node')}.", status_code=404)
     if not isinstance(node, (DicomWebTarget, DicomTarget)):
-        return JSONResponse({"error": f"Invalid DICOM node"}, status_code=400)
+        return JSONErrorResponse(f"Invalid DICOM node {form.get('dicom_node')}.", status_code=400)
 
-    destination = config.mercure.targets.get(form.get("destination"))
-    if destination and isinstance(destination, FolderTarget):
-        dest_path = destination.folder
+    destination_name = form.get("destination")
+    if not destination_name:
+        destination_path = None
     else:
-        return JSONResponse({"error": "Invalid destination"}, status_code=400)
-    # random_accessions = ["".join(random.choices([str(i) for i in range(10)], k=10)) for _ in range(3)]
+        destination = config.mercure.targets.get(destination_name)
+        if not isinstance(destination, FolderTarget):
+            return JSONErrorResponse(f"Invalid destination '{destination_name}': not a folder target.", status_code=400)
+        if not destination:
+            return JSONErrorResponse(f"No such target '{destination_name}'.", status_code=400)
+        destination_path = destination.folder
+
     offpeak = 'offpeak' in form
-
-
     search_filters = {}
-    if search_filter:= form.get("series_description"):
+    if search_filter := form.get("series_description"):
         search_filters["SeriesDescription"] = [x.strip() for x in search_filter.split(",")]
-    if search_filter:= form.get("study_description"):
+    if search_filter := form.get("study_description"):
         search_filters["StudyDescription"] =  [x.strip() for x in search_filter.split(",")]
 
-    QueryPipeline.create(form.get("accession").split(","), search_filters, node, dest_path, offpeak=offpeak)
-    # worker_scheduler.schedule(scheduled_time=datetime.utcnow(), func=monitor_job, interval=10, repeat=10, result_ttl=-1)
-    return PlainTextResponse()
- 
-# @router.post("/query_single")
-# @requires(["authenticated", "admin"], redirect="login")
-# async def query_post(request):
-#     """
-#     Starts a new query job for the given accession number and DICOM node.
-#     """
-#     form = await request.form()
-#     for n in config.mercure.dicom_retrieve.dicom_nodes:
-#         if n.name == form.get("dicom_node"):
-#             node = n
-#             break
-    
-#     worker_queue.enqueue_call(QueryJob.get_accession_job, kwargs=dict(accession=form.get("accession"), node=node), timeout=30*60, result_ttl=-1, meta=dict(type="get_accession_single"))
-#     return PlainTextResponse()
+    try:
+        QueryPipeline.create(accession.split(","), search_filters, node, destination_path, offpeak=offpeak)
+    except Exception as e:
+        logger.exception(f"Error creating query pipeline for accession {accession}.")
+        return JSONErrorResponse(str(e))
 
+    return JSONResponse({"status": "success"})
 
 @router.get("/query/jobs")
 @requires(["authenticated", "admin"], redirect="login")
@@ -133,8 +161,12 @@ async def query_jobs(request):
     Returns a list of all query jobs. 
     """
     tasks_info = []
-    with Connection(redis):
-        query_tasks = list(QueryPipeline.get_all())
+    try:
+        with Connection(redis):
+            query_tasks = list(QueryPipeline.get_all())
+    except Exception as e:
+        logger.exception("Error retrieving query tasks.")
+        return JSONErrorResponse("Error retrieving query tasks.", status_code=500)
 
     for task in query_tasks:
         task_dict: Dict[str,Any] = dict(id=task.id, 
@@ -210,10 +242,9 @@ async def check_accessions(request):
         elif job.is_finished:
             result_data = []
             for d in job.result:
+                logger.info(d)
                 result_data.append( {x:d.get(x) for x in ["AccessionNumber", "PatientID", "StudyInstanceUID", "SeriesInstanceUID", "StudyDescription", "SeriesDescription", "NumberOfSeriesRelatedInstances"]} )
             return JSONResponse({"status": "completed", "result": result_data})
-        
-
         return JSONResponse({"status": "pending", "job_id": job.id})
 
     node_name = form.get("dicom_node")
@@ -227,9 +258,14 @@ async def check_accessions(request):
 
     node = config.mercure.targets.get(node_name)
     if not isinstance(node, (DicomWebTarget, DicomTarget)):
-        return JSONResponse({"error": f"Invalid DICOM node"}, status_code=400)
+        return JSONErrorResponse(f"Invalid DICOM node '{node_name}'.", status_code=400)
     
-    with Connection(redis):
-        job = CheckAccessionsTask().create_job(accessions=accessions, node=node, search_filters=search_filters)
-        CheckAccessionsTask.queue().enqueue_job(job)
+    try:
+        with Connection(redis):
+            job = CheckAccessionsTask().create_job(accessions=accessions, node=node, search_filters=search_filters)
+            CheckAccessionsTask.queue().enqueue_job(job)
+    except Exception as e:
+        logger.exception("Error during accessions check task creation")
+        return JSONErrorResponse(str(e), status_code=500)
+
     return JSONResponse({"status": "pending", "job_id": job.id})

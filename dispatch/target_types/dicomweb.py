@@ -71,7 +71,7 @@ class DicomWebTargetHandler(TargetHandler[DicomWebTarget]):
         else:
             use_filters.update({k: v[0] for k,v in search_filters.items()})
         
-        metadata = client.search_for_series(search_filters=use_filters, get_remaining=True, fields=['StudyInstanceUID', 'SeriesInstanceUID', 'NumberOfSeriesRelatedInstances'] + list(search_filters.keys()))
+        metadata = client.search_for_series(search_filters=use_filters, get_remaining=True, fields=['StudyInstanceUID', 'SeriesInstanceUID', 'NumberOfSeriesRelatedInstances', 'StudyDescription', 'SeriesDescription'] + list(search_filters.keys()))
         meta_datasets = [pydicom.Dataset.from_json(ds) for ds in metadata]
         result = []
         
@@ -82,7 +82,7 @@ class DicomWebTargetHandler(TargetHandler[DicomWebTarget]):
                     break
             else:
                 result.append(d)
-        print(result)
+        logger.debug(result)
         return result
 
     def get_from_target(self, target: DicomWebTarget, accession, search_filters, path) -> Generator[ProgressInfo, None, None]:

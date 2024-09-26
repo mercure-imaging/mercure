@@ -109,8 +109,6 @@ class CheckAccessionsTask(ClassBasedRQTask):
         """
         Check if the given accessions exist on the node using a DICOM query.
         """
-        # c = SimpleDicomClient(node.ip, node.port, node.aet_target, None)
-        # assert self.parent is not None
         results = []
         try:
             for accession in accessions:
@@ -128,7 +126,6 @@ class CheckAccessionsTask(ClassBasedRQTask):
                 job_parent.meta['failed_reason'] = e.args[0]
                 job_parent.save_meta() # type: ignore
                 Queue(job_parent.origin)._enqueue_job(job_parent,at_front=True)
-
             raise
 
 
@@ -145,6 +142,24 @@ class GetAccessionTask(ClassBasedRQTask):
 
     def execute(self, *, accession:str, node: Union[DicomTarget, DicomWebTarget], search_filters:Dict[str, List[str]], path: str):
         print(f"Getting {accession}")
+        def error_handler(reason):
+            logger.error(reason)
+            if not job_parent:
+                raise
+            logger.info("Cancelling sibling jobs.")
+            for subjob_id in job_parent.kwargs.get('subjobs',[]):
+                if subjob_id == job.id:
+                    continue
+                subjob = Job.fetch(subjob_id)
+                if subjob.get_status() not in ('finished', 'canceled','failed'):
+                    subjob.cancel()
+            job_parent.get_meta() 
+            logger.info("Cancelled sibling jobs.")
+            if not job_parent.meta.get("failed_reason"):
+                job_parent.meta["failed_reason"] = reason
+                job_parent.save_meta()
+                Queue(job_parent.origin)._enqueue_job(job_parent,at_front=True) # Force the parent job to run and fail itself
+
         job = cast(Job,self._job)
         try:
             Path(path).mkdir(parents=True, exist_ok=True)
@@ -159,35 +174,31 @@ class GetAccessionTask(ClassBasedRQTask):
             job.meta['started'] = 1
             job.meta['progress'] = "0 / Unknown"
             job.save_meta() # type: ignore
-            for info in self.get_accession(job.id, accession=accession, node=node, search_filters=search_filters, path=path):
-                job.meta['remaining'] = info.remaining
-                job.meta['completed'] = info.completed 
-                job.meta['progress'] = info.progress
-                job.save_meta() # type: ignore  # Save the updated meta data to the job
-                logger.info(info.progress)
+            try:
+                for info in self.get_accession(job.id, accession=accession, node=node, search_filters=search_filters, path=path):
+                    job.meta['remaining'] = info.remaining
+                    job.meta['completed'] = info.completed 
+                    job.meta['progress'] = info.progress
+                    job.save_meta() # type: ignore  # Save the updated meta data to the job
+                    logger.info(info.progress)
+            except Exception as e:
+                error_handler(f"Failure during retrieval of accession {accession}: {e}")
+                raise
             if job_parent:
                 if job_parent.kwargs["move_promptly"]:
-                    self.move_to_destination(path, job_parent.kwargs["destination"], job_parent.id)
-
+                    try:
+                        self.move_to_destination(path, job_parent.kwargs["destination"], job_parent.id)
+                    except Exception as e:
+                        error_handler(f"Failure during move to destination of accession {accession}: {e}")
+                        raise
+                        
                 job_parent.get_meta() # there is technically a race condition here...
                 job_parent.meta['completed'] += 1
                 job_parent.meta['progress'] = f"{job_parent.meta['started'] } / {job_parent.meta['completed'] } / {job_parent.meta['total']}"
                 job_parent.save_meta() # type: ignore
-        except:
-            if not job_parent:
-                raise
-            # Cancel remaining sibling jobs
-            logger.info("Cancelling sibling jobs.")
-            for subjob_id in job_parent.kwargs.get('subjobs',[]):
-                if subjob_id == job.id:
-                    continue
-                subjob = Job.fetch(subjob_id)
-                if subjob.get_status() not in ('finished', 'canceled','failed'):
-                    subjob.cancel()
-            job_parent.get_meta() 
-            logger.info("Cancelled sibling jobs.")
-            job_parent.meta["failed_reason"] = f"Failed to retrieve {accession}"
-            Queue(job_parent.origin)._enqueue_job(job_parent,at_front=True) # Force the parent job to run and fail itself
+            
+        except Exception as e:
+            error_handler(f"Failure with accession {accession}: {e}")
             raise
 
         return "Job complete"
@@ -200,7 +211,7 @@ class MainTask(ClassBasedRQTask):
     total: int = 0
     paused: bool = False 
     offpeak: bool = False
-    _queue: str = rq_fast_queue.name
+    _queue: str = rq_slow_queue.name
 
     def execute(self, *, accessions, subjobs, path, destination, move_promptly) -> str:
         job = cast(Job,self._job)
@@ -213,19 +224,25 @@ class MainTask(ClassBasedRQTask):
                 raise Exception(f"Failed")
 
         logger.info(f"Job completing {job.id}")
-
         if not move_promptly:
             logger.info("Moving files during completion as move_promptly==False")
             for p in Path(path).iterdir():
                 if not p.is_dir():
                     continue
-                self.move_to_destination(p, destination, job.id)
-
+                try:
+                    self.move_to_destination(p, destination, job.id)
+                except Exception as e:
+                    err = f"Failure during move to destination {destination}: {e}" if destination else f"Failure during move to {config.mercure.incoming_folder}: {e}"
+                    logger.error(err)
+                    job.meta["failed_reason"] = err
+                    job.save_meta()
+                    raise
         # subprocess.run(["./bin/ubuntu22.04/getdcmtags", filename, self.called_aet, "MERCURE"],check=True)
 
         logger.info(f"Removing job directory {path}")
-        # tree(destination)
         shutil.rmtree(path)
+        job.meta["failed_reason"] = None
+        job.save_meta()
 
         return "Job complete"
 
@@ -333,8 +350,9 @@ class QueryPipeline():
         #     return False
         logger.info(f"Retrying {self.job}")
         for subjob in self.get_subjobs():
+            meta = subjob.get_meta()
             if (status:=subjob.get_status()) in ("failed", "canceled"):
-                logger.info(f"Retrying {subjob}")
+                logger.info(f"Retrying {subjob} ({status}) {meta}")
                 if status == "failed" and (job_path:=Path(subjob.kwargs['path'])).exists():
                     shutil.rmtree(job_path) # Clean up after a failed job
                 Queue(subjob.origin).enqueue_job(subjob)
@@ -367,7 +385,7 @@ class QueryPipeline():
                 self.pause()
 
     def get_subjobs(self) -> Generator[Job, None, None]:
-        return (Job.fetch(job) for job in self.job.kwargs.get('subjobs', []) if job)
+        return (j for j in (Queue(self.job.origin).fetch_job(job) for job in self.job.kwargs.get('subjobs', [])) if j is not None)
 
     def get_status(self) -> JobStatus:
         return cast(JobStatus,self.job.get_status())
@@ -416,6 +434,8 @@ class QueryPipeline():
         """
         Get all jobs of a given type from the queue
         """
+        job_ids = set()
+
         registries = [
             rq_slow_queue.started_job_registry,     # Returns StartedJobRegistry
             rq_slow_queue.deferred_job_registry,    # Returns DeferredJobRegistry
@@ -424,12 +444,13 @@ class QueryPipeline():
             rq_slow_queue.scheduled_job_registry,   # Returns ScheduledJobRegistry
             rq_slow_queue.canceled_job_registry,    # Returns CanceledJobRegistry
         ]
-        job_ids = set()
         for registry in registries:
             for j_id in registry.get_job_ids():
                 job_ids.add(j_id)
+
         for j_id in rq_slow_queue.job_ids:
             job_ids.add(j_id)
-        jobs = (Job.fetch(j_id) for j_id in job_ids)
 
+        jobs = (Job.fetch(j_id) for j_id in job_ids)
+        
         return (QueryPipeline(j) for j in jobs if j and j.get_meta().get("type") == type)

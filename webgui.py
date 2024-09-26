@@ -905,7 +905,7 @@ app = Starlette(debug=DEBUG_MODE, lifespan=lifespan, exception_handlers=exceptio
 app.mount("/static", StaticFiles(directory="webinterface/statics", check_dir=False), name="static")
 app.add_middleware(AuthenticationMiddleware, backend=SessionAuthBackend())
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY, session_cookie="mercure_session")
-app.mount("/rules", rules.rules_app)
+app.mount("/rules", rules.rules_app, name="rules")
 app.mount("/targets", targets.targets_app)
 app.mount("/modules", modules.modules_app)
 app.mount("/users", users.users_app)
