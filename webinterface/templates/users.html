@@ -6,30 +6,38 @@
 <main role="main">
     <div class="container">
         <h1 class="title">Users</h1>
-        {% for x in users %}
-        <div class="card rulecard">
+        <div class="field">
+            <div class="control has-icons-left">
+                <input class="input" type="text" id="searchInput" placeholder="Search..." value="">
+                <span class="icon is-small is-left">
+                    <i class="fas fa-search"></i>
+                </span>
+            </div>
+        </div>
+        {% for user_name, user in users.items() %}
+        <div class="card entitycard" data-name="{{user_name}} {{user.email}}">
             <header class="card-header has-background-light">
                 <p class="card-header-title card-toggle">
-                    <span class="icon"><i class="fas {% if users[x]['is_admin']=="True" %}fa-user-shield{% else %}fa-user{% endif %} fa-lg"></i></span>&nbsp;&nbsp;{{ x }}
+                    <span class="icon"><i class="fas {% if user.is_admin=="True" %}fa-user-shield{% else %}fa-user{% endif %} fa-lg"></i></span>&nbsp;&nbsp;{{ user_name }}
                 </p>
                 <a class="card-header-icon card-toggle">
                     <i class="fa fa-angle-down"></i>
                 </a>
             </header>
-            <div class="card-content rulecard-content is-hidden">
+            <div class="card-content entitycard-content is-hidden">
                 <div class="content">
                     <table class="table is-narrow" style="margin-bottom: 8px;">
                         <col width="150">
                         <tr>
                             <td>E-Mail:</td>
-                            <td>{{ users[x]['email'] }}</td>
+                            <td>{{ user.email }}</td>
                         </tr>
                         <tr>
                             <td>Administrator:</td>
-                            <td>{{ users[x]['is_admin'] }}</td>
+                            <td>{{ user.is_admin }}</td>
                         </tr>
-                        {% if (users[x]['permissions'] is defined) and (users[x]['permissions'] != '') %}
-                        {% set permlist = users[x]['permissions'].split(',') %}
+                        {% if (user.permissions is defined) and (user.permissions != '') %}
+                        {% set permlist = user.permissions.split(',') %}
                         <tr>
                             <td>Permissions:</td>
                             <td>{% for perm in permlist %}<span class="tag is-dark">{{ perm }}</span> {% endfor %}</td>
@@ -49,6 +57,10 @@
             </div>
         </div>
         {% endfor %}
+        <nav class="pagination is-centered" role="navigation" aria-label="pagination">
+            <ul class="pagination-list" id="paginationList">
+            </ul>
+        </nav>
         {% if is_admin %}
         <div class="buttons is-left" style="margin-top: 20px;">
             <button class="button is-success" onclick="showAddModal()"><i class="fas fa-plus"></i>&nbsp;Add New</button>
@@ -119,6 +131,7 @@
                 e.currentTarget.parentElement.parentElement.childNodes[3].classList.toggle('is-hidden');
             });
         }
+        paginate(document.getElementsByClassName('entitycard'))
     });
 
     function showAddModal(val) {

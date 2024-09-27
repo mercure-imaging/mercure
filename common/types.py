@@ -26,6 +26,9 @@ class Target(BaseModel, Compat):
     contact: Optional[str] = ""
     comment: str = ""
 
+    @property
+    def short_description(self) -> str:
+        return ""
     @classmethod
     def __get_validators__(cls):
         # one or more validators may be yielded which will be called in the
@@ -59,6 +62,10 @@ class DicomTarget(Target):
     aet_target: str
     aet_source: Optional[str] = ""
 
+    @property
+    def short_description(self) -> str:
+        return f"{self.ip}:{self.port}"
+
 
 class DicomTLSTarget(Target):
     target_type: Literal["dicomtls"] = "dicomtls"
@@ -70,6 +77,9 @@ class DicomTLSTarget(Target):
     tls_cert: str
     ca_cert: str
 
+    @property
+    def short_description(self) -> str:
+        return f"{self.ip}:{self.port}"
 
 class SftpTarget(Target):
     target_type: Literal["sftp"] = "sftp"
@@ -77,6 +87,10 @@ class SftpTarget(Target):
     user: str
     host: str
     password: Optional[str]
+
+    @property
+    def short_description(self) -> str:
+        return f"{self.folder}:{self.host}"
 
 
 class RsyncTarget(Target):
@@ -86,7 +100,10 @@ class RsyncTarget(Target):
     host: str
     password: Optional[str]
     run_on_complete: bool = False
-
+    
+    @property
+    def short_description(self) -> str:
+        return f"{self.host}:{self.folder}"
 
 class XnatTarget(Target):
     target_type: Literal["xnat"] = "xnat"
@@ -94,6 +111,10 @@ class XnatTarget(Target):
     host: str
     user: str
     password: str
+
+    @property
+    def short_description(self) -> str:
+        return self.host
 
 
 class DicomWebTarget(Target):
@@ -106,6 +127,10 @@ class DicomWebTarget(Target):
     http_user: Optional[str]
     http_password: Optional[str]
 
+    @property
+    def short_description(self) -> str:
+        return self.url
+
 
 class S3Target(Target):
     target_type: Literal["s3"] = "s3"
@@ -115,12 +140,19 @@ class S3Target(Target):
     access_key_id: str
     secret_access_key: str
 
+    @property
+    def short_description(self) -> str:
+        return f"{self.bucket}/{self.prefix}"
+
 
 class FolderTarget(Target):
     target_type: Literal["folder"] = "folder"
     folder: str
     file_filter: Optional[str]
 
+    @property
+    def short_description(self) -> str:
+        return self.folder
 
 class DummyTarget(Target):
     target_type: Literal["dummy"] = "dummy"
