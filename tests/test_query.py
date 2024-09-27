@@ -183,14 +183,13 @@ def test_get_accession_job(dicom_server, dicomweb_server, mercure_config):
         assert results[0].remaining == 0
         assert pydicom.dcmread(next(k for k in Path(config.jobs_folder).rglob("*.dcm"))).AccessionNumber == MOCK_ACCESSIONS[0]
 
-def test_query_job(dicom_server, tempdir):
+def test_query_job(dicom_server, tempdir, rq_connection):
     """
     Test the create_job function.
     We use mocker to mock the queue and avoid actually creating jobs.
     """
     job = QueryPipeline.create([MOCK_ACCESSIONS[0]], {}, dicom_server, str(tempdir))
-    assert job
-    w = SimpleWorker(["mercure_fast", "mercure_slow"], connection=redis)
+    w = SimpleWorker(["mercure_fast", "mercure_slow"], connection=rq_connection)
     w.work(burst=True)
     # assert len(list(Path(config.mercure.jobs_folder).iterdir())) == 1
     print([k for k in Path(tempdir).rglob('*')])
@@ -266,7 +265,7 @@ def test_query_retry(dicom_server_2: Tuple[DicomTarget,DummyDICOMServer], tempdi
     task.get_meta()
     assert task.meta['completed'] == 1
     assert task.meta['total'] == len(dummy_datasets)
-    assert "Failed to retrieve accession" in task.meta['failed_reason']
+    assert "Failure during retrieval" in task.meta['failed_reason']
     # Retry the query
     server.remaining_allowed_accessions = None
     task.retry()
