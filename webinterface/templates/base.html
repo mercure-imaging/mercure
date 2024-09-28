@@ -43,23 +43,20 @@
           <a class="navbar-item {{highlight('homepage')}}" href="/">
             Overview
           </a>
+          <a class="navbar-item {% if page not in ['rules', 'targets','modules', 'users'] %} has-text-grey-light{%endif%}" href="/rules">
+            Setup
+          </a>
           <a class="navbar-item {{highlight('queue')}}" href="/queue">
             Queue
-          </a>
-          <a class="navbar-item {% if page not in ['rules', 'targets','modules', 'users'] %} has-text-grey-light{%endif%}" href="/rules">
-            Rules
           </a>
           {% if is_admin %}
           <a class="navbar-item {{highlight('logs')}}" href="/logs">
             Logs
           </a>
-          <a class="navbar-item {{highlight('dashboards')}}" href="/dashboards">
+          <a class="navbar-item {{highlight('tools')}}" href="/tools">
             Tools
           </a>
           {% endif %}
-          <a class="navbar-item {{highlight('configuration')}}" href="/configuration">
-            Configuration
-          </a>
           {% endif %}
         </div>
         {% if logged_in %}{% if appliance_name != 'master' %}
@@ -100,7 +97,8 @@
   {% block extra_nav %} 
   {% if page in ['rules','targets','modules', 'users'] %}
   <section>
-    <div class="container tabs">
+    <div class="container">
+      <div class="tabs logtabs" style="margin-top: 40px;">
         <ul>
           <li class="{% if page == 'rules' %}is-active{% endif %}"><a href="/rules">Rules</a></li>
           <li class="{% if page == 'targets' %}is-active{% endif %}"><a href="/targets">Targets</a></li>
@@ -110,8 +108,9 @@
           {% endif %}
         </ul>
       </div>
-    </section>
-    {% endif %}
+    </div>
+  </section>
+  {% endif %}
   {% endblock %}
 
   <section class="section" style="flex: 1;">

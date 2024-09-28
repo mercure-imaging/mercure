@@ -10,11 +10,12 @@
                 <h1 class="title">Configuration</h1>
             </div>
             <div class="column">
-                {% if is_admin %}
                 <div class="buttons is-right">
+                    <a class="button" href="/"><i class="fas fa-arrow-left"></i>&nbsp;Back</a>
+                    {% if is_admin %}
                     <a class="button" href="/configuration/edit"><i class="fas fa-pencil-alt"></i>&nbsp;Edit</a>
+                    {% endif %}                
                 </div>
-                {% endif %}                
             </div>
         </div>
         <div class="columns">

@@ -38,7 +38,8 @@ async def tasks(request):
     context = {
         "request": request,
         "mercure_version": mercure_defs.VERSION,
-        "page": "tasks",
+        "page": "tools",
+        "tab": "tasks",
     }
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
@@ -51,7 +52,8 @@ async def tests(request):
     context = {
         "request": request,
         "mercure_version": mercure_defs.VERSION,
-        "page": "tests",
+        "page": "tools",
+        "tab": "tests",
     }
     context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)

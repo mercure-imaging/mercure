@@ -26,7 +26,7 @@
           </div>
           {% endfor %}
         </div>
-        <h5 class="title is-5 configtitle" style="margin-top: 40px; margin-bottom: 0px !important;"><i
+        <h5 class="title is-5 configtitle" style="margin-top: 48px; margin-bottom: 0px !important;"><i
             class="fas fa-heartbeat has-text-success"></i>&nbsp;&nbsp;Server Health</h5>
         <div class="columns" style="margin-top: 0px;">
           <div class="column is-one-third">
@@ -36,16 +36,20 @@
               value="{{used_space}}" max="100"></progress>{{free_space}} / {{total_space}} GB available
           </div>
         </div>
-        {% if is_admin %}
-        {% if runtime != "nomad" %}
-        <div class="columns" style="margin-top: 20px;">
+        <h5 class="title is-5 configtitle" style="margin-top: 48px; margin-bottom: 0px !important;"><i
+          class="fas fa-toolbox has-text-success"></i>&nbsp;&nbsp;Control</h5>
+        <div class="columns" style="margin-top: 10px;">
           <div class="column is-one-third">
-            <button class="button" id="servicecontrol" value="" onclick="showControlModal()"><i
+            {% if is_admin %}
+            {% if runtime != "nomad" %}
+            <button class="button" id="servicecontrol" value="" onclick="showControlModal()" style="margin-right: 4px;"><i
                 class="fas fa-wrench"></i>&nbsp;Service Control</button>
+            {% endif %}                
+            {% endif %}
+            <a class="button" href="/configuration" id="configurationbutton" ><i
+              class="fas fa-sliders-h" ></i>&nbsp;Configuration</a>             
           </div>
         </div>
-        {% endif %}
-        {% endif %}
       </div>
     </div>
   </div>

@@ -16,6 +16,7 @@
   border-bottom-right-radius: 0px;
 }
 
+
 .navbar.is-black .navbar-start > a.navbar-item:hover,
 .navbar.is-black .navbar-item.has-dropdown:hover .navbar-link {
   background-color: hsl(141, 71%, 48%);

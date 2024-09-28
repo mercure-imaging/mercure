@@ -1,6 +1,6 @@
 {% extends "dashboards/dashboards.html" %}
 
-{% block title %}Self tests{% endblock %}
+{% block title %}Self-Test{% endblock %}
 
 {% block extra_head %}
     <script type="text/javascript" src="{{ url_for('static', path='DataTables/datatables.min.js') }}"></script>
@@ -10,7 +10,7 @@
 
 {% block dashboard_content %}
 <main role="main">
-    <h1 class="title">Self-test</h1>
+    <h1 class="title">Self-Test</h1>
     <div class="container">
         <div class="columns">
             <div class="column is-one-third">
@@ -20,14 +20,16 @@
                 </p>
                 <p class="block">You may need to manually set the receiver and ui host or port. Any field left blank will be assumed to be the default for this mercure installation type. </p>
                 <p class="block">Setting type to "process" will additionally run a dummy processing step on the dicom series.</p>
-                <p class="block">Below is the list of submitted tests and the task events they produced.</p>
+                <p class="block">Below is the list of submitted tests and task events produced.</p>
+            </div>
+            <div class="column is-one-third">
             </div>
             <div class="column is-one-third">
                 <!-- action="/self_test" -->
               <form class="box" id="test-form" hx-post="/self_test" hx-target="#test_submit_result" hx-swap="innerHTML">
               <div class="field is-horizontal">
                 <div class="field-label is-normal">
-                  <label class="label">Type</label>
+                  <label class="label">Action</label>
                 </div>
                 <div class="field-body">
                   <div class="field">
@@ -44,7 +46,7 @@
               </div>
               <div class="field is-horizontal">
                 <div class="field-label is-normal">
-                  <label class="label">Rule type</label>
+                  <label class="label">Scope</label>
                 </div>
                 <div class="field-body">
                   <div class="field">
@@ -62,7 +64,7 @@
 
               <div class="field is-horizontal">
                 <div class="field-label is-normal">
-                  <label class="label">Receiver location</label>
+                  <label class="label">Receiver</label>
                 </div>
                 <div class="field-body  has-addons">
                   <div class="field has-addons">
@@ -83,7 +85,7 @@
               </div>
               <div class="field is-horizontal">
                 <div class="field-label is-normal">
-                  <label class="label">webui location</label>
+                  <label class="label">UI</label>
                 </div>
                 <div class="field-body">
                   <div class="field has-addons">
@@ -113,7 +115,7 @@
                   <div class="field">
                     <div class="control">
                       <button type="submit" class="button is-primary">
-                        Begin test
+                        Begin Test
                       </button>
                     </div>
                   </div>
@@ -134,7 +136,7 @@
 
         </div>
         </div>
-        <div class="columns">
+        <div class="columns" style="margin-top: 20px;">
         <div class="column is-one-third">
             <table class="table is-narrow is-hoverable is-fullwidth jobtable" id="test-table">
                 <thead>
@@ -269,8 +271,6 @@ $('#test-table').DataTable( {
             // },
             timeout: 3000
         });
-
-
     }
 } );
 

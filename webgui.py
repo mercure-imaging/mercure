@@ -339,7 +339,7 @@ async def configuration(request) -> Response:
     context = {
         "request": request,
         "mercure_version": mercure_defs.VERSION,
-        "page": "configuration",
+        "page": "homepage",
         "config": config.mercure,
         "os_string": os_string,
         "config_edited": config_edited,
@@ -372,7 +372,7 @@ async def configuration_edit(request) -> Response:
     context = {
         "request": request,
         "mercure_version": mercure_defs.VERSION,
-        "page": "configuration",
+        "page": "homepage",
         "config_content": config_content,
     }
     context.update(get_user_information(request))
@@ -835,7 +835,7 @@ app.mount("/modules", modules.modules_app)
 app.mount("/users", users.users_app)
 app.mount("/queue", queue.queue_app)
 app.mount("/api", api.api_app)
-app.mount("/dashboards", dashboards.dashboards_app)
+app.mount("/tools", dashboards.dashboards_app)
 
 
 

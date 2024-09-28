@@ -14,11 +14,11 @@
                 </span>
             </div>
         </div>
-        {% for user_name, user in users.items() %}
-        <div class="card entitycard" data-name="{{user_name}} {{user.email}}">
+        {% for user_name, user_item in users.items() %}
+        <div class="card entitycard" data-name="{{user_name}} {{user_item.email}}">
             <header class="card-header has-background-light">
                 <p class="card-header-title card-toggle">
-                    <span class="icon"><i class="fas {% if user.is_admin=="True" %}fa-user-shield{% else %}fa-user{% endif %} fa-lg"></i></span>&nbsp;&nbsp;{{ user_name }}
+                    <span class="icon"><i class="fas {% if user_item.is_admin=="True" %}fa-user-shield{% else %}fa-user{% endif %} fa-lg"></i></span>&nbsp;&nbsp;{{ user_name }}
                 </p>
                 <a class="card-header-icon card-toggle">
                     <i class="fa fa-angle-down"></i>
@@ -30,14 +30,14 @@
                         <col width="150">
                         <tr>
                             <td>E-Mail:</td>
-                            <td>{{ user.email }}</td>
+                            <td>{{ user_item.email }}</td>
                         </tr>
                         <tr>
                             <td>Administrator:</td>
-                            <td>{{ user.is_admin }}</td>
+                            <td>{{ user_item.is_admin }}</td>
                         </tr>
-                        {% if (user.permissions is defined) and (user.permissions != '') %}
-                        {% set permlist = user.permissions.split(',') %}
+                        {% if (user_item.permissions is defined) and (user_item.permissions != '') %}
+                        {% set permlist = user_item.permissions.split(',') %}
                         <tr>
                             <td>Permissions:</td>
                             <td>{% for perm in permlist %}<span class="tag is-dark">{{ perm }}</span> {% endfor %}</td>
@@ -46,9 +46,9 @@
                     </table>
                     <div class="buttons is-right">
                         {% if is_admin %}
-                        <a class="button is-success" href="/users/edit/{{x}}"><i class="fas fa-pen"></i>&nbsp;Edit</a>
-                        <button class="button is-danger" id="confirm-me" value="{{x}}"
-                            onclick="confirmDelete(this.value)" {% if user==x %}disabled
+                        <a class="button is-success" href="/users/edit/{{user_name}}"><i class="fas fa-pen"></i>&nbsp;Edit</a>
+                        <button class="button is-danger" id="confirm-me" value="{{user_name}}"
+                            onclick="confirmDelete(this.value)" {% if user==user_name %}disabled
                             title="Cannot delete own account" {% endif %}><i class="fas fa-trash-alt"></i>&nbsp;Delete
                         </button>
                         {% endif %}

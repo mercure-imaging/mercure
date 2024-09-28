@@ -21,8 +21,7 @@
                 <p class="card-header-title card-toggle">
                     <span class="icon has-tooltip-left has-tooltip-success" data-tooltip="{{get_target_handler(target).display_name}} Target"><i class="fas {{get_target_handler(target).icon}} fa-lg"></i></span>
                     &nbsp;&nbsp;{{ target_name }}<span style="margin-left:auto; font-weight: 200;"> {{target.short_description}}
-                        &nbsp;<i class="has-text-grey fa {% if target.direction=='pull' %}fa-download{%elif target.direction=='push'%}fa-upload{%elif target.direction=='both'%}fa-server{%endif%}"></i>
-
+                    {% if target.direction=='pull' %}&nbsp;<i class="has-text-grey fas fa-download"></i>{%elif target.direction=='push'%}&nbsp;<i class="has-text-grey fas fa-upload"></i>{%elif target.direction=='both'%}&nbsp;<i class="has-text-grey fas fa-server"></i>{%endif%}
                     </span>
                 </p>
                 <a class="card-header-icon card-toggle">
