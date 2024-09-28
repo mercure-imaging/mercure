@@ -559,7 +559,7 @@
 
         if (($('#action').val() == 'route') || ($('#action').val() == 'both')) {
             if ($('#target').val() == '') {
-                $('#erroralert').html('<i class="fas fa-bug"></i>&nbsp;&nbsp;Targets cannot be empty. Add at least one target.');
+                $('#erroralert').html('<i class="fas fa-bug"></i>&nbsp;&nbsp;Targets cannot be empty. Select at least one target.');
                 $('#erroralert').show();
                 $('#routing_id').click();
                 $('#target').addClass("is-danger");
