@@ -9,19 +9,26 @@
 {% block content %}
 <main role="main">
     <div class="container">
-        <h1 class="title">Filtering Rules</h1>
+        <h1 class="title is-4">Filtering Rules</h1>
 
-        <div class="field">
+        <div class="field is-grouped" style="margin-bottom: 16px;">
             <div class="control has-icons-left">
                 <input class="input" type="text" id="searchInput" placeholder="Search..." value="">
                 <span class="icon is-small is-left">
                     <i class="fas fa-search"></i>
                 </span>
+            </div>           
+            <div class="control is-expanded">
             </div>
+            {% if is_admin %}
+            <div class="">
+                <button class="button is-success" onclick="showAddModal()"><i class="fas fa-plus"></i>&nbsp;Add</button>
+            </div>
+            {% endif %}
         </div>
-    
 
-        {% for rule_name,rule in rules.items() %}
+    
+        {% for rule_name,rule in rules.items()|sort() %}
         <div class="card entitycard" data-name="{{rule_name}}">
             <header class="card-header has-background-light ">
                 <p class="card-header-title card-toggle {% if rule.disabled %}has-text-grey-light{% endif %}">
@@ -109,16 +116,11 @@
             </div>
         </div>
         {% endfor %}
-        <nav class="pagination is-centered" role="navigation" aria-label="pagination">
+        <nav class="pagination is-centered" role="navigation" aria-label="pagination" style="margin-top: 16px;">
             <ul class="pagination-list" id="paginationList">
             </ul>
         </nav>
         
-        {% if is_admin %}
-        <div class="buttons is-left" style="margin-top: 20px;">
-            <button class="button is-success" onclick="showAddModal()"><i class="fas fa-plus"></i>&nbsp;Add New</button>
-        </div>
-        {% endif %}
     </div>
 
     <div class="modal" id="deletemodal">

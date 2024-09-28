@@ -11,17 +11,24 @@
 </style>
     <main role="main">
         <div class="container">
-            <h1 class="title">Processing Modules</h1>
-            <div class="field">
+            <h1 class="title is-4">Processing Modules</h1>
+            <div class="field is-grouped" style="margin-bottom: 16px;">
                 <div class="control has-icons-left">
                     <input class="input" type="text" id="searchInput" placeholder="Search..." value="">
                     <span class="icon is-small is-left">
                         <i class="fas fa-search"></i>
                     </span>
                 </div>
+                <div class="control is-expanded">
+                </div>                
+                {% if is_admin %}
+                <div class="">
+                    <button class="button is-success" onclick="showAddModal()"><i class="fas fa-plus"></i>&nbsp;Add</button>
+                </div>
+                {% endif %}
             </div>
     
-            {% for module_name, module in modules.items() %}
+            {% for module_name, module in modules.items()|sort() %}
                 <div class="card entitycard" data-name="{{module_name}} {{module.docker_tag}}">
                     <header class="card-header has-background-light">
                         <p class="card-header-title card-toggle">
@@ -63,17 +70,10 @@
                     </div>
                 </div>
             {% endfor %}
-            <nav class="pagination is-centered" role="navigation" aria-label="pagination">
+            <nav class="pagination is-centered" role="navigation" aria-label="pagination" style="margin-top: 16px;">
                 <ul class="pagination-list" id="paginationList">
                 </ul>
-            </nav>
-    
-            {% if is_admin %}
-                <div class="buttons is-left" style="margin-top: 20px;">
-                    <button class="button is-success" onclick="showAddModal()"><i class="fas fa-plus"></i>&nbsp;Install
-                        Module</button>
-                </div>
-            {% endif %}
+            </nav>   
         </div>
 
         <div class="modal" id="addmodal">

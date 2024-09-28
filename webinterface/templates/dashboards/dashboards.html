@@ -1,20 +1,20 @@
 {% extends "base.html" %}
 
 {% block extra_nav %} 
-<section>
-<div class="container">
-<div class="tabs logtabs" style="margin-top: 40px;">
+<main role="main">
+<div class="container" style="margin-bottom: 30px;">
+  <h1 class="title">Tools</h1>
+  <div class="tabs logtabs" style="margin-top: 20px;">
     <ul>
       <!-- <li class="{% if page == 'query' %}is-active{% endif %}"><a href="query">DICOM Query</a></li> -->
       {% if is_admin %}
       <li class="{% if tab == 'tests' %}is-active{% endif %}"><a href="tests">Self-Test</a></li>
       {% endif %}
       <!-- <li class="{% if page == 'tasks' %}is-active{% endif %}"><a href="tasks">Tasks</a></li> -->
-
     </ul>
   </div>
   </div>
-</section>
+</main>
 {% endblock %}
 
 {% block content %}

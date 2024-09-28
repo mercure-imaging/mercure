@@ -619,3 +619,9 @@ body {
   background-color: rgb(50, 115, 220);
   color: #FFF;
 }
+
+#paginationList .is-current {
+  background-color: #2f2f2f;
+  border-color: #2f2f2f;
+  color: #fff;  
+}

@@ -10,7 +10,7 @@
 {% block content %}
 <main role="main">
     <div class="container">
-        <h1 class="title">Edit Rule - {{rule}}</h1>
+        <h1 class="title is-4">Edit Rule - {{rule}}</h1>
 
         <div class="notification is-danger" id="erroralert" style="display: none;">
             <i class="fas fa-bug"></i>&nbsp;&nbsp;Error in configuration detected. Please check input fields for correct
@@ -316,7 +316,7 @@
                     </a>
                     -->
                 </div>
-                <div class="panel" data-content="notification">
+                <div class="panel" data-content="notification" style="margin-top: 30px;">
                     {% if phi_notifications %}
                     <div class="notification is-warning">
                         <i class="fas fa-info-circle"></i>&nbsp;&nbsp;This server is configured to allow patient health information (PHI) in notifications. Please use extra caution when setting up notifications.

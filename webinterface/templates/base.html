@@ -44,7 +44,7 @@
             Overview
           </a>
           <a class="navbar-item {% if page not in ['rules', 'targets','modules', 'users'] %} has-text-grey-light{%endif%}" href="/rules">
-            Setup
+            Settings
           </a>
           <a class="navbar-item {{highlight('queue')}}" href="/queue">
             Queue
@@ -94,11 +94,14 @@
       </div>
     </div>
   </nav>
+
+  <section class="section" style="flex: 1;">
   {% block extra_nav %} 
+    
   {% if page in ['rules','targets','modules', 'users'] %}
-  <section>
-    <div class="container">
-      <div class="tabs logtabs" style="margin-top: 40px;">
+    <div class="container" style="margin-bottom: 30px;">
+      <h1 class="title">Settings</h1>
+      <div class="tabs logtabs" style="margin-top: 20px;">
         <ul>
           <li class="{% if page == 'rules' %}is-active{% endif %}"><a href="/rules">Rules</a></li>
           <li class="{% if page == 'targets' %}is-active{% endif %}"><a href="/targets">Targets</a></li>
@@ -109,11 +112,9 @@
         </ul>
       </div>
     </div>
-  </section>
   {% endif %}
   {% endblock %}
 
-  <section class="section" style="flex: 1;">
     <div class="container">
       {% block content %}{% endblock %}
     </div>
@@ -134,7 +135,7 @@
   <script type="module">
     import { JSONEditor } from "{{ url_for('static', path='/js/svelte-jsoneditor.js') }}"
 
-    function paginate(cards, items_per_page=10) {
+    function paginate(cards, items_per_page=12) {
         const paginationList = document.getElementById('paginationList');
         const searchInput = document.getElementById('searchInput');
         searchInput.value = '';

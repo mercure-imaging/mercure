@@ -8,7 +8,7 @@
         {% if own_settings is defined %}
         <h1 class="title">Account Settings</h1>
         {% else %}
-        <h1 class="title">Edit User - {{edituser}}</h1>
+        <h1 class="title is-4">Edit User - {{edituser}}</h1>
         {% endif %}
 
         <form method="post" action="/users/edit/{{edituser}}">
