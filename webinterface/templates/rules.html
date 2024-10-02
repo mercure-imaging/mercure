@@ -88,6 +88,10 @@
                         {% endif %}
                         {% if (rule.action=='route') or (rule.action=='both') %}
                         <tr>
+                            <td>Target:</td>
+                            <td>{{ rule.target }}</td>
+                        </tr>
+                        <tr>
                             <td>Routing:</td>
                             <td>{% if rule.target is string %}
                                 {{ rule.target }}

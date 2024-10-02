@@ -37,7 +37,7 @@ logger = config.get_logger()
 
 @router.get("/")
 @requires("authenticated", redirect="login")
-async def show_rules(request) -> Response:
+async def rules(request) -> Response:
     """Show all defined routing rules. Can be executed by all logged-in users."""
     try:
         config.read_config()
@@ -47,11 +47,9 @@ async def show_rules(request) -> Response:
     template = "rules.html"
     context = {
         "request": request,
-        "mercure_version": mercure_defs.VERSION,
         "page": "rules",
         "rules": config.mercure.rules,
     }
-    context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
 
 
@@ -114,10 +112,9 @@ async def rules_edit(request) -> Response:
 
     context = {
         "request": request,
-        "mercure_version": mercure_defs.VERSION,
         "page": "rules",
         "rules": config.mercure.rules,
-        "targets": config.mercure.targets,
+        "targets": [t for t in config.mercure.targets if config.mercure.targets[t].direction in ("push", "both")],
         "modules": config.mercure.modules,
         "rule": rule,
         "alltags": tagslist.alltags,
@@ -126,7 +123,6 @@ async def rules_edit(request) -> Response:
         "process_runner": config.mercure.process_runner,
         "phi_notifications": config.mercure.phi_notifications,
     }
-    context.update(get_user_information(request))
 
     template = "rules_edit.html"
     return templates.TemplateResponse(template, context)

@@ -26,6 +26,8 @@ import unittest
 
 from testing_common import *
 
+from testing_common import mock_task_ids
+
 # import common.config as config
 
 rules = {

@@ -54,7 +54,6 @@ async def show_targets(request) -> Response:
     template = "targets.html"
     context = {
         "request": request,
-        "mercure_version": mercure_defs.VERSION,
         "page": "targets",
         "targets": config.mercure.targets,
         "used_targets": used_targets,
@@ -108,7 +107,6 @@ async def targets_edit(request) -> Response:
     template = "targets_edit.html"
     context = {
         "request": request,
-        "mercure_version": mercure_defs.VERSION,
         "page": "targets",
         "targets": config.mercure.targets,
         "edittarget": edittarget,

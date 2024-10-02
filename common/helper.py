@@ -5,15 +5,13 @@ Various internal helper functions for mercure.
 """
 # Standard python includes
 import asyncio
-from contextlib import suppress
 from datetime import datetime
 from datetime import time as _time
 import inspect
 from pathlib import Path
 import threading
-from typing import Callable, Optional
+from typing import Callable, Optional, Tuple
 import graphyte
-import aiohttp
 import os
 import common.influxdb
 
@@ -22,6 +20,16 @@ terminate = False
 
 
 loop = asyncio.get_event_loop()
+
+def validate_folders(config) -> Tuple[bool, str]:
+    for folder in ( config.incoming_folder, config.studies_folder, config.outgoing_folder,
+                    config.success_folder, config.error_folder, config.discard_folder,
+                    config.processing_folder, config.jobs_folder ):
+        if not Path(folder).is_dir():
+            return False, f"Folder {folder} does not exist."
+        if not os.access( folder, os.R_OK | os.W_OK ):
+            return False, f"No read/write access to {folder}"
+    return True, ""
 
 def get_now_str() -> str:
     """Returns the current time as string with mercure-wide formatting"""
@@ -116,6 +124,8 @@ class AsyncTimer(object):
 
     def run_until_complete(self, loop=None) -> None:
         self.start()
+        if not self._task:
+            raise Exception("Unexpected error: AsyncTimer._task is None")
         loop = loop or asyncio.get_event_loop()
         loop.run_until_complete(self._task)
 

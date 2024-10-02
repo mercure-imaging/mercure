@@ -1,3 +1,6 @@
+from typing import Any, Dict, Generator, List, Optional
+
+from pydicom import Dataset
 from common.types import DicomTarget, DicomTLSTarget, SftpTarget, DummyTarget, Task
 import common.config as config
 from common.constants import mercure_names
@@ -10,8 +13,10 @@ from shlex import split
 
 from starlette.responses import JSONResponse
 
+from webinterface.dicom_client import DicomClientCouldNotFind, SimpleDicomClient
+
 from .registry import handler_for
-from .base import SubprocessTargetHandler, TargetHandler
+from .base import ProgressInfo, SubprocessTargetHandler, TargetHandler
 
 DCMSEND_ERROR_CODES = {
     1: "EXITCODE_COMMANDLINE_SYNTAX_ERROR",
@@ -34,6 +39,7 @@ class DicomTargetHandler(SubprocessTargetHandler[DicomTarget]):
     test_template = "targets/dicom-test.html"
     icon = "fa-database"
     display_name = "DICOM"
+    can_pull = True
 
     def _create_command(self, target: DicomTarget, source_folder: Path, task: Task):
         target_ip = target.ip
@@ -53,6 +59,21 @@ class DicomTargetHandler(SubprocessTargetHandler[DicomTarget]):
             f"""dcmsend {target_ip} {target_port} +sd {source_folder} -aet {target_aet_source} -aec {target_aet_target} -nuc +sp '*.dcm' -to 60 +crf {dcmsend_status_file}"""
         )
         return command, {}
+
+    def find_from_target(self, target: DicomTarget, accession: str,  search_filters:Dict[str,List[str]]) -> List[Dataset]:
+        c = SimpleDicomClient(target.ip, target.port, target.aet_target, None)
+        try:
+            return c.findscu(accession, search_filters)
+        except DicomClientCouldNotFind as e:
+            return []
+        
+    def get_from_target(self, target: DicomTarget, accession:str, search_filters:Dict[str,List[str]], path) -> Generator[ProgressInfo, None, None]:
+        config.read_config()
+        c = SimpleDicomClient(target.ip, target.port, target.aet_target, path)
+        for identifier in c.getscu(accession, search_filters):
+            completed, remaining = identifier.NumberOfCompletedSuboperations, identifier.NumberOfRemainingSuboperations, 
+            progress = f"{ completed } / { completed + remaining }" 
+            yield ProgressInfo(completed, remaining, progress)
 
     def handle_error(self, e, command):
         dcmsend_error_message = DCMSEND_ERROR_CODES.get(e.returncode, None)

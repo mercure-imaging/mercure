@@ -16,10 +16,10 @@
           {% for service in service_status %}
           <div class="control">
             <div class="tags has-addons">
-              <span class="tag is-dark">{{ service_status[service]['name'] }}</span>
-              <span {% if service_status[service]['running'] == True %} class="tag is-success">
+              <span class="tag is-dark">{{ service['name'] }}</span>
+              <span {% if service['running'] == True %} class="tag is-success">
                 UP
-                {% elif service_status[service]['running'] == False %} class="tag is-danger">DOWN
+                {% elif service['running'] == False %} class="tag is-danger">DOWN
                 {% else %} class="tag">UNKNOWN
                 {% endif %}</span>
             </div>
@@ -66,7 +66,7 @@
           <div class="control select is-multiple is-fullwidth">
             <select name='services[]' multiple size="6" id="controlserviceselector">
               {% for service in service_status %}
-              <option {% if loop.index> 1 %}selected{% endif %} value="{{service}}">{{service_status[service]['name']}}
+              <option {% if loop.index> 1 %}selected{% endif %} value="{{service["id"]}}">{{service['name']}}
               </option>
               {% endfor %}
             </select>
@@ -126,6 +126,10 @@
           clearTimeout(pageloaderTimeout);
           location.reload();
         }, 2000);
+      },
+      error: function (data) {
+        $("#controlpageloader").removeClass('is-active');
+        alert('An error occurred while trying to execute the action.')
       }
     });
   })

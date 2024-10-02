@@ -26,7 +26,7 @@ import datetime
 import daiquiri
 import html
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any, Dict, List, Optional, TypedDict, Union
 import docker
 import hupper
 import nomad
@@ -67,7 +67,7 @@ import webinterface.queue as queue
 import webinterface.api as api
 import webinterface.dashboards as dashboards
 from webinterface.common import *
-
+from webinterface.dashboards.query.jobs import QueryPipeline
 from decoRouter import Router as decoRouter
 router = decoRouter()
 
@@ -129,15 +129,39 @@ DEBUG_MODE = webgui_config("DEBUG", cast=bool, default=True)
 
 @contextlib.asynccontextmanager
 async def lifespan(app):
-    startup()
-    yield
+    result = startup(app)
+    yield result
     await shutdown()
 
 
-def startup() -> None:
+def startup(app: Starlette):
+    state = {"redis_connected": False}
+    try:
+        response = redis.ping()
+        if response:
+            logger.info("Redis connection validated.")
+            state["redis_connected"] = True
+        else:
+            raise Exception("Redis connection failed")
+    except:
+        logger.error("Could not connect to Redis", exc_info=True)
+    
+    if state["redis_connected"]:
+        scheduled_jobs = rq_fast_scheduler.get_jobs()
+        for job in scheduled_jobs: 
+            if job.meta.get("type") != "offpeak":
+                continue
+            rq_fast_scheduler.cancel(job)
+        rq_fast_scheduler.schedule(
+            scheduled_time=datetime.datetime.utcnow(),
+            func=QueryPipeline.update_all_offpeak,
+            interval=60,
+            meta={"type": "offpeak"},
+            repeat=None
+        )
     monitor.configure("webgui", "main", config.mercure.bookkeeper)
     monitor.send_event(monitor.m_events.BOOT, monitor.severity.INFO, f"PID = {os.getpid()}")
-
+    return state
 
 async def shutdown() -> None:
     monitor.send_event(monitor.m_events.SHUTDOWN, monitor.severity.INFO, "")
@@ -260,6 +284,7 @@ async def show_log(request) -> Response:
             return_code = 0
         except:
             pass
+        sub_services = []
     elif runtime == "systemd":
         start_date_cmd = ""
         end_date_cmd = ""
@@ -268,21 +293,38 @@ async def show_log(request) -> Response:
         if end_timestamp:
             end_date_cmd = f'--until "{end_timestamp}"'
 
+        service_name_or_list = services.services_list[requested_service]["systemd_service"]
+        if isinstance(service_name_or_list, list):
+            service_name = request.query_params.get("subservice", service_name_or_list[0])
+            sub_services = service_name_or_list
+        else:
+            service_name = service_name_or_list
+            sub_services = []
         run_result = await async_run(
             f"sudo journalctl -n 1000 -u "
-            f'{services.services_list[requested_service]["systemd_service"]} '
+            f'{service_name} '
             f"{start_date_cmd} {end_date_cmd}"
         )
         return_code = -1 if run_result[0] is None else run_result[0]
         raw_logs = run_result[1]
+
     elif runtime == "docker":
         client = docker.from_env() # type: ignore
         try:
-            container = client.containers.get(services.services_list[requested_service]["docker_service"])
+            service_name_or_list = services.services_list[requested_service]["docker_service"]
+            if isinstance(service_name_or_list, list):
+                service_name = request.query_params.get("subservice", service_name_or_list[0])
+                sub_services = service_name_or_list
+            else:
+                service_name = service_name_or_list
+                sub_services = []
+
+            container = client.containers.get(service_name)
             container.reload()
             raw_logs = container.logs(since=start_obj, timestamps=True)
             return_code = 0
-        except (docker.errors.NotFound, docker.errors.APIError): # type: ignore
+        except (docker.errors.NotFound, docker.errors.APIError) as e: # type: ignore
+            logger.error(e)
             return_code = 1
 
     # return_code, raw_logs = (await async_run("/usr/bin/nomad alloc logs -job -stderr -f -tail mercure router"))[:2]
@@ -303,7 +345,7 @@ async def show_log(request) -> Response:
     template = "logs.html"
     context = {
         "request": request,
-        "mercure_version": mercure_defs.VERSION,
+        
         "page": "logs",
         "service_logs": service_logs,
         "log_id": requested_service,
@@ -314,8 +356,9 @@ async def show_log(request) -> Response:
         "end_time": end_time,
         "end_time_available": runtime == "systemd",
         "start_time_available": runtime in ("docker", "systemd"),
+        "sub_services": sub_services,
+        "subservice": request.query_params.get("subservice", None)
     }
-    context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
 
 
@@ -345,7 +388,6 @@ async def configuration(request) -> Response:
         "config_edited": config_edited,
         "runtime": runtime,
     }
-    context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
 
 
@@ -375,7 +417,6 @@ async def configuration_edit(request) -> Response:
         "page": "homepage",
         "config_content": config_content,
     }
-    context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
 
 
@@ -419,7 +460,7 @@ async def login(request) -> Response:
     template = "login.html"
     context = {
         "request": request,
-        "mercure_version": mercure_defs.VERSION,
+        
         "appliance_name": config.mercure.get("appliance_name", "master"),
     }
     return templates.TemplateResponse(template, context)
@@ -607,7 +648,7 @@ async def login_post(request) -> Response:
         context = {
             "request": request,
             "invalid_password": 1,
-            "mercure_version": mercure_defs.VERSION,
+            
             "appliance_name": config.mercure.get("appliance_name", "mercure Router"),
         }
         return templates.TemplateResponse(template, context)
@@ -635,14 +676,13 @@ async def settings_edit(request) -> Response:
     template = "users_edit.html"
     context = {
         "request": request,
-        "mercure_version": mercure_defs.VERSION,
+        
         "page": "settings",
         "edituser": own_name,
         "edituser_info": users.users_list[own_name],
         "own_settings": "True",
         "change_password": users.users_list[own_name].get("change_password", "False"),
     }
-    context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
 
 
@@ -650,6 +690,68 @@ async def settings_edit(request) -> Response:
 ## Homepage endpoints
 ###################################################################################
 
+async def get_service_status(runtime) -> List[Dict[str, Any]]:
+    service_status = {service: {
+            "id": service,
+            "name": value["name"],
+            "running": None
+    } for service, value in services.services_list.items()}
+    logger.warning(service_status)
+    logger.warning(services.services_list)
+    try:
+        for service_id, service_info in services.services_list.items():
+            running_status: Optional[bool] = False
+
+            if runtime == "systemd":
+                systemd_services = service_info["systemd_service"]
+                if not isinstance(systemd_services, list):
+                    systemd_services = [systemd_services]
+
+                for service_name in systemd_services:
+                    exit_code, _, _ = await async_run(f"systemctl is-active {service_name}")
+                    if exit_code == 0:
+                        running_status = True
+                    else:
+                        running_status = False
+                        break
+
+            elif runtime == "docker":
+                client = docker.from_env() # type: ignore
+                docker_services = service_info["docker_service"]
+                if not isinstance(docker_services, list):
+                    docker_services = [docker_services]
+
+                try:
+                    for docker_service in docker_services:
+                        container = client.containers.get(docker_service)
+                        container.reload()
+                        status = container.status
+                        """restarting, running, paused, exited"""
+                        if status == "running":
+                            running_status = True
+
+                except (docker.errors.NotFound, docker.errors.APIError): # type: ignore
+                    running_status = False
+            elif runtime == "nomad":
+                if nomad_connection is None:
+                    running_status = None
+                else:
+                    allocations = nomad_connection.job.get_allocations("mercure")
+                    running_alloc = [a for a in allocations if a["ClientStatus"] == "running"]
+                    if not running_alloc:
+                        running_status = False
+                    else:
+                        alloc = running_alloc[0]
+                        if not alloc["TaskStates"].get(service_id):
+                            running_status = False
+                        else: # TODO: fix this for workers?
+                            running_status = alloc["TaskStates"][service_id]["State"] == "running"
+
+            service_status[service_id]["running"] = running_status
+    except:
+        logger.exception("Failed to get service status.")
+    finally:
+        return list(service_status.values())
 
 @router.get("/")
 @requires("authenticated", redirect="login")
@@ -675,50 +777,16 @@ async def homepage(request) -> Response:
         free_space = "N/A"
         disk_total = "N/A"
 
-    service_status = {}
-    for service in services.services_list:
-        running_status: Optional[bool] = False
-
-        if runtime == "systemd":
-            if (await async_run("systemctl is-active " + services.services_list[service]["systemd_service"]))[0] == 0:
-                running_status = True
-
-        elif runtime == "docker":
-            client = docker.from_env() # type: ignore
-            try:
-                container = client.containers.get(services.services_list[service]["docker_service"])
-                container.reload()
-                status = container.status
-                """restarting, running, paused, exited"""
-                if status == "running":
-                    running_status = True
-
-            except (docker.errors.NotFound, docker.errors.APIError): # type: ignore
-                running_status = False
-        elif runtime == "nomad":
-            if nomad_connection is None:
-                running_status = None
-            else:
-                allocations = nomad_connection.job.get_allocations("mercure")
-                running_alloc = [a for a in allocations if a["ClientStatus"] == "running"]
-                if not running_alloc:
-                    running_status = False
-                else:
-                    alloc = running_alloc[0]
-                    if not alloc["TaskStates"].get(service):
-                        running_status = False
-                    else:
-                        running_status = alloc["TaskStates"][service]["State"] == "running"
-        service_status[service] = {
-            "id": service,
-            "name": services.services_list[service]["name"],
-            "running": running_status,
-        }
+    try:
+        service_status = await get_service_status(runtime)
+    except Exception as e:
+        logger.error(f"Error getting service status: {e}")
+        service_status = [{}]
 
     template = "index.html"
     context = {
         "request": request,
-        "mercure_version": mercure_defs.VERSION,
+        
         "page": "homepage",
         "used_space": used_space,
         "free_space": free_space,
@@ -726,7 +794,6 @@ async def homepage(request) -> Response:
         "service_status": service_status,
         "runtime": runtime,
     }
-    context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
 
 
@@ -754,27 +821,36 @@ async def control_services(request) -> Response:
                 continue
 
             if runtime == "systemd":
-                command = "sudo systemctl " + action + " " + services.services_list[service]["systemd_service"]
-                logger.info(f"Executing: {command}")
-                await async_run(command)
+                systemd_services = services.services_list[service]["systemd_service"]
+                if not isinstance(systemd_services, list):
+                    systemd_services = [systemd_services]
+
+                for service_name in systemd_services:
+                    command = "sudo systemctl " + action + " " + service_name
+                    logger.info(f"Executing: {command}")
+                    await async_run(command)
 
             elif runtime == "docker":
                 client = docker.from_env() # type: ignore
-                logger.info(f'Executing: {action} on {services.services_list[service]["docker_service"]}')
-                try:
-                    container = client.containers.get(services.services_list[service]["docker_service"])
-                    container.reload()
-                    if action == "start":
-                        container.start()
-                    if action == "stop":
-                        container.stop()
-                    if action == "restart":
-                        container.restart()
-                    if action == "kill":
-                        container.kill()
-                except (docker.errors.NotFound, docker.errors.APIError) as docker_error: # type: ignore
-                    logger.error(f"{docker_error}")
-                    pass
+                docker_services = services.services_list[service]["docker_service"]
+                if not isinstance(docker_services, list):
+                    docker_services = [docker_services]
+                for service_name in docker_services:
+                    logger.info(f'Executing: {action} on {service_name}')
+                    try:
+                        container = client.containers.get(service_name)
+                        container.reload()
+                        if action == "start":
+                            container.start()
+                        if action == "stop":
+                            container.stop()
+                        if action == "restart":
+                            container.restart()
+                        if action == "kill":
+                            container.kill()
+                    except (docker.errors.NotFound, docker.errors.APIError) as docker_error: # type: ignore
+                        logger.error(f"{docker_error}")
+                        pass
 
             else:
                 # The Nomad mode currently does not support shutting down services
@@ -829,7 +905,7 @@ app = Starlette(debug=DEBUG_MODE, lifespan=lifespan, exception_handlers=exceptio
 app.mount("/static", StaticFiles(directory="webinterface/statics", check_dir=False), name="static")
 app.add_middleware(AuthenticationMiddleware, backend=SessionAuthBackend())
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY, session_cookie="mercure_session")
-app.mount("/rules", rules.rules_app)
+app.mount("/rules", rules.rules_app, name="rules")
 app.mount("/targets", targets.targets_app)
 app.mount("/modules", modules.modules_app)
 app.mount("/users", users.users_app)
@@ -847,7 +923,7 @@ app.mount("/tools", dashboards.dashboards_app)
 
 async def emergency_response(request) -> Response:
     """Shows emergency message about invalid configuration."""
-    return PlainTextResponse("ERROR: mercure configuration is invalid. Check configuration and restart webgui service.")
+    return PlainTextResponse("ERROR: mercure configuration is invalid. Check configuration and restart webgui service.", status_code=500)
 
 
 def launch_emergency_app() -> None:
@@ -876,8 +952,11 @@ def main(args=sys.argv[1:]) -> None:
         logging.getLogger("watchdog").setLevel(logging.WARNING)
     try:
         services.read_services()
-        config.read_config()
+        config_ = config.read_config()
         users.read_users()
+        success, error = helper.validate_folders(config_)
+        if not success:
+            raise ValueError(f"Invalid configuration folder structure: {error}")
         if str(SECRET_KEY) == "PutSomethingRandomHere":
             logger.error("You need to change the SECRET_KEY in configuration/webgui.env")
             raise Exception("Invalid or missing SECRET_KEY in webgui.env")

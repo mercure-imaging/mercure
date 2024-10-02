@@ -16,7 +16,7 @@ def run_test() -> None:
     config.save_config()
 
     client = TestClient(app)
-    startup()
+    startup(app)
     form_data = {
         "username": "admin",
         "password": "router"

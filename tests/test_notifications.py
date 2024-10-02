@@ -18,6 +18,7 @@ from docker.models.containers import ContainerCollection
 import unittest.mock
 import itertools
 from typing import Iterator, Callable
+import pytest
 
 logger = config.get_logger()
 

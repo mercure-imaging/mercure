@@ -48,13 +48,13 @@ def replace_tags(rule: str, tags: Dict[str, str]) -> Any:
 safe_eval_cmds = {"float": float, "int": int, "str": str, "len": len, "bool": bool, "sum": sum, "round": round, "max": max, "min": min, "abs": abs, "pow": pow, "chr": chr, "ord": ord}
 
 
-def eval_rule(rule: str, tags: Dict[str, str]) -> Any:
+def eval_rule(rule: str, tags_dict: Dict[str, str]) -> Any:
     """Parses the given rule, replaces all tag variables with values from the given tags dictionary, and
     evaluates the rule. If the rule is invalid, an exception will be raised."""
     logger.info(f"Rule: {rule}")
-    rule = replace_tags(rule, tags)
+    rule = replace_tags(rule, tags_dict)
     logger.info(f"Evaluated: {rule}")
-    tags_obj = Tags(tags)
+    tags_obj = Tags(tags_dict)
     try:
         result = eval(rule, {"__builtins__": {}}, {**safe_eval_cmds,"tags":tags_obj})
     except SyntaxError as e:
@@ -63,7 +63,7 @@ def eval_rule(rule: str, tags: Dict[str, str]) -> Any:
         if opening >-1 and closing>1:
             raise TagNotFoundException(f"No such tag '{rule[opening+1:closing]}' in tags list.")
         raise
-    logger.info(", ".join([f"{tag} = \"{tags[tag]}\"" for tag in tags_obj.tags_accessed()]))
+    logger.info(", ".join([f"{tag} = \"{tags_dict[tag]}\"" for tag in tags_obj.tags_accessed()]))
     logger.info(f"Result: {result}")
     return result, tags_obj.tags_accessed()
 

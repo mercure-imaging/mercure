@@ -21,10 +21,11 @@ class Compat:
 class EmptyDict(TypedDict):
     pass
 
-
 class Target(BaseModel, Compat):
+    target_type: Any
     contact: Optional[str] = ""
     comment: str = ""
+    direction: Optional[Literal["pull", "push", "both"]] = "push"
 
     @property
     def short_description(self) -> str:
@@ -120,12 +121,16 @@ class XnatTarget(Target):
 class DicomWebTarget(Target):
     target_type: Literal["dicomweb"] = "dicomweb"
     url: str
-    qido_url_prefix: Optional[str]
-    wado_url_prefix: Optional[str]
-    stow_url_prefix: Optional[str]
-    access_token: Optional[str]
-    http_user: Optional[str]
-    http_password: Optional[str]
+    qido_url_prefix: Optional[str] = None
+    wado_url_prefix: Optional[str] = None
+    stow_url_prefix: Optional[str] = None
+    access_token: Optional[str] = None
+    http_user: Optional[str] = None
+    http_password: Optional[str] = None
+
+    @property
+    def short_description(self) -> str:
+        return self.url
 
     @property
     def short_description(self) -> str:
@@ -210,8 +215,41 @@ class ProcessingLogsConfig(BaseModel):
 
 class DicomReceiverConfig(BaseModel):
     additional_tags: Dict[str,str] = {}
-    
 
+
+class DicomNodeBase(BaseModel):
+    name: str
+
+    @classmethod
+    def __get_validators__(cls):
+        # one or more validators may be yielded which will be called in the
+        # order to validate the input, each validator will receive as an input
+        # the value returned from the previous validator
+        yield cls.validate
+
+    @classmethod
+    def validate(cls, v):
+        """Parse the target as any of the known target types."""
+        subclass_dict: typing.Dict[str, Type[DicomNodeBase]] = {sbc.__name__: sbc for sbc in cls.__subclasses__()}
+        for k in subclass_dict:
+            try:
+                return subclass_dict[k](**v)
+            except:
+                pass
+        raise ValueError("Couldn't validate dicom node as any of", list(subclass_dict.keys()))
+
+    @classmethod
+    def get_name(cls) -> str:
+        return cls.construct().node_type  # type: ignore
+
+class DicomDestination(BaseModel):
+    name: str
+    path: str
+
+class DicomRetrieveConfig(BaseModel):
+    dicom_nodes: List[DicomNodeBase] = []
+    destination_folders: List[DicomDestination] = []
+    
 class Config(BaseModel, Compat):
     appliance_name: str
     appliance_color: str = "#FFF"
@@ -224,6 +262,7 @@ class Config(BaseModel, Compat):
     error_folder: str
     discard_folder: str
     processing_folder: str
+    jobs_folder: str
     router_scan_interval: int       # in seconds
     dispatcher_scan_interval: int   # in seconds
     cleaner_scan_interval: int      # in seconds
@@ -258,6 +297,7 @@ class Config(BaseModel, Compat):
     phi_notifications: Optional[bool] = False
     server_time: str = "UTC"
     local_time: str = "UTC"
+    dicom_retrieve: DicomRetrieveConfig = DicomRetrieveConfig()
 
 
 class TaskInfo(BaseModel, Compat):

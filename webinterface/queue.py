@@ -57,12 +57,10 @@ async def show_queues(request):
     template = "queue.html"
     context = {
         "request": request,
-        "mercure_version": mercure_defs.VERSION,
         "page": "queue",
         "processing_suspended": processing_suspended,
         "routing_suspended": routing_suspended,
     }
-    context.update(get_user_information(request))
     return templates.TemplateResponse(template, context)
 
 

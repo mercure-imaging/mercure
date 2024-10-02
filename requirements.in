@@ -31,9 +31,9 @@ aiofiles
 jinja2
 types-Jinja2
 # 0.15.0 breaks session management; the next commit after 0.18 will include the fix
-starlette ~= 0.28; 
+starlette ~= 0.38.5
 starlette-auth-toolkit
-uvicorn == 0.16.0
+uvicorn ~= 0.30.6
 itsdangerous
 python-multipart
 distro
@@ -52,6 +52,7 @@ python-nomad
 
 # other
 pydicom ~= 2.4.1
+pynetdicom ~= 2.0.2
 pydantic >= 1.10.9, <2.0.0
 pillow >= 10.0.1
 dicomweb-client
@@ -61,6 +62,8 @@ certifi>=2024.07.04
 future>=0.18.3
 lxml>=4.9.1
 pyxnat
-urllib3>=2.2.2
+urllib3 >= 2.2.2
 aiosqlite~=0.20.0
+rq ~= 1.16.2
+rq-scheduler ~= 0.13.1
 httpx
