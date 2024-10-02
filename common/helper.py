@@ -10,7 +10,8 @@ from datetime import time as _time
 import inspect
 from pathlib import Path
 import threading
-from typing import Callable, Optional, Tuple
+from typing import Callable, List, Optional, Tuple
+import dateutil
 import graphyte
 import os
 import common.influxdb
@@ -30,6 +31,26 @@ def validate_folders(config) -> Tuple[bool, str]:
         if not os.access( folder, os.R_OK | os.W_OK ):
             return False, f"No read/write access to {folder}"
     return True, ""
+
+def localize_log_timestamps(loglines: List[str], config) -> None:
+    if config.mercure.local_time == "UTC":
+        return
+
+    try:
+        local_tz: datetime.tzinfo = dateutil.tz.gettz(config.mercure.local_time)
+    except:
+        return
+
+    for i, line in enumerate(loglines):
+        split = line.split(" ")
+        timestamp = split[0]
+        try:
+            parsed_dt = dateutil.parser.isoparse(timestamp)
+            dt_localtime:datetime.datetime = parsed_dt.astimezone(local_tz)     
+            split[0] = dt_localtime.isoformat(timespec='seconds')
+            loglines[i] = " ".join(split)
+        except:
+            pass
 
 def get_now_str() -> str:
     """Returns the current time as string with mercure-wide formatting"""

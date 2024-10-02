@@ -13,6 +13,8 @@ import string
 import subprocess
 from tempfile import tempdir
 import traceback
+
+import dateutil
 from common.generate_test_series import generate_series, generate_several_protocols
 from common.types import DicomTarget, Rule, Module
 import uvicorn
@@ -289,9 +291,9 @@ async def show_log(request) -> Response:
         start_date_cmd = ""
         end_date_cmd = ""
         if start_timestamp:
-            start_date_cmd = f'--since "{start_timestamp}"'
+            start_date_cmd = f'--since "{start_timestamp} {config.mercure.local_time}"'
         if end_timestamp:
-            end_date_cmd = f'--until "{end_timestamp}"'
+            end_date_cmd = f'--until "{end_timestamp} {config.mercure.local_time}"'
 
         service_name_or_list = services.services_list[requested_service]["systemd_service"]
         if isinstance(service_name_or_list, list):
@@ -300,10 +302,12 @@ async def show_log(request) -> Response:
         else:
             service_name = service_name_or_list
             sub_services = []
+
         run_result = await async_run(
             f"sudo journalctl -n 1000 -u "
             f'{service_name} '
-            f"{start_date_cmd} {end_date_cmd}"
+            f"{start_date_cmd} {end_date_cmd} "
+            "-o short-iso"
         )
         return_code = -1 if run_result[0] is None else run_result[0]
         raw_logs = run_result[1]
@@ -321,6 +325,12 @@ async def show_log(request) -> Response:
 
             container = client.containers.get(service_name)
             container.reload()
+            try:
+                local_tz: datetime.tzinfo = dateutil.tz.gettz(config.mercure.local_time)
+                start_dt = start_dt.replace(tzinfo=local_tz)
+                end_dt = end_dt.replace(tzinfo=local_tz)
+            except:
+                pass
             raw_logs = container.logs(since=start_dt, until=end_dt, timestamps=True, tail=1000)
             return_code = 0
         except (docker.errors.NotFound, docker.errors.APIError) as e: # type: ignore
@@ -333,6 +343,9 @@ async def show_log(request) -> Response:
         line_list = log_content.split("\n")
         if len(line_list) and (not line_list[-1]):
             del line_list[-1]
+
+        helper.localize_log_timestamps(line_list, config)
+        
         log_content = "<br />".join(line_list)
     else:
         log_content = f"Error reading log information"
