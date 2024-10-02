@@ -24,8 +24,6 @@ anyio==4.4.0
     # via
     #   httpx
     #   starlette
-asgiref==3.8.1
-    # via uvicorn
 async-timeout==4.0.3
     # via
     #   aiohttp
@@ -187,6 +185,7 @@ pytest-subprocess==1.5.0
     # via -r requirements.in
 python-dateutil==2.9.0.post0
     # via
+    #   -r requirements.in
     #   botocore
     #   freezegun
     #   influxdb-client
@@ -293,8 +292,8 @@ urllib3==2.2.2
     #   influxdb-client
     #   requests
     #   types-requests
-    # via -r requirements.in
 uvicorn==0.30.6
+    # via -r requirements.in
 watchdog==4.0.1
     # via -r requirements.in
 wheel==0.43.0

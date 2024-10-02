@@ -7,6 +7,7 @@ dataclasses; python_version < '3.7'
 mako>=1.2.2
 alembic
 wheel>=0.38.1
+python-dateutil
 
 # logging / monitoring
 graphyte
