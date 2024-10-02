@@ -228,8 +228,8 @@ async def show_log(request) -> Response:
     requested_service = request.path_params["service"]
 
     # Get optional start and end dates from the URL. Make sure that the date format is clean.
-    start_obj: Optional[datetime.datetime]
-
+    start_dt: Optional[datetime.datetime] = None
+    end_dt: Optional[datetime.datetime] = None
     start_date = ""
     start_time = "00:00"
     end_date = ""
@@ -239,9 +239,9 @@ async def show_log(request) -> Response:
         start_date = request.query_params.get("from", "")
         start_time = request.query_params.get("from_time", "00:00")
         start_timestamp = f"{start_date} {start_time}"
-        start_obj = datetime.datetime.strptime(start_timestamp, "%Y-%m-%d %H:%M")
+        start_dt = datetime.datetime.strptime(start_timestamp, "%Y-%m-%d %H:%M")
     except ValueError:
-        start_obj = None
+        start_dt = None
         start_timestamp = ""
 
     try:
@@ -249,7 +249,7 @@ async def show_log(request) -> Response:
         # Make sure end time includes the day-of, unless otherwise specified
         end_time = request.query_params.get("to_time", "23:59")
         end_timestamp = f"{end_date} {end_time}"
-        datetime.datetime.strptime(end_timestamp, "%Y-%m-%d %H:%M")
+        end_dt = datetime.datetime.strptime(end_timestamp, "%Y-%m-%d %H:%M")
     except ValueError:
         end_timestamp = ""
 
@@ -321,7 +321,7 @@ async def show_log(request) -> Response:
 
             container = client.containers.get(service_name)
             container.reload()
-            raw_logs = container.logs(since=start_obj, timestamps=True)
+            raw_logs = container.logs(since=start_dt, until=end_dt, timestamps=True, tail=1000)
             return_code = 0
         except (docker.errors.NotFound, docker.errors.APIError) as e: # type: ignore
             logger.error(e)
@@ -354,7 +354,7 @@ async def show_log(request) -> Response:
         "start_time": start_time,
         "end_date": end_date,
         "end_time": end_time,
-        "end_time_available": runtime == "systemd",
+        "end_time_available": runtime in ("docker", "systemd"),
         "start_time_available": runtime in ("docker", "systemd"),
         "sub_services": sub_services,
         "subservice": request.query_params.get("subservice", None)
