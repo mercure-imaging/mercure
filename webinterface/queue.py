@@ -450,4 +450,29 @@ async def get_jobinfo(request):
     else:
         return PlainTextResponse("Task not found. Refresh view!")
 
+
+@router.get("/jobs/fail/restart-job")
+@requires("authenticated", redirect="login")
+async def restart_job(request):
+    task_id = request.query_params.get("task_id", "")
+    taskfile_folder: Path = Path(config.mercure.error_folder) / task_id
+    if not (taskfile_folder / mercure_names.TASKFILE).exists():
+        return JSONResponse({"error": "could not load task file"}, 404)
+
+    taskfile_path = taskfile_folder / mercure_names.TASKFILE
+    with open(taskfile_path, "r") as json_file:
+            loaded_task = json.load(json_file)
+
+    error_targets = []
+    if "dispatch" in loaded_task and "status" in loaded_task["dispatch"]:
+        for key in loaded_task["dispatch"]["status"]:
+            if loaded_task["dispatch"]["status"][key]["state"] == "error":
+                error_targets.append(key)
+    else:
+        return JSONResponse({"error": "could not check dispatch status of task file"}, 404)
+
+    loaded_task_str = json.dumps(loaded_task, indent=4, sort_keys=False)
+    return JSONResponse({"error_targets": error_targets, "task": loaded_task_str})
+
+
 queue_app = Starlette(routes=router)
