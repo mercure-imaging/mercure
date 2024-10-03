@@ -20,7 +20,7 @@ from starlette.authentication import requires
 
 # App-specific includes
 import common.config as config
-from common.constants import mercure_defs, mercure_names
+from common.constants import mercure_defs, mercure_names, mercure_actions
 from webinterface.common import get_user_information
 from webinterface.common import templates
 from common.types import Task
@@ -468,16 +468,20 @@ async def restart_job(request):
         return JSONResponse({"error": "Task not ready for dispatching."})
 
     if not (taskfile_folder / mercure_names.TASKFILE).exists():
-        return JSONResponse({"error": "could not load task file"})
+        return JSONResponse({"error": "task file does not exist"})
 
     taskfile_path = taskfile_folder / mercure_names.TASKFILE
     with open(taskfile_path, "r") as json_file:
             loaded_task = json.load(json_file)
 
+    action = loaded_task.get("info", {}).get("action", "")
+    if action and action not in (mercure_actions.BOTH, mercure_actions.ROUTE):
+        return JSONResponse({"error": "job not suitable for dispatching."})
+
     if "dispatch" in loaded_task and "status" in loaded_task["dispatch"]:
         # Dispatcher will skip the completed targets we just need to copy the case to the outgoing folder
         (taskfile_folder / mercure_names.LOCK).touch()
-        shutil.move(taskfile_folder, config.mercure.outgoing_folder)
+        shutil.move(str(taskfile_folder), config.mercure.outgoing_folder)
         (Path(config.mercure.outgoing_folder) / task_id / mercure_names.LOCK).unlink()
 
     else:
