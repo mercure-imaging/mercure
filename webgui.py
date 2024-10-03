@@ -340,13 +340,8 @@ async def show_log(request) -> Response:
     # return_code, raw_logs = (await async_run("/usr/bin/nomad alloc logs -job -stderr -f -tail mercure router"))[:2]
     if return_code == 0:
         log_content = html.escape(str(raw_logs.decode()))
-        line_list = log_content.split("\n")
-        if len(line_list) and (not line_list[-1]):
-            del line_list[-1]
+        log_content = helper.localize_log_timestamps(log_content, config)
 
-        helper.localize_log_timestamps(line_list, config)
-        
-        log_content = "<br />".join(line_list)
     else:
         log_content = f"Error reading log information"
         if start_date or end_date:

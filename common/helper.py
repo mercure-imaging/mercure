@@ -38,30 +38,27 @@ def validate_folders(config) -> Tuple[bool, str]:
             return False, f"No read/write access to {folder}"
     return True, ""
 
-
-def localize_log_timestamps(loglines: List[str], config) -> None:
+def localize_log_timestamps(logstring: str, config) -> str:
     if config.mercure.local_time == "UTC":
-        return
+        return logstring
     try:
         local_tz: datetime.tzinfo = dateutil.tz.gettz(config.mercure.local_time)
     except:
-        return
+        return logstring
 
-    timestamp_pattern = re.compile(r'^(\S+)')
+    timestamp_pattern = re.compile(r'^(\S+)(.*?)$', re.MULTILINE)
 
-    for i, line in enumerate(loglines):
-        match = timestamp_pattern.match(line)
-        if not match:
-            continue
-
-        timestamp = match.group(1)
+    def replace_timestamp(match):
+        timestamp, rest_of_line = match.groups()
         try:
             parsed_dt = dateutil.parser.isoparse(timestamp)
             dt_localtime: datetime.datetime = parsed_dt.astimezone(local_tz)
             localized_timestamp = dt_localtime.isoformat(timespec='seconds')
-            loglines[i] = timestamp_pattern.sub(localized_timestamp, line)
+            return f"{localized_timestamp}{rest_of_line}"
         except:
-            pass
+            return match.group(0)  # Return the original line if parsing fails
+
+    return timestamp_pattern.sub(replace_timestamp, logstring)
 
 def get_now_str() -> str:
     """Returns the current time as string with mercure-wide formatting"""

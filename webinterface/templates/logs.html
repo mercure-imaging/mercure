@@ -33,9 +33,9 @@
     <div class="column" style="width: 100% !important;">
       <div class="logtabs tabs">
         <ul>
-          {% for service in service_logs %}
-          <li title="{{service_logs[service]['systemd']}}" {% if service_logs[service]['id']==log_id %}class="is-active"
-            {% endif %}><a href="/logs/{{service_logs[service]['id']}}">{{service_logs[service]['name'] }}</a></li>
+          {% for service in service_logs.values() %}
+          <li title="{{service.systemd}}" {% if service.id == log_id %}class="is-active"
+            {% endif %}><a href="/logs/{{service.id}}">{{service.name }}</a></li>
           {% endfor %}
         </ul>
       </div>
@@ -44,15 +44,13 @@
         <ul>
           {% for service in sub_services %}
           <li title="service" {% if subservice==service %}class="is-active"{% endif %}>
-            <a href="/logs/{{log_id}}?subservice={{service}}">{{service }}</a></li>
+            <a href="/logs/{{ log_id }}?subservice={{ service }}">{{ service }}</a></li>
           {% endfor %}
         </ul>
       </div>
       {% endif %}
       <div class="logview">
-        <p class="logviewer" id="logviewdiv">
-          {{log_content|safe}}
-        </p>
+        <p class="logviewer" id="logviewdiv">{{log_content|safe}}</p>
       </div>
     </div>
   </div>

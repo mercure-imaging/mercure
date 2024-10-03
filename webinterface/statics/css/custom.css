@@ -94,7 +94,7 @@ body {
 .logviewer {
   font-family: monospace;
   display: inline-block;
-  white-space: nowrap;
+  white-space: pre;
   overflow-x: scroll;
   overflow-y: scroll;
   width: 100%;
