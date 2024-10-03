@@ -11,6 +11,7 @@ import json
 import daiquiri
 from typing import Dict
 import collections
+import shutil
 
 # Starlette-related includes
 from starlette.applications import Starlette
@@ -456,23 +457,34 @@ async def get_jobinfo(request):
 async def restart_job(request):
     task_id = request.query_params.get("task_id", "")
     taskfile_folder: Path = Path(config.mercure.error_folder) / task_id
+
+    # For now, verify if only dispatching failed and previous steps were successful
+    dispatch_ready = (
+        not (taskfile_folder / mercure_names.LOCK).exists()
+        and not (taskfile_folder / mercure_names.ERROR).exists()
+        and not (taskfile_folder / mercure_names.PROCESSING).exists()
+    )
+    if not dispatch_ready:
+        return JSONResponse({"error": "Task not ready for dispatching."})
+
     if not (taskfile_folder / mercure_names.TASKFILE).exists():
-        return JSONResponse({"error": "could not load task file"}, 404)
+        return JSONResponse({"error": "could not load task file"})
 
     taskfile_path = taskfile_folder / mercure_names.TASKFILE
     with open(taskfile_path, "r") as json_file:
             loaded_task = json.load(json_file)
 
-    error_targets = []
     if "dispatch" in loaded_task and "status" in loaded_task["dispatch"]:
-        for key in loaded_task["dispatch"]["status"]:
-            if loaded_task["dispatch"]["status"][key]["state"] == "error":
-                error_targets.append(key)
+        # Dispatcher will skip the completed targets we just need to copy the case to the outgoing folder
+        (taskfile_folder / mercure_names.LOCK).touch()
+        shutil.move(taskfile_folder, config.mercure.outgoing_folder)
+        (Path(config.mercure.outgoing_folder) / task_id / mercure_names.LOCK).unlink()
+
     else:
-        return JSONResponse({"error": "could not check dispatch status of task file"}, 404)
+        return JSONResponse({"error": "could not check dispatch status of task file."})
 
     loaded_task_str = json.dumps(loaded_task, indent=4, sort_keys=False)
-    return JSONResponse({"error_targets": error_targets, "task": loaded_task_str})
+    return JSONResponse({"success": "task restarted"})
 
 
 queue_app = Starlette(routes=router)

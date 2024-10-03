@@ -1194,10 +1194,15 @@
             data: {'task_id': jobId},
             dataType: 'json',
             error: function () {
-                console.log("Restart Failed!")
+                alert("Restart Failed!")
             },
             success: function (data) {
-                console.log("Job with ID " + jobId + " restarted.");
+                // check if error is a key in data
+                if (data.hasOwnProperty("error")) {
+                    alert("Restart Failed - " + data["error"])
+                } else {
+                    alert("Job Restarted!")
+                }
                 console.log(data);
             },
             timeout: 3000
