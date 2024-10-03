@@ -27,7 +27,12 @@ def validate_folders(config) -> Tuple[bool, str]:
                     config.success_folder, config.error_folder, config.discard_folder,
                     config.processing_folder, config.jobs_folder ):
         if not Path(folder).is_dir():
-            return False, f"Folder {folder} does not exist."
+            try:
+                Path(folder).mkdir(parents=False)
+                print(f"Created directory: {folder}")
+            except Exception as e:
+                return False, f"Folder {folder} does not exist."
+            
         if not os.access( folder, os.R_OK | os.W_OK ):
             return False, f"No read/write access to {folder}"
     return True, ""
