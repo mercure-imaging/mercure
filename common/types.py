@@ -132,10 +132,6 @@ class DicomWebTarget(Target):
     def short_description(self) -> str:
         return self.url
 
-    @property
-    def short_description(self) -> str:
-        return self.url
-
 
 class S3Target(Target):
     target_type: Literal["s3"] = "s3"

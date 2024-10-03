@@ -42,7 +42,7 @@ def localize_log_timestamps(logstring: str, config) -> str:
     if config.mercure.local_time == "UTC":
         return logstring
     try:
-        local_tz: datetime.tzinfo = dateutil.tz.gettz(config.mercure.local_time)
+        local_tz = dateutil.tz.gettz(config.mercure.local_time) # type: ignore 
     except:
         return logstring
 
@@ -51,8 +51,8 @@ def localize_log_timestamps(logstring: str, config) -> str:
     def replace_timestamp(match):
         timestamp, rest_of_line = match.groups()
         try:
-            parsed_dt = dateutil.parser.isoparse(timestamp)
-            dt_localtime: datetime.datetime = parsed_dt.astimezone(local_tz)
+            parsed_dt = dateutil.parser.isoparse(timestamp)  # type: ignore 
+            dt_localtime: datetime = parsed_dt.astimezone(local_tz)
             localized_timestamp = dt_localtime.isoformat(timespec='seconds')
             return f"{localized_timestamp}{rest_of_line}"
         except:

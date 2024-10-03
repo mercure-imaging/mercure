@@ -326,9 +326,11 @@ async def show_log(request) -> Response:
             container = client.containers.get(service_name)
             container.reload()
             try:
-                local_tz: datetime.tzinfo = dateutil.tz.gettz(config.mercure.local_time)
-                start_dt = start_dt.replace(tzinfo=local_tz)
-                end_dt = end_dt.replace(tzinfo=local_tz)
+                local_tz: datetime.tzinfo = dateutil.tz.gettz(config.mercure.local_time)  # type: ignore 
+                if start_dt:
+                    start_dt = start_dt.replace(tzinfo=local_tz)
+                if end_dt:
+                    end_dt = end_dt.replace(tzinfo=local_tz)
             except:
                 pass
             raw_logs = container.logs(since=start_dt, until=end_dt, timestamps=True, tail=1000)
