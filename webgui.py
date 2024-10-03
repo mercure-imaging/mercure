@@ -307,7 +307,7 @@ async def show_log(request) -> Response:
             f"sudo journalctl -n 1000 -u "
             f'{service_name} '
             f"{start_date_cmd} {end_date_cmd} "
-            "-o short-iso"
+            "-o short-iso --no-hostname"
         )
         return_code = -1 if run_result[0] is None else run_result[0]
         raw_logs = run_result[1]

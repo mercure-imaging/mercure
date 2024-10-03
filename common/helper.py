@@ -9,6 +9,7 @@ from datetime import datetime
 from datetime import time as _time
 import inspect
 from pathlib import Path
+import re
 import threading
 from typing import Callable, List, Optional, Tuple
 import dateutil
@@ -37,23 +38,28 @@ def validate_folders(config) -> Tuple[bool, str]:
             return False, f"No read/write access to {folder}"
     return True, ""
 
+
 def localize_log_timestamps(loglines: List[str], config) -> None:
     if config.mercure.local_time == "UTC":
         return
-
     try:
         local_tz: datetime.tzinfo = dateutil.tz.gettz(config.mercure.local_time)
     except:
         return
 
+    timestamp_pattern = re.compile(r'^(\S+)')
+
     for i, line in enumerate(loglines):
-        split = line.split(" ")
-        timestamp = split[0]
+        match = timestamp_pattern.match(line)
+        if not match:
+            continue
+
+        timestamp = match.group(1)
         try:
             parsed_dt = dateutil.parser.isoparse(timestamp)
-            dt_localtime:datetime.datetime = parsed_dt.astimezone(local_tz)     
-            split[0] = dt_localtime.isoformat(timespec='seconds')
-            loglines[i] = " ".join(split)
+            dt_localtime: datetime.datetime = parsed_dt.astimezone(local_tz)
+            localized_timestamp = dt_localtime.isoformat(timespec='seconds')
+            loglines[i] = timestamp_pattern.sub(localized_timestamp, line)
         except:
             pass
 
