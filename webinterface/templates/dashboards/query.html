@@ -20,7 +20,7 @@
         <form class="box" id="form">
             <div class="field is-horizontal">
               <div class="field-label is-normal">
-                <label class="label">Accession</label>
+                <label class="label">Accession Number</label>
               </div>
               <div class="field-body">
                 <div class="field">
@@ -103,15 +103,13 @@
             </div>
             <div class="field is-horizontal">
               <div class="field-label is-normal">
-                <label class="label">Offpeak </label>
-  
+                <label class="label">Off-Peak</label>
               </div>
               <div class="field-body">
                 <div class="field">
-                  <div class="control is-expanded">
-                    <label class="checkbox">
-                      <input type="checkbox" id="offpeak" name="offpeak" value="">
-                    </label>
+                  <div class="control is-expanded" style="padding-top: .375em;">
+                      <input type="checkbox" id="offpeak" name="offpeak" value="" class="switch is-dark is-rounded">
+                      <label for="offpeak"></label>
                   </div>
                 </div>
               </div>
@@ -121,23 +119,23 @@
               <div class="field-label">
                 <!-- Left empty for spacing -->
               </div>
-              <div class="field-body">
+              <div class="field-body" style="margin-top: 10px;">
                 <div class="field">
                   <div class="control">
-                    <button type="button" id="check-accessions-button" class="button is-info">
-                      Check Accessions
+                    <button type="submit" id="get-accessions-button" class="button is-success">
+                      <i class="fas fa-check"></i>&nbsp;Submit Query
                     </button>
-                    <button type="submit" id="get-accessions-button" class="button is-primary">
-                      Get Accessions
+                    <button type="button" id="check-accessions-button" class="button is-dark">
+                      <i class="fas fa-question"></i>&nbsp;Check Accessions
                     </button>
                   </div>
                 </div>
               </div>
             </div>
           </form>
-          <div class="tabs" id="query_result_tabs">
+          <div class="tabs logtabs" id="query_result_tabs">
             <ul>
-              <li class="is-active"><a data-tab="get-accessions">Get Accessions</a></li>
+              <li class="is-active"><a data-tab="get-accessions">Query Status</a></li>
               <li><a data-tab="check-accessions">Check Accessions</a></li>
             </ul>
           </div>
