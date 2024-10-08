@@ -17,6 +17,10 @@
         Redis connection not available, so this dashboard will not function.
       </div>
       {% endif %}
+      <div id="backend-error" class="notification is-danger is-hidden">
+        A communication error with the backend has occurred. Check console logs.
+      </div>
+
         <form class="box" id="form">
             <div class="field is-horizontal">
               <div class="field-label is-normal">
@@ -144,13 +148,13 @@
                 <thead>
                     <tr>
                         <th></th>
-                        <th>id</th>
-                        <th>type</th>
-                        <th>status</th>
-                        <th>created_at</th>
-                        <th>accession</th>
-                        <th>result</th>
-                        <th>progress</th>
+                        <th>ID</th>
+                        <th>Type</th>
+                        <th>Status</th>
+                        <th>Created at</th>
+                        <th>Accession</th>
+                        <th>Result</th>
+                        <th>Progress</th>
                     </tr>
                 </thead>
                 <tbody></tbody>
@@ -338,6 +342,13 @@ $(document).ready(function () {
         order: [[4, 'desc']],
         initComplete: function() {}
     });
+
+    $.fn.dataTable.ext.errMode = 'throw';
+    $('#get-accessions-table').on('error.dt', function(e, settings, techNote, message) {
+      console.log( 'An error has been reported by DataTables: ', message);
+      $('#backend-error').removeClass("is-hidden");
+    })    
+
     var jobId;
     var errMessage;
     var accessionTableConfig = {
