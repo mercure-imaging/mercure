@@ -4,8 +4,24 @@
 #
 #    pip-compile dev-requirements.in
 #
+async-timeout==4.0.3
+    # via
+    #   -c requirements.txt
+    #   redis
+fakeredis==2.25.1
+    # via -r dev-requirements.in
+redis==5.0.4
+    # via
+    #   -c requirements.txt
+    #   fakeredis
+sortedcontainers==2.4.0
+    # via fakeredis
 supervisor==4.2.5
     # via -r dev-requirements.in
+typing-extensions==4.12.2
+    # via
+    #   -c requirements.txt
+    #   fakeredis
 
 # The following packages are considered to be unsafe in a requirements file:
 # setuptools
