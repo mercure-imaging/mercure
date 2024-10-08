@@ -457,7 +457,10 @@ async def get_jobinfo(request):
 async def restart_job(request):
     task_id = request.query_params.get("task_id", "")
     taskfile_folder: Path = Path(config.mercure.error_folder) / task_id
+    response = restart_dispatch(taskfile_folder, Path(config.mercure.outgoing_folder))
+    return JSONResponse(response)
 
+def restart_dispatch(taskfile_folder: Path, outgoing_folder: Path) -> dict:
     # For now, verify if only dispatching failed and previous steps were successful
     dispatch_ready = (
         not (taskfile_folder / mercure_names.LOCK).exists()
@@ -465,10 +468,10 @@ async def restart_job(request):
         and not (taskfile_folder / mercure_names.PROCESSING).exists()
     )
     if not dispatch_ready:
-        return JSONResponse({"error": "Task not ready for dispatching."})
+        return {"error": "Task not ready for dispatching.", "error_code": 1}
 
     if not (taskfile_folder / mercure_names.TASKFILE).exists():
-        return JSONResponse({"error": "task file does not exist"})
+        return {"error": "task file does not exist", "error_code": 2}
 
     taskfile_path = taskfile_folder / mercure_names.TASKFILE
     with open(taskfile_path, "r") as json_file:
@@ -476,19 +479,19 @@ async def restart_job(request):
 
     action = loaded_task.get("info", {}).get("action", "")
     if action and action not in (mercure_actions.BOTH, mercure_actions.ROUTE):
-        return JSONResponse({"error": "job not suitable for dispatching."})
+        return {"error": "job not suitable for dispatching.", "error_code": 3}
 
+    task_id = taskfile_folder.name
     if "dispatch" in loaded_task and "status" in loaded_task["dispatch"]:
         # Dispatcher will skip the completed targets we just need to copy the case to the outgoing folder
         (taskfile_folder / mercure_names.LOCK).touch()
-        shutil.move(str(taskfile_folder), config.mercure.outgoing_folder)
-        (Path(config.mercure.outgoing_folder) / task_id / mercure_names.LOCK).unlink()
+        shutil.move(str(taskfile_folder), str(outgoing_folder))
+        (Path(outgoing_folder) / task_id / mercure_names.LOCK).unlink()
 
     else:
-        return JSONResponse({"error": "could not check dispatch status of task file."})
+        return {"error": "could not check dispatch status of task file.", "error_code": 4}
 
-    loaded_task_str = json.dumps(loaded_task, indent=4, sort_keys=False)
-    return JSONResponse({"success": "task restarted"})
+    return {"success": "task restarted"}
 
 
 queue_app = Starlette(routes=router)
