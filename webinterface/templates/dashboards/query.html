@@ -10,7 +10,7 @@
 
 {% block dashboard_content %}
 <main role="main">
-    <h1 class="title">DICOM Query</h1>
+    <h1 class="title is-4">DICOM Query</h1>
     <div class="container">
       {% if not request.state.redis_connected %}
       <div id="redis-unavailable" class="notification is-danger">

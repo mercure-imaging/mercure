@@ -8,6 +8,7 @@ mako>=1.2.2
 alembic
 wheel>=0.38.1
 python-dateutil
+types-python-dateutil
 
 # logging / monitoring
 graphyte

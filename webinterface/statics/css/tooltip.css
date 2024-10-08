@@ -238,11 +238,11 @@
 }
 
 [data-tooltip]:not(.is-loading).has-tooltip-link.has-tooltip-left::after,[data-tooltip]:not(.is-disabled).has-tooltip-link.has-tooltip-left::after,[data-tooltip]:not([disabled]).has-tooltip-link.has-tooltip-left::after {
-    border-color: transparent transparent transparent rgba(50,115,220,0.9)
+    border-color: transparent transparent transparent rgba(50,115,220,0.9) !important
 }
 
 [data-tooltip]:not(.is-loading).has-tooltip-link.has-tooltip-right::after,[data-tooltip]:not(.is-disabled).has-tooltip-link.has-tooltip-right::after,[data-tooltip]:not([disabled]).has-tooltip-link.has-tooltip-right::after {
-    border-color: transparent rgba(50,115,220,0.9) transparent transparent
+    border-color: transparent rgba(50,115,220,0.9) transparent transparent !important
 }
 
 [data-tooltip]:not(.is-loading).has-tooltip-link:not(.has-tooltip-bottom)::after,[data-tooltip]:not(.is-loading).has-tooltip-link:not(.has-tooltip-left)::after,[data-tooltip]:not(.is-loading).has-tooltip-link:not(.has-tooltip-right)::after,[data-tooltip]:not(.is-disabled).has-tooltip-link:not(.has-tooltip-bottom)::after,[data-tooltip]:not(.is-disabled).has-tooltip-link:not(.has-tooltip-left)::after,[data-tooltip]:not(.is-disabled).has-tooltip-link:not(.has-tooltip-right)::after,[data-tooltip]:not([disabled]).has-tooltip-link:not(.has-tooltip-bottom)::after,[data-tooltip]:not([disabled]).has-tooltip-link:not(.has-tooltip-left)::after,[data-tooltip]:not([disabled]).has-tooltip-link:not(.has-tooltip-right)::after {
