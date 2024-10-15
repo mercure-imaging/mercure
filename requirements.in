@@ -15,6 +15,7 @@ graphyte
 influxdb_client
 daiquiri
 aiohttp>=3.10.2
+requests>=2.32.0
 types-requests
 
 # documentation
