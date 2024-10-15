@@ -26,6 +26,8 @@ dummy_task_file = {
     "id": "",
     "dispatch": {
         "target_name": ["fakeTarget"],
+        "retries": 5,
+        "next_retry_at": time.time() + 5,
         "status": {
             "fakeTarget": {
                 "state": "waiting",
@@ -36,7 +38,6 @@ dummy_task_file = {
 }
 
 
-# write a test case for restart_job function
 def test_restart_dispatch_success(fs):
     error_folder = Path("/var/error")
     outgoing_folder = Path("/var/outgoing")
@@ -49,6 +50,8 @@ def test_restart_dispatch_success(fs):
     fs.create_file(task_folder / mercure_names.TASKFILE, contents=json.dumps(dummy_task_file))
     response = restart_dispatch(task_folder, outgoing_folder)
     assert "success" in response
+    task_file_json = json.loads((outgoing_folder / task_id / mercure_names.TASKFILE).read_text())
+    assert task_file_json["dispatch"]["retries"] == None
 
 def test_restart_dispatch_fail(fs):
     error_folder = Path("/var/error")
