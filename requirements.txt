@@ -256,7 +256,7 @@ sqlalchemy==1.4.52
     #   -r requirements.in
     #   alembic
     #   databases
-starlette==0.38.5
+starlette==0.41.0
     # via
     #   -r requirements.in
     #   starlette-auth-toolkit
