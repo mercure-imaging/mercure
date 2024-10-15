@@ -9,7 +9,7 @@ import os
 from pathlib import Path
 import json
 import daiquiri
-from typing import Dict
+from typing import cast, Dict
 import collections
 import shutil
 
@@ -23,7 +23,7 @@ import common.config as config
 from common.constants import mercure_defs, mercure_names, mercure_actions
 from webinterface.common import get_user_information
 from webinterface.common import templates
-from common.types import Task
+from common.types import Task, TaskDispatch
 from decoRouter import Router as decoRouter
 router = decoRouter()
 
@@ -475,7 +475,7 @@ def restart_dispatch(taskfile_folder: Path, outgoing_folder: Path) -> dict:
 
     taskfile_path = taskfile_folder / mercure_names.TASKFILE
     with open(taskfile_path, "r") as json_file:
-            loaded_task = json.load(json_file)
+        loaded_task = json.load(json_file)
 
     action = loaded_task.get("info", {}).get("action", "")
     if action and action not in (mercure_actions.BOTH, mercure_actions.ROUTE):
@@ -483,8 +483,13 @@ def restart_dispatch(taskfile_folder: Path, outgoing_folder: Path) -> dict:
 
     task_id = taskfile_folder.name
     if "dispatch" in loaded_task and "status" in loaded_task["dispatch"]:
-        # Dispatcher will skip the completed targets we just need to copy the case to the outgoing folder
         (taskfile_folder / mercure_names.LOCK).touch()
+        dispatch = loaded_task["dispatch"]
+        dispatch["retries"] = None
+        dispatch["next_retry_at"] = None
+        with open(taskfile_path, "w") as json_file:
+            json.dump(loaded_task, json_file)
+        # Dispatcher will skip the completed targets we just need to copy the case to the outgoing folder
         shutil.move(str(taskfile_folder), str(outgoing_folder))
         (Path(outgoing_folder) / task_id / mercure_names.LOCK).unlink()
 
