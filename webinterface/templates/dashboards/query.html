@@ -137,7 +137,7 @@
               </div>
             </div>
           </form>
-          <div class="tabs logtabs" id="query_result_tabs">
+          <div class="tabs logtabs" id="query_result_tabs" style="margin-bottom: 30px;">
             <ul>
               <li class="is-active"><a data-tab="get-accessions">Query Status</a></li>
               <li><a data-tab="check-accessions">Check Accessions</a></li>
@@ -251,7 +251,7 @@ $(document).ready(function () {
     });
 
     window.get_accessions_table = $('#get-accessions-table').DataTable({           
-        dom: "<'row browsertoolbar align-items-end'<'col-sm-12 col-md-7 browserbuttons'B><'col-sm-12 col-md-2'><'col-sm-12 col-md-3'f>>" + "<'row'<'col-sm-12'tr>>" + "<'row browserfooterbar'<'col-sm-12 col-md-5'l><'col-sm-12 col-md-7'p>>",
+        dom: "<'columns row browsertoolbar align-items-end'<'column col-sm-12 col-md-7 browserbuttons'B><'column col-sm-12 col-md-2'><'column col-sm-12 col-md-3'f>>" + "<'columns row'<'column col-sm-12'tr>>" + "<'columns row browserfooterbar'<'column col-sm-12 col-md-5'l><'column col-sm-12 col-md-7'p>>",
         ajax: "query/jobs",
         deferRender: true,
         columns: [
