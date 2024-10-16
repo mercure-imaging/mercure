@@ -36,7 +36,7 @@
     },
     "redis": {
         "name": "Redis",
-        "systemd_service": "mercure_redis.service",
+        "systemd_service": "redis.service",
         "docker_service": "mercure_redis_1"
     },
     "ui": {
