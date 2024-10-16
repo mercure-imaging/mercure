@@ -10,7 +10,6 @@ ExecStart=/opt/mercure/env/bin/rq worker mercure_fast
 ExecReload=/bin/kill -s HUP $MAINPID
 ExecStop=/bin/kill -s TERM $MAINPID
 User=mercure
-PrivateTmp=true
 Restart=always
 
 [Install]
