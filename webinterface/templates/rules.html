@@ -26,7 +26,6 @@
             </div>
             {% endif %}
         </div>
-
     
         {% for rule_name,rule in rules.items()|sort() %}
         <div class="card entitycard" data-name="{{rule_name}}">
@@ -87,10 +86,6 @@
                         </tr>
                         {% endif %}
                         {% if (rule.action=='route') or (rule.action=='both') %}
-                        <tr>
-                            <td>Target:</td>
-                            <td>{{ rule.target }}</td>
-                        </tr>
                         <tr>
                             <td>Routing:</td>
                             <td>{% if rule.target is string %}
