@@ -297,7 +297,10 @@ async def show_log(request) -> Response:
 
         service_name_or_list = services.services_list[requested_service]["systemd_service"]
         if isinstance(service_name_or_list, list):
-            service_name = request.query_params.get("subservice", service_name_or_list[0])
+            service_name = request.query_params.get("subservice", "missing")
+            # Redirect to the first sub-service if none has been specified in the URL
+            if service_name == "missing":
+                return RedirectResponse(url="/logs/" + requested_service + "?subservice="+service_name_or_list[0], status_code=303) 
             sub_services = service_name_or_list
         else:
             service_name = service_name_or_list
@@ -317,7 +320,10 @@ async def show_log(request) -> Response:
         try:
             service_name_or_list = services.services_list[requested_service]["docker_service"]
             if isinstance(service_name_or_list, list):
-                service_name = request.query_params.get("subservice", service_name_or_list[0])
+                service_name = request.query_params.get("subservice", "missing")
+                # Redirect to the first sub-service if none has been specified in the URL
+                if service_name == "missing":
+                    return RedirectResponse(url="/logs/" + requested_service + "?subservice="+service_name_or_list[0], status_code=303) 
                 sub_services = service_name_or_list
             else:
                 service_name = service_name_or_list

@@ -64,7 +64,7 @@
         <div class="field">
           <label class="label">Selected Services</label>
           <div class="control select is-multiple is-fullwidth">
-            <select name='services[]' multiple size="6" id="controlserviceselector">
+            <select name='services[]' multiple size="9" id="controlserviceselector" style="overflow-y: auto;">
               {% for service in service_status %}
               <option {% if loop.index> 1 %}selected{% endif %} value="{{service["id"]}}">{{service['name']}}
               </option>

@@ -609,7 +609,6 @@ body {
   height: 14px;
 }
 
-
 #target option:checked {
   background-color: rgb(50, 115, 220);
   color: #FFF;
