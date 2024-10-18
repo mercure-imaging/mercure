@@ -30,8 +30,8 @@
                 <div class="field">
                   <div class="control is-expanded">
                     <div class="control">
-                        <input name="accession" class="input" type="text" placeholder="00000" value="">
-                      </div>
+                      <textarea rows="1" name="accession" id="accession" type="text" placeholder="00000" value="" class="textarea testinclude textarea_scroll" style="padding-top: 5px; padding-bottom: 5px; min-height: 36px; height: 36px; max-height: 300px;" onkeyup="this.value = this.value.replace(/[{}\n]/g, '')" autocomplete='off'></textarea>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -177,6 +177,19 @@
 
 </main>
 <script>
+$('#accession').on('input', function (e) {
+    if (e.target.value.indexOf("\n") < 0) {
+        $(this).outerHeight(36).outerHeight(this.scrollHeight + 1);
+    }
+});
+
+function clearErrors() {
+  $('#backend-error').addClass("is-hidden");
+  $('#backend-error').text(''); 
+  $(':input').removeClass("is-danger");
+}
+
+
 $(document).ready(function () {
     // Add tab functionality
     $('#query_result_tabs a').on('click', function(e) {
@@ -225,13 +238,18 @@ $(document).ready(function () {
     }}
 
     $.fn.dataTable.ext.buttons.customEnable = my_selected_button;
-    $('#get-accessions-button').on('click', async function(e) {
+    $('#get-accessions-button').on('click', async function(e) {     
       e.preventDefault();
       $('a[data-tab="get-accessions"]').click();
-      if (! $('input[name=\'accession\']').val()) { 
-        alert('Accession number required!');
+      if (! $('#accession').val()) { 
+        //alert('Accession number required!');
+        $('#backend-error').removeClass("is-hidden");
+        $('#backend-error').text('Accession Number is required'); 
+        $('#accession').addClass("is-danger");
+        $('#accession').focus();
         return false 
       };
+      clearErrors();
       var body = new FormData(document.querySelector("#form"));
       try {
         result = await fetch("query", {
@@ -368,13 +386,19 @@ $(document).ready(function () {
         if (jobId) {
           alert("whoops");
         }
-        var accessions = $('input[name="accession"]').val();
+        var accessions = $('#accession').val();
         var dicomNode = $('select[name="dicom_node"]').val();
 
         if (!accessions) {
-          alert("Accession number required!");
+          //alert("Accession number required!");
+          $('#backend-error').removeClass("is-hidden");
+          $('#backend-error').text('Accession Number is required'); 
+          $('#accession').addClass("is-danger");
+          $('#accession').focus();
           return;
-        }
+        } 
+
+        clearErrors()
         errMessage = null;
         if ($.fn.DataTable.isDataTable('#check-accessions-table')) {
             $('#check-accessions-table').DataTable().destroy();
@@ -394,7 +418,7 @@ $(document).ready(function () {
           type: "POST",
           data: function(d) {
               return {
-                  accessions: accessions,
+                  accessions: $('#accession').val(),
                   series_description: $('input[name="series_description"]').val(),
                   study_description: $('input[name="study_description"]').val(),
                   dicom_node: dicomNode,

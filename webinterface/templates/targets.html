@@ -27,7 +27,7 @@
             <header class="card-header has-background-light">
                 <p class="card-header-title card-toggle">
                     <span class="icon has-tooltip-left has-tooltip-success" data-tooltip="{{get_target_handler(target).display_name}} Target"><i class="fas {{get_target_handler(target).icon}} fa-lg"></i></span>
-                    &nbsp;&nbsp;{{ target_name }}<span style="margin-left:auto; font-weight: 200;"> {{target.short_description}}
+                    &nbsp;&nbsp;{{ target_name }}<span style="margin-left:auto; font-weight: 200;"> {{target.short_description}}</span>
                     {% if target.direction=='pull' %}&nbsp;<span class="icon has-tooltip-right has-tooltip-link" data-tooltip="Can Query"><i class="has-text-grey fas fa-download"></i></span>{%elif target.direction=='push'%}&nbsp;<span class="icon has-tooltip-right has-tooltip-link" data-tooltip="Can Store"><i class="has-text-grey fas fa-upload"></i></span>{%elif target.direction=='both'%}&nbsp;<span class="icon has-tooltip-right has-tooltip-link" data-tooltip="Can Store and Query"><i class="has-text-grey fas fa-server"></i></span>{%endif%}
                     </span>
                 </p>
