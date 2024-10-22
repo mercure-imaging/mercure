@@ -116,18 +116,24 @@ class SessionAuthBackend(AuthenticationBackend):
 
         return AuthCredentials(credentials), ExtendedUser(username, is_admin)
 
+webgui_config = None
+SECRET_KEY: Secret
+WEBGUI_PORT: int
+WEBGUI_HOST: str
+DEBUG_MODE: bool
+def read_webgui_config() -> Config:
+    global webgui_config, SECRET_KEY, WEBGUI_HOST, WEBGUI_PORT, DEBUG_MODE
+    webgui_config = Config((os.getenv("MERCURE_CONFIG_FOLDER") or "/opt/mercure/config") + "/webgui.env")
 
-webgui_config = Config((os.getenv("MERCURE_CONFIG_FOLDER") or "/opt/mercure/config") + "/webgui.env")
 
-
-# Note: PutSomethingRandomHere is the default value in the shipped configuration file.
-#       The app will not start with this value, forcing the users to set their onw secret
-#       key. Therefore, the value is used as default here as well.
-SECRET_KEY = webgui_config("SECRET_KEY", cast=Secret, default="PutSomethingRandomHere")
-WEBGUI_PORT = webgui_config("PORT", cast=int, default=8000)
-WEBGUI_HOST = webgui_config("HOST", default="0.0.0.0")
-DEBUG_MODE = webgui_config("DEBUG", cast=bool, default=True)
-
+    # Note: PutSomethingRandomHere is the default value in the shipped configuration file.
+    #       The app will not start with this value, forcing the users to set their onw secret
+    #       key. Therefore, the value is used as default here as well.
+    SECRET_KEY = webgui_config("SECRET_KEY", cast=Secret, default=Secret("PutSomethingRandomHere"))
+    WEBGUI_PORT = webgui_config("PORT", cast=int, default=8000)
+    WEBGUI_HOST = webgui_config("HOST", default="0.0.0.0")
+    DEBUG_MODE = webgui_config("DEBUG", cast=bool, default=True)
+    return webgui_config
 
 @contextlib.asynccontextmanager
 async def lifespan(app):
@@ -914,21 +920,24 @@ exception_handlers = {
     404: not_found,
     500: server_error
 }
+app = None
 
-app = Starlette(debug=DEBUG_MODE, lifespan=lifespan, exception_handlers=exception_handlers, routes=router)
-# Don't check the existence of the static folder because the wrong parent folder is used if the
-# source code is parsed by sphinx. This would raise an exception and lead to failure of sphinx.
-app.mount("/static", StaticFiles(directory="webinterface/statics", check_dir=False), name="static")
-app.add_middleware(AuthenticationMiddleware, backend=SessionAuthBackend())
-app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY, session_cookie="mercure_session")
-app.mount("/rules", rules.rules_app, name="rules")
-app.mount("/targets", targets.targets_app)
-app.mount("/modules", modules.modules_app)
-app.mount("/users", users.users_app)
-app.mount("/queue", queue.queue_app)
-app.mount("/api", api.api_app)
-app.mount("/tools", dashboards.dashboards_app)
-
+def create_app() -> Starlette:
+    global app
+    app = Starlette(debug=DEBUG_MODE, lifespan=lifespan, exception_handlers=exception_handlers, routes=router)
+    # Don't check the existence of the static folder because the wrong parent folder is used if the
+    # source code is parsed by sphinx. This would raise an exception and lead to failure of sphinx.
+    app.mount("/static", StaticFiles(directory="webinterface/statics", check_dir=False), name="static")
+    app.add_middleware(AuthenticationMiddleware, backend=SessionAuthBackend())
+    app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY, session_cookie="mercure_session")
+    app.mount("/rules", rules.rules_app, name="rules")
+    app.mount("/targets", targets.targets_app)
+    app.mount("/modules", modules.modules_app)
+    app.mount("/users", users.users_app)
+    app.mount("/queue", queue.queue_app)
+    app.mount("/api", api.api_app)
+    app.mount("/tools", dashboards.dashboards_app)
+    return app
 
 
 
@@ -967,6 +976,7 @@ def main(args=sys.argv[1:]) -> None:
 
         logging.getLogger("watchdog").setLevel(logging.WARNING)
     try:
+        read_webgui_config()
         services.read_services()
         config_ = config.read_config()
         users.read_users()
@@ -976,15 +986,14 @@ def main(args=sys.argv[1:]) -> None:
         if str(SECRET_KEY) == "PutSomethingRandomHere":
             logger.error("You need to change the SECRET_KEY in configuration/webgui.env")
             raise Exception("Invalid or missing SECRET_KEY in webgui.env")
+        app = create_app()
+        uvicorn.run(app, host=WEBGUI_HOST, port=WEBGUI_PORT)
     except Exception as e:
         logger.error(e)
         logger.error("Cannot start service. Showing emergency message.")
         launch_emergency_app()
         logger.info("Going down.")
         sys.exit(1)
-
-    uvicorn.run(app, host=WEBGUI_HOST, port=WEBGUI_PORT)
-
 
 if __name__ == "__main__":
     main()

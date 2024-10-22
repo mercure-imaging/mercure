@@ -67,8 +67,7 @@ def create_series(mocked, fs, config, tags, name="bar") -> Tuple[str, str]:
     mock_incoming_uid(config, fs, series_uid, tags,name)
     return task_id, series_uid
 
-@pytest.mark.asyncio
-async def test_route_series_fail1(fs: FakeFilesystem, mercure_config, mocked):
+def test_route_series_fail1(fs: FakeFilesystem, mercure_config, mocked):
     config = mercure_config(rules)
 
     tags = {"asdfasdfas": "foo"}
@@ -88,7 +87,6 @@ async def test_route_series_fail1(fs: FakeFilesystem, mercure_config, mocked):
         f"Invalid tag for series {series_uid}",
     )
 
-
 def test_route_series_fail2(fs: FakeFilesystem, mercure_config, mocked):
     config = mercure_config(rules)
 
@@ -103,7 +101,6 @@ def test_route_series_fail2(fs: FakeFilesystem, mercure_config, mocked):
     )
     common.monitor.send_task_event.assert_any_call(task_event.DISCARD, task_id,1, "","Discard by default.")  # type: ignore
     common.monitor.send_task_event.reset_mock()  # type: ignore
-
 
 def test_route_series_fail3(fs: FakeFilesystem, mercure_config, mocked):
     config = mercure_config(rules)
@@ -145,7 +142,6 @@ def test_route_series_fail3(fs: FakeFilesystem, mercure_config, mocked):
     #     f"Creating folder not possible {config.outgoing_folder}/{task_id}",
     # )
 
-
 def test_route_series_fail4(fs: FakeFilesystem, mercure_config, mocked):
     config = mercure_config(rules)
 
@@ -163,7 +159,6 @@ def test_route_series_fail4(fs: FakeFilesystem, mercure_config, mocked):
         f"Problem while pushing file to outgoing {series_uid}#baz\nSource folder {config.incoming_folder}/{series_uid}\nTarget folder {config.outgoing_folder}/{task_id}",
     )
     assert list(Path(config.outgoing_folder).glob("**/*.dcm")) == []
-
 
 def task_will_dispatch_to(task, config, fake_process) -> None:
     for target_item in task.dispatch.target_name:
@@ -188,8 +183,7 @@ def task_will_dispatch_to(task, config, fake_process) -> None:
     )
 
 
-@pytest.mark.asyncio
-async def test_route_study(fs: FakeFilesystem, mercure_config, mocked, fake_process):
+def test_route_study(fs: FakeFilesystem, mercure_config, mocked, fake_process):
     config = mercure_config(rules)
 
     study_uid = str(uuid.uuid4())
@@ -243,8 +237,7 @@ async def test_route_study(fs: FakeFilesystem, mercure_config, mocked, fake_proc
     #     f"Routed to test_target",
     # )
 
-@pytest.mark.asyncio
-async def test_route_series_success(fs: FakeFilesystem, mercure_config, mocked, fake_process):
+def test_route_series_success(fs: FakeFilesystem, mercure_config, mocked, fake_process):
     config = mercure_config(rules)
     # attach_spies(mocker)
     # mocker.patch("routing.route_series.parse_ascconv", new=lambda x: {})
@@ -302,8 +295,7 @@ async def test_route_series_success(fs: FakeFilesystem, mercure_config, mocked, 
     # common.monitor.send_event.assert_not_called()
 
 
-@pytest.mark.asyncio
-async def test_route_series_new_rule(fs: FakeFilesystem, mercure_config, mocked, fake_process):
+def test_route_series_new_rule(fs: FakeFilesystem, mercure_config, mocked, fake_process):
     config = mercure_config(rules)
     # attach_spies(mocker)
     # mocker.patch("routing.route_series.parse_ascconv", new=lambda x: {})
@@ -341,8 +333,7 @@ async def test_route_series_new_rule(fs: FakeFilesystem, mercure_config, mocked,
     assert task.info.triggered_rules["route_series_new_rule"] == True  # type: ignore
     task_will_dispatch_to(task, config, fake_process)
 
-@pytest.mark.asyncio
-async def test_route_series_with_bad_tags(fs: FakeFilesystem, mercure_config, mocked, fake_process):
+def test_route_series_with_bad_tags(fs: FakeFilesystem, mercure_config, mocked, fake_process):
     config = mercure_config(rules)
     # attach_spies(mocker)
     # mocker.patch("routing.route_series.parse_ascconv", new=lambda x: {})
@@ -370,8 +361,7 @@ async def test_route_series_with_bad_tags(fs: FakeFilesystem, mercure_config, mo
         task: Task = Task(**json.load(e))
     task_will_dispatch_to(task, config, fake_process)
 
-@pytest.mark.asyncio
-async def test_route_series_fail_with_bad_tags(fs: FakeFilesystem, mercure_config, mocked, fake_process):
+def test_route_series_fail_with_bad_tags(fs: FakeFilesystem, mercure_config, mocked, fake_process):
     config = mercure_config(rules)
     # attach_spies(mocker)
     # mocker.patch("routing.route_series.parse_ascconv", new=lambda x: {})

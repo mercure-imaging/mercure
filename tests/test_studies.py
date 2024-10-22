@@ -1,3 +1,4 @@
+import asyncio
 from datetime import datetime, timedelta
 import importlib
 
@@ -171,9 +172,8 @@ def test_route_study_error(fs: FakeFilesystem, mercure_config, mocked):
         assert list(Path(config.error_folder).glob("**/*")) != []
 
 
-@pytest.mark.asyncio
 @pytest.mark.parametrize("do_error", [True, False])
-async def test_route_study_processing(fs: FakeFilesystem, mercure_config, mocked, do_error):
+def test_route_study_processing(fs: FakeFilesystem, mercure_config, mocked, do_error):
     config = mercure_config(
         {
             "modules": {
@@ -232,7 +232,8 @@ async def test_route_study_processing(fs: FakeFilesystem, mercure_config, mocked
         mocked.patch.object(Job, "dispatch_job", new=fake_run)
         mocked.patch.object(Job, "get_job", new=lambda x, y: dict(Status="dead"))
 
-        await processor.run_processor()
+        asyncio.run(processor.run_processor())
+        # await processor.run_processor()
         if do_error:
             assert list(Path(config.error_folder).glob("**/*")) != []
         else:

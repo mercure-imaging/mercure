@@ -10,18 +10,16 @@ import os
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
-config.set_main_option('sqlalchemy.url', os.getenv("DATABASE_URL", "not set"))
+_os_env_database_url = os.getenv("DATABASE_URL")
+if _os_env_database_url is not None:
+    config.set_main_option('sqlalchemy.url', _os_env_database_url)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
-fileConfig(config.config_file_name) # type: ignore
+# fileConfig(config.config_file_name) # type: ignore
 
 # add your model's MetaData object here
 # for 'autogenerate' support
-import bookkeeper
-# from myapp import mymodel
-# target_metadata = mymodel.Base.metadata
-target_metadata = bookkeeper.metadata
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
@@ -41,7 +39,15 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    url = config.get_main_option("sqlalchemy.url")
+    import bookkeeping.database as db
+    # url = config.get_main_option("sqlalchemy.url")
+    url = os.environ.get('DATABASE_URL')
+    schema = os.environ.get('DATABASE_SCHEMA')
+    if schema == 'None':
+        schema = None
+    db.init_database(url, schema)
+    target_metadata = db.metadata
+
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -60,6 +66,10 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
+    import bookkeeping.database as db
+    db.init_database(os.environ.get('DATABASE_URL'), os.environ.get('DATABASE_SCHEMA'))
+    target_metadata = db.metadata
+
     connectable = engine_from_config(
         config.get_section(config.config_ini_section),
         prefix="sqlalchemy.",

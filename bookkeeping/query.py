@@ -17,7 +17,7 @@ from starlette.authentication import requires
 
 # App-specific includes
 import bookkeeping.config as bk_config
-from bookkeeping.database import *
+import bookkeeping.database as db
 from bookkeeping.helper import *
 from common import config
 from decoRouter import Router as decoRouter
@@ -41,11 +41,11 @@ def set_timezone_conversion() -> None:
 async def get_series(request) -> JSONResponse:
     """Endpoint for retrieving series in the database."""
     series_uid = request.query_params.get("series_uid", "")
-    query = dicom_series.select()
+    query = db.dicom_series.select()
     if series_uid:
-        query = query.where(dicom_series.c.series_uid == series_uid)
+        query = query.where(db.dicom_series.c.series_uid == series_uid)
 
-    result = await database.fetch_all(query)
+    result = await db.database.fetch_all(query)
     series = [dict(row) for row in result]
 
     for i, line in enumerate(series):
@@ -61,14 +61,14 @@ async def get_tasks(request) -> JSONResponse:
     """Endpoint for retrieving tasks in the database."""
     query = (
         sqlalchemy.select(
-            tasks_table.c.id, tasks_table.c.time, dicom_series.c.tag_seriesdescription, dicom_series.c.tag_modality
+            db.tasks_table.c.id, db.tasks_table.c.time, db.dicom_series.c.tag_seriesdescription, db.dicom_series.c.tag_modality
         )
-        .where(tasks_table.c.parent_id.is_(None))  # only show tasks without parents
+        .where(db.tasks_table.c.parent_id.is_(None))  # only show tasks without parents
         .join(
-            dicom_series,
+            db.dicom_series,
             # sqlalchemy.or_(
             # (dicom_series.c.study_uid == tasks_table.c.study_uid),
-            (dicom_series.c.series_uid == tasks_table.c.series_uid),
+            (db.dicom_series.c.series_uid == db.tasks_table.c.series_uid),
             # ),
             isouter=True,
         )
@@ -77,14 +77,14 @@ async def get_tasks(request) -> JSONResponse:
     #     """ select tasks.id as task_id, tasks.time, tasks.series_uid, tasks.study_uid, "tag_seriesdescription", "tag_modality" from tasks
     #         join dicom_series on tasks.study_uid = dicom_series.study_uid or tasks.series_uid = dicom_series.series_uid """
     # )
-    results = await database.fetch_all(query)
+    results = await db.database.fetch_all(query)
     return CustomJSONResponse(results)
 
 
 @router.get("/tests")
 @requires("authenticated")
 async def get_test_task(request) -> JSONResponse:
-    query = tests_table.select().order_by(tests_table.c.time_begin.desc())
+    query = db.tests_table.select().order_by(db.tests_table.c.time_begin.desc())
     # query = (
     #     sqlalchemy.select(
     #         tasks_table.c.id, tasks_table.c.time, dicom_series.c.tag_seriesdescription, dicom_series.c.tag_modality
@@ -98,7 +98,7 @@ async def get_test_task(request) -> JSONResponse:
     #     )
     #     .where(dicom_series.c.tag_seriesdescription == "self_test_series " + request.query_params.get("id", ""))
     # )
-    result_rows = await database.fetch_all(query)
+    result_rows = await db.database.fetch_all(query)
     results = [dict(row) for row in result_rows]
     for k in results:
         if not k["time_end"]:
@@ -113,11 +113,11 @@ async def get_task_events(request) -> JSONResponse:
     """Endpoint for getting all events related to one task."""
 
     task_id = request.query_params.get("task_id", "")
-    subtask_query = sqlalchemy.select(tasks_table.c.id).where(tasks_table.c.parent_id == task_id)
+    subtask_query = sqlalchemy.select(db.tasks_table.c.id).where(db.tasks_table.c.parent_id == task_id)
     
     # Note: The space at the end is needed for the case that there are no subtasks
     subtask_ids_str = ""
-    for row in await database.fetch_all(subtask_query):
+    for row in await db.database.fetch_all(subtask_query):
         subtask_ids_str += f"'{row[0]}',"
 
     subtask_ids_filter = ""
@@ -139,7 +139,7 @@ async def get_task_events(request) -> JSONResponse:
     #print("SQL Query = " + query_string)
     query = sqlalchemy.text(query_string)    
 
-    results = await database.fetch_all(query)
+    results = await db.database.fetch_all(query)
     return CustomJSONResponse(results)
 
 
@@ -148,10 +148,10 @@ async def get_task_events(request) -> JSONResponse:
 async def get_dicom_files(request) -> JSONResponse:
     """Endpoint for getting all events related to one series."""
     series_uid = request.query_params.get("series_uid", "")
-    query = dicom_files.select().order_by(dicom_files.c.time)
+    query = db.dicom_files.select().order_by(db.dicom_files.c.time)
     if series_uid:
-        query = query.where(dicom_files.c.series_uid == series_uid)
-    results = await database.fetch_all(query)
+        query = query.where(db.dicom_files.c.series_uid == series_uid)
+    results = await db.database.fetch_all(query)
     return CustomJSONResponse(results)
 
 
@@ -162,16 +162,16 @@ async def get_task_process_logs(request) -> JSONResponse:
     task_id = request.query_params.get("task_id", "")
 
     subtask_query = (
-        tasks_table.select()
-        .order_by(tasks_table.c.id)
-        .where(sqlalchemy.or_(tasks_table.c.id == task_id, tasks_table.c.parent_id == task_id))
+        db.tasks_table.select()
+        .order_by(db.tasks_table.c.id)
+        .where(sqlalchemy.or_(db.tasks_table.c.id == task_id, db.tasks_table.c.parent_id == task_id))
     )
 
-    subtasks = await database.fetch_all(subtask_query)
+    subtasks = await db.database.fetch_all(subtask_query)
     subtask_ids = [row[0] for row in subtasks]
 
-    query = processor_logs_table.select(processor_logs_table.c.task_id.in_(subtask_ids)).order_by(processor_logs_table.c.id)
-    results = [dict(r) for r in await database.fetch_all(query)]
+    query = db.processor_logs_table.select(db.processor_logs_table.c.task_id.in_(subtask_ids)).order_by(db.processor_logs_table.c.id)
+    results = [dict(r) for r in await db.database.fetch_all(query)]
     for result in results:
         if result["logs"] == None:
             if logs_folder := config.mercure.processing_logs.logs_file_store:
@@ -187,8 +187,8 @@ async def get_task_process_results(request) -> JSONResponse:
     """Endpoint for getting all processing results from a task."""
     task_id = request.query_params.get("task_id", "")
 
-    query = processor_outputs_table.select().where(processor_outputs_table.c.task_id == task_id).order_by(processor_outputs_table.c.id)
-    results = [dict(r) for r in await database.fetch_all(query)]
+    query = db.processor_outputs_table.select().where(db.processor_outputs_table.c.task_id == task_id).order_by(db.processor_outputs_table.c.id)
+    results = [dict(r) for r in await db.database.fetch_all(query)]
     return CustomJSONResponse(results)
 
 
@@ -253,7 +253,7 @@ async def find_task(request) -> JSONResponse:
     query = sqlalchemy.text(query_string)
 
     response: Dict = {}
-    result_rows = await database.fetch_all(query)
+    result_rows = await db.database.fetch_all(query)
     results = [dict(row) for row in result_rows]
 
     for item in results:
@@ -330,7 +330,7 @@ async def get_task_info(request) -> JSONResponse:
         limit 1"""
     ) # TODO: use sqlalchemy interpolation
 
-    info_rows = await database.fetch_all(info_query)
+    info_rows = await db.database.fetch_all(info_query)
     info_results = [dict(row) for row in info_rows]
 
     if info_results:
@@ -352,11 +352,11 @@ async def get_task_info(request) -> JSONResponse:
 
     # Now, get the task files embedded into the task or its subtasks
     query = (
-        tasks_table.select()
-        .order_by(tasks_table.c.id)
-        .where(sqlalchemy.or_(tasks_table.c.id == task_id, tasks_table.c.parent_id == task_id))
+        db.tasks_table.select()
+        .order_by(db.tasks_table.c.id)
+        .where(sqlalchemy.or_(db.tasks_table.c.id == task_id, db.tasks_table.c.parent_id == task_id))
     )
-    result_rows = await database.fetch_all(query)
+    result_rows = await db.database.fetch_all(query)
     results = [dict(row) for row in result_rows]
 
     for item in results:

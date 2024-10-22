@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 import shutil
 import socket
-from typing import Callable, Dict, Any, Iterator, Optional, Tuple
+from typing import Callable, Dict, Any, Iterator, List, Optional, Tuple
 import uuid
 
 import pydicom
@@ -20,7 +20,7 @@ from pydicom.uid import generate_uid
 
 import pytest
 import process
-import routing, common, router, processor
+import routing, common, router, processor, bookkeeper
 import common.config as config
 from common.types import Config
 import docker.errors
@@ -95,9 +95,13 @@ def mocked(mocker):
     attach_spies(mocker)
     return mocker
 
+@pytest.fixture(scope="module")
+def bookkeeper_port():
+    return random_port()
+
 
 @pytest.fixture(scope="function", autouse=True)
-def mercure_config(fs) -> Callable[[Dict], Config]:
+def mercure_config(fs, bookkeeper_port) -> Callable[[Dict], Config]:
     # TODO: config from previous calls seems to leak in here
     config_path = os.path.realpath(os.path.dirname(os.path.realpath(__file__)) + "/data/test_config.json")
 
@@ -112,7 +116,17 @@ def mercure_config(fs) -> Callable[[Dict], Config]:
         config.save_config()
         return config.mercure
 
-    set_config()
+    # set_config()
+    set_config({"bookkeeper": "sqlite:///tmp/mercure_bookkeeper_"+str(uuid.uuid4())+".db"}) # sqlite3 is not inside the fakefs so this is going to be a real file
+
+    bookkeeper_env = f"""PORT={bookkeeper_port}
+HOST=0.0.0.0
+DATABASE_URL={config.mercure.bookkeeper}"""
+    fs.create_file(bookkeeper.bk_config.config_filename, contents=bookkeeper_env)
+
+    fs.add_real_directory(os.path.dirname(os.path.realpath(__file__))+'/../alembic')
+
+    fs.add_real_file(os.path.dirname(os.path.realpath(__file__))+'/../alembic.ini',read_only=True)
     return set_config
 
 
@@ -251,8 +265,4 @@ def random_port() -> int:
 
 @pytest.fixture(scope="module")
 def receiver_port():
-    return random_port()
-
-@pytest.fixture(scope="module")
-def bookkeeper_port():
     return random_port()

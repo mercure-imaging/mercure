@@ -14,7 +14,7 @@ def run_test() -> None:
     config.mercure.study_complete_trigger = 2
     config.mercure.series_complete_trigger = 1
     config.save_config()
-
+    app = create_app()
     client = TestClient(app)
     startup(app)
     form_data = {

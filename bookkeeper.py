@@ -2,7 +2,7 @@
 bookkeeper.py
 =============
 The bookkeeper service of mercure, which receives notifications from all mercure services
-and stores the information in a Postgres database.
+and stores the information in a database.
 """
 
 # Standard python includes
@@ -32,7 +32,7 @@ from starlette.authentication import SimpleUser
 from common import config
 import common.monitor as monitor
 from common.constants import mercure_defs
-from bookkeeping.database import *
+import bookkeeping.database as db
 import bookkeeping.query as query
 import bookkeeping.config as bk_config
 from decoRouter import Router as decoRouter
@@ -63,18 +63,14 @@ class TokenAuth(BaseTokenAuth):
 ###################################################################################
 
 
-def create_database() -> None:
-    """Creates all tables in the database if they do not exist."""
-    subprocess.run(
-        ["alembic", "upgrade", "head"],
-        check=True,
-        env={
-            **os.environ,
-            "PATH": "/opt/mercure/env/bin:" + os.environ["PATH"],
-            "DATABASE_URL": bk_config.DATABASE_URL,
-        },
-    )
+from alembic.config import Config
+from alembic import command
 
+def create_database() -> None:
+    alembic_cfg = Config()
+    alembic_cfg.set_main_option('script_location', os.path.dirname(os.path.realpath(__file__))+'/alembic')
+    alembic_cfg.set_main_option('sqlalchemy.url', bk_config.DATABASE_URL)
+    command.upgrade(alembic_cfg, 'head')
 
 
 ###################################################################################
@@ -83,7 +79,7 @@ def create_database() -> None:
 
 # async def execute_db_operation(operation) -> None:
 #     global connection
-#     """Executes a previously prepared database operation."""
+#     """Executes a previously prepared db.database operation."""
 #     try:
 #         connection.execute(operation)
 #     except:
@@ -106,10 +102,10 @@ async def post_mercure_event(request) -> JSONResponse:
     severity = int(payload.get("severity", monitor.severity.INFO))
     description = payload.get("description", "")
 
-    query = mercure_events.insert().values(
+    query = db.mercure_events.insert().values(
         sender=sender, event=event, severity=severity, description=description, time=datetime.datetime.now()
     )
-    result = await database.execute(query)
+    result = await db.database.execute(query)
     logger.debug(result)
     return JSONResponse({"ok": ""})
 
@@ -138,16 +134,16 @@ async def processor_logs(request) -> JSONResponse:
     if (logs_folder_str := config.mercure.processing_logs.logs_file_store) and (
         logs_path := Path(logs_folder_str)
     ).exists():
-        query = processor_logs_table.insert().values(task_id=task_id, module_name=module_name, time=time, logs=None)
-        result = await database.execute(query)
+        query = db.processor_logs_table.insert().values(task_id=task_id, module_name=module_name, time=time, logs=None)
+        result = await db.database.execute(query)
 
         logs_path = logs_path / task_id
         logs_path.mkdir(exist_ok=True)
         logs_file = logs_path / f"{module_name}.{str(result)}.txt"
         logs_file.write_text(logs, encoding="utf-8")
     else:
-        query = processor_logs_table.insert().values(task_id=task_id, module_name=module_name, time=time, logs=logs)
-        result = await database.execute(query)
+        query = db.processor_logs_table.insert().values(task_id=task_id, module_name=module_name, time=time, logs=logs)
+        result = await db.database.execute(query)
 
     logger.debug(result)
     return JSONResponse({"ok": ""})
@@ -163,10 +159,10 @@ async def post_webgui_event(request) -> JSONResponse:
     user = payload.get("user", "UNKNOWN")
     description = payload.get("description", "")
 
-    query = webgui_events.insert().values(
+    query = db.webgui_events.insert().values(
         sender=sender, event=event, user=user, description=description, time=datetime.datetime.now()
     )
-    await database.execute(query)
+    await db.database.execute(query)
     # tasks = BackgroundTasks()
     # tasks.add_task(execute_db_operation, operation=query)
     return JSONResponse({"ok": ""})
@@ -181,10 +177,10 @@ async def register_dicom(request) -> JSONResponse:
     file_uid = payload.get("file_uid", "")
     series_uid = payload.get("series_uid", "")
 
-    query = dicom_files.insert().values(
+    query = db.dicom_files.insert().values(
         filename=filename, file_uid=file_uid, series_uid=series_uid, time=datetime.datetime.now()
     )
-    result = await database.execute(query)
+    result = await db.database.execute(query)
     logger.debug(f"Result: {result}")
 
     # tasks = BackgroundTasks()
@@ -194,7 +190,7 @@ async def register_dicom(request) -> JSONResponse:
 
 async def parse_and_submit_tags(payload) -> None:
     """Helper function that reads series information from the request body."""
-    query = dicom_series.insert().values(
+    query = db.dicom_series.insert().values(
         time=datetime.datetime.now(),
         series_uid=payload.get("SeriesInstanceUID", ""),
         study_uid=payload.get("StudyInstanceUID", ""),
@@ -227,7 +223,7 @@ async def parse_and_submit_tags(payload) -> None:
         tag_softwareversions=payload.get("SoftwareVersions", ""),
         tag_stationname=payload.get("StationName", ""),
     )
-    await database.execute(query)
+    await db.database.execute(query)
 
 
 @router.post("/register-series")
@@ -251,7 +247,7 @@ async def register_task(request) -> JSONResponse:
     # Registering the task ordinarily happens first, but if "update-task"
     # came in first, we need to update the task instead. So we do an upsert.
     query = (
-        insert(tasks_table)
+        insert(db.tasks_table)
         .values(
             id=payload["id"],
             series_uid=payload["series_uid"],
@@ -267,7 +263,7 @@ async def register_task(request) -> JSONResponse:
         )
     )
 
-    await database.execute(query)
+    await db.database.execute(query)
     return JSONResponse({"ok": ""})
 
 
@@ -295,14 +291,14 @@ async def update_task(request) -> JSONResponse:
     # Ordinarily, update-task is called on an existing task. But if the task is
     # not yet registered, we need to create it. So we use an upsert here.
     query = (
-        insert(tasks_table)
+        insert(db.tasks_table)
         .values(**update_values)
         .on_conflict_do_update(  # update if exists
             index_elements=["id"],
             set_=update_values,
         )
     )
-    await database.execute(query)
+    await db.database.execute(query)
     return JSONResponse({"ok": ""})
 
 
@@ -314,7 +310,7 @@ async def test_begin(request) -> JSONResponse:
     type = payload.get("type", "route")
     rule_type = payload.get("rule_type", "series")
     task_id = payload.get("task_id", None)
-    query_a = insert(tests_table).values(
+    query_a = insert(db.tests_table).values(
         id=id, time_begin=datetime.datetime.now(), type=type, status="begin", task_id=task_id, rule_type=rule_type
     )
 
@@ -324,7 +320,7 @@ async def test_begin(request) -> JSONResponse:
             "task_id": task_id or query_a.excluded.task_id,
         },
     )
-    await database.execute(query)
+    await db.database.execute(query)
     return JSONResponse({"ok": ""})
 
 
@@ -335,8 +331,8 @@ async def test_end(request) -> JSONResponse:
     id = payload["id"]
     status = payload.get("status", "")
 
-    query = tests_table.update(tests_table.c.id == id).values(time_end=datetime.datetime.now(), status=status)
-    await database.execute(query)
+    query = db.tests_table.update(db.tests_table.c.id == id).values(time_end=datetime.datetime.now(), status=status)
+    await db.database.execute(query)
     return JSONResponse({"ok": ""})
 
 
@@ -373,7 +369,7 @@ async def post_task_event(request) -> JSONResponse:
     info = payload.get("info", "")
     task_id = payload.get("task_id")
 
-    query = task_events.insert().values(
+    query = db.task_events.insert().values(
         sender=sender,
         event=event,
         task_id=task_id,
@@ -384,7 +380,7 @@ async def post_task_event(request) -> JSONResponse:
         time=event_time,
         client_timestamp=client_timestamp,
     )
-    await database.execute(query)
+    await db.database.execute(query)
     return JSONResponse({"ok": ""})
 
 
@@ -393,8 +389,8 @@ async def post_task_event(request) -> JSONResponse:
 async def store_processor_output(request) -> JSONResponse:
     payload = dict(await request.json())
     values_dict = {k:payload[k] for k in ("task_id", "task_acc", "task_mrn", "module", "index", "settings", "output")}
-    query = processor_outputs_table.insert().values(**values_dict)
-    await database.execute(query)
+    query = db.processor_outputs_table.insert().values(**values_dict)
+    await db.database.execute(query)
     return JSONResponse({"ok": ""})
 
 
@@ -405,11 +401,12 @@ async def store_processor_output(request) -> JSONResponse:
 
 @contextlib.asynccontextmanager
 async def lifespan(app):
-    await database.connect()
+    await db.database.connect()
+    assert db.metadata
     create_database()
     bk_config.set_api_key()
     yield
-    await database.disconnect()
+    await db.database.disconnect()
 
 
 async def server_error(request, exc) -> Response:
@@ -422,14 +419,19 @@ exception_handlers = {
     500: server_error
 }
 
+app = None
 
-app = Starlette(debug=bk_config.DEBUG_MODE, routes=router, lifespan=lifespan, exception_handlers=exception_handlers)
-app.add_middleware(
-    AuthenticationMiddleware,
-    backend=TokenAuth(),
-    on_error=lambda _, exc: PlainTextResponse(str(exc), status_code=401),
-)
-app.mount("/query", query.query_app)
+def create_app() -> Starlette:
+    global app
+    bk_config.read_bookkeeper_config()
+    app = Starlette(debug=bk_config.DEBUG_MODE, routes=router, lifespan=lifespan, exception_handlers=exception_handlers)
+    app.add_middleware(
+        AuthenticationMiddleware,
+        backend=TokenAuth(),
+        on_error=lambda _, exc: PlainTextResponse(str(exc), status_code=401),
+    )
+    app.mount("/query", query.query_app)
+    return app
 
 def main(args=sys.argv[1:]) -> None:
     if "--reload" in args or os.getenv("MERCURE_ENV", "PROD").lower() == "dev":
@@ -445,14 +447,17 @@ def main(args=sys.argv[1:]) -> None:
     logger.info("")
 
     try:
+        bk_config.read_bookkeeper_config()
+        db.init_database()
         config.read_config()
         query.set_timezone_conversion()
+        app = create_app()
+        uvicorn.run(app, host=bk_config.BOOKKEEPER_HOST, port=bk_config.BOOKKEEPER_PORT)
+
     except Exception as e:
         logger.error(f"Could not read configuration file: {e}")
         logger.info("Going down.")
         sys.exit(1)
-
-    uvicorn.run(app, host=bk_config.BOOKKEEPER_HOST, port=bk_config.BOOKKEEPER_PORT)
 
 
 if __name__ == "__main__":

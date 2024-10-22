@@ -26,7 +26,11 @@ import common.tagslist as tagslist
 logger = get_logger()
 
 configuration_timestamp: float = 0
-configuration_filename = (os.getenv("MERCURE_CONFIG_FOLDER") or "/opt/mercure/config") + "/mercure.json"
+_os_config_file = os.getenv("MERCURE_CONFIG_FILE")
+if _os_config_file is not None:
+    configuration_filename = _os_config_file
+else:
+    configuration_filename = (os.getenv("MERCURE_CONFIG_FOLDER") or "/opt/mercure/config") + "/mercure.json"
 
 mercure_defaults = {
     "appliance_name": "master",
@@ -91,50 +95,50 @@ def read_config() -> Config:
     if lock_file.exists():
         raise ResourceWarning(f"Configuration file locked: {lock_file}")
 
-    if configuration_file.exists():
-        # Get the modification date/time of the configuration file
-        stat = os.stat(configuration_filename)
-        try:
-            timestamp = stat.st_mtime
-        except AttributeError:
-            timestamp = 0
-
-        # Check if the configuration file is newer than the version
-        # loaded into memory. If not, return
-        if timestamp <= configuration_timestamp:
-            return mercure
-
-        logger.info(f"Reading configuration from: {configuration_filename}")
-
-        with open(configuration_file, "r") as json_file:
-            loaded_config = json.load(json_file)
-            # Reset configuration to default values (to ensure all needed
-            # keys are present in the configuration)
-            merged: Dict = {**mercure_defaults, **loaded_config}
-            mercure = Config(**merged)
-
-            # TODO: Check configuration for errors (esp targets and rules)
-
-            # Check if directories exist
-            if not check_folders():
-                raise FileNotFoundError("Configured folders missing")
-
-            # logger.info("")
-            # logger.info("Active configuration: ")
-            # logger.info(json.dumps(mercure, indent=4))
-            # logger.info("")
-
-            try:
-                read_tagslist()
-            except Exception as e:
-                logger.info(e)
-                logger.info("Unable to parse list of additional tags. Check configuration file.")
-
-            configuration_timestamp = timestamp
-            monitor.send_event(monitor.m_events.CONFIG_UPDATE, monitor.severity.INFO, "Configuration updated")
-            return mercure
-    else:
+    if not configuration_file.exists():
         raise FileNotFoundError(f"Configuration file not found: {configuration_file}")
+
+    # Get the modification date/time of the configuration file
+    stat = os.stat(configuration_filename)
+    try:
+        timestamp = stat.st_mtime
+    except AttributeError:
+        timestamp = 0
+
+    # Check if the configuration file is newer than the version
+    # loaded into memory. If not, return
+    if timestamp <= configuration_timestamp:
+        return mercure
+
+    logger.info(f"Reading configuration from: {configuration_filename}")
+
+    with open(configuration_file, "r") as json_file:
+        loaded_config = json.load(json_file)
+        # Reset configuration to default values (to ensure all needed
+        # keys are present in the configuration)
+        merged: Dict = {**mercure_defaults, **loaded_config}
+        mercure = Config(**merged)
+
+        # TODO: Check configuration for errors (esp targets and rules)
+
+        # Check if directories exist
+        if not check_folders():
+            raise FileNotFoundError("Configured folders missing")
+
+        # logger.info("")
+        # logger.info("Active configuration: ")
+        # logger.info(json.dumps(mercure, indent=4))
+        # logger.info("")
+
+        try:
+            read_tagslist()
+        except Exception as e:
+            logger.info(e)
+            logger.info("Unable to parse list of additional tags. Check configuration file.")
+
+        configuration_timestamp = timestamp
+        monitor.send_event(monitor.m_events.CONFIG_UPDATE, monitor.severity.INFO, "Configuration updated")
+        return mercure
 
 
 def save_config() -> None:

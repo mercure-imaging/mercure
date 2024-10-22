@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+import subprocess
 import tempfile
 from typing import Dict, Optional, Tuple
 import pydicom
@@ -16,7 +17,7 @@ from webinterface.dicom_client import SimpleDicomClient
 from common.types import DicomTarget, DicomWebTarget
 from webinterface.common import redis
 from pydicom.uid import ExplicitVRLittleEndian, ImplicitVRLittleEndian
-from testing_common import receiver_port, mercure_config
+from testing_common import receiver_port, mercure_config, bookkeeper_port
 from logging import getLogger
 from rq import SimpleWorker, Queue, Connection
 from fakeredis import FakeStrictRedis
@@ -183,17 +184,30 @@ def test_get_accession_job(dicom_server, dicomweb_server, mercure_config):
         assert results[0].remaining == 0
         assert pydicom.dcmread(next(k for k in Path(config.jobs_folder).rglob("*.dcm"))).AccessionNumber == MOCK_ACCESSIONS[0]
 
-def test_query_job(dicom_server, tempdir, rq_connection):
+def test_query_job(dicom_server, tempdir, rq_connection,fs):
     """
     Test the create_job function.
     We use mocker to mock the queue and avoid actually creating jobs.
     """
+    fs.pause()
+    try:
+        if (subprocess.run(['systemctl', 'is-active', "mercure_worker*"],capture_output=True,text=True,check=False,
+        ).stdout.strip() == 'active'):
+            raise Exception("At least one mercure worker is running, stop it before running test.")
+    except subprocess.CalledProcessError:
+        pass
+    fs.resume()
     job = QueryPipeline.create([MOCK_ACCESSIONS[0]], {}, dicom_server, str(tempdir))
     w = SimpleWorker(["mercure_fast", "mercure_slow"], connection=rq_connection)
+
     w.work(burst=True)
     # assert len(list(Path(config.mercure.jobs_folder).iterdir())) == 1
     print([k for k in Path(tempdir).rglob('*')])
-    assert pydicom.dcmread(next(k for k in Path(tempdir).rglob("*.dcm"))).AccessionNumber == MOCK_ACCESSIONS[0]
+    try:
+        example_dcm = next(k for k in Path(tempdir).rglob("*.dcm"))
+    except StopIteration:
+        assert False, f"No DICOM file found in {tempdir}"
+    assert pydicom.dcmread(example_dcm).AccessionNumber == MOCK_ACCESSIONS[0]
 
 def tree(path, prefix='', level=0) -> None:
     if level==0:

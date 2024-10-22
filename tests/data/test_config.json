@@ -10,6 +10,7 @@
     "processing_folder": "/var/processing",
     "jobs_folder": "/var/jobs",
     "bookkeeper": "0.0.0.0:8080",
+    "bookkeeper_api_key": "12345",
     "graphite_ip": "",
     "graphite_port": 2003,
     "router_scan_interval": 1,

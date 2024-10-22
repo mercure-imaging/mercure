@@ -1,10 +1,4 @@
 import json
-import os
-import time
-from pathlib import Path
-from subprocess import CalledProcessError
-
-import pytest
 
 from dispatch.retry import increase_retry
 from common.constants import mercure_names

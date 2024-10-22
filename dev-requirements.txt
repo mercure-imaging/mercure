@@ -8,7 +8,30 @@ async-timeout==4.0.3
     # via
     #   -c requirements.txt
     #   redis
+exceptiongroup==1.2.1
+    # via
+    #   -c requirements.txt
+    #   pytest
 fakeredis==2.25.1
+    # via -r dev-requirements.in
+iniconfig==2.0.0
+    # via
+    #   -c requirements.txt
+    #   pytest
+packaging==24.1
+    # via
+    #   -c requirements.txt
+    #   pytest
+pluggy==1.5.0
+    # via
+    #   -c requirements.txt
+    #   pytest
+pytest==8.2.2
+    # via
+    #   -c requirements.txt
+    #   -r dev-requirements.in
+    #   pytest-asyncio
+pytest-asyncio==0.24.0
     # via -r dev-requirements.in
 redis==5.0.4
     # via
@@ -18,6 +41,10 @@ sortedcontainers==2.4.0
     # via fakeredis
 supervisor==4.2.5
     # via -r dev-requirements.in
+tomli==2.0.1
+    # via
+    #   -c requirements.txt
+    #   pytest
 typing-extensions==4.12.2
     # via
     #   -c requirements.txt
