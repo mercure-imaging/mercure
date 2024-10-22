@@ -23,7 +23,7 @@
 
 #include "tags_list.h"
 
-#define VERSION "0.71"
+#define VERSION "0.72"
 
 
 static OFString tagSpecificCharacterSet = "";
@@ -421,6 +421,8 @@ int main(int argc, char *argv[])
     {
         OFString errorString = "Unable to read DICOM file ";
         errorString.append(origFilename);
+        errorString.append("\nError: ");
+        errorString.append(status.text());
         errorString.append("\n");
         writeErrorInformationAndMove(path, origFilename, errorString);
         // if (createSeriesFolder(path, "error")) {
@@ -480,21 +482,29 @@ int main(int argc, char *argv[])
         isConversionNeeded = false;
     }
 
-    if (DO_ERROR(4) || !charsetConverter.selectCharacterSet(tagSpecificCharacterSet).good())
-    {
-        OFString errorString = "ERROR: Unable to perform character set conversion!\n";
-        errorString += "ERROR: Incoming charset is "+ tagSpecificCharacterSet;
-        std::cout << errorString.c_str() << std::endl;
-        writeErrorInformationAndMove(path, origFilename, errorString);
-        // if (createSeriesFolder(path, "error")) {
-        //     writeErrorInformation(path + "error/" + origFilename+".dcm", errorString);
-        //     rename(full_path.c_str(), (path + "error/" + origFilename+".dcm").c_str());
-        // } else {
-        //     writeErrorInformation(full_path, errorString);
-        // }
-        return 1;
-    }
+    auto couldSelectCharacterSet = charsetConverter.selectCharacterSet(tagSpecificCharacterSet);
+    if (DO_ERROR(4) || !couldSelectCharacterSet.good()) {
+        // There are two different sets of names of character sets in the DICOM standard.
+        // If Code Extensions aren't used, it expects ISO 2375 names (e.g., "ISO_IR 192").
+        // If Code Extensions are used, it expects names prefixed with ISO 2022, eg "ISO 2022 IR 100".
+        // https://dicom.innolitics.com/ciods/vl-photographic-image/sop-common/00080005
+        // Sometimes a dicom shows up that only has one character set- indicating it's not using Code Extensions-
+        // but the character set is using the ISO 2022 name. 
 
+        // So, we are going to tell DCMTK to try to use Code Extensions by giving it a list, ie '\\ISO 2022 IR 100'.
+        // If the file didn't really use Code Extensions, this will probably produce garbled tags, but it's probably
+        //  better than refusing to process this file at all.
+
+        std::cout << "WARNING: Possible invalid DICOM encoding. Unable to select character set '" << tagSpecificCharacterSet \
+            << "'. Retrying as as if the file meant specify Code Extensions, ie '\\"<<tagSpecificCharacterSet<<"'"<<std::endl;
+        couldSelectCharacterSet = charsetConverter.selectCharacterSet("\\"+tagSpecificCharacterSet);
+        if (DO_ERROR(4) || !couldSelectCharacterSet.good()) {
+                OFString errorString = "ERROR: Unable to perform character set conversion!\n";
+                errorString += couldSelectCharacterSet.text();
+                writeErrorInformationAndMove(path, origFilename, errorString);
+                return 1;
+        }
+    }
     OFString newFilename = tagSeriesInstanceUID + "#" + origFilename;
     OFString seriesFolder = path + tagSeriesInstanceUID + "/";
 
