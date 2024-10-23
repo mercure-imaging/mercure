@@ -196,3 +196,4 @@ def init_database(url=None, schema=None) -> databases.Database:
         sqlalchemy.Column("settings", JSONB),
         sqlalchemy.Column("output", JSONB),
     )
+    return database
