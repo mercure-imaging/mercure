@@ -797,7 +797,8 @@
                     text: '<i class="fas fa-redo-alt"></i>',
                     titleAttr: 'Restart job',
                     action: function ( e, dt, node, config ) {
-                        alert("Coming soon!");
+                        var jid = $('#jobs_fail').DataTable().rows( { selected: true } ).data()[0][4];
+                        restartJob(jid);
                     }
                 }
             ],
@@ -1179,6 +1180,33 @@
     {
         $("#jobarchiveinformation").removeClass("is-active");
         $('#json-renderer').jsonViewer();
+    }
+
+    function restartJob(jobId)
+    {
+        if (jobId === "") {
+            return;
+        }
+
+        $.ajax({
+            type: 'GET',
+            url: '/queue/jobs/fail/restart-job',
+            data: {'task_id': jobId},
+            dataType: 'json',
+            error: function () {
+                alert("Restart failed: unknown error.")
+            },
+            success: function (data) {
+                // check if error is a key in data
+                if (data.hasOwnProperty("error")) {
+                    alert("Restart failed: " + data["error"])
+                } else {
+                    alert("Job restarted")
+                }
+                update();
+            },
+            timeout: 3000
+        });
     }
 
     var updateTimer;

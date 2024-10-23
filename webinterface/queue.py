@@ -5,12 +5,14 @@ Queue page for the graphical user interface of mercure.
 """
 
 # Standard python includes
+from enum import Enum
 import os
 from pathlib import Path
 import json
 import daiquiri
-from typing import Dict
+from typing import cast, Dict
 import collections
+import shutil
 
 # Starlette-related includes
 from starlette.applications import Starlette
@@ -19,15 +21,20 @@ from starlette.authentication import requires
 
 # App-specific includes
 import common.config as config
-from common.constants import mercure_defs, mercure_names
+from common.constants import mercure_defs, mercure_names, mercure_actions
 from webinterface.common import get_user_information
 from webinterface.common import templates
-from common.types import Task
+from common.types import Task, TaskDispatch
 from decoRouter import Router as decoRouter
 router = decoRouter()
 
 logger = config.get_logger()
 
+class RestartTaskErrors(str, Enum):
+    TASK_NOT_READY = "not_ready"
+    NO_TASK_FILE = "no_task_file"
+    WRONG_JOB_TYPE = "wrong_type"
+    NO_DISPATCH_STATUS = "no_dispatch_status"
 
 ###################################################################################
 ## Queue endpoints
@@ -449,5 +456,53 @@ async def get_jobinfo(request):
         return JSONResponse(loaded_task)
     else:
         return PlainTextResponse("Task not found. Refresh view!")
+
+
+@router.get("/jobs/fail/restart-job")
+@requires("authenticated", redirect="login")
+async def restart_job(request):
+    task_id = request.query_params.get("task_id", "")
+    taskfile_folder: Path = Path(config.mercure.error_folder) / task_id
+    response = restart_dispatch(taskfile_folder, Path(config.mercure.outgoing_folder))
+    return JSONResponse(response)
+
+def restart_dispatch(taskfile_folder: Path, outgoing_folder: Path) -> dict:
+    # For now, verify if only dispatching failed and previous steps were successful
+    dispatch_ready = (
+        not (taskfile_folder / mercure_names.LOCK).exists()
+        and not (taskfile_folder / mercure_names.ERROR).exists()
+        and not (taskfile_folder / mercure_names.PROCESSING).exists()
+    )
+    if not dispatch_ready:
+        return {"error": "Task not ready for dispatching.", "error_code": RestartTaskErrors.TASK_NOT_READY}
+
+    if not (taskfile_folder / mercure_names.TASKFILE).exists():
+        return {"error": "task file does not exist", "error_code": RestartTaskErrors.NO_TASK_FILE}
+
+    taskfile_path = taskfile_folder / mercure_names.TASKFILE
+    with open(taskfile_path, "r") as json_file:
+        loaded_task = json.load(json_file)
+
+    action = loaded_task.get("info", {}).get("action", "")
+    if action and action not in (mercure_actions.BOTH, mercure_actions.ROUTE):
+        return {"error": "job not suitable for dispatching.", "error_code": RestartTaskErrors.WRONG_JOB_TYPE}
+
+    task_id = taskfile_folder.name
+    if "dispatch" in loaded_task and "status" in loaded_task["dispatch"]:
+        (taskfile_folder / mercure_names.LOCK).touch()
+        dispatch = loaded_task["dispatch"]
+        dispatch["retries"] = None
+        dispatch["next_retry_at"] = None
+        with open(taskfile_path, "w") as json_file:
+            json.dump(loaded_task, json_file)
+        # Dispatcher will skip the completed targets we just need to copy the case to the outgoing folder
+        shutil.move(str(taskfile_folder), str(outgoing_folder))
+        (Path(outgoing_folder) / task_id / mercure_names.LOCK).unlink()
+
+    else:
+        return {"error": "could not check dispatch status of task file.", "error_code": RestartTaskErrors.NO_DISPATCH_STATUS}
+
+    return {"success": "task restarted"}
+
 
 queue_app = Starlette(routes=router)
