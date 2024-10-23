@@ -20,7 +20,7 @@ from docker.models.containers import ContainerCollection
 from webinterface.queue import RestartTaskErrors, restart_dispatch
 from common.constants import mercure_names, mercure_actions
 from common.types import *
-from tests.testing_common import mock_incoming_uid, mock_task_ids, make_fake_processor, mercure_config, FakeDockerContainer, mocked
+from tests.testing_common import mock_incoming_uid, mock_task_ids, make_fake_processor, mercure_config, FakeDockerContainer, mocked, bookkeeper_port
 from typing import Tuple, Callable
 from pytest_mock import MockerFixture
 
@@ -238,7 +238,6 @@ async def test_dispatching_with_processing(fs, mercure_config: Callable[[Dict], 
     loaded_task["dispatch"] = copy.deepcopy(dispatch_info)
     with open(folder_path / mercure_names.TASKFILE, "w") as json_file:
         json.dump(loaded_task, json_file)
-    print(json.loads((folder_path / mercure_names.TASKFILE).read_text()))
     response = restart_dispatch(folder_path, outgoing_folder)
     assert "success" in response
     assert not folder_path.exists() # it's not in the success folder
