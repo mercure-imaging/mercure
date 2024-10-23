@@ -5,6 +5,7 @@ Queue page for the graphical user interface of mercure.
 """
 
 # Standard python includes
+from enum import Enum
 import os
 from pathlib import Path
 import json
@@ -29,6 +30,11 @@ router = decoRouter()
 
 logger = config.get_logger()
 
+class RestartTaskErrors(str, Enum):
+    TASK_NOT_READY = "not_ready"
+    NO_TASK_FILE = "no_task_file"
+    WRONG_JOB_TYPE = "wrong_type"
+    NO_DISPATCH_STATUS = "no_dispatch_status"
 
 ###################################################################################
 ## Queue endpoints
@@ -468,10 +474,10 @@ def restart_dispatch(taskfile_folder: Path, outgoing_folder: Path) -> dict:
         and not (taskfile_folder / mercure_names.PROCESSING).exists()
     )
     if not dispatch_ready:
-        return {"error": "Task not ready for dispatching.", "error_code": 1}
+        return {"error": "Task not ready for dispatching.", "error_code": RestartTaskErrors.TASK_NOT_READY}
 
     if not (taskfile_folder / mercure_names.TASKFILE).exists():
-        return {"error": "task file does not exist", "error_code": 2}
+        return {"error": "task file does not exist", "error_code": RestartTaskErrors.NO_TASK_FILE}
 
     taskfile_path = taskfile_folder / mercure_names.TASKFILE
     with open(taskfile_path, "r") as json_file:
@@ -479,7 +485,7 @@ def restart_dispatch(taskfile_folder: Path, outgoing_folder: Path) -> dict:
 
     action = loaded_task.get("info", {}).get("action", "")
     if action and action not in (mercure_actions.BOTH, mercure_actions.ROUTE):
-        return {"error": "job not suitable for dispatching.", "error_code": 3}
+        return {"error": "job not suitable for dispatching.", "error_code": RestartTaskErrors.WRONG_JOB_TYPE}
 
     task_id = taskfile_folder.name
     if "dispatch" in loaded_task and "status" in loaded_task["dispatch"]:
@@ -494,7 +500,7 @@ def restart_dispatch(taskfile_folder: Path, outgoing_folder: Path) -> dict:
         (Path(outgoing_folder) / task_id / mercure_names.LOCK).unlink()
 
     else:
-        return {"error": "could not check dispatch status of task file.", "error_code": 4}
+        return {"error": "could not check dispatch status of task file.", "error_code": RestartTaskErrors.NO_DISPATCH_STATUS}
 
     return {"success": "task restarted"}
 

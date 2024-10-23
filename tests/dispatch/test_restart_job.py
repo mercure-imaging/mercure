@@ -17,7 +17,7 @@ import processor
 
 from dispatch.send import execute, is_ready_for_sending
 from docker.models.containers import ContainerCollection
-from webinterface.queue import restart_dispatch
+from webinterface.queue import RestartTaskErrors, restart_dispatch
 from common.constants import mercure_names, mercure_actions
 from common.types import *
 from tests.testing_common import mock_incoming_uid, mock_task_ids, make_fake_processor, mercure_config, FakeDockerContainer, mocked
@@ -134,7 +134,7 @@ def test_restart_dispatch_fail(fs):
     response = restart_dispatch(task_folder, outgoing_folder)
     assert not (outgoing_folder / task_id).exists()
     assert "error" in response
-    assert response["error_code"] == 2
+    assert response["error_code"] == RestartTaskErrors.NO_TASK_FILE
 
     # presence of lock, processing, or error file
     task_id = str(uuid.uuid1())
@@ -145,7 +145,7 @@ def test_restart_dispatch_fail(fs):
     response = restart_dispatch(task_folder, outgoing_folder)
     assert not (outgoing_folder / task_id).exists()
     assert "error" in response
-    assert response["error_code"] == 1
+    assert response["error_code"] == RestartTaskErrors.TASK_NOT_READY
 
     # mercure action not suitable for dispatching
     dummy_info = {
@@ -156,13 +156,13 @@ def test_restart_dispatch_fail(fs):
     }
     dummy_task_file["info"] = dummy_info
     task_id = str(uuid.uuid1())
-    task_folder = Path(error_folder) / task_id
+    task_folder = error_folder / task_id
     fs.create_dir(task_folder)
     fs.create_file(task_folder / mercure_names.TASKFILE, contents=json.dumps(dummy_task_file))
     response = restart_dispatch(task_folder, outgoing_folder)
     assert not (outgoing_folder / task_id).exists()
     assert "error" in response
-    assert response["error_code"] == 3
+    assert response["error_code"] == RestartTaskErrors.WRONG_JOB_TYPE
 
     # missing dispatch information
     dummy_info = {
@@ -174,13 +174,13 @@ def test_restart_dispatch_fail(fs):
     dummy_task_file["info"] = dummy_info
     dummy_task_file["dispatch"] = {}
     task_id = str(uuid.uuid1())
-    task_folder = Path(error_folder) / task_id
+    task_folder = error_folder / task_id
     fs.create_dir(task_folder)
     fs.create_file(task_folder / mercure_names.TASKFILE, contents=json.dumps(dummy_task_file))
     response = restart_dispatch(task_folder, outgoing_folder)
     assert not (outgoing_folder / task_id).exists()
     assert "error" in response
-    assert response["error_code"] == 4
+    assert response["error_code"] == RestartTaskErrors.NO_DISPATCH_STATUS
 
 # Taken directly from tests/test_processor.py
 def create_and_route(fs, mocked, task_id, config, uid="TESTFAKEUID") -> Tuple[List[str], str]:
@@ -225,29 +225,31 @@ async def test_dispatching_with_processing(fs, mercure_config: Callable[[Dict], 
     outgoing_folder = Path("/var/outgoing")
     success_folder = Path("/var/success")
     error_folder = Path("/var/error")
-    if fail_processor:
+    if fail_processor: # The processing failed, so retrying dispatching should not work
         folder_path = Path("/var/error") / new_task_id
         response = restart_dispatch(folder_path, outgoing_folder)
         assert "error" in response
         assert not (outgoing_folder / new_task_id).exists()
-    else:
-        folder_path = success_folder / new_task_id
-        loaded_task = json.loads((folder_path / mercure_names.TASKFILE).read_text())
-        loaded_task["dispatch"] = copy.deepcopy(dispatch_info)
-        with open(folder_path / mercure_names.TASKFILE, "w") as json_file:
-            json.dump(loaded_task, json_file)
-        print(json.loads((folder_path / mercure_names.TASKFILE).read_text()))
-        response = restart_dispatch(folder_path, outgoing_folder)
-        assert "success" in response
-        assert not folder_path.exists()
-        assert (outgoing_folder / new_task_id).exists()
-        task_file_json = json.loads((outgoing_folder / new_task_id / mercure_names.TASKFILE).read_text())
-        assert task_file_json["dispatch"]["retries"] == None
+        return
 
-        # Once moved to outgoing folder, verify the execution/dispatching
-        mocked.patch("dispatch.target_types.base.check_output", return_value="Success")
-        response = execute(outgoing_folder / new_task_id, success_folder, error_folder, 1, 1)
-        assert not (outgoing_folder / new_task_id).exists()
-        assert (success_folder / new_task_id).exists()
-        assert (success_folder / new_task_id / mercure_names.TASKFILE).exists()
-        assert (success_folder / new_task_id / "result.json").exists()
+    # Verify that restarting the dispatching worked
+    folder_path = success_folder / new_task_id
+    loaded_task = json.loads((folder_path / mercure_names.TASKFILE).read_text())
+    loaded_task["dispatch"] = copy.deepcopy(dispatch_info)
+    with open(folder_path / mercure_names.TASKFILE, "w") as json_file:
+        json.dump(loaded_task, json_file)
+    print(json.loads((folder_path / mercure_names.TASKFILE).read_text()))
+    response = restart_dispatch(folder_path, outgoing_folder)
+    assert "success" in response
+    assert not folder_path.exists() # it's not in the success folder
+    assert (outgoing_folder / new_task_id).exists() # it's in the outgoing folder ready to retry
+    task_file_json = json.loads((outgoing_folder / new_task_id / mercure_names.TASKFILE).read_text())
+    assert task_file_json["dispatch"]["retries"] == None # indicates that it hasn't retried at all
+
+    # Once moved to outgoing folder, verify the execution/dispatching
+    mocked.patch("dispatch.target_types.base.check_output", return_value="Success")
+    response = execute(outgoing_folder / new_task_id, success_folder, error_folder, 1, 1)
+    assert not (outgoing_folder / new_task_id).exists() # it's not outgoing anymore
+    assert (success_folder / new_task_id).exists() # dispatching succeeded
+    assert (success_folder / new_task_id / mercure_names.TASKFILE).exists()
+    assert (success_folder / new_task_id / "result.json").exists()

@@ -1194,14 +1194,14 @@
             data: {'task_id': jobId},
             dataType: 'json',
             error: function () {
-                alert("Restart Failed!")
+                alert("Restart failed: unknown error.")
             },
             success: function (data) {
                 // check if error is a key in data
                 if (data.hasOwnProperty("error")) {
-                    alert("Restart Failed - " + data["error"])
+                    alert("Restart failed: " + data["error"])
                 } else {
-                    alert("Job Restarted!")
+                    alert("Job restarted")
                 }
                 update();
             },
