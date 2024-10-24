@@ -76,28 +76,33 @@ create_user () {
   OWNER=mercure
 }
 
+
 create_folder () {
-  if [[ ! -e $1 ]]; then
-    echo "## Creating $1"
-    sudo mkdir -p $1
-    sudo chown $OWNER:$OWNER $1
-    sudo chmod a+x $1
-  else
-    echo "## $1 already exists."
-  fi
+    for folder in "$@"; do
+        if [[ ! -e "$folder" ]]; then
+            echo "## Creating $folder"
+            sudo mkdir -p "$folder"
+            sudo chown "$OWNER:$OWNER" "$folder"
+            sudo chmod a+x "$folder"
+        else
+            echo "## $folder already exists."
+        fi
+    done
 }
+
 create_folders () {
-  create_folder $MERCURE_BASE
-  create_folder $CONFIG_PATH
+  create_folder $MERCURE_BASE $CONFIG_PATH
   if [ $INSTALL_TYPE != "systemd" ]; then
     create_folder $DB_PATH
   fi
 
   if [[ ! -e $DATA_PATH ]]; then
       echo "## Creating $DATA_PATH..."
-      sudo mkdir "$DATA_PATH"
-      sudo mkdir "$DATA_PATH"/incoming "$DATA_PATH"/studies "$DATA_PATH"/outgoing "$DATA_PATH"/success
-      sudo mkdir "$DATA_PATH"/error "$DATA_PATH"/discard "$DATA_PATH"/processing "$DATA_PATH"/jobs
+      create_folder "$DATA_PATH"
+      local paths=("incoming" "studies" "outgoing" "success" "error" "discard" "jobs")
+      for path in "${paths[@]}"; do
+        create_folder "$DATA_PATH"/$path
+      done
       sudo chown -R $OWNER:$OWNER $DATA_PATH
       sudo chmod a+x $DATA_PATH
   else
@@ -214,7 +219,7 @@ EOFA
 
 setup_nomad_keys() {
   if [ ! -f "$MERCURE_BASE"/processor-keys/id_rsa ]; then
-    sudo mkdir /opt/mercure/processor-keys/
+    sudo mkdir "$MERCURE_BASE"/processor-keys/
     echo "Generating SSH key..."
     sudo ssh-keygen -t rsa -N '' -f /opt/mercure/processor-keys/id_rsa
     sudo chown -R $OWNER:$OWNER "$MERCURE_BASE/processor-keys"
@@ -338,7 +343,9 @@ start_docker () {
 }
 
 install_app_files() {
-  if [ ! -e "$MERCURE_BASE"/app ]; then
+  local overwrite=${1:-false}
+
+  if [ "$overwrite" = true ] || [ ! -e "$MERCURE_BASE"/app ]; then
     echo "## Installing app files..."
     sudo mkdir "$MERCURE_BASE"/app
     sudo cp -R "$MERCURE_SRC" "$MERCURE_BASE"/app
@@ -377,12 +384,13 @@ EOM
 
 install_services() {
   echo "## Installing services..."
-  sudo cp "$MERCURE_SRC"/installation/*.service /etc/systemd/system
+  sudo cp -n "$MERCURE_SRC"/installation/*.service /etc/systemd/system
+  sudo systemctl daemon-reload
   sudo systemctl enable mercure_bookkeeper.service mercure_cleaner.service mercure_dispatcher.service mercure_receiver.service mercure_router.service mercure_ui.service mercure_processor.service
-  sudo systemctl start mercure_bookkeeper.service mercure_cleaner.service mercure_dispatcher.service mercure_receiver.service mercure_router.service mercure_ui.service mercure_processor.service
+  sudo systemctl restart mercure_bookkeeper.service mercure_cleaner.service mercure_dispatcher.service mercure_receiver.service mercure_router.service mercure_ui.service mercure_processor.service
 
   sudo systemctl enable mercure_worker_fast@1.service mercure_worker_fast@2.service mercure_worker_slow@1.service mercure_worker_slow@2.service
-  sudo systemctl start mercure_worker_fast@1.service mercure_worker_fast@2.service mercure_worker_slow@1.service mercure_worker_slow@2.service
+  sudo systemctl restart mercure_worker_fast@1.service mercure_worker_fast@2.service mercure_worker_slow@1.service mercure_worker_slow@2.service
 }
 
 systemd_install () {
@@ -390,7 +398,7 @@ systemd_install () {
   create_user
   create_folders
   install_configuration
-  sudo cp "$MERCURE_SRC"/installation/mercure-sudoer /etc/sudoers.d/mercure
+  sudo cp -n "$MERCURE_SRC"/installation/sudoers/* /etc/sudoers.d/
   install_packages
   install_docker
   install_app_files
@@ -423,6 +431,36 @@ nomad_install () {
   install_docker
   install_nomad
   setup_nomad
+}
+
+systemd_update () {
+  if [ ! -d $MERCURE_BASE/app ]; then
+    echo "ERROR: $MERCURE_BASE/app does not exist; is Mercure installed?"
+    exit 1
+  fi
+  local OLD_VERSION=`cat $MERCURE_BASE/app/VERSION`
+  echo "Update mercure from $OLD_VERSION to $VERSION (y/n)?"
+  read -p "WARNING: Server may require manual fixes after update. Taking backups beforehand is recommended. " ANS
+  if [ "$ANS" = "y" ]; then
+    echo "Updating mercure..."
+  else
+    echo "Update aborted."
+    exit 0
+  fi
+  local services=("ui" "receiver" "bookkeeper" "dispatcher" "cleaner" "bookkeeper" )
+  for service in "${services[@]}"; do
+    if systemctl is-active --quiet mercure_$service.service; then
+      echo "ERROR: mercure_$service.service is running. Stop mercure first."
+      exit 1
+    fi
+  done
+  create_folders
+  install_app_files
+  sudo cp -n "$MERCURE_SRC"/installation/sudoers/* /etc/sudoers.d/
+  install_packages
+  install_dependencies
+  install_services
+  echo "Update complete."
 }
 
 FORCE_INSTALL="n"
@@ -460,6 +498,10 @@ OPTIND=1
 INSTALL_TYPE="${1:-docker}"
 if [[ $# > 0 ]];  then shift; fi
 
+if [ $INSTALL_TYPE = "systemd_update" ]; then 
+  systemd_update
+  exit 0
+fi
 if [ $INSTALL_TYPE = "docker" ]; then
   DOCKER_DEV=false
   DOCKER_BUILD=false
