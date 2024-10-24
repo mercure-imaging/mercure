@@ -66,7 +66,7 @@ class TokenAuth(BaseTokenAuth):
 from alembic.config import Config
 from alembic import command
 
-def create_database() -> None:
+def migrate_database() -> None:
     alembic_cfg = Config()
     alembic_cfg.set_main_option('script_location', os.path.dirname(os.path.realpath(__file__))+'/alembic')
     alembic_cfg.set_main_option('sqlalchemy.url', bk_config.DATABASE_URL)
@@ -401,9 +401,10 @@ async def store_processor_output(request) -> JSONResponse:
 
 @contextlib.asynccontextmanager
 async def lifespan(app):
+    db.init_database()
+    migrate_database()
     await db.database.connect()
     assert db.metadata
-    create_database()
     bk_config.set_api_key()
     yield
     await db.database.disconnect()
@@ -419,10 +420,9 @@ exception_handlers = {
     500: server_error
 }
 
-app = None
+app: Starlette
 
 def create_app() -> Starlette:
-    global app
     bk_config.read_bookkeeper_config()
     app = Starlette(debug=bk_config.DEBUG_MODE, routes=router, lifespan=lifespan, exception_handlers=exception_handlers)
     app.add_middleware(
@@ -434,6 +434,7 @@ def create_app() -> Starlette:
     return app
 
 def main(args=sys.argv[1:]) -> None:
+    global app
     if "--reload" in args or os.getenv("MERCURE_ENV", "PROD").lower() == "dev":
         # start_reloader will only return in a monitored subprocess
         reloader = hupper.start_reloader("bookkeeper.main")
@@ -448,7 +449,6 @@ def main(args=sys.argv[1:]) -> None:
 
     try:
         bk_config.read_bookkeeper_config()
-        db.init_database()
         config.read_config()
         query.set_timezone_conversion()
         app = create_app()
