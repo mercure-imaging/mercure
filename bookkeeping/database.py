@@ -15,6 +15,8 @@ import databases
 import common.monitor as monitor
 import bookkeeping.config as bk_config
 
+from common import config
+logger = config.get_logger()
 
 ###################################################################################
 ## Definition of database tables
