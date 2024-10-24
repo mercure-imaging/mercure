@@ -923,7 +923,7 @@ exception_handlers = {
 app = None
 
 def create_app() -> Starlette:
-    global app
+    global app, DEBUG_MODE, SECRET_KEY
     app = Starlette(debug=DEBUG_MODE, lifespan=lifespan, exception_handlers=exception_handlers, routes=router)
     # Don't check the existence of the static folder because the wrong parent folder is used if the
     # source code is parsed by sphinx. This would raise an exception and lead to failure of sphinx.
@@ -969,6 +969,7 @@ def launch_emergency_app() -> None:
 
 
 def main(args=sys.argv[1:]) -> None:
+    global app, WEBGUI_HOST, WEBGUI_PORT, SECRET_KEY
     if "--reload" in args or os.getenv("MERCURE_ENV", "PROD").lower() == "dev":
         # start_reloader will only return in a monitored subprocess
         reloader = hupper.start_reloader("webgui.main")
