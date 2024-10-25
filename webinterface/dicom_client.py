@@ -134,7 +134,7 @@ class SimpleDicomClient():
         store_contexts = [
             cx for cx in StoragePresentationContexts if cx.abstract_syntax not in _exclusion
         ]
-        ae = AE(ae_title="MERCURE")
+        ae = AE(ae_title=self.calling_aet)
         # Create application entity
         # Binding to port 0 lets the OS pick an available port
         ae.acse_timeout = 30
@@ -164,7 +164,7 @@ class SimpleDicomClient():
             # Send query
 
         ds = Dataset()
-        ds.QueryRetrieveLevel = 'SERIES'
+        ds.QueryRetrieveLevel = 'STUDY'
         ds.AccessionNumber = accession_number
         for key in search_filters:
             setattr(ds, key, "\\".join(search_filters.get(key,[])))
@@ -187,7 +187,7 @@ class SimpleDicomClient():
 
     def findscu(self,accession_number, search_filters={}) -> List[Dataset]:
         # Create application entity
-        ae = AE(ae_title="MERCURE")
+        ae = AE(ae_title=self.calling_aet)
 
         # Add a requested presentation context
         # ae.add_requested_context(StudyRootQueryRetrieveInformationModelFind)
@@ -205,6 +205,8 @@ class SimpleDicomClient():
         ds.StudyInstanceUID = ''
         ds.Modality = ''
         ds.NumberOfSeriesRelatedInstances = ''
+        ds.SeriesDescription = ''
+        ds.StudyDescription = ''
         for key in search_filters:
             setattr(ds, key, "\\".join(search_filters.get(key,[])))
 

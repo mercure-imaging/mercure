@@ -61,15 +61,15 @@ class DicomTargetHandler(SubprocessTargetHandler[DicomTarget]):
         return command, {}
 
     def find_from_target(self, target: DicomTarget, accession: str,  search_filters:Dict[str,List[str]]) -> List[Dataset]:
-        c = SimpleDicomClient(target.ip, target.port, target.aet_target, None)
+        c = SimpleDicomClient(target.ip, target.port, target.aet_target, target.aet_source, None)
         try:
             return c.findscu(accession, search_filters)
         except DicomClientCouldNotFind as e:
             return []
         
-    def get_from_target(self, target: DicomTarget, accession:str, search_filters:Dict[str,List[str]], path) -> Generator[ProgressInfo, None, None]:
+    def get_from_target(self, target: DicomTarget, accession: str, search_filters:Dict[str,List[str]], path) -> Generator[ProgressInfo, None, None]:
         config.read_config()
-        c = SimpleDicomClient(target.ip, target.port, target.aet_target, path)
+        c = SimpleDicomClient(target.ip, target.port, target.aet_target, target.aet_source, path)
         for identifier in c.getscu(accession, search_filters):
             completed, remaining = identifier.NumberOfCompletedSuboperations, identifier.NumberOfRemainingSuboperations, 
             progress = f"{ completed } / { completed + remaining }" 
