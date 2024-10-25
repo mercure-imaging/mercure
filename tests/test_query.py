@@ -157,7 +157,7 @@ def dicomweb_server(dummy_datasets, tempdir):
 
 def test_simple_dicom_client(dicom_server):
     """Test the SimpleDicomClient can connect to and query the DICOM server."""
-    client = SimpleDicomClient(dicom_server.ip, dicom_server.port, dicom_server.aet_target, None)
+    client = SimpleDicomClient(dicom_server.ip, dicom_server.port, dicom_server.aet_target, dicom_server.aet_source, None)
     
     result = client.findscu(MOCK_ACCESSIONS[0])
     assert result is not None  # We expect some result, even if it's an empty dataset

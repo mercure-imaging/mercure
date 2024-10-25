@@ -58,9 +58,10 @@ class SimpleDicomClient():
     port: int
     called_aet: str
     output_dir: str
-    def __init__(self, host, port, called_aet, out_dir) -> None:
+    def __init__(self, host, port, called_aet, calling_aet, out_dir) -> None:
         self.host = host
         self.port = int(port)
+        self.calling_aet = calling_aet or "MERCURE"
         self.called_aet = called_aet
         self.output_dir = out_dir
     
@@ -242,7 +243,7 @@ if __name__ == "__main__":
     accession_number = sys.argv[5]
 
     print(f"{remote_host=} {remote_port=} {calling_aet=} {called_aet=} {accession_number=}")
-    c = SimpleDicomClient(remote_host, remote_port, called_aet, "/tmp/test-move")
+    c = SimpleDicomClient(remote_host, remote_port, called_aet, calling_aet, "/tmp/test-move")
     # study_uid = c.get_study_uid(accession_number)
     # print(study_uid)
     c.getscu(accession_number, {})
