@@ -99,7 +99,7 @@ create_folders () {
   if [[ ! -e $DATA_PATH ]]; then
       echo "## Creating $DATA_PATH..."
       create_folder "$DATA_PATH"
-      local paths=("incoming" "studies" "outgoing" "success" "error" "discard" "jobs")
+      local paths=("incoming" "studies" "outgoing" "success" "error" "discard" "jobs" "processing")
       for path in "${paths[@]}"; do
         create_folder "$DATA_PATH"/$path
       done
