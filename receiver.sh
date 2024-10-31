@@ -7,7 +7,10 @@ echo ""
 echo "Arguments: $@"
 echo ""
 binary=bin/getdcmtags
-if [[ $(lsb_release -rs) == "22.04" ]]; then 
+if [[ $(lsb_release -rs) == "24.04" ]]; then 
+    # Ubuntu 24.04 can use the same binary as 22.04
+    binary=bin/ubuntu22.04/getdcmtags
+elif [[ $(lsb_release -rs) == "22.04" ]]; then 
     binary=bin/ubuntu22.04/getdcmtags
 elif [[ $(lsb_release -rs) == "20.04" ]]; then 
     binary=bin/ubuntu20.04/getdcmtags
