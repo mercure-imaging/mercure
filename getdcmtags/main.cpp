@@ -23,8 +23,7 @@
 
 #include "tags_list.h"
 
-#define VERSION "0.72"
-
+#define VERSION "getdcmtags Version 0.73"
 
 static OFString tagSpecificCharacterSet = "";
 static OFString tagSeriesInstanceUID = "";
@@ -354,7 +353,7 @@ int main(int argc, char *argv[])
     if (argc < 5)
     {
         std::cout << std::endl;
-        std::cout << "getdcmtags Version " << VERSION << std::endl;
+        std::cout << VERSION << std::endl;
         std::cout << "------------------------" << std::endl
                   << std::endl;
         std::cout << "Usage: [dcm file to analyze] [sender address] [sender AET] [receiver AET] [ip:port of bookkeeper] [api key for bookkeeper]" << std::endl
