@@ -11,7 +11,7 @@ We thank `Zulip <https://zulip.com>`_ for sponsoring our project with a free clo
 
 .. container:: bullet
 
-    .. image:: images/zulip-org-logo.svg
+    .. image:: /images/zulip-org-logo.svg
         :width: 200px
         :align: right
 
