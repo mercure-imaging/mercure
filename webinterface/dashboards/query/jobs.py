@@ -123,7 +123,10 @@ class CheckAccessionsTask(ClassBasedRQTask):
             self._job.meta['failed_reason'] = str(e)
             self._job.save_meta() # type: ignore
             if self.parent and (job_parent := Job.fetch(self.parent)):
-                job_parent.meta['failed_reason'] = e.args[0]
+                if e.args:
+                    job_parent.meta['failed_reason'] = f"{str(e)} ({str(e.args[0])})"
+                else:
+                    job_parent.meta['failed_reason'] = str(e)
                 job_parent.save_meta() # type: ignore
                 Queue(job_parent.origin)._enqueue_job(job_parent,at_front=True)
             raise

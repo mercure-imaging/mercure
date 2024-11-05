@@ -206,7 +206,7 @@ def test_query_job(dicom_server, tempdir, rq_connection,fs):
     try:
         example_dcm = next(k for k in Path(tempdir).rglob("*.dcm"))
     except StopIteration:
-        assert False, f"No DICOM file found in {tempdir}"
+        raise Exception(f"No DICOM file found in {tempdir}")
     assert pydicom.dcmread(example_dcm).AccessionNumber == MOCK_ACCESSIONS[0]
 
 def tree(path, prefix='', level=0) -> None:
