@@ -20,7 +20,7 @@ The health of a mercure server can be monitored using Graphite for data collecti
 
 The diagram shown in the top-left utilizes the data transmitted by the mercure services during each run. If one of the colored blocks disappears for a longer period of time, it indicates that the process might be hanging. Useful are also the other diagrams in the top row, showing pending files and series in the incoming folder as reported by the router module, which can indicate if the server is not able to keep up with the load created by the scanners.
 
-.. image:: dashboards_graphite.png
+.. image:: images/dashboards/graphite.png
    :width: 550px
    :align: center
    :class: border
@@ -32,7 +32,7 @@ Dispatch Explorer
 
 The Redash dashboard "Dispatch Explorer" allows showing which patient series have been dispatched to a selected target in a selectable time frame. It links to the "Series Events" dashboard that summarizes all information collected for a particular series.
 
-.. image:: dashboards_dispatchexplorer.png
+.. image:: images/dashboards/dispatchexplorer.png
    :width: 550px
    :align: center
    :class: border
@@ -89,7 +89,7 @@ Last Series Received
 
 The dashboard "Last Series Received" shows the time when the last series from any imaging device has been received. It can be used to detect if there are problems with the DICOM transfer from one of the scanners. The query can be easily modified to provide a trigger for automatic alerts.
 
-.. image:: dashboards_lastseriesreceived.png
+.. image:: images/dashboards/lastseriesreceived.png
    :width: 550px
    :align: center
    :class: border
@@ -118,7 +118,7 @@ Received Series
 
 The "Received Series" dashboard shows all series that have been received by the router in descending chronological order, with links to the "Series Events" dashboard for details on the series. Using the UI controls on top of the dashboard, series can be searched by patient name, MRN, ACC, and modality.
 
-.. image:: dashboards_receivedseries.png
+.. image:: images/dashboards/receivedseries.png
    :width: 550px
    :align: center
    :class: border
@@ -176,7 +176,7 @@ Series Events
 
 The "Series Events" dashboard shows all information collected for a particular series, including DICOM tag information on the left side and a journal of how this series has been processed on the right side.
 
-.. image:: dashboards_seriesevents.png
+.. image:: images/dashboards/seriesevents.png
    :width: 550px
    :align: center
    :class: border
@@ -256,7 +256,7 @@ System Status
 
 The "System Status" dashboard shows all system and webgui events in descending chronological order. Moreover, it shows all error events in the top-right table.
 
-.. image:: dashboards_systemstatus.png
+.. image:: images/dashboards/systemstatus.png
    :width: 550px
    :align: center
    :class: border

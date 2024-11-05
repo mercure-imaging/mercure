@@ -7,7 +7,7 @@ Web interface
 
 mercure can be conveniently configured and controlled using the web-based user interface. To access it, use a modern web browser (e.g., Chrome or Firefox) and enter the IP of your mercure server as URL. Depending on the port that you have selected during the installation (by default 8000), you need to add ":8000" to the URL.
 
-.. image:: ui_login.png
+.. image:: images/ui/login.png
    :width: 550px
    :align: center
    :class: border
@@ -23,7 +23,7 @@ User management
 
 Users can be created, modified, and deleted on the "Users" page. There are two types of users: Normal users, who can view the configuration and status but not change any settings, and administrators, who have full access. Users with administration rights are indicated by an icon with a shield in the user list. Users can also be added to permission groups. Permission groups are not yet used for anything, but they will be used in future mercure versions to provide granular access control.
 
-.. image:: ui_users.png
+.. image:: images/ui/users.png
    :width: 550px
    :align: center
    :class: border
@@ -36,7 +36,7 @@ System status and control
 
 The status of the mercure server and its service components can be monitored on the "Overview" page. If a service module is running, it will be shown in green color, otherwise it is shown in red. In normal operation, everything should be green. 
 
-.. image:: ui_status.png
+.. image:: images/ui/status.png
    :width: 550px
    :align: center
    :class: border
@@ -45,7 +45,7 @@ The Overview page also shows the disk space available in the folder for bufferin
 
 You can start, stop, and restart services by clicking the "Service Control" button. This will show a dialog where you can select which service(s) to control and which operation to execute (e.g., start or stop). If a service does not react anymore at all, it is also possible to kill a service. 
 
-.. image:: ui_status_control.png
+.. image:: images/ui/status_control.png
    :width: 550px
    :align: center
    :class: border
@@ -62,14 +62,14 @@ Configuring targets
 
 Target nodes that should receive processed and routed DICOM series (via DICOM, DICOM+TLS or SFTP connection) can be defined and configured on the "Targets" page. The first page shows an overview of the currently configured targets. By clicking on an individual item, you can see the target details (e.g., IP address and port). You can test if the target can be reached by clicking the "Test" button, which will try to ping the server and open a connection (via C-Echo or SFTP).
 
-.. image:: ui_targets.png
+.. image:: images/ui/targets.png
    :width: 550px
    :align: center
    :class: border
 
 Click the "Add New" button to create a new target. This can be done during normal operation of the server, i.e. it is not necessary to stop any of the services for adding new targets.
 
-.. image:: ui_target_edit.png
+.. image:: images/ui/target_edit.png
    :width: 550px
    :align: center
    :class: border
@@ -100,7 +100,7 @@ Installing modules
 
 An overview of the installed processing modules can be seen on the "Modules" page. Details are shown by clicking on an item, which also allows editing the module settings.
 
-.. image:: ui_modules.png
+.. image:: images/ui/modules.png
    :width: 550px
    :align: center
    :class: border
@@ -111,7 +111,7 @@ To setup a new processing module, click the "Install Module" button. Select a un
 
 Afterwards, you can edit additional Docker-specific settings on the "Docker" tab (additional volumes, environment variables, etc.). In most cases, these settings are not needed. 
 
-.. image:: ui_modules_edit.png
+.. image:: images/ui/modules_edit.png
    :width: 550px
    :align: center
    :class: border
@@ -128,7 +128,7 @@ Defining rules
 
 After you have configured your targets and processing modules, you can define rules that specify which DICOM series should be processed and to which targets the images should be dispatched. This can be done on the "Rules" page.
 
-.. image:: ui_rules.png
+.. image:: images/ui/rules.png
    :width: 550px
    :align: center
    :class: border
@@ -143,7 +143,7 @@ All rules are evaluated whenever a new DICOM series has been received. The rules
 
 When writing the selection rule, tags can be referenced using the format @TagName@, for example @PatientName@. When the rule gets evaluated, such tag placeholder will be replaced with the values read from the individual received DICOM series.
 
-.. image:: ui_rules_edit.png
+.. image::  images/ui/rules/edit.png
    :width: 550px
    :align: center
    :class: border
@@ -175,7 +175,7 @@ would trigger for series called "CINE" or "cine". If you want to test for numeri
 
 To test a selection rule before activating it, click the icon with the cog wheels on the left side of input box. If you see a red icon in the dialog, the rule notation is invalid (the dialog will tell you why). If the rule is valid, the dialog will test if the rule would trigger if a DICOM series with the values shown in the lower part of the dialog would be received. You can modify these values and test if the rule reacts as expected.
 
-.. image:: ui_rules_test.png
+.. image:: images/ui/rules/test.png
    :width: 550px
    :align: center
    :class: border
@@ -198,7 +198,7 @@ Depending on the selected Action, the tabs "Processing" and "Routing" will becom
 
 The Trigger control allows selecting when the action should be triggered. If "Completed Series" has been selected, the action is executed when a DICOM series has been received for which the rule evaluates to True. Thus, if multiple series from a patient study are received, these series are processed separately. However, sometimes it is required to process all DICOM series from one patient study together. For example, an AI-based analysis algorithm might require multiple series with different contrast. In this case, the option "Completed Study" needs to be selected, and the additional control "Completion Criteria" will appear, which allows selecting when the study should considered complete. 
 
-.. image:: ui_rules_edit_trigger.png
+.. image:: images/ui/rules/edit_trigger.png
    :width: 550px
    :align: center
    :class: border
@@ -213,7 +213,7 @@ Rules can be temporarily disabled by toggling the "Disable Rule" switch. In this
 
 For rules involving processing, the "Processing" tab can be used to select the processing module that should be executed and to provide rule-specific module settings. These settings will be merged with the global module settings and will overwrite global settings if the same keys occur in both settings. The settings have to be specified in JSON format. It depends on the individual module which settings are available. This information should be looked up from the module documentation. 
 
-.. image:: ui_rules_edit_processing.png
+.. image:: images/ui/rules/edit_processing.png
    :width: 550px
    :align: center
    :class: border
@@ -226,7 +226,7 @@ When selecting the "Retain input images" switch, the module will output both the
 
 For rules involving dispatching, the "Routing" tab can be used to select the target to which the DICOMs should be dispatched (after finishing processing modules, if selected). At this time, images can only be dispatched to a single target per rule. If images should be sent to multiple destinations, it is currently necessary to define multiple rules with different target. This limitation will be removed in future versions of mercure.
 
-.. image:: ui_rules_edit_routing.png
+.. image:: images/ui/rules/edit_routing.png
    :width: 550px
    :align: center
    :class: border
@@ -235,7 +235,7 @@ For rules involving dispatching, the "Routing" tab can be used to select the tar
 
 The "Notification" tab allows configuring webhook calls that are triggered when the rule gets activated, when the processing completes, and when an error occurs that is related to the rule. Webhook calls can be used to send notification messages into Slack, WebEx, Teams, or comparable messaging services. They can also be used for connecting other external services, for example, changing the color of a physical status light.
 
-.. image:: ui_rules_edit_notification.png
+.. image:: images/ui/rules/edit_notification.png
    :width: 550px
    :align: center
    :class: border
@@ -248,7 +248,7 @@ The URL and payload for the webhook call need to be provided. Payload templates 
 
 The "Information" tab can be used to document the rule. The purpose of the rule can be written as free-text into the Comment field, and an email address can be written into the Contact field, so that it can be looked up at a later time why the rule was defined and who requested it. It is also possible to add tag attributes to the rule. These tags are not yet used for anything else, but might be used in future versions of mercure for filtering purpose and access control.
 
-.. image:: ui_rules_edit_information.png
+.. image:: images/ui/rules/edit_information.png
    :width: 550px
    :align: center
    :class: border
@@ -259,7 +259,7 @@ Queue management
 
 The "Queue" page allows monitoring the status of mercure's processing and routing queues, and it provides basic functions for modifying jobs in the processing queue.
 
-.. image:: ui_queue.png
+.. image:: images/ui/queue.png
    :width: 550px
    :align: center
    :class: border
@@ -278,7 +278,7 @@ The lower part of the page shows the status of individual jobs in mercure's diff
  
 The "Processing" tab shows the jobs currently placed in the processing queue, i.e. jobs (series or studies) for which processing modules are executed. You can mark jobs by clicking on the corresponding row. This will activate the toolbar above the table, which allows, e.g., displaying additional job information or deleting jobs. Similarly, the "Routing" tab shows the outgoing jobs currently placed in the routing queue.
 
-.. image:: ui_queue_processing.png
+.. image:: images/ui/queue_processing.png
    :width: 550px
    :align: center
    :class: border
