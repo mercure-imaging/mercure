@@ -116,9 +116,11 @@ services:
     <<: *env
   
   redis:
-    <<: *user
     image: redis
     restart: always
+    command: redis-server --save 20 1
+    volumes: 
+      - redis-cache:/data
 
   worker_fast:
     <<: *user
@@ -167,3 +169,5 @@ volumes:
       type: 'none'
       o: 'bind'
       device: '/opt/mercure/config'
+  cache:
+    driver: local
