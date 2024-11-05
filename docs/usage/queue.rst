@@ -1,5 +1,5 @@
 Queue management
-----------------
+================
 
 The "Queue" page allows monitoring the status of mercure's processing and routing queues, and it provides basic functions for modifying jobs in the processing queue.
 
@@ -10,11 +10,13 @@ The "Queue" page allows monitoring the status of mercure's processing and routin
 
 .. note:: By default, the views do not update automatically when the page is open, as this could have negative impact on the server load. Press the Refresh button in the top-right corner to update the queue lists. When pressing the Auto Update button, the view will be updated every 10 sec.
 
-**Queue status**
+Queue status
+------------
 
 The upper part of the page indicates if mercure is currently processing or routing images. Using the switches "Suspend Queue", you can halt the processing or routing queue. In this case, mercure will finish the active job but will not start another job until the queue has been started again. This can be helpful if it is necessary to patch job parameters, or if module settings need to be changed before additional series can be processed.
 
-**Job status**
+Job status
+----------
 
 The lower part of the page shows the status of individual jobs in mercure's different queues. 
 

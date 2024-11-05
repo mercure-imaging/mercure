@@ -37,9 +37,9 @@ After choosing a unique name for the target, you can edit the target settings.
 Direction
 ---------
 
-The default direction, "push", is available on all targets. This indicates that this target can be used at a routing target. 
+The default direction, "store", is available on all targets. This indicates that this target can be used at a routing target. 
 
-"pull" indicates that this target can only be used in the query interface. This should be used for services that cannot or should not be sent to, but can be queried. It is currently available on DICOM and DICOMWeb.
+"Query" indicates that this target can only be used in the query interface. This should be used for services that cannot or should not be sent to, but can be queried. It is currently available on DICOM and DICOMWeb.
 
 "both" indicates that this target can be used in both situations.
 
