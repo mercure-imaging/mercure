@@ -1,11 +1,12 @@
 Usage
 =====
 
-.. toctree::
-    :caption: Topics
-    :glob:
-    
-    *
+Topics
+------
+  .. toctree::
+      :glob:
+      
+      *
 
 Web interface 
 -------------

@@ -15,9 +15,8 @@ It is not necessary to stop mercure services while defining new rules. The mercu
 
 All rules are evaluated whenever a new DICOM series has been received. The rules can use a set of DICOM tags extracted from the incoming DICOM files. To see the full list of DICOM tags available for writing rules, click the "Available Tags" button.
 
-.. tip:: If you need additional tags that are currently not in the list, please contact us (or modify the getdcmtags module yourself).
+.. tip:: If you need additional tags that are currently not in the list, you can enable additional tags in system settings.
 
-When writing the selection rule, tags can be referenced using the format @TagName@, for example @PatientName@. When the rule gets evaluated, such tag placeholder will be replaced with the values read from the individual received DICOM series.
 
 .. image:: /images/ui/rules/edit.png
    :width: 550px
@@ -26,28 +25,32 @@ When writing the selection rule, tags can be referenced using the format @TagNam
 
 A received series will processed if the selection rule evaluates to True, and it will be ignored if the rule evaluates to False. If none of the defined rules evaluates to True, the series will be discarded.
 
-Selection rules can be written in a Python-like syntax. For example, the rule
+Selection rules are evaluated as Python expressions. Tags are available as properties on an object called "`tags`", so for instance a rule like:
 
 .. highlight:: none
 
 :: 
 
-  'CINE' in @SeriesDescription@
+  'CINE' in tags.SeriesDescription
+
+.. warning:: Older versions of Mercure used a syntax like <pre>'CINE' in %SeriesDescription%`</pre> This syntax is still valid but should not be used in new rules.
+
 
 will activate for all series that have the word "CINE" in the series description (e.g., "CINE 2ch"). If you only want to send series that are exactly called "CINE", use the following rule instead
+
 :: 
 
-  @SeriesDescription@ = 'CINE'
+  tags.SeriesDescription == 'CINE'
 
 This rule would not trigger if the series is called "CINE 2ch". Multiple conditions can be combined using the "or" and "and" operators. Here, it is recommended to enclose every sub-condition with "( )". By default, DICOM tags are treated as strings and are case-sensitive. If you want to make your condition case-insensitive, then append ".lower()" to the tag. For example, the rule 
 :: 
 
-  @SeriesDescription@.lower() = 'cine'
+  tags.SeriesDescription.lower() = 'cine'
 
 would trigger for series called "CINE" or "cine". If you want to test for numerical value thresholds (e.g., if the slice thickness is lower than 2mm), you first need to convert the tag into a float by writing the tag inside "float( )". This then allows you to write a rule like
 :: 
 
-  float(@SliceThickness@) < 2.0
+  float(tags.SliceThickness) < 2.0
 
 To test a selection rule before activating it, click the icon with the cog wheels on the left side of input box. If you see a red icon in the dialog, the rule notation is invalid (the dialog will tell you why). If the rule is valid, the dialog will test if the rule would trigger if a DICOM series with the values shown in the lower part of the dialog would be received. You can modify these values and test if the rule reacts as expected.
 
@@ -87,7 +90,11 @@ Rules can be temporarily disabled by toggling the "Disable Rule" switch. In this
 
 **Processing tab**
 
-For rules involving processing, the "Processing" tab can be used to select the processing module that should be executed and to provide rule-specific module settings. These settings will be merged with the global module settings and will overwrite global settings if the same keys occur in both settings. The settings have to be specified in JSON format. It depends on the individual module which settings are available. This information should be looked up from the module documentation. 
+For rules involving processing, the "Processing" tab can be used to select the processing module or modules. To add a module, select it in the dropdown box and press the "+" button to add it to the end of the module list. Each module will be executed in order, left to right. Generally, the output of each module will be used as the input for the next. 
+
+The "settings" input provides rule-specific module settings. These settings will be merged with the global module settings and will overwrite global settings if the same keys occur in both. The settings have to be specified in JSON format. It depends on the individual module which settings are available. This information should be looked up from the module documentation. 
+
+If you are using multiple modules, this will be used for each of the modules.
 
 .. image:: /images/ui/rules/edit_processing.png
    :width: 550px
@@ -100,7 +107,7 @@ When selecting the "Retain input images" switch, the module will output both the
 
 **Routing tab**
 
-For rules involving dispatching, the "Routing" tab can be used to select the target to which the DICOMs should be dispatched (after finishing processing modules, if selected). At this time, images can only be dispatched to a single target per rule. If images should be sent to multiple destinations, it is currently necessary to define multiple rules with different target. This limitation will be removed in future versions of mercure.
+For rules involving dispatching, the "Routing" tab can be used to select the target(s) to which the DICOMs should be dispatched after finishing any processing modules.
 
 .. image:: /images/ui/rules/edit_routing.png
    :width: 550px
@@ -109,16 +116,24 @@ For rules involving dispatching, the "Routing" tab can be used to select the tar
 
 **Notification tab**
 
-The "Notification" tab allows configuring webhook calls that are triggered when the rule gets activated, when the processing completes, and when an error occurs that is related to the rule. Webhook calls can be used to send notification messages into Slack, WebEx, Teams, or comparable messaging services. They can also be used for connecting other external services, for example, changing the color of a physical status light.
+The "Notification" tab allows configuring webhook calls and emails that can be triggered at various points after a DICOM series is received.
+
+Webhook calls can be used to send notification messages into Slack, WebEx, Teams, or comparable messaging services. They can also be used for connecting other external services, for example, changing the color of a physical status light.
 
 .. image:: /images/ui/rules/edit_notification.png
    :width: 550px
    :align: center
    :class: border
 
-The URL and payload for the webhook call need to be provided. Payload templates for Slack and WebEx can be inserted by pressing the button "Insert Template". To obtain the webhook URL, you need to go into the configuration of your messaging service (e.g., Slack) and follow the instruction for setting up an incoming webhook.
+The "webhook body" input is free text, which can be used eg to specify the contents of a Slack message. It supports jinja2 templates. 
+
+The URL and payload for the webhook call need to be provided. Payload templates for Slack and WebEx can be inserted by pressing the button "Insert Template". To obtain the webhook URL, you need to go into the configuration of your messaging service (e.g., Slack) and follow the instruction for setting up an incoming webhook. You can use <pre>"{{ body }}"</pre> to interpolate the "webhook body" as an escaped string.
 
 .. important:: Do not send any sensitive information in the payload because the webhook call will, in most cases, be sent to an externally operated service.
+   
+The "email body" works much the same way as the "webhook body." Select "HTML content" if it should be sent as an HTML email, or leave it unselected to send it as plaintext.
+
+If either the email address or webhook url is blank, notifications will not be sent via that modality. 
 
 **Information tab**
 
