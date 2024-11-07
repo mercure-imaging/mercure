@@ -288,6 +288,11 @@ async def show_jobs_fail(request):
             job_scope: str = "Series"
             job_failstage: str = "Unknown"
 
+            try:
+                job_failstage = get_fail_stage(Path(entry.path))
+            except Exception as e:
+                logger.exception(e)
+
             task_file = Path(entry.path) / mercure_names.TASKFILE
             if not task_file.exists():
                 task_file = Path(entry.path) / "in" / mercure_names.TASKFILE
@@ -504,5 +509,31 @@ def restart_dispatch(taskfile_folder: Path, outgoing_folder: Path) -> dict:
 
     return {"success": "task restarted"}
 
+def get_fail_stage(taskfile_folder: Path) -> str:
+    if not taskfile_folder.exists():
+        return "Unknown"
+
+    dispatch_ready = (
+        not (taskfile_folder / mercure_names.LOCK).exists()
+        and not (taskfile_folder / mercure_names.ERROR).exists()
+        and not (taskfile_folder / mercure_names.PROCESSING).exists()
+    )
+    if not dispatch_ready:
+        if (taskfile_folder / mercure_names.PROCESSING).exists():
+            return "Processing"
+        return "Unknown"
+
+    if not (taskfile_folder / mercure_names.TASKFILE).exists():
+        return "Unknown"
+
+    taskfile_path = taskfile_folder / mercure_names.TASKFILE
+    with open(taskfile_path, "r") as json_file:
+        loaded_task = json.load(json_file)
+
+    action = loaded_task.get("info", {}).get("action", "")
+    if action and action not in (mercure_actions.BOTH, mercure_actions.ROUTE):
+        return "Unknown"
+
+    return "Dispatching"
 
 queue_app = Starlette(routes=router)
