@@ -518,12 +518,8 @@ def get_fail_stage(taskfile_folder: Path) -> str:
         and not (taskfile_folder / mercure_names.ERROR).exists()
         and not (taskfile_folder / mercure_names.PROCESSING).exists()
     )
-    if not dispatch_ready:
-        if (taskfile_folder / mercure_names.PROCESSING).exists():
-            return "Processing"
-        return "Unknown"
 
-    if not (taskfile_folder / mercure_names.TASKFILE).exists():
+    if not dispatch_ready or not (taskfile_folder / mercure_names.TASKFILE).exists():
         return "Unknown"
 
     taskfile_path = taskfile_folder / mercure_names.TASKFILE
