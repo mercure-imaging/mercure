@@ -36,6 +36,7 @@ import common.log_helpers as log_helpers
 from common.constants import (
     mercure_events,
 )
+from dispatch.send import update_fail_stage
 
 
 logger = config.get_logger()
@@ -583,6 +584,8 @@ def move_results(
         lock.free()
     if not processing_success:
         logger.debug(f"Failing: {folder}")
+        if not update_fail_stage(folder, "Processing"):
+            logger.error(  f"Error updating fail stage for task {task_id}")
         move_out_folder(task_id, folder, Path(config.mercure.error_folder), move_all=True)
     else:
         if needs_dispatching:

@@ -6,6 +6,7 @@ to target destinations.
 """
 
 # Standard python includes
+import json
 import shutil
 import subprocess
 import time
@@ -136,6 +137,11 @@ def execute(
             task_content.id,
             target="",
         )
+        if not update_fail_stage(source_folder, "Dispatching"):
+            logger.error(  # handle_error
+                f"Error updating fail stage for task {uid}",
+                task_content.id,
+            )
         _move_sent_directory(task_content.id, source_folder, error_folder)
         _trigger_notification(task_content, mercure_events.ERROR)
         return
@@ -147,6 +153,11 @@ def execute(
                 task_content.id,
                 target=target_item,
             )
+            if not update_fail_stage(source_folder, "Dispatching"):
+                logger.error(  # handle_error
+                    f"Error updating fail stage for task {uid}",
+                    task_content.id,
+                )
             _move_sent_directory(task_content.id, source_folder, error_folder)
             _trigger_notification(task_content, mercure_events.ERROR)
             return
@@ -257,6 +268,11 @@ def execute(
         else:
             logger.info(f"Max retries reached, moving to {error_folder}")
             monitor.send_task_event(task_event.SUSPEND, task_content.id, 0, ",".join(dispatch_info.target_name), "Max retries reached")
+            if not update_fail_stage(source_folder, "Dispatching"):
+                logger.error(  # handle_error
+                    f"Error updating fail stage for task {uid}",
+                    task_content.id,
+                )
             _move_sent_directory(task_content.id, source_folder, error_folder)
             monitor.send_task_event(task_event.MOVE, task_content.id, 0, str(error_folder), "Moved to error folder")
             monitor.send_event(m_events.PROCESSING, severity.ERROR, f"Series suspended after reaching max retries")
@@ -309,3 +325,21 @@ def _trigger_notification(task: Task, event: mercure_events) -> None:
             details=notification.get_task_custom_notification(task),
             send_always=request_do_send,
         )
+
+
+def update_fail_stage(source_folder: Path, fail_stage : str) -> bool:
+    in_string = "in" if fail_stage == "Processing" else ""
+    target_json_path : Path = source_folder / in_string / mercure_names.TASKFILE
+    try:
+        with open(target_json_path, "r") as file:
+            task: Task = Task(**json.load(file))
+
+        task_info = task.info
+        task_info.fail_stage = fail_stage
+
+        with open(target_json_path, "w") as file:
+            json.dump(task.dict(), file)
+    except Exception as e:
+        return False
+
+    return True

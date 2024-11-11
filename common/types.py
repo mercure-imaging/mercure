@@ -310,6 +310,7 @@ class TaskInfo(BaseModel, Compat):
     mercure_appliance: str
     mercure_server: str
     device_serial_number: Optional[str] = None
+    fail_stage: Optional[str] = None
 
 
 class TaskDispatchStatus(BaseModel, Compat):

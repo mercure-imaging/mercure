@@ -288,6 +288,7 @@ async def show_jobs_fail(request):
             job_scope: str = "Series"
             job_failstage: str = "Unknown"
 
+            # keeping the manual way of getting the fail stage too for now
             try:
                 job_failstage = get_fail_stage(Path(entry.path))
             except Exception as e:
@@ -306,6 +307,8 @@ async def show_jobs_fail(request):
                         job_scope = "Series"
                     else:
                         job_scope = "Study"
+                    if (task.info.fail_stage):
+                        job_failstage = task.info.fail_stage
             except Exception as e:
                 logger.exception(e)
                 job_acc = "Error"
