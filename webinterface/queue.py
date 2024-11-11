@@ -283,6 +283,7 @@ async def show_jobs_fail(request):
     for entry in os.scandir(config.mercure.error_folder):
         if entry.is_dir():
             job_name: str = entry.name
+            timestamp: float = entry.stat().st_mtime
             job_acc: str = ""
             job_mrn: str = ""
             job_scope: str = "Series"
@@ -320,9 +321,10 @@ async def show_jobs_fail(request):
                 "MRN": job_mrn,
                 "Scope": job_scope,
                 "FailStage": job_failstage,
+                "CreationTime": timestamp,
             }
-
-    return JSONResponse(job_list)
+    sorted_jobs = collections.OrderedDict(sorted(job_list.items(), key=lambda x: x[1]["CreationTime"], reverse=False))  # type: ignore
+    return JSONResponse(sorted_jobs)
 
 
 @router.get("/status")
