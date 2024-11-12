@@ -309,7 +309,7 @@ async def show_jobs_fail(request):
                     else:
                         job_scope = "Study"
                     if (task.info.fail_stage):
-                        job_failstage = task.info.fail_stage
+                        job_failstage = str(task.info.fail_stage).capitalize()
             except Exception as e:
                 logger.exception(e)
                 job_acc = "Error"
