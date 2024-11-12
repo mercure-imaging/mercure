@@ -138,12 +138,7 @@ def execute(
             task_content.id,
             target="",
         )
-        if not update_fail_stage(source_folder, FailStage.DISPATCHING):
-            logger.error(  # handle_error
-                f"Error updating fail stage for task {uid}",
-                task_content.id,
-            )
-        _move_sent_directory(task_content.id, source_folder, error_folder)
+        _move_sent_directory(task_content.id, source_folder, error_folder, FailStage.DISPATCHING)
         _trigger_notification(task_content, mercure_events.ERROR)
         return
 
@@ -154,12 +149,7 @@ def execute(
                 task_content.id,
                 target=target_item,
             )
-            if not update_fail_stage(source_folder, FailStage.DISPATCHING):
-                logger.error(  # handle_error
-                    f"Error updating fail stage for task {uid}",
-                    task_content.id,
-                )
-            _move_sent_directory(task_content.id, source_folder, error_folder)
+            _move_sent_directory(task_content.id, source_folder, error_folder, FailStage.DISPATCHING)
             _trigger_notification(task_content, mercure_events.ERROR)
             return
 
@@ -269,19 +259,14 @@ def execute(
         else:
             logger.info(f"Max retries reached, moving to {error_folder}")
             monitor.send_task_event(task_event.SUSPEND, task_content.id, 0, ",".join(dispatch_info.target_name), "Max retries reached")
-            if not update_fail_stage(source_folder, FailStage.DISPATCHING):
-                logger.error(  # handle_error
-                    f"Error updating fail stage for task {uid}",
-                    task_content.id,
-                )
-            _move_sent_directory(task_content.id, source_folder, error_folder)
+            _move_sent_directory(task_content.id, source_folder, error_folder, FailStage.DISPATCHING)
             monitor.send_task_event(task_event.MOVE, task_content.id, 0, str(error_folder), "Moved to error folder")
             monitor.send_event(m_events.PROCESSING, severity.ERROR, f"Series suspended after reaching max retries")
             _trigger_notification(task_content, mercure_events.ERROR)
             logger.info(f"Dispatching folder {source_folder} not successful")
 
 
-def _move_sent_directory(task_id, source_folder, destination_folder) -> None:
+def _move_sent_directory(task_id, source_folder, destination_folder, fail_stage=None) -> None:
     """
     This check is needed if there is already a folder with the same name
     in the success folder. If so a new directory is create with a timestamp
@@ -292,10 +277,14 @@ def _move_sent_directory(task_id, source_folder, destination_folder) -> None:
             target_folder = destination_folder / (source_folder.name + "_" + datetime.now().isoformat())
             logger.debug(f"Moving {source_folder} to {target_folder}")
             shutil.move(source_folder, target_folder, copy_function=shutil.copy2)
+            if fail_stage and not update_fail_stage(target_folder, fail_stage):
+                logger.error(f"Error updating fail stage for task {task_id}")
             (Path(target_folder) / mercure_names.PROCESSING).unlink()
         else:
             logger.debug(f"Moving {source_folder} to {destination_folder / source_folder.name}")
             shutil.move(source_folder, destination_folder / source_folder.name)
+            if fail_stage and not update_fail_stage(destination_folder / source_folder.name, fail_stage):
+                logger.error(f"Error updating fail stage for task {task_id}")
             (destination_folder / source_folder.name / mercure_names.PROCESSING).unlink()
     except:
         logger.error(f"Error moving folder {source_folder} to {destination_folder}", task_id)  # handle_error
