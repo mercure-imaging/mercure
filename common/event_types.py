@@ -77,3 +77,11 @@ class severity(Enum):
     WARNING = 1
     ERROR = 2
     CRITICAL = 3
+
+
+class FailStage(StringEnum):
+    """Enum for the stages a task can fail at."""
+
+    DISPATCHING = auto()
+    PROCESSING = auto()
+    ROUTING = auto()

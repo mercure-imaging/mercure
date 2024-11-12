@@ -34,6 +34,7 @@ from common.constants import (
 )
 import dispatch.target_types as target_types
 from common.helper import get_now_str
+from common.event_types import FailStage
 
 # Create local logger instance
 logger = config.get_logger()
@@ -137,7 +138,7 @@ def execute(
             task_content.id,
             target="",
         )
-        if not update_fail_stage(source_folder, "Dispatching"):
+        if not update_fail_stage(source_folder, FailStage.DISPATCHING):
             logger.error(  # handle_error
                 f"Error updating fail stage for task {uid}",
                 task_content.id,
@@ -153,7 +154,7 @@ def execute(
                 task_content.id,
                 target=target_item,
             )
-            if not update_fail_stage(source_folder, "Dispatching"):
+            if not update_fail_stage(source_folder, FailStage.DISPATCHING):
                 logger.error(  # handle_error
                     f"Error updating fail stage for task {uid}",
                     task_content.id,
@@ -268,7 +269,7 @@ def execute(
         else:
             logger.info(f"Max retries reached, moving to {error_folder}")
             monitor.send_task_event(task_event.SUSPEND, task_content.id, 0, ",".join(dispatch_info.target_name), "Max retries reached")
-            if not update_fail_stage(source_folder, "Dispatching"):
+            if not update_fail_stage(source_folder, FailStage.DISPATCHING):
                 logger.error(  # handle_error
                     f"Error updating fail stage for task {uid}",
                     task_content.id,
@@ -327,15 +328,15 @@ def _trigger_notification(task: Task, event: mercure_events) -> None:
         )
 
 
-def update_fail_stage(source_folder: Path, fail_stage : str) -> bool:
-    in_string = "in" if fail_stage == "Processing" else ""
+def update_fail_stage(source_folder: Path, fail_stage : FailStage) -> bool:
+    in_string = "in" if fail_stage == FailStage.PROCESSING else ""
     target_json_path : Path = source_folder / in_string / mercure_names.TASKFILE
     try:
         with open(target_json_path, "r") as file:
             task: Task = Task(**json.load(file))
 
         task_info = task.info
-        task_info.fail_stage = fail_stage
+        task_info.fail_stage = str(fail_stage) # type: ignore
 
         with open(target_json_path, "w") as file:
             json.dump(task.dict(), file)
