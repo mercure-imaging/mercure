@@ -4,6 +4,7 @@ from typing import Any, Dict, List
 from datetime import datetime
 
 # Starlette-related includes
+import rq
 from starlette.authentication import requires
 from starlette.responses import JSONResponse
 
@@ -169,6 +170,12 @@ async def query_jobs(request):
         return JSONErrorResponse("Error retrieving query tasks.", status_code=500)
 
     for task in query_tasks:
+        try:
+            _=task.kwargs 
+        except rq.exceptions.DeserializationError:
+            tasks_info.append(dict(id=task.id, status="Deserialization Error", result="UNKNOWN", parameters={"accession":"UNKNOWN"}, progress="", meta=dict(type="UNKNOWN", offpeak=False)))
+            continue
+
         task_dict: Dict[str,Any] = dict(id=task.id, 
                                 status=task.get_status(), 
                                 parameters=dict(accession=task.kwargs.get('accession','')), 

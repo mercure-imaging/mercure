@@ -22,7 +22,7 @@
       </div>
 
         <form class="box" id="form">
-            <div class="field is-horizontal">
+            <div class="field is-horizontal has-addons">
               <div class="field-label is-normal">
                 <label class="label">Accession Number</label>
               </div>
@@ -30,10 +30,21 @@
                 <div class="field">
                   <div class="control is-expanded">
                     <div class="control">
-                      <textarea rows="1" name="accession" id="accession" type="text" placeholder="00000" value="" class="textarea testinclude textarea_scroll" style="padding-top: 5px; padding-bottom: 5px; min-height: 36px; height: 36px; max-height: 300px;" onkeyup="this.value = this.value.replace(/[{}\n]/g, '')" autocomplete='off'></textarea>
+                      <textarea rows="1" name="accession" id="accession" type="text" placeholder="00000" value="" class="textarea testinclude textarea_scroll" style="padding-top: 5px; padding-bottom: 5px; min-height: 36px; height: 36px; max-height: 300px;" autocomplete='off'></textarea>
                     </div>
                   </div>
                 </div>
+              </div>
+              <div class="control file has-name is-right">
+                <label class="file-label">
+                  <input id="file-input" class="file-input" type="file" name="resume" />
+                  <span class="file-cta">
+                    <span class="file-icon">
+                      <i class="fas fa-upload"></i>
+                    </span>
+                    <span class="file-label"> Choose a file… </span>
+                  </span>
+                </label>
               </div>
             </div>
 
@@ -178,15 +189,32 @@
 </main>
 <script>
 $('#accession').on('input', function (e) {
-    if (e.target.value.indexOf("\n") < 0) {
-        $(this).outerHeight(36).outerHeight(this.scrollHeight + 1);
-    }
+  if (e.target.value.indexOf("\n") < 0) {
+    $(e.target).outerHeight(36).outerHeight(this.scrollHeight + 1);
+  }
 });
 
 function clearErrors() {
   $('#backend-error').addClass("is-hidden");
   $('#backend-error').text(''); 
   $(':input').removeClass("is-danger");
+}
+
+$('#file-input').on('change', function(event) {
+  const file = event.target.files[0];
+  if (file) {
+    readAccessionsFile(file);
+  }
+});
+
+function readAccessionsFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => $('#accession').outerHeight(150).val(e.target.result);
+  reader.onerror = e => {
+    console.error("Error reading file:", e);
+    alert("Error reading file!")
+  };
+  reader.readAsText(file);
 }
 
 
@@ -204,7 +232,6 @@ $(document).ready(function () {
         // Show corresponding tab content
         $('#' + $(this).data('tab')).show();
     });
-
     // // Show the first tab by default
     // $('#query-results').show();
 
@@ -280,10 +307,10 @@ $(document).ready(function () {
                 defaultContent: ''
             },
             { data: 'id' },
-            { data: 'meta', render: data => (data["type"]? data["type"]:"") + (data["offpeak"]? " (offpeak)":"")},
+            { data: 'meta', render: meta => (meta["type"]? meta["type"]:"") + (meta["offpeak"]? " (offpeak)":"")},
             { data: 'status' },
-            { data: 'created_at', render: data => `<span style="display:none;">${data || Date.now()}</span>`+(data? new Date(data).toLocaleString("en-US"):"")},
-            { data: 'parameters', render: data => data["accession"] || ""},
+            { data: 'created_at', render: created_at => `<span style="display:none;">${created_at || Date.now()}</span>`+(created_at? new Date(created_at).toLocaleString("en-US"):"")},
+            { data: 'parameters', render: parameters => parameters["accession"] || ""},
             { data: 'result' },
             { data: 'progress'},
         ],

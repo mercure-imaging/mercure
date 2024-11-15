@@ -342,13 +342,20 @@ start_docker () {
   sudo docker-compose up -d
 }
 
+link_binaries() {
+  sudo find "$MERCURE_BASE/app/bin/ubuntu$UBUNTU_VERSION" -type f -exec ln -f -s {} "$MERCURE_BASE/app/bin" \;
+}
+
 install_app_files() {
   local overwrite=${1:-false}
 
   if [ "$overwrite" = true ] || [ ! -e "$MERCURE_BASE"/app ]; then
     echo "## Installing app files..."
-    sudo mkdir "$MERCURE_BASE"/app
-    sudo cp -R "$MERCURE_SRC" "$MERCURE_BASE"/app
+    [ "$overwrite" = true ] || sudo mkdir "$MERCURE_BASE"/app
+    if [ ! "$MERCURE_SRC" -ef "$MERCURE_BASE"/app ]; then
+      sudo cp -R "$MERCURE_SRC" "$MERCURE_BASE"/app
+    fi
+    link_binaries
     sudo chown -R $OWNER:$OWNER "$MERCURE_BASE/app"
   fi
 }
@@ -460,7 +467,7 @@ systemd_update () {
     fi
   done
   create_folders
-  install_app_files
+  install_app_files true
   sudo cp -n "$MERCURE_SRC"/installation/sudoers/* /etc/sudoers.d/
   install_packages
   install_dependencies

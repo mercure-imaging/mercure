@@ -22,6 +22,8 @@ RUN chown -R mercure ./configuration && \
 # This fixes the issue that every code update rebuilds Conda
 COPY ./ .
 
+RUN ln -s /opt/mercure/app/bin/ubuntu22.04/getdcmtags /opt/mercure/app/bin/getdcmtags
+
 # The configuration and data folders is probably the only thing that mercure ACTUALLY needs to write to
 RUN chmod -R o+rx /opt/mercure/app && \
     chown -R mercure /opt/mercure/config && \

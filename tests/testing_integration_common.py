@@ -80,7 +80,7 @@ redirect_stderr=true
 startsecs={service.startsecs}
 stopasgroup={str(service.stopasgroup).lower()}
 numprocs={service.numprocs}
-environment=MERCURE_CONFIG_FOLDER="{self.mercure_base}/config"
+environment=MERCURE_CONFIG_FOLDER="{self.mercure_base}/config",MERCURE_BASEPATH="{self.mercure_base}"
 """)
 
     def run(self) -> None:

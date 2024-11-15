@@ -85,7 +85,7 @@ class DicomWebTargetHandler(TargetHandler[DicomWebTarget]):
         logger.debug(result)
         return result
 
-    def get_from_target(self, target: DicomWebTarget, accession, search_filters, path) -> Generator[ProgressInfo, None, None]:
+    def get_from_target(self, target: DicomWebTarget, accession, search_filters, destination_path:str) -> Generator[ProgressInfo, None, None]:
         series = self.find_from_target(target, accession, search_filters=search_filters)
         if not series:
             raise ValueError("No series found with accession number {}".format(accession))
@@ -97,7 +97,7 @@ class DicomWebTargetHandler(TargetHandler[DicomWebTarget]):
             # remaining += len(instances)
             for instance in instances:
                 sop_instance_uid = instance.get('SOPInstanceUID')
-                filename = f"{path}/{sop_instance_uid}.dcm"
+                filename = f"{destination_path}/{sop_instance_uid}.dcm"
                 instance.save_as(filename)
                 n += 1
                 remaining -= 1

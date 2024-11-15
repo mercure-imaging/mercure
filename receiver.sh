@@ -4,18 +4,41 @@
 echo "mercure DICOM receiver"
 echo "----------------------"
 echo ""
-echo "Arguments: $@"
+if [ $# -eq 0 ]; then
+    echo "No arguments provided."
+else
+    echo "Arguments: $@"
+fi
 echo ""
 binary=bin/getdcmtags
-if [[ $(lsb_release -rs) == "24.04" ]]; then 
-    binary=bin/ubuntu24.04/getdcmtags
-elif [[ $(lsb_release -rs) == "22.04" ]]; then 
-    binary=bin/ubuntu22.04/getdcmtags
-elif [[ $(lsb_release -rs) == "20.04" ]]; then 
-    binary=bin/ubuntu20.04/getdcmtags
-elif [[ $(lsb_release -rs) == "18.04" ]]; then 
-    binary=bin/ubuntu18.04/getdcmtags
-fi 
+
+if [[ ! -f "$binary" ]] ; then
+    if [[ $(lsb_release -rs) == "24.04" ]]; then 
+        binary=bin/ubuntu24.04/getdcmtags
+    elif [[ $(lsb_release -rs) == "22.04" ]]; then 
+        binary=bin/ubuntu22.04/getdcmtags
+    elif [[ $(lsb_release -rs) == "20.04" ]]; then 
+        binary=bin/ubuntu20.04/getdcmtags
+    elif [[ $(lsb_release -rs) == "18.04" ]]; then 
+        binary=bin/ubuntu18.04/getdcmtags
+    fi 
+fi
+if [[ -f "$binary" ]] ; then
+    echo "getdcmtags binary at '$binary'"
+else
+    echo "ERROR: Unable to locate getdcmtags binary at '$binary'"
+    echo "Terminating..."
+    exit 1
+fi
+
+if $binary -h &> /dev/null; then
+    echo "getdcmtags binary validated."
+else 
+    echo "ERROR: getdcmtags binary failed to start."
+    echo "Terminating..."
+    exit 1
+fi
+# Check if the configuration is accessible
 
 config_folder="${MERCURE_CONFIG_FOLDER:-/opt/mercure/config}"
 config="${config_folder}/mercure.json"

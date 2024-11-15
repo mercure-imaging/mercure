@@ -67,9 +67,9 @@ class DicomTargetHandler(SubprocessTargetHandler[DicomTarget]):
         except DicomClientCouldNotFind as e:
             return []
         
-    def get_from_target(self, target: DicomTarget, accession: str, search_filters:Dict[str,List[str]], path) -> Generator[ProgressInfo, None, None]:
+    def get_from_target(self, target: DicomTarget, accession: str, search_filters:Dict[str,List[str]], destination_path: str) -> Generator[ProgressInfo, None, None]:
         config.read_config()
-        c = SimpleDicomClient(target.ip, target.port, target.aet_target, target.aet_source, path)
+        c = SimpleDicomClient(target.ip, target.port, target.aet_target, target.aet_source, destination_path)
         for identifier in c.getscu(accession, search_filters):
             completed, remaining = identifier.NumberOfCompletedSuboperations, identifier.NumberOfRemainingSuboperations, 
             progress = f"{ completed } / { completed + remaining }" 

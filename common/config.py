@@ -32,6 +32,12 @@ if _os_config_file is not None:
 else:
     configuration_filename = (os.getenv("MERCURE_CONFIG_FOLDER") or "/opt/mercure/config") + "/mercure.json"
 
+_os_mercure_basepath = os.getenv("MERCURE_BASEPATH")
+if _os_mercure_basepath is None:
+    app_basepath = Path(__file__).resolve().parent.parent
+else:
+    app_basepath = Path(_os_mercure_basepath)
+
 mercure_defaults = {
     "appliance_name": "master",
     "appliance_color": "#FFF",

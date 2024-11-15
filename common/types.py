@@ -82,6 +82,20 @@ class DicomTLSTarget(Target):
     def short_description(self) -> str:
         return f"{self.ip}:{self.port}"
 
+class DicomWebTarget(Target):
+    target_type: Literal["dicomweb"] = "dicomweb"
+    url: str
+    qido_url_prefix: Optional[str] = None
+    wado_url_prefix: Optional[str] = None
+    stow_url_prefix: Optional[str] = None
+    access_token: Optional[str] = None
+    http_user: Optional[str] = None
+    http_password: Optional[str] = None
+
+    @property
+    def short_description(self) -> str:
+        return self.url
+
 class SftpTarget(Target):
     target_type: Literal["sftp"] = "sftp"
     folder: str
@@ -118,19 +132,6 @@ class XnatTarget(Target):
         return self.host
 
 
-class DicomWebTarget(Target):
-    target_type: Literal["dicomweb"] = "dicomweb"
-    url: str
-    qido_url_prefix: Optional[str] = None
-    wado_url_prefix: Optional[str] = None
-    stow_url_prefix: Optional[str] = None
-    access_token: Optional[str] = None
-    http_user: Optional[str] = None
-    http_password: Optional[str] = None
-
-    @property
-    def short_description(self) -> str:
-        return self.url
 
 
 class S3Target(Target):

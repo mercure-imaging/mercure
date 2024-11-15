@@ -5,8 +5,13 @@ import dataclasses
 import os
 from pathlib import Path
 import shutil
+
+import subprocess
 from typing import Any, Dict, Generator, List, Optional, Tuple, Type, Union, cast
 import typing
+
+import pyfakefs.fake_pathlib
+import rq
 
 
 from common import helper
@@ -23,6 +28,7 @@ import common.config as config
 from webinterface.common import redis, rq_fast_queue, rq_slow_queue
 from rq.job import Dependency, JobStatus, Job
 from rq import Connection, Queue, get_current_job
+from tests.getdcmtags import process_dicom
 
 logger = config.get_logger()
 
@@ -49,6 +55,30 @@ def query_dummy(job_id, job_kwargs):
 
         yield completed, remaining, f"{completed} / {remaining + completed}"
 
+def invoke_getdcmtags(file: Path, node: Union[DicomTarget, DicomWebTarget]):
+    if isinstance(node, DicomTarget):
+        sender_address = node.ip
+        sender_aet = node.aet_target
+        receiver_aet = node.aet_source
+    elif isinstance(node, DicomWebTarget):
+        sender_address = node.url
+        sender_aet = "MERCURE-QUERY"
+        receiver_aet = "MERCURE"
+
+    is_fake_fs = isinstance(Path, pyfakefs.fake_pathlib.FakePathlibPathModule)
+    if is_fake_fs: # running a test
+        result = process_dicom(file, sender_address, sender_aet, receiver_aet) # don't bother with bookkeeper
+        if result is None:
+            raise Exception("Failed to get DICOM tags from the file.")
+        else:
+            logger.info(f"Result {result}")
+    else:
+        try:
+            subprocess.check_output([config.app_basepath / "bin" / "getdcmtags", file, sender_address, sender_aet, receiver_aet, config.mercure.bookkeeper, config.mercure.bookkeeper_api_key],)
+        except subprocess.CalledProcessError as e:
+            logger.info(e.output.decode())
+            logger.info(e.stderr.decode())
+            raise
 
 @dataclass
 class ClassBasedRQTask():
@@ -84,13 +114,29 @@ class ClassBasedRQTask():
     def execute(self, *args, **kwargs) -> Any:
         pass
     
+
     @staticmethod
-    def move_to_destination(path, destination, job_id) -> None:
+    def move_to_destination(path:str, destination: Optional[str], job_id:str, node:Union[DicomTarget, DicomWebTarget]) -> None:
         if destination is None:
             config.read_config()
-            for p in Path(path).glob("**/*"):
-                if p.is_file():
-                    shutil.move(str(p), config.mercure.incoming_folder) # Move the file to incoming folder
+            moved_files = []
+            try:
+                for p in Path(path).glob("**/*"):
+                    if p.is_file():
+                        if p.suffix == ".dcm":
+                            name = p.stem 
+                        else:
+                            name = p.name
+                        logger.warning(f"Moving {p} to {config.mercure.incoming_folder}/{name}")
+                        shutil.move(str(p), Path(config.mercure.incoming_folder) / name) # Move the file to incoming folder
+                        invoke_getdcmtags(Path(config.mercure.incoming_folder) / name, node)
+            except: 
+                for file in moved_files:
+                    try:
+                        file.unlink()
+                    except:
+                        pass
+                raise
             # tree(config.mercure.incoming_folder)
             shutil.rmtree(path)
         else:
@@ -190,7 +236,7 @@ class GetAccessionTask(ClassBasedRQTask):
             if job_parent:
                 if job_parent.kwargs["move_promptly"]:
                     try:
-                        self.move_to_destination(path, job_parent.kwargs["destination"], job_parent.id)
+                        self.move_to_destination(path, job_parent.kwargs["destination"], job_parent.id, node)
                     except Exception as e:
                         error_handler(f"Failure during move to destination of accession {accession}: {e}")
                         raise
@@ -216,7 +262,7 @@ class MainTask(ClassBasedRQTask):
     offpeak: bool = False
     _queue: str = rq_slow_queue.name
 
-    def execute(self, *, accessions, subjobs, path, destination, move_promptly) -> str:
+    def execute(self, *, accessions, subjobs, path:str, destination: Optional[str], move_promptly: bool, node: Union[DicomTarget, DicomWebTarget]) -> str:
         job = cast(Job,self._job)
         job.get_meta()
         for job_id in job.kwargs.get('subjobs',[]):
@@ -233,14 +279,13 @@ class MainTask(ClassBasedRQTask):
                 if not p.is_dir():
                     continue
                 try:
-                    self.move_to_destination(p, destination, job.id)
+                    self.move_to_destination(p, destination, job.id, node)
                 except Exception as e:
                     err = f"Failure during move to destination {destination}: {e}" if destination else f"Failure during move to {config.mercure.incoming_folder}: {e}"
                     logger.error(err)
                     job.meta["failed_reason"] = err
                     job.save_meta()  # type: ignore
                     raise
-        # subprocess.run(["./bin/ubuntu22.04/getdcmtags", filename, self.called_aet, "MERCURE"],check=True)
 
         logger.info(f"Removing job directory {path}")
         shutil.rmtree(path)
@@ -262,7 +307,7 @@ class QueryPipeline():
         assert self.job.meta.get('type') == 'batch', f"Job type must be batch, got {self.job.meta['type']}"
 
     @classmethod
-    def create(cls, accessions: List[str], search_filters:Dict[str, List[str]], dicom_node: Union[DicomWebTarget, DicomTarget], destination_path, offpeak=False) -> 'QueryPipeline':
+    def create(cls, accessions: List[str], search_filters:Dict[str, List[str]], dicom_node: Union[DicomWebTarget, DicomTarget], destination_path: Optional[str], offpeak:bool=False) -> 'QueryPipeline':
         """
         Create a job to process the given accessions and store them in the specified destination path.
         """
@@ -290,6 +335,7 @@ class QueryPipeline():
                 accessions = accessions,
                 subjobs = [check_job.id]+[j.id for j in get_accession_jobs],
                 destination = destination_path,
+                node=dicom_node,
                 move_promptly = True,
                 rq_options = dict(depends_on=depends, timeout=-1, result_ttl=-1)
             )
@@ -418,7 +464,11 @@ class QueryPipeline():
 
     @property
     def kwargs(self) -> typing.Dict:
-        return cast(dict,self.job.kwargs)
+        try:
+            return cast(dict,self.job.kwargs)
+        except rq.exceptions.DeserializationError:
+            logger.info(f"Failed to deserialize job kwargs: {self.job.data}")
+            raise
     
     @property
     def result(self) -> Any:

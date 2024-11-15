@@ -44,7 +44,8 @@ class TargetHandler(Generic[TargetTypeVar]):
 
     class NoSuchTagException(Exception):
         pass
-    def get_from_target(self, target: TargetTypeVar, accession: str, search_filters: Dict[str,List[str]], path:str) -> Generator[ProgressInfo, None, None]:
+    
+    def get_from_target(self, target: TargetTypeVar, accession: str, search_filters: Dict[str,List[str]], destination_path:str) -> Generator[ProgressInfo, None, None]:
         raise Exception()
 
     def find_from_target(self, target: TargetTypeVar, accession: str, search_filters:Dict[str,List[str]]) -> List[Dataset]:

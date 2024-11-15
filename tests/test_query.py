@@ -4,6 +4,7 @@ import subprocess
 import tempfile
 from typing import Dict, Optional, Tuple
 import pydicom
+import pyfakefs
 import pytest
 from pynetdicom import AE, evt, StoragePresentationContexts, build_role
 from pynetdicom.sop_class import Verification, StudyRootQueryRetrieveInformationModelFind, StudyRootQueryRetrieveInformationModelGet,PatientRootQueryRetrieveInformationModelGet,  CTImageStorage # type: ignore
@@ -208,6 +209,26 @@ def test_query_job(dicom_server, tempdir, rq_connection,fs):
     except StopIteration:
         raise Exception(f"No DICOM file found in {tempdir}")
     assert pydicom.dcmread(example_dcm).AccessionNumber == MOCK_ACCESSIONS[0]
+
+def test_query_job_to_mercure(dicom_server, tempdir, rq_connection, fs, mercure_config):
+    """
+    Test the create_job function.
+    We use mocker to mock the queue and avoid actually creating jobs.
+    """
+    config = mercure_config()
+    job = QueryPipeline.create([MOCK_ACCESSIONS[0]], {}, dicom_server, None, False)
+    w = SimpleWorker(["mercure_fast", "mercure_slow"], connection=rq_connection)
+
+    w.work(burst=True)
+    # print(list(Path(config.incoming_folder).iterdir()))
+    # assert len(list(Path(config.incoming_folder).iterdir())) == 1
+    print([k for k in Path(config.incoming_folder).rglob('*')])
+    try:
+        example_dcm = next(k for k in Path(config.incoming_folder).rglob("*.tags"))
+    except StopIteration:
+        raise Exception(f"No tags file found in {config.incoming_folder}")
+    # assert pydicom.dcmread(example_dcm).AccessionNumber == MOCK_ACCESSIONS[0]
+    # assert example_dcm.with_suffix('.tags').exists()
 
 def tree(path, prefix='', level=0) -> None:
     if level==0:
