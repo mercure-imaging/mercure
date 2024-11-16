@@ -55,7 +55,7 @@ def query_dummy(job_id, job_kwargs):
 
         yield completed, remaining, f"{completed} / {remaining + completed}"
 
-def invoke_getdcmtags(file: Path, node: Union[DicomTarget, DicomWebTarget]):
+def invoke_getdcmtags(file: Path, node: Union[DicomTarget, DicomWebTarget], force_rule: Optional[str] = None):
     if isinstance(node, DicomTarget):
         sender_address = node.ip
         sender_aet = node.aet_target
@@ -74,12 +74,17 @@ def invoke_getdcmtags(file: Path, node: Union[DicomTarget, DicomWebTarget]):
             logger.info(f"Result {result}")
     else:
         try:
-            subprocess.check_output([config.app_basepath / "bin" / "getdcmtags", file, sender_address, sender_aet, receiver_aet, config.mercure.bookkeeper, config.mercure.bookkeeper_api_key],)
+            invoke_with:list = [config.app_basepath / "bin" / "getdcmtags", file, sender_address, sender_aet, receiver_aet, config.mercure.bookkeeper, config.mercure.bookkeeper_api_key]
+            if force_rule:
+                invoke_with.extend(["--set-tag", f"mercureForceRule={force_rule}"])
+            subprocess.check_output(invoke_with)
         except subprocess.CalledProcessError as e:
-            logger.info(e.output.decode())
-            logger.info(e.stderr.decode())
+            logger.warning(e.output.decode() if e.output else "No stdout")
+            logger.warning(e.stderr.decode() if e.stderr else "No stderr")
             raise
-
+        except:
+            logger.warning(invoke_with)
+            raise
 @dataclass
 class ClassBasedRQTask():
     parent: Optional[str] = None
@@ -116,7 +121,7 @@ class ClassBasedRQTask():
     
 
     @staticmethod
-    def move_to_destination(path:str, destination: Optional[str], job_id:str, node:Union[DicomTarget, DicomWebTarget]) -> None:
+    def move_to_destination(path:str, destination: Optional[str], job_id:str, node:Union[DicomTarget, DicomWebTarget], force_rule:Optional[str]=None) -> None:
         if destination is None:
             config.read_config()
             moved_files = []
@@ -127,9 +132,9 @@ class ClassBasedRQTask():
                             name = p.stem 
                         else:
                             name = p.name
-                        logger.warning(f"Moving {p} to {config.mercure.incoming_folder}/{name}")
+                        logger.debug(f"Moving {p} to {config.mercure.incoming_folder}/{name}")
                         shutil.move(str(p), Path(config.mercure.incoming_folder) / name) # Move the file to incoming folder
-                        invoke_getdcmtags(Path(config.mercure.incoming_folder) / name, node)
+                        invoke_getdcmtags(Path(config.mercure.incoming_folder) / name, node, force_rule)
             except: 
                 for file in moved_files:
                     try:
@@ -189,7 +194,7 @@ class GetAccessionTask(ClassBasedRQTask):
     def get_accession(cls, job_id, accession: str, node: Union[DicomTarget, DicomWebTarget], search_filters: Dict[str, List[str]], path) -> Generator[ProgressInfo, None, None]:
         yield from get_handler(node).get_from_target(node, accession, search_filters, path)
 
-    def execute(self, *, accession:str, node: Union[DicomTarget, DicomWebTarget], search_filters:Dict[str, List[str]], path: str):
+    def execute(self, *, accession:str, node: Union[DicomTarget, DicomWebTarget], search_filters:Dict[str, List[str]], path: str, force_rule:Optional[str]=None):
         print(f"Getting {accession}")
         def error_handler(reason) -> None:
             logger.error(reason)
@@ -236,7 +241,7 @@ class GetAccessionTask(ClassBasedRQTask):
             if job_parent:
                 if job_parent.kwargs["move_promptly"]:
                     try:
-                        self.move_to_destination(path, job_parent.kwargs["destination"], job_parent.id, node)
+                        self.move_to_destination(path, job_parent.kwargs["destination"], job_parent.id, node, force_rule)
                     except Exception as e:
                         error_handler(f"Failure during move to destination of accession {accession}: {e}")
                         raise
@@ -262,7 +267,7 @@ class MainTask(ClassBasedRQTask):
     offpeak: bool = False
     _queue: str = rq_slow_queue.name
 
-    def execute(self, *, accessions, subjobs, path:str, destination: Optional[str], move_promptly: bool, node: Union[DicomTarget, DicomWebTarget]) -> str:
+    def execute(self, *, accessions, subjobs, path:str, destination: Optional[str], move_promptly: bool, node: Union[DicomTarget, DicomWebTarget], force_rule: Optional[str]=None) -> str:
         job = cast(Job,self._job)
         job.get_meta()
         for job_id in job.kwargs.get('subjobs',[]):
@@ -279,7 +284,7 @@ class MainTask(ClassBasedRQTask):
                 if not p.is_dir():
                     continue
                 try:
-                    self.move_to_destination(p, destination, job.id, node)
+                    self.move_to_destination(p, destination, job.id, node, force_rule)
                 except Exception as e:
                     err = f"Failure during move to destination {destination}: {e}" if destination else f"Failure during move to {config.mercure.incoming_folder}: {e}"
                     logger.error(err)
@@ -307,7 +312,7 @@ class QueryPipeline():
         assert self.job.meta.get('type') == 'batch', f"Job type must be batch, got {self.job.meta['type']}"
 
     @classmethod
-    def create(cls, accessions: List[str], search_filters:Dict[str, List[str]], dicom_node: Union[DicomWebTarget, DicomTarget], destination_path: Optional[str], offpeak:bool=False) -> 'QueryPipeline':
+    def create(cls, accessions: List[str], search_filters:Dict[str, List[str]], dicom_node: Union[DicomWebTarget, DicomTarget], destination_path: Optional[str], offpeak:bool=False, force_rule:Optional[str]=None) -> 'QueryPipeline':
         """
         Create a job to process the given accessions and store them in the specified destination path.
         """
@@ -319,6 +324,7 @@ class QueryPipeline():
                 get_accession_task = GetAccessionTask(offpeak=offpeak).create_job(
                     accession=str(accession), 
                     node=dicom_node,
+                    force_rule=force_rule,
                     search_filters=search_filters,
                     rq_options=dict(
                         depends_on=cast(List[Union[Dependency, Job]],[check_job]),
@@ -337,7 +343,8 @@ class QueryPipeline():
                 destination = destination_path,
                 node=dicom_node,
                 move_promptly = True,
-                rq_options = dict(depends_on=depends, timeout=-1, result_ttl=-1)
+                rq_options = dict(depends_on=depends, timeout=-1, result_ttl=-1),
+                force_rule=force_rule
             )
             check_job.meta["parent"] = main_job.id
             for j in get_accession_jobs:

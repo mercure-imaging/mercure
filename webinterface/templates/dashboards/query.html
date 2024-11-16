@@ -104,7 +104,7 @@
                 <div class="field">
                   <div class="control is-expanded">
                     <div class="select">
-                        <select name="destination">
+                        <select id="destination-input" name="destination" onchange="">
                           <option value="">Mercure</option>
                           <option disabled>————————</option>
                           {% for destination in destination_folders %}
@@ -129,7 +129,25 @@
                 </div>
               </div>
             </div>
-
+            <div class="field is-horizontal">
+              <div class="field-label is-normal">
+                <label class="label">Force Rule</label>
+              </div>
+              <div class="field-body">
+                <div class="field">
+                  <div class="control is-expanded">
+                    <div class="select">
+                        <select id="force-rule-input" name="force_rule">
+                          <option value=""></option>
+                          {% for rule in rules %}
+                          <option>{{ rule }}</option>
+                          {% endfor %}
+                        </select>
+                      </div>
+                  </div>
+                </div>
+              </div>
+            </div>
             <div class="field is-horizontal">
               <div class="field-label">
                 <!-- Left empty for spacing -->
@@ -199,6 +217,15 @@ function clearErrors() {
   $('#backend-error').text(''); 
   $(':input').removeClass("is-danger");
 }
+function handleForceRuleInput() {
+  if ($("#destination-input").val() == "") {
+    $("#force-rule-input").prop('disabled', false);
+  } else {
+    $("#force-rule-input").val("");
+    $("#force-rule-input").prop('disabled', 'disabled');
+  };
+}
+$('#destination-input').on('change', handleForceRuleInput);
 
 $('#file-input').on('change', function(event) {
   const file = event.target.files[0];
@@ -219,7 +246,8 @@ function readAccessionsFile(file) {
 
 
 $(document).ready(function () {
-    // Add tab functionality
+  handleForceRuleInput();
+  // Add tab functionality
     $('#query_result_tabs a').on('click', function(e) {
         e.preventDefault();
         // Remove active class from all tabs

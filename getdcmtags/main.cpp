@@ -23,7 +23,7 @@
 
 #include "tags_list.h"
 
-#define VERSION "getdcmtags Version 0.73"
+#define VERSION "getdcmtags Version 0.74"
 
 static OFString tagSpecificCharacterSet = "";
 static OFString tagSeriesInstanceUID = "";
@@ -38,7 +38,7 @@ static std::string bookkeeperToken = "";
 
 static QVector<QPair<DcmTagKey, OFString>> additional_tags;
 static QVector<QPair<DcmTagKey, OFString>> main_tags;
-
+static QVector<QPair<OFString, OFString>> force_tags;
 
 // Escape the JSON values properly to avoid problems if DICOM tags contains invalid characters
 // (see https://stackoverflow.com/questions/7724448/simple-json-string-escape-for-c)
@@ -257,6 +257,18 @@ bool writeTagsList(QVector<QPair<DcmTagKey, OFString>>& tags, FILE* fp, OFString
 }
 
 
+bool writeForceTagsList(QVector<QPair<OFString, OFString>>& tags, FILE* fp) {
+    
+    QVectorIterator<QPair<OFString, OFString>> iter(tags);
+    while(iter.hasNext())
+    {
+        auto pair = iter.next();
+        fprintf(fp, "\"%s\": \"%s\",\n", pair.first.c_str(), escapeJSONValue(pair.second).c_str());
+    }
+    return true;
+}
+
+
 bool writeTagsFile(OFString dcmFile, OFString originalFile)
 {
     OFString filename = dcmFile + ".tags";
@@ -281,6 +293,9 @@ bool writeTagsFile(OFString dcmFile, OFString originalFile)
 
     writeTagsList(main_tags, fp, dcmFile, conversionBuffer);
     writeTagsList(additional_tags, fp, dcmFile, conversionBuffer);
+
+    writeForceTagsList(force_tags, fp);
+
     fprintf(fp, "\"Filename\": \"%s\"\n", originalFile.c_str());
     fprintf(fp, "}\n");
 
@@ -384,10 +399,17 @@ int main(int argc, char *argv[])
                 injectErrors = true;
             } else if (strcmp(argv[i], "--tags-stop-early") == 0) {
                 tagsStopEarly = true;
+            } else if (strcmp(argv[i], "--set-tag") == 0 && i + 1 < argc) {
+                std::string tag = std::string(argv[++i]);
+                size_t pos = tag.find('=');
+                if (pos != std::string::npos) {
+                    auto name = OFString(tag.substr(0, pos).c_str());
+                    auto value = OFString(tag.substr(pos + 1).c_str());
+                    force_tags.append(QPair<OFString, OFString>(name, value));
+                }
             }
         }
     }
-
     if (injectErrors) {
         QFile file("./dcm_inject_error");
         if (file.exists() && file.open(QIODevice::ReadOnly | QIODevice::Text)) {

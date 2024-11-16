@@ -147,8 +147,9 @@ async def query_post_batch(request):
     if search_filter := form.get("study_description"):
         search_filters["StudyDescription"] =  [x.strip() for x in search_filter.split(",")]
 
+    force_rule = form.get("force_rule") or None
     try:
-        QueryPipeline.create(accession.split(","), search_filters, node, destination_path, offpeak=offpeak)
+        QueryPipeline.create(accession.split(","), search_filters, node, destination_path, offpeak=offpeak, force_rule=force_rule)
     except Exception as e:
         logger.exception(f"Error creating query pipeline for accession {accession}.")
         return JSONErrorResponse(str(e))
@@ -220,10 +221,12 @@ async def query(request):
     template = "dashboards/query.html"
     dicom_nodes = [name for name,node in config.mercure.targets.items() if isinstance(node, (DicomTarget, DicomWebTarget)) and node.direction in ("pull", "both")]
     destination_folders = [name for name,node in config.mercure.targets.items() if isinstance(node, FolderTarget)]
+    rules = [name for name, value in config.mercure.rules.items()]
     context = {
         "request": request,
         "destination_folders": destination_folders,
         "dicom_nodes": dicom_nodes,
+        "rules": rules,
         "page": "tools",
         "tab": "query"
     }
