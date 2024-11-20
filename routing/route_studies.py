@@ -52,6 +52,8 @@ def route_studies(pending_series: Dict[str, float]) -> None:
             if entry.is_dir() and not is_study_locked(entry.path) and is_study_complete(entry.path, pending_series):
                 modificationTime = entry.stat().st_mtime
                 studies_ready[entry.name] = modificationTime
+            if entry.is_dir() and not is_study_locked(entry.path) and check_force_study_timeout(entry.path, pending_series):
+                logger.info(f"Force completion timeout met for study {entry.name}")
     logger.debug(f"Studies ready for processing: {studies_ready}")
     # Process all complete studies
     for dir_entry in sorted(studies_ready):
@@ -171,6 +173,25 @@ def check_study_timeout(task: TaskHasStudy, pending_series: Dict[str, float]) ->
     else:
         logger.debug("Timeout not met.")
         return False
+
+def check_force_study_timeout(task: TaskHasStudy, pending_series: Dict[str, float]) -> bool:
+    """
+    Checks if the duration since the creation of the study exceeds the force study completion timeout
+    """
+    logger.debug("Checking force study timeout")
+    study = task.study
+    creation_string = study.creation_time
+    logger.debug(f"Creation time: {creation_string}, now is: {datetime.now()}")
+    if not creation_string:
+        return False
+
+    creation_time = datetime.strptime(creation_string, "%Y-%m-%d %H:%M:%S")
+    if datetime.now() > creation_time + timedelta(seconds=config.mercure.force_study_complete_trigger):
+        logger.debug("Force timeout met.")
+        return True
+
+    logger.debug("Force timeout not met.")
+    return False
 
 
 def check_study_series(task: TaskHasStudy, required_series: str) -> bool:

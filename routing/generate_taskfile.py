@@ -144,6 +144,7 @@ def add_study(
         received_series=[tags_list.get("SeriesDescription", mercure_options.INVALID)],
         received_series_uid=[tags_list.get("SeriesInstanceUID", mercure_options.INVALID)],
         complete_force=False,
+        complete_force_action=config.mercure.rules[applied_rule].study_force_completion_action,
     )
 
     return study_info
