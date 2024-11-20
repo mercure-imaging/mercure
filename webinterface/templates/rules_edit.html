@@ -710,6 +710,7 @@
 
         $('#action_trigger').change(function () {
             var action_trigger = $(this).children("option:selected").val();
+            var study_trigger = $('#study_trigger_condition').children("option:selected").val();
 
             if (action_trigger == 'series') {
                 $('#study_trigger_field').hide();
@@ -717,6 +718,9 @@
                 $('#study_trigger_series').prop('required', false);
             } else {
                 $('#study_trigger_field').show();
+                if (study_trigger == 'received_series') {
+                    $("#force_study_completion_field").show();
+                }
             }
         });
 
