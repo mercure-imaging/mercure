@@ -22,7 +22,7 @@
       </div>
 
         <form class="box" id="form">
-            <div class="field is-horizontal has-addons">
+            <div class="field is-horizontal">
               <div class="field-label is-normal">
                 <label class="label">Accession Number</label>
               </div>
@@ -34,17 +34,12 @@
                     </div>
                   </div>
                 </div>
-              </div>
-              <div class="control file has-name is-right">
-                <label class="file-label">
-                  <input id="file-input" class="file-input" type="file" name="resume" />
-                  <span class="file-cta">
-                    <span class="file-icon">
-                      <i class="fas fa-upload"></i>
-                    </span>
-                    <span class="file-label"> Choose a file… </span>
-                  </span>
-                </label>
+                <div class="control file has-name is-right">
+                  <a class="button">
+                    <input id="file-input" class="file-input" type="file" name="upload-file" style="cursor: pointer;" />
+                    <span> <i class="fas fa-upload"></i>&nbsp;Upload list</span>
+                  </a>
+                </div>
               </div>
             </div>
 
@@ -206,10 +201,9 @@
 
 </main>
 <script>
+  
 $('#accession').on('input', function (e) {
-  if (e.target.value.indexOf("\n") < 0) {
-    $(e.target).outerHeight(36).outerHeight(this.scrollHeight + 1);
-  }
+  $(e.target).outerHeight(36).outerHeight(e.target.scrollHeight + 1);
 });
 
 function clearErrors() {
@@ -217,6 +211,7 @@ function clearErrors() {
   $('#backend-error').text(''); 
   $(':input').removeClass("is-danger");
 }
+
 function handleForceRuleInput() {
   if ($("#destination-input").val() == "") {
     $("#force-rule-input").prop('disabled', false);
