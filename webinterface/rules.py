@@ -177,7 +177,7 @@ async def rules_edit_post(request) -> Response:
         action_trigger=form.get("action_trigger", "series"),
         study_trigger_condition=form.get("study_trigger_condition", "timeout"),
         study_trigger_series=form.get("study_trigger_series", ""),
-        study_force_completion_action=form.get("study_force_completion_action", "discard"),
+        study_force_completion_action=form.get("study_force_completion_action", ""),
         priority=form.get("priority", "normal"),
         processing_module=processing_module,
         processing_settings=new_processing_settings,

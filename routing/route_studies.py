@@ -49,11 +49,13 @@ def route_studies(pending_series: Dict[str, float]) -> None:
     studies_ready = {}
     with os.scandir(config.mercure.studies_folder) as it:
         for entry in it:
-            if entry.is_dir() and not is_study_locked(entry.path) and is_study_complete(entry.path, pending_series):
-                modificationTime = entry.stat().st_mtime
-                studies_ready[entry.name] = modificationTime
-            if entry.is_dir() and not is_study_locked(entry.path) and check_force_study_timeout(entry.path, pending_series):
-                logger.info(f"Force completion timeout met for study {entry.name}")
+            if entry.is_dir() and not is_study_locked(entry.path):
+                if is_study_complete(entry.path, pending_series):
+                    modificationTime = entry.stat().st_mtime
+                    studies_ready[entry.name] = modificationTime
+                else:
+                    if not check_force_study_timeout(Path(entry.path), pending_series):
+                        logger.error(f"Error during checking force study timeout for study {entry.path}")
     logger.debug(f"Studies ready for processing: {studies_ready}")
     # Process all complete studies
     for dir_entry in sorted(studies_ready):
@@ -174,24 +176,53 @@ def check_study_timeout(task: TaskHasStudy, pending_series: Dict[str, float]) ->
         logger.debug("Timeout not met.")
         return False
 
-def check_force_study_timeout(task: TaskHasStudy, pending_series: Dict[str, float]) -> bool:
+
+def check_force_study_timeout(folder: Path, pending_series: Dict[str, float]) -> bool:
     """
     Checks if the duration since the creation of the study exceeds the force study completion timeout
     """
-    logger.debug("Checking force study timeout")
-    study = task.study
-    creation_string = study.creation_time
-    logger.debug(f"Creation time: {creation_string}, now is: {datetime.now()}")
-    if not creation_string:
-        return False
+    try:
+        logger.debug("Checking force study timeout")
 
-    creation_time = datetime.strptime(creation_string, "%Y-%m-%d %H:%M:%S")
-    if datetime.now() > creation_time + timedelta(seconds=config.mercure.force_study_complete_trigger):
-        logger.debug("Force timeout met.")
+        with open(folder / mercure_names.TASKFILE, "r") as json_file:
+            task: TaskHasStudy = TaskHasStudy(**json.load(json_file))
+
+        study = task.study
+        creation_string = study.creation_time
+        if not creation_string:
+            logger.error(f"Missing creation time in task file in study folder {folder}", task.id)  # handle_error
+            return False
+        logger.debug(f"Creation time: {creation_string}, now is: {datetime.now()}")
+
+        creation_time = datetime.strptime(creation_string, "%Y-%m-%d %H:%M:%S")
+        if datetime.now() > creation_time + timedelta(seconds=config.mercure.study_forcecomplete_trigger):
+            logger.info(f"Force timeout met for study {folder}")
+            if not study.complete_force_action or study.complete_force_action == "ignore":
+                return True
+            elif study.complete_force_action == "proceed":
+                logger.info(f"Forcing study completion for study {folder}")
+                (folder / mercure_names.FORCE_COMPLETE).touch()
+            elif study.complete_force_action == "discard":
+                logger.info(f"Moving folder to discard: {folder.name}")
+                lock_file = Path(folder / mercure_names.LOCK)
+                try:
+                    lock = helper.FileLock(lock_file)
+                except:
+                    logger.error(f"Unable to lock study for removal {lock_file}")  # handle_error
+                    return False
+                if not move_study_folder(task.id, folder.name, "DISCARD"):
+                    logger.error(f"Error during moving study to discard folder {study}", task.id)  # handle_error
+                    return False
+                if not remove_study_folder(None, folder.name, lock):
+                    logger.error(f"Unable to delete study folder {lock_file}")  # handle_error
+                    return False
+        else:
+            logger.debug("Force timeout not met.")
         return True
 
-    logger.debug("Force timeout not met.")
-    return False
+    except Exception:
+        logger.error(f"Could not check force study timeout for study {folder}")  # handle_error
+        return False
 
 
 def check_study_series(task: TaskHasStudy, required_series: str) -> bool:
@@ -338,7 +369,7 @@ def move_study_folder(task_id: Union[str, None], study: str, destination: str) -
     """
     logger.debug(f"Move_study_folder {study} to {destination}")
     source_folder = config.mercure.studies_folder + "/" + study
-    destination_folder = config.mercure.discard_folder
+    destination_folder = None
     if destination == "PROCESSING":
         destination_folder = config.mercure.processing_folder
     elif destination == "SUCCESS":
@@ -347,6 +378,8 @@ def move_study_folder(task_id: Union[str, None], study: str, destination: str) -
         destination_folder = config.mercure.error_folder
     elif destination == "OUTGOING":
         destination_folder = config.mercure.outgoing_folder
+    elif destination == "DISCARD":
+        destination_folder = config.mercure.discard_folder
     else:
         logger.error(f"Unknown destination {destination} requested for {study}", task_id)  # handle_error
         return False
