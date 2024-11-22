@@ -36,6 +36,8 @@ import common.log_helpers as log_helpers
 from common.constants import (
     mercure_events,
 )
+from common.event_types import FailStage
+from dispatch.send import update_fail_stage
 
 
 logger = config.get_logger()
@@ -583,7 +585,7 @@ def move_results(
         lock.free()
     if not processing_success:
         logger.debug(f"Failing: {folder}")
-        move_out_folder(task_id, folder, Path(config.mercure.error_folder), move_all=True)
+        move_out_folder(task_id, folder, Path(config.mercure.error_folder), move_all=True, fail_stage=FailStage.PROCESSING)
     else:
         if needs_dispatching:
             logger.debug(f"Dispatching: {folder}")
@@ -593,7 +595,7 @@ def move_results(
             move_out_folder(task_id, folder, Path(config.mercure.success_folder))
 
 
-def move_out_folder(task_id: str, source_folder: Path, destination_folder: Path, move_all=False) -> None:
+def move_out_folder(task_id: str, source_folder: Path, destination_folder: Path, move_all=False, fail_stage=None) -> None:
     # source_folder = Path(source_folder_str)
     # destination_folder = Path(destination_folder_str)
 
@@ -609,6 +611,8 @@ def move_out_folder(task_id: str, source_folder: Path, destination_folder: Path,
     try:
         if move_all:
             shutil.move(str(source_folder), target_folder)
+            if fail_stage and not update_fail_stage(target_folder, FailStage.PROCESSING):
+                logger.error(  f"Error updating fail stage for task {task_id}")
         else:
             shutil.move(str(source_folder / "out"), target_folder)
             lockfile = source_folder / mercure_names.LOCK

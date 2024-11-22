@@ -67,7 +67,8 @@ expected_task_info = {
             "mercure_appliance": "master",
             "mercure_server": socket.gethostname(),
             "device_serial_number": None,
-            "sender_address": "0.0.0.0"
+            "sender_address": "0.0.0.0",
+            "fail_stage": None
         }
 
 def create_and_route(fs, mocked, task_id, config, uid="TESTFAKEUID") -> Tuple[List[str], str]:

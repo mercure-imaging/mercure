@@ -283,10 +283,17 @@ async def show_jobs_fail(request):
     for entry in os.scandir(config.mercure.error_folder):
         if entry.is_dir():
             job_name: str = entry.name
+            timestamp: float = entry.stat().st_mtime
             job_acc: str = ""
             job_mrn: str = ""
             job_scope: str = "Series"
             job_failstage: str = "Unknown"
+
+            # keeping the manual way of getting the fail stage too for now
+            try:
+                job_failstage = get_fail_stage(Path(entry.path))
+            except Exception as e:
+                logger.exception(e)
 
             task_file = Path(entry.path) / mercure_names.TASKFILE
             if not task_file.exists():
@@ -301,6 +308,8 @@ async def show_jobs_fail(request):
                         job_scope = "Series"
                     else:
                         job_scope = "Study"
+                    if (task.info.fail_stage):
+                        job_failstage = str(task.info.fail_stage).capitalize()
             except Exception as e:
                 logger.exception(e)
                 job_acc = "Error"
@@ -312,9 +321,10 @@ async def show_jobs_fail(request):
                 "MRN": job_mrn,
                 "Scope": job_scope,
                 "FailStage": job_failstage,
+                "CreationTime": timestamp,
             }
-
-    return JSONResponse(job_list)
+    sorted_jobs = collections.OrderedDict(sorted(job_list.items(), key=lambda x: x[1]["CreationTime"], reverse=False))  # type: ignore
+    return JSONResponse(sorted_jobs)
 
 
 @router.get("/status")
@@ -504,5 +514,27 @@ def restart_dispatch(taskfile_folder: Path, outgoing_folder: Path) -> dict:
 
     return {"success": "task restarted"}
 
+def get_fail_stage(taskfile_folder: Path) -> str:
+    if not taskfile_folder.exists():
+        return "Unknown"
+
+    dispatch_ready = (
+        not (taskfile_folder / mercure_names.LOCK).exists()
+        and not (taskfile_folder / mercure_names.ERROR).exists()
+        and not (taskfile_folder / mercure_names.PROCESSING).exists()
+    )
+
+    if not dispatch_ready or not (taskfile_folder / mercure_names.TASKFILE).exists():
+        return "Unknown"
+
+    taskfile_path = taskfile_folder / mercure_names.TASKFILE
+    with open(taskfile_path, "r") as json_file:
+        loaded_task = json.load(json_file)
+
+    action = loaded_task.get("info", {}).get("action", "")
+    if action and action not in (mercure_actions.BOTH, mercure_actions.ROUTE):
+        return "Unknown"
+
+    return "Dispatching"
 
 queue_app = Starlette(routes=router)

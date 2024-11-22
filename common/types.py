@@ -10,6 +10,8 @@ from typing_extensions import Literal, TypedDict
 from pydantic import BaseModel
 import typing
 
+from common.event_types import FailStage
+
 # TODO: Add description for the individual classes
 
 
@@ -311,6 +313,7 @@ class TaskInfo(BaseModel, Compat):
     mercure_appliance: str
     mercure_server: str
     device_serial_number: Optional[str] = None
+    fail_stage: Optional[FailStage] = None
 
 
 class TaskDispatchStatus(BaseModel, Compat):
