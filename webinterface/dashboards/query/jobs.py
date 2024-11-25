@@ -11,6 +11,7 @@ from typing import Any, Dict, Generator, List, Optional, Tuple, Type, Union, cas
 import typing
 
 import pyfakefs.fake_pathlib
+from redis import Redis
 import rq
 
 
@@ -305,8 +306,8 @@ class MainTask(ClassBasedRQTask):
 
 class QueryPipeline():
     job: Job
-    connection: Connection
-    def __init__(self, job: Union[Job,str], connection=redis):
+    connection: Redis
+    def __init__(self, job: Union[Job,str], connection:Redis=redis):
         self.connection = connection
         if isinstance(job, str):
             if not (result:=Job.fetch(job,connection=self.connection)):
