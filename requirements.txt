@@ -8,7 +8,7 @@ aiofiles==23.2.1
     # via -r requirements.in
 aiohappyeyeballs==2.3.5
     # via aiohttp
-aiohttp==3.10.3
+aiohttp==3.11.7
     # via -r requirements.in
 aiopg==1.4.0
     # via databases
@@ -157,6 +157,10 @@ pillow==10.3.0
     #   dicomweb-client
 pluggy==1.5.0
     # via pytest
+propcache==0.2.0
+    # via
+    #   aiohttp
+    #   yarl
 psycopg2==2.9.9
     # via -r requirements.in
 psycopg2-binary==2.9.9
@@ -301,7 +305,7 @@ watchdog==4.0.1
     # via -r requirements.in
 wheel==0.43.0
     # via -r requirements.in
-yarl==1.9.4
+yarl==1.18.0
     # via aiohttp
 
 # The following packages are considered to be unsafe in a requirements file:
