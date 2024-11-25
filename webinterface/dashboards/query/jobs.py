@@ -93,13 +93,13 @@ class ClassBasedRQTask():
     _queue: str = ''
 
     @classmethod
-    def queue(cls) -> Queue:
-        return Queue(cls._queue, connection=redis)
+    def queue(cls, connection=None) -> Queue:
+        return Queue(cls._queue, connection=(connection or redis))
 
-    def create_job(self, rq_options={}, **kwargs) -> Job:
+    def create_job(self, connection, rq_options={}, **kwargs) -> Job:
         fields = dataclasses.fields(self)
         meta = {field.name: getattr(self, field.name) for field in fields}
-        return Job.create(self._execute, kwargs=kwargs, meta=meta, **rq_options)
+        return Job.create(self._execute, connection=connection, kwargs=kwargs, meta=meta, **rq_options)
 
     @classmethod
     def _execute(cls, **kwargs) -> Any:
@@ -305,65 +305,67 @@ class MainTask(ClassBasedRQTask):
 
 class QueryPipeline():
     job: Job
-    def __init__(self, job: Union[Job,str]):
+    connection: Connection
+    def __init__(self, job: Union[Job,str], connection=redis):
+        self.connection = connection
         if isinstance(job, str):
-            if not (result:=Job.fetch(job)):
+            if not (result:=Job.fetch(job,connection=self.connection)):
                 raise Exception("Invalid Job ID")
             self.job = result
         else:
             self.job = job
-        
         assert self.job.meta.get('type') == 'batch', f"Job type must be batch, got {self.job.meta['type']}"
 
     @classmethod
-    def create(cls, accessions: List[str], search_filters:Dict[str, List[str]], dicom_node: Union[DicomWebTarget, DicomTarget], destination_path: Optional[str], offpeak:bool=False, force_rule:Optional[str]=None) -> 'QueryPipeline':
+    def create(cls, accessions: List[str], search_filters:Dict[str, List[str]], dicom_node: Union[DicomWebTarget, DicomTarget], destination_path: Optional[str], offpeak:bool=False, force_rule:Optional[str]=None, redis_server=None) -> 'QueryPipeline':
         """
         Create a job to process the given accessions and store them in the specified destination path.
         """
-
-        with Connection(redis):
-            get_accession_jobs: List[Job] = []
-            check_job = CheckAccessionsTask().create_job(accessions=accessions, search_filters=search_filters, node=dicom_node)
-            for accession in accessions:
-                get_accession_task = GetAccessionTask(offpeak=offpeak).create_job(
-                    accession=str(accession), 
-                    node=dicom_node,
-                    force_rule=force_rule,
-                    search_filters=search_filters,
-                    rq_options=dict(
-                        depends_on=cast(List[Union[Dependency, Job]],[check_job]),
-                        timeout=30*60,
-                        result_ttl=-1
-                        )
-                    )
-                get_accession_jobs.append(get_accession_task)
-            depends = Dependency(
-                jobs=cast(List[Union[Job,str]],get_accession_jobs),
-                allow_failure=True,    # allow_failure defaults to False
-            )
-            main_job = MainTask(total=len(get_accession_jobs), offpeak=offpeak).create_job(
-                accessions = accessions,
-                subjobs = [check_job.id]+[j.id for j in get_accession_jobs],
-                destination = destination_path,
+        connection = redis_server or redis
+        get_accession_jobs: List[Job] = []
+        check_job = CheckAccessionsTask().create_job(connection,accessions=accessions, search_filters=search_filters, node=dicom_node)
+        for accession in accessions:
+            get_accession_task = GetAccessionTask(offpeak=offpeak).create_job(
+                connection,
+                accession=str(accession), 
                 node=dicom_node,
-                move_promptly = True,
-                rq_options = dict(depends_on=depends, timeout=-1, result_ttl=-1),
-                force_rule=force_rule
-            )
-            check_job.meta["parent"] = main_job.id
-            for j in get_accession_jobs:
-                j.meta["parent"] = main_job.id
-                j.kwargs["path"] = Path(config.mercure.jobs_folder) / str(main_job.id) / j.kwargs['accession']
-                j.kwargs["path"].mkdir(parents=True)
-
-            main_job.kwargs["path"] = Path(config.mercure.jobs_folder) / str(main_job.id)
-
-        CheckAccessionsTask.queue().enqueue_job(check_job)
+                force_rule=force_rule,
+                search_filters=search_filters,
+                rq_options=dict(
+                    depends_on=cast(List[Union[Dependency, Job]],[check_job]),
+                    timeout=30*60,
+                    result_ttl=-1
+                    )
+                )
+            get_accession_jobs.append(get_accession_task)
+        depends = Dependency(
+            jobs=cast(List[Union[Job,str]],get_accession_jobs),
+            allow_failure=True,    # allow_failure defaults to False
+        )
+        main_job = MainTask(total=len(get_accession_jobs), offpeak=offpeak).create_job(
+            connection,
+            accessions = accessions,
+            subjobs = [check_job.id]+[j.id for j in get_accession_jobs],
+            destination = destination_path,
+            node=dicom_node,
+            move_promptly = True,
+            rq_options = dict(depends_on=depends, timeout=-1, result_ttl=-1),
+            force_rule=force_rule
+        )
+        check_job.meta["parent"] = main_job.id
         for j in get_accession_jobs:
-            GetAccessionTask.queue().enqueue_job(j)
-        MainTask.queue().enqueue_job(main_job)
+            j.meta["parent"] = main_job.id
+            j.kwargs["path"] = Path(config.mercure.jobs_folder) / str(main_job.id) / j.kwargs['accession']
+            j.kwargs["path"].mkdir(parents=True)
 
-        wrapped_job = cls(main_job)
+        main_job.kwargs["path"] = Path(config.mercure.jobs_folder) / str(main_job.id)
+
+        CheckAccessionsTask.queue(connection).enqueue_job(check_job)
+        for j in get_accession_jobs:
+            GetAccessionTask.queue(connection).enqueue_job(j)
+        MainTask.queue(connection).enqueue_job(main_job)
+
+        wrapped_job = cls(main_job, connection)
         if offpeak and not helper._is_offpeak(config.mercure.offpeak_start, config.mercure.offpeak_end, datetime.now().time()):
             wrapped_job.pause()
 
@@ -377,7 +379,7 @@ class QueryPipeline():
         Pause the current job, including all its subjobs.
         """
         for job_id in self.job.kwargs.get('subjobs',[]):
-            subjob = Job.fetch(job_id)
+            subjob = Job.fetch(job_id, connection=self.connection)
             if subjob and (subjob.is_deferred or subjob.is_queued):
                 logger.debug(f"Pausing {subjob}")
                 subjob.meta['paused'] = True
@@ -392,11 +394,11 @@ class QueryPipeline():
         Resume a paused job by unpausing all its subjobs
         """
         for subjob_id in self.job.kwargs.get('subjobs',[]):
-            subjob = Job.fetch(subjob_id)
+            subjob = Job.fetch(subjob_id, connection=self.connection)
             if subjob and subjob.meta.get('paused', None):
                 subjob.meta['paused'] = False
                 subjob.save_meta() # type: ignore
-                Queue(subjob.origin).canceled_job_registry.requeue(subjob_id)
+                Queue(subjob.origin, connection=self.connection).canceled_job_registry.requeue(subjob_id)
         self.job.get_meta()
         self.job.meta['paused'] = False
         self.job.save_meta() # type: ignore
@@ -415,8 +417,8 @@ class QueryPipeline():
                 logger.info(f"Retrying {subjob} ({status}) {meta}")
                 if status == "failed" and (job_path:=Path(subjob.kwargs['path'])).exists():
                     shutil.rmtree(job_path) # Clean up after a failed job
-                Queue(subjob.origin).enqueue_job(subjob)
-        Queue(self.job.origin).enqueue_job(self.job)
+                Queue(subjob.origin, connection=self.connection).enqueue_job(subjob)
+        Queue(self.job.origin, connection=self.connection).enqueue_job(self.job)
 
     @classmethod
     def update_all_offpeak(cls) -> None:
@@ -445,7 +447,7 @@ class QueryPipeline():
                 self.pause()
 
     def get_subjobs(self) -> Generator[Job, None, None]:
-        return (j for j in (Queue(self.job.origin).fetch_job(job) for job in self.job.kwargs.get('subjobs', [])) if j is not None)
+        return (j for j in (Queue(self.job.origin, connection=self.connection).fetch_job(job) for job in self.job.kwargs.get('subjobs', [])) if j is not None)
 
     def get_status(self) -> JobStatus:
         return cast(JobStatus,self.job.get_status())

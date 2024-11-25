@@ -32,8 +32,9 @@ MOCK_ACCESSIONS = ["1","2","3"]
 
 @pytest.fixture(scope="module", autouse=True)
 def rq_connection():
-    with Connection(redis):
-        yield redis
+    my_redis = FakeStrictRedis()
+    # with Connection(my_redis):
+    yield my_redis
 
 @pytest.fixture(scope="module")
 def mock_node(receiver_port):
@@ -200,7 +201,7 @@ def test_query_job(dicom_server, tempdir, rq_connection,fs):
     except subprocess.CalledProcessError:
         pass
     fs.resume()
-    job = QueryPipeline.create([MOCK_ACCESSIONS[0]], {}, dicom_server, str(tempdir))
+    job = QueryPipeline.create([MOCK_ACCESSIONS[0]], {}, dicom_server, str(tempdir), redis_server=rq_connection)
     w = SimpleWorker(["mercure_fast", "mercure_slow"], connection=rq_connection)
 
     w.work(burst=True)
@@ -227,7 +228,7 @@ def test_query_job_to_mercure(dicom_server, tempdir, rq_connection, fs, mercure_
             ).dict(),
         }
     })
-    job = QueryPipeline.create([MOCK_ACCESSIONS[0]], {}, dicom_server, None, False, "rule_to_force")
+    job = QueryPipeline.create([MOCK_ACCESSIONS[0]], {}, dicom_server, None, False, "rule_to_force", rq_connection)
     w = SimpleWorker(["mercure_fast", "mercure_slow"], connection=rq_connection)
 
     w.work(burst=True)
@@ -264,12 +265,12 @@ def tree(path, prefix='', level=0) -> None:
         if entry.is_dir():
             tree(entry.path, prefix + ('    ' if i == len(entries) - 1 else '│   '), level+1)
 
-def test_query_dicomweb(dicomweb_server, tempdir, dummy_datasets, fs):
+def test_query_dicomweb(dicomweb_server, tempdir, dummy_datasets, fs, rq_connection):
     (tempdir / "outdir").mkdir()
     ds = list(dummy_datasets.values())[0]
-    task = QueryPipeline.create([ds.AccessionNumber], {}, dicomweb_server, (tempdir / "outdir"))
+    task = QueryPipeline.create([ds.AccessionNumber], {}, dicomweb_server, (tempdir / "outdir"), redis_server=rq_connection)
     assert task
-    w = SimpleWorker(["mercure_fast", "mercure_slow"], connection=redis)
+    w = SimpleWorker(["mercure_fast", "mercure_slow"], connection=rq_connection)
     w.work(burst=True)
     # tree(tempdir / "outdir")
     outfile = (tempdir / "outdir" / task.id / ds.AccessionNumber /  f"{ds.SOPInstanceUID}.dcm")
@@ -280,7 +281,7 @@ def test_query_dicomweb(dicomweb_server, tempdir, dummy_datasets, fs):
 
 def test_query_operations(dicomweb_server, tempdir, dummy_datasets, fs, rq_connection):
     (tempdir / "outdir").mkdir()
-    task = QueryPipeline.create([ds.AccessionNumber for ds in dummy_datasets.values()], {}, dicomweb_server, (tempdir / "outdir"))
+    task = QueryPipeline.create([ds.AccessionNumber for ds in dummy_datasets.values()], {}, dicomweb_server, (tempdir / "outdir"), redis_server=rq_connection)
     assert task
     assert task.meta['total'] == len(dummy_datasets)
     assert task.meta['completed'] == 0
@@ -290,7 +291,7 @@ def test_query_operations(dicomweb_server, tempdir, dummy_datasets, fs, rq_conne
         assert job.get_status() == "canceled"
     assert jobs
 
-    w = SimpleWorker(["mercure_fast", "mercure_slow"], connection=redis)
+    w = SimpleWorker(["mercure_fast", "mercure_slow"], connection=rq_connection)
     w.work(burst=True)
     outfile = (tempdir / "outdir" / task.id)
     task.get_meta()
@@ -313,10 +314,10 @@ def test_query_operations(dicomweb_server, tempdir, dummy_datasets, fs, rq_conne
 def test_query_retry(dicom_server_2: Tuple[DicomTarget,DummyDICOMServer], tempdir, dummy_datasets, fs, rq_connection):
     (tempdir / "outdir").mkdir()
     target, server = dicom_server_2
-    task = QueryPipeline.create([ds.AccessionNumber for ds in dummy_datasets.values()], {}, target, (tempdir / "outdir"))
+    task = QueryPipeline.create([ds.AccessionNumber for ds in dummy_datasets.values()], {}, target, (tempdir / "outdir"), redis_server=rq_connection)
 
     server.remaining_allowed_accessions = 1 # Only one accession is allowed to be retrieved
-    w = SimpleWorker(["mercure_fast", "mercure_slow"], connection=redis)
+    w = SimpleWorker(["mercure_fast", "mercure_slow"], connection=rq_connection)
     w.work(burst=True)
     task.get_meta()
     assert task.meta['completed'] == 1

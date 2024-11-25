@@ -25,81 +25,77 @@ logger = config.get_logger()
 @router.post("/query/retry_job")
 @requires(["authenticated", "admin"], redirect="login")
 async def post_retry_job(request):
-    with Connection(redis):
-        job = QueryPipeline(request.query_params['id'])
-        
-        if not job:
-            return JSONErrorResponse(f"Job with id {request.query_params['id']} not found.", status_code=404)
-        
-        try:
-            job.retry()
-        except Exception as e:
-            logger.exception("Failed to retry job", exc_info=True)
-            return JSONErrorResponse("Failed to retry job",status_code=500)
+    job = QueryPipeline(request.query_params['id'])
+    
+    if not job:
+        return JSONErrorResponse(f"Job with id {request.query_params['id']} not found.", status_code=404)
+    
+    try:
+        job.retry()
+    except Exception as e:
+        logger.exception("Failed to retry job", exc_info=True)
+        return JSONErrorResponse("Failed to retry job",status_code=500)
     return JSONResponse({})
 
 @router.post("/query/pause_job")
 @requires(["authenticated", "admin"], redirect="login")
 async def post_pause_job(request):
-    with Connection(redis):
-        job = QueryPipeline(request.query_params['id'])
+    job = QueryPipeline(request.query_params['id'])
 
-        if not job:
-            return JSONErrorResponse('Job not found', status_code=404)
-        if job.is_finished or job.is_failed:
-            return JSONErrorResponse('Job is already finished', status_code=400)
+    if not job:
+        return JSONErrorResponse('Job not found', status_code=404)
+    if job.is_finished or job.is_failed:
+        return JSONErrorResponse('Job is already finished', status_code=400)
 
-        try:
-            job.pause()
-        except Exception as e:
-            logger.exception(f"Failed to pause job {request.query_params['id']}")
-            return JSONErrorResponse('Failed to pause job', status_code=500)
+    try:
+        job.pause()
+    except Exception as e:
+        logger.exception(f"Failed to pause job {request.query_params['id']}")
+        return JSONErrorResponse('Failed to pause job', status_code=500)
     return JSONResponse({'status': 'success'}, status_code=200)
 
 @router.post("/query/resume_job")
 @requires(["authenticated", "admin"], redirect="login")
 async def post_resume_job(request):
-    with Connection(redis):
-        job = QueryPipeline(request.query_params['id'])
-        if not job:
-            return JSONErrorResponse('Job not found', status_code=404)
-        if job.is_finished or job.is_failed:
-            return JSONErrorResponse('Job is already finished', status_code=400)
+    job = QueryPipeline(request.query_params['id'])
+    if not job:
+        return JSONErrorResponse('Job not found', status_code=404)
+    if job.is_finished or job.is_failed:
+        return JSONErrorResponse('Job is already finished', status_code=400)
 
-        try:
-            job.resume()
-        except Exception as e:
-            logger.exception(f"Failed to resume job {request.query_params['id']}")
-            return JSONErrorResponse('Failed to resume job', status_code=500)
+    try:
+        job.resume()
+    except Exception as e:
+        logger.exception(f"Failed to resume job {request.query_params['id']}")
+        return JSONErrorResponse('Failed to resume job', status_code=500)
     return JSONResponse({'status': 'success'}, status_code=200)
 
 @router.get("/query/job_info")
 @requires(["authenticated", "admin"], redirect="login")
 async def get_job_info(request):
     job_id = request.query_params['id']
-    with Connection(redis):
-        job = QueryPipeline(job_id)
-        if not job:
-            return JSONErrorResponse('Job not found', status_code=404)
-        
-        subjob_info:List[Dict[str,Any]] = []
-        for subjob in job.get_subjobs():
-            if not subjob:
-                continue
-            if subjob.meta.get('type') != 'get_accession':
-                continue
-            info = {
-                    'id': subjob.get_id(),
-                    'ended_at': subjob.ended_at.isoformat().split('.')[0] if subjob.ended_at else "", 
-                    'created_at_dt':subjob.created_at,
-                    'accession': subjob.kwargs['accession'],
-                    'progress': subjob.meta.get('progress'),
-                    'paused': subjob.meta.get('paused',False),
-                    'status': subjob.get_status()
-                }
-            if info['status'] == 'canceled' and info['paused']:
-                info['status'] = 'paused'
-            subjob_info.append(info)
+    job = QueryPipeline(job_id)
+    if not job:
+        return JSONErrorResponse('Job not found', status_code=404)
+    
+    subjob_info:List[Dict[str,Any]] = []
+    for subjob in job.get_subjobs():
+        if not subjob:
+            continue
+        if subjob.meta.get('type') != 'get_accession':
+            continue
+        info = {
+                'id': subjob.get_id(),
+                'ended_at': subjob.ended_at.isoformat().split('.')[0] if subjob.ended_at else "", 
+                'created_at_dt':subjob.created_at,
+                'accession': subjob.kwargs['accession'],
+                'progress': subjob.meta.get('progress'),
+                'paused': subjob.meta.get('paused',False),
+                'status': subjob.get_status()
+            }
+        if info['status'] == 'canceled' and info['paused']:
+            info['status'] = 'paused'
+        subjob_info.append(info)
 
     subjob_info = sorted(subjob_info, key=lambda x:x['created_at_dt'])
 
@@ -164,8 +160,7 @@ async def query_jobs(request):
     """
     tasks_info = []
     try:
-        with Connection(redis):
-            query_tasks = list(QueryPipeline.get_all())
+        query_tasks = list(QueryPipeline.get_all())
     except Exception as e:
         logger.exception("Error retrieving query tasks.")
         return JSONErrorResponse("Error retrieving query tasks.", status_code=500)
@@ -272,9 +267,8 @@ async def check_accessions(request):
         return JSONErrorResponse(f"Invalid DICOM node '{node_name}'.", status_code=400)
     
     try:
-        with Connection(redis):
-            job = CheckAccessionsTask().create_job(accessions=accessions, node=node, search_filters=search_filters)
-            CheckAccessionsTask.queue().enqueue_job(job)
+        job = CheckAccessionsTask().create_job(connection=redis,accessions=accessions, node=node, search_filters=search_filters)
+        CheckAccessionsTask.queue(redis).enqueue_job(job)
     except Exception as e:
         logger.exception("Error during accessions check task creation")
         return JSONErrorResponse(str(e), status_code=500)

@@ -156,7 +156,7 @@ def test_route_series_fail4(fs: FakeFilesystem, mercure_config, mocked):
         task_id,
         0,
         "",
-        f"Problem while pushing file to outgoing {series_uid}#baz\nSource folder {config.incoming_folder}/{series_uid}\nTarget folder {config.outgoing_folder}/{task_id}",
+        f"Problem while pushing file to outgoing [{series_uid}#baz]\nSource folder {config.incoming_folder}/{series_uid}\nTarget folder {config.outgoing_folder}/{task_id}",
     )
     assert list(Path(config.outgoing_folder).glob("**/*.dcm")) == []
 
