@@ -9,9 +9,8 @@ sys.path.insert(0, os.path.abspath('..'))
 # -- Project information -----------------------------------------------------
 
 project = 'mercure'
-copyright = '2019-2023 The "mercure" authors and contributors'
+copyright = '2019-2024 The "mercure" authors and contributors'
 author = ''
-
 def read_version() -> str:
     current_version = "0.0.0"
     version_filepath = os.path.dirname(os.path.realpath(__file__)) + '/../VERSION'
@@ -61,7 +60,7 @@ master_doc = 'index'
 #
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
-language = None
+language = 'en'
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.

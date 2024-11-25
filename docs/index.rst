@@ -1,4 +1,4 @@
-.. image:: header.jpg
+.. image:: /images/header.jpg
    :align: center
    :class: headerimage
 
@@ -7,7 +7,7 @@ mercure DICOM Orchestrator
 
 mercure is a flexible open-source DICOM orchestration platform. It offers an intuitive web-based user interface as well as extensive monitoring options, making it suitable for routine applications that require high availability. It can be used for dispatching DICOM studies to different targets based on easily definable routing rules and for processing DICOM series with custom-developed algorithms, such as inference of AI models for medical imaging. Processing algorithms can either be executed directly on a mercure server (as Docker containers) or can be executed on connected cluster nodes, typically located on premise but possibly also running as cloud instances. Implemented processing modules can be shared via Docker Hub.
 
-.. image:: scheme.png
+.. image:: /images/scheme.png
    :width: 550px
    :align: center
    :class: spacerbottom20
@@ -36,15 +36,16 @@ mercure is a flexible open-source DICOM orchestration platform. It offers an int
 
 .. toctree::
    :caption: User Guide
-   :maxdepth: 2
+   :glob:
 
    intro
    quickstart
    install
-   usage
    advanced
    monitoring
    dashboards
+   new_features
+   usage/index
 
 .. toctree::
    :maxdepth: 1
@@ -76,6 +77,6 @@ mercure is a flexible open-source DICOM orchestration platform. It offers an int
    :maxdepth: 2
 
    environment
-   code
+   source/index
    roadmap
    

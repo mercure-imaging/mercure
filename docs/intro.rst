@@ -1,7 +1,7 @@
 What is mercure?
 ================
 
-.. image:: scheme.png
+.. image:: /images/scheme.png
    :width: 550px
    :align: center
 
