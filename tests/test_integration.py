@@ -169,18 +169,21 @@ def test_case_error_real(mercure, mercure_config, mercure_base, receiver_port, b
     }
     
     mercure_config(config)
-    supervisor = mercure(["receiver"])
-    time.sleep(1)
-    ds = [create_minimal_dicom(None, None, additional_tags={'PatientName': 'Greg'}) for _ in range(1)]
-    Path("./dcm_inject_error").write_text("3")
+    try:
+        supervisor = mercure(["receiver"])
+        time.sleep(1)
+        ds = [create_minimal_dicom(None, None, additional_tags={'PatientName': 'Greg'}) for _ in range(1)]
+        Path("./dcm_inject_error").write_text("3")
 
-    for d in ds:
-        send_dicom(d, "localhost", receiver_port)
-    time.sleep(1)
+        for d in ds:
+            send_dicom(d, "localhost", receiver_port)
+        time.sleep(1)
 
-    Path("./dcm_inject_error").unlink()
-    is_dicoms_in_folder(mercure_base / "data" / "incoming" / "error", ds)
-    supervisor.start_service("router:*")
-    time.sleep(5)
-    is_dicoms_in_folder(mercure_base / "data" / "error", ds)
-    assert "Unable to read extra_tags file" in (next(d for d in (mercure_base / "data" / "error").glob('*.error')).read_text())
+        Path("./dcm_inject_error").unlink()
+        is_dicoms_in_folder(mercure_base / "data" / "incoming" / "error", ds)
+        supervisor.start_service("router:*")
+        time.sleep(5)
+        is_dicoms_in_folder(mercure_base / "data" / "error", ds)
+        assert "Unable to read extra_tags file" in (next(d for d in (mercure_base / "data" / "error").glob('*.error')).read_text())
+    finally:
+        Path("./dicom_extra_tags").unlink(missing_ok=True)
