@@ -124,7 +124,7 @@ def create_series_folder(path, series_uid) -> bool:
         print(f"ERROR: Unable to create directory {series_folder}: {e}")
         return False
 
-def process_dicom(dcm_file, sender_address, sender_aet, receiver_aet, bookkeeper_address='', bookkeeper_token='') -> Optional[Path]:
+def process_dicom(dcm_file, sender_address, sender_aet, receiver_aet, bookkeeper_address='', bookkeeper_token='', set_tags:List[Tuple[str,str]]=[]) -> Optional[Path]:
     """Process the DICOM file according to the provided arguments."""
     dcm_file = Path(dcm_file)
     
@@ -156,6 +156,7 @@ def process_dicom(dcm_file, sender_address, sender_aet, receiver_aet, bookkeeper
         extra_tags_file = Path(sys.argv[0]).parent / "dcm_extra_tags"
     
     additional_tags = read_extra_tags(dataset, extra_tags_file)
+    additional_tags.extend(set_tags)
 
     if not write_tags_file(new_dcm_file, dcm_file.name, dataset, MAIN_TAGS, additional_tags, 
                            sender_address, sender_aet, receiver_aet):

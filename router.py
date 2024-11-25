@@ -119,13 +119,13 @@ def run_router() -> None:
             del r.series[series_uid]
             r.complete_series.remove(series_uid)
         except Exception:
-            logger.error(f"Problems while processing series {series_uid}", task_id)  # handle_error
+            logger.error(f"Problems while routing series {series_uid}", task_id)  # handle_error
         # If termination is requested, stop processing series after the active one has been completed
         if helper.is_terminated():
             return
 
     if error_files_found:
-        logger.warning("Error files found during processing")
+        logger.warning("Error files found during routing")
         route_error_files()
 
     # Now, check if studies in the studies folder are ready for routing/processing

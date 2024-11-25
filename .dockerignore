@@ -11,3 +11,4 @@ build-docker.sh
 push-docker.sh
 index.html.*
 .env
+bin/getdcmtags

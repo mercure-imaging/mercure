@@ -154,11 +154,11 @@ def get_triggered_rules(
     fallback_rule = ""
 
     if "mercureForceRule" in tagList:
-        current_rule = tagList["mercureForceRule"]
-        if current_rule not in config.mercure.rules:
-            logger.error(f"Invalid force rule {current_rule} for task {task_id}", task_id)
+        force_rule = tagList["mercureForceRule"]
+        if force_rule not in config.mercure.rules:
+            logger.error(f"Invalid force rule {force_rule} for task {task_id}", task_id)
             return {}, ""
-        triggered_rules[tagList["mercureForceRule"]] = True
+        triggered_rules[force_rule] = True
     else:
         # Iterate over all defined processing rules
         for current_rule in config.mercure.rules:
@@ -543,7 +543,7 @@ def push_serieslevel_outgoing(
                 operation(source_folder / (entry + mercure_names.TAGS), target_folder / (entry + mercure_names.TAGS))
             except Exception:
                 logger.error(  # handle_error
-                    f"Problem while pushing file to outgoing {entry}\nSource folder {source_folder}\nTarget folder {target_folder}",
+                    f"Problem while pushing file to outgoing [{entry}]\nSource folder {source_folder}\nTarget folder {target_folder}",
                     task_id,
                 )
                 raise

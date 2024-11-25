@@ -67,7 +67,7 @@ def invoke_getdcmtags(file: Path, node: Union[DicomTarget, DicomWebTarget], forc
 
     is_fake_fs = isinstance(Path, pyfakefs.fake_pathlib.FakePathlibPathModule)
     if is_fake_fs: # running a test
-        result = process_dicom(file, sender_address, sender_aet, receiver_aet) # don't bother with bookkeeper
+        result = process_dicom(file, sender_address, sender_aet, receiver_aet,set_tags=[("mercureForceRule",force_rule)] ) # don't bother with bookkeeper
         if result is None:
             raise Exception("Failed to get DICOM tags from the file.")
         else:
@@ -118,37 +118,41 @@ class ClassBasedRQTask():
 
     def execute(self, *args, **kwargs) -> Any:
         pass
-    
 
     @staticmethod
-    def move_to_destination(path:str, destination: Optional[str], job_id:str, node:Union[DicomTarget, DicomWebTarget], force_rule:Optional[str]=None) -> None:
-        if destination is None:
-            config.read_config()
-            moved_files = []
-            try:
-                for p in Path(path).glob("**/*"):
-                    if p.is_file():
-                        if p.suffix == ".dcm":
-                            name = p.stem 
-                        else:
-                            name = p.name
-                        logger.debug(f"Moving {p} to {config.mercure.incoming_folder}/{name}")
-                        shutil.move(str(p), Path(config.mercure.incoming_folder) / name) # Move the file to incoming folder
-                        invoke_getdcmtags(Path(config.mercure.incoming_folder) / name, node, force_rule)
-            except: 
-                for file in moved_files:
-                    try:
-                        file.unlink()
-                    except:
-                        pass
-                raise
-            # tree(config.mercure.incoming_folder)
-            shutil.rmtree(path)
-        else:
+    def move_to_destination(path:str, destination:Optional[str], job_id:str, node:Union[DicomTarget, DicomWebTarget], force_rule:Optional[str]=None) -> None:
+        if destination is not None:
             dest_folder: Path = Path(destination) / job_id
             dest_folder.mkdir(exist_ok=True)
             logger.info(f"moving {path} to {dest_folder}")
             shutil.move(path, dest_folder)
+            return
+        
+        config.read_config()
+        moved_files = []
+        try:
+            for p in Path(path).glob("**/*"):
+                if not p.is_file():
+                    continue
+                # if p.suffix == ".dcm":
+                #     name = p.stem 
+                # else:
+                #     name = p.name
+                logger.debug(f"Moving {p} to {config.mercure.incoming_folder}/{p.name}")
+                dest_name = Path(config.mercure.incoming_folder) / p.name
+                shutil.move(str(p), dest_name) # Move the file to incoming folder
+                moved_files.append(dest_name)
+                invoke_getdcmtags(Path(config.mercure.incoming_folder) / p.name, node, force_rule)
+        except: 
+            for file in moved_files:
+                try:
+                    file.unlink()
+                except:
+                    pass
+            raise
+        # tree(config.mercure.incoming_folder)
+        shutil.rmtree(path)
+            
 
 
 @dataclass 
@@ -195,7 +199,7 @@ class GetAccessionTask(ClassBasedRQTask):
         yield from get_handler(node).get_from_target(node, accession, search_filters, path)
 
     def execute(self, *, accession:str, node: Union[DicomTarget, DicomWebTarget], search_filters:Dict[str, List[str]], path: str, force_rule:Optional[str]=None):
-        print(f"Getting {accession}")
+        logger.info(f"Getting ACC {accession}")
         def error_handler(reason) -> None:
             logger.error(reason)
             if not job_parent:
@@ -284,7 +288,7 @@ class MainTask(ClassBasedRQTask):
                 if not p.is_dir():
                     continue
                 try:
-                    self.move_to_destination(p, destination, job.id, node, force_rule)
+                    self.move_to_destination(str(p), destination, job.id, node, force_rule)
                 except Exception as e:
                     err = f"Failure during move to destination {destination}: {e}" if destination else f"Failure during move to {config.mercure.incoming_folder}: {e}"
                     logger.error(err)

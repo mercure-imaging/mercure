@@ -1,3 +1,4 @@
+import json
 import os
 from pathlib import Path
 import subprocess
@@ -12,10 +13,11 @@ from pynetdicom.status import Status
 from pydicom.uid import generate_uid
 from pydicom.dataset import Dataset, FileMetaDataset
 from rq import Worker
+import router
 from webinterface.dashboards.query.jobs import GetAccessionTask, QueryPipeline
 from webinterface.dicom_client import SimpleDicomClient
 
-from common.types import DicomTarget, DicomWebTarget
+from common.types import DicomTarget, DicomWebTarget, Rule
 from webinterface.common import redis
 from pydicom.uid import ExplicitVRLittleEndian, ImplicitVRLittleEndian
 from testing_common import receiver_port, mercure_config, bookkeeper_port
@@ -215,8 +217,17 @@ def test_query_job_to_mercure(dicom_server, tempdir, rq_connection, fs, mercure_
     Test the create_job function.
     We use mocker to mock the queue and avoid actually creating jobs.
     """
-    config = mercure_config()
-    job = QueryPipeline.create([MOCK_ACCESSIONS[0]], {}, dicom_server, None, False)
+    config = mercure_config({
+        "rules": {
+            "rule_to_force": Rule(
+                rule="False", action="route", action_trigger="series", target="dummy"
+            ).dict(),
+            "rule_to_ignore": Rule(
+                rule="True", action="route", action_trigger="series", target="dummy"
+            ).dict(),
+        }
+    })
+    job = QueryPipeline.create([MOCK_ACCESSIONS[0]], {}, dicom_server, None, False, "rule_to_force")
     w = SimpleWorker(["mercure_fast", "mercure_slow"], connection=rq_connection)
 
     w.work(burst=True)
@@ -224,11 +235,21 @@ def test_query_job_to_mercure(dicom_server, tempdir, rq_connection, fs, mercure_
     # assert len(list(Path(config.incoming_folder).iterdir())) == 1
     print([k for k in Path(config.incoming_folder).rglob('*')])
     try:
-        example_dcm = next(k for k in Path(config.incoming_folder).rglob("*.tags"))
+        tags_file = next(k for k in Path(config.incoming_folder).rglob("*.tags"))
     except StopIteration:
         raise Exception(f"No tags file found in {config.incoming_folder}")
-    # assert pydicom.dcmread(example_dcm).AccessionNumber == MOCK_ACCESSIONS[0]
-    # assert example_dcm.with_suffix('.tags').exists()
+    assert json.loads(tags_file.read_text()).get('mercureForceRule') == "rule_to_force"
+   
+    router.run_router()
+    try:
+        task_file = next(k for k in Path(config.outgoing_folder).rglob("*.json"))
+    except StopIteration:
+        print([k for k in Path(config.outgoing_folder).rglob('*')])
+        raise Exception(f"No task file found in {config.outgoing_folder}")
+    task_json = json.loads(task_file.read_text())
+    assert ["rule_to_force"] == list(task_json.get('info',{}).get('triggered_rules').keys())
+    assert task_json.get("dispatch",{}).get("target_name") == ["dummy"]
+
 
 def tree(path, prefix='', level=0) -> None:
     if level==0:
