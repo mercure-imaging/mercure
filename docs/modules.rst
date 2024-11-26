@@ -9,7 +9,7 @@ A simple Python-based demo module can be found in the following Git repository. 
 https://github.com/mercure-imaging/mercure-testmodule     
 
 
-DICOM naming convention
+DICOM Naming Convention
 -----------------------
 
 Depending on whether the rule that triggers the processing is a series-level or study-level rule, the folder with the incoming files (MERCURE_IN_DIR) contains the DICOM images from a single series or from all series that belong to the study. As usual for DICOM images, each image slice is stored in a separate file (multi-frame DICOM files aren't really used in practice). In order to make parsing the files easy, mercure prepends the series UID to the filename of all images belonging to the same series, followed by the separator character #:
@@ -23,7 +23,7 @@ Depending on whether the rule that triggers the processing is a series-level or 
 Thus, by splitting the filename at #, images belonging to the same series can be identified. The ordering of the images within one series needs to be taken from the DICOM tags. These can be either read from the DICOM files (e.g., using a library such as pydicom) or they can be read from the corresponding .tags file, which is a JSON file containing the most relevant DICOM tags extracted from each file.
 
 
-Creating annotations
+Creating Annotations
 --------------------
 
 When integrating AI-supported CAD algorithms, it is often necessary to mark findings in the DICOM series. mercure is providing a Python support library for this purpose, called :doc:`DCMAnnotate <../dcmannotate>`.
@@ -31,7 +31,7 @@ When integrating AI-supported CAD algorithms, it is often necessary to mark find
 Additional mechanisms for reporting findings and analysis results will be added over time.
 
 
-Distributing modules
+Distributing Modules
 --------------------
 
 There are two different ways of distributing mercure processing modules: a) sharing the module code, and b) uploading the container image to `Docker Hub <https://hub.docker.com>`_. 

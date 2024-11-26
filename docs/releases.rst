@@ -1,9 +1,37 @@
 Release History
 ===============
 
-Version 0.3.1-beta.1
---------------------
-*Release date: 6/10/2024*
+Version 0.4.0-alpha.1
+---------------------
+*Release date: TBA*
+
+* Multiple targets for dispatch
+* Redesign of the web UI
+* New DICOM Query tool
+* Modules can create result files
+* Failed dispatch jobs can be restarted
+* Timestamps in log files now in local time
+* New target types
+* New rule syntax (optional)
+* Notifications based on module results
+* Visual system tag can be shown in navbar
+* Getdcmtags: Additional DICOM tags can be extracted
+* Support for monitoring with InfluxDB
+* Faster DICOM receive mechanism
+* Added command-line tool manage.py for creating users
+* Rule now honor the urgent/off-peak priority setting
+* Notifications now support templating
+* Added email notifications
+* "Return to sender" option for DICOM targets
+* TLS support for secured DICOM transfer
+* Processing log and results can be viewed in queue page
+* Update option in install.sh to update dependencies, services
+* System status flag for missing services
+
+
+Version 0.3.1-beta.13
+---------------------
+*Release date: 8/23/2024*
 
 * New JSON editor for configuration and module settings
 * Support for rsync and DICOM-TLS transfers

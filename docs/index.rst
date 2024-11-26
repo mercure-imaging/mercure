@@ -41,12 +41,11 @@ mercure is a flexible open-source DICOM orchestration platform. It offers an int
    intro
    quickstart
    install
+   usage/index
    advanced
    monitoring
    dashboards
-   new_features
-   usage/index
-
+   
 .. toctree::
    :maxdepth: 1
    :titlesonly:
@@ -77,6 +76,6 @@ mercure is a flexible open-source DICOM orchestration platform. It offers an int
    :maxdepth: 2
 
    environment
-   source/index
    roadmap
+   source/index
    

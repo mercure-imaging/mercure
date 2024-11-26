@@ -1,5 +1,5 @@
 Modules
-------------------
+=======
 
 An overview of the installed processing modules can be seen on the "Modules" page. Details are shown by clicking on an item, which also allows editing the module settings.
 

@@ -20,4 +20,5 @@ The Python part of the mercure code has been divided into separate service modul
    dispatch
    process
    routing
+   tests
    webinterface

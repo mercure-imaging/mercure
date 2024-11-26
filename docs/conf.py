@@ -85,8 +85,8 @@ html_theme_options = {
     'logo_only': True,
     'style_external_links': True,
     'display_version': True,
-    'analytics_id': 'G-EHLH5W4KQW',
-    'sticky_navigation': False
+    'sticky_navigation': False,
+    'navigation_depth': 2
 }
 
 # Add any paths that contain custom static files (such as style sheets) here,
@@ -105,5 +105,5 @@ html_css_files = ['custom.css']
 #
 # html_sidebars = {}
 html_theme = 'sphinx_rtd_theme'
-html_logo = 'mercure_logo_w.png'
+html_logo = 'images/mercure_logo_w.png'
 html_show_sourcelink = False

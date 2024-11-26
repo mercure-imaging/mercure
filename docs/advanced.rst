@@ -1,7 +1,7 @@
 Advanced Topics
 ===============
 
-Configuration files
+Configuration Files
 -------------------
 
 mercure stores the configuration in multiple files in the subfolder **/opt/mercure/config**. If you want to backup the configuration or install mercure on another machine, you need to copy all files inside this folder. During installation of mercure, these files are generated from template files contained in the folder **/opt/mercure/app/configuration**.
@@ -17,7 +17,7 @@ webgui.env     Contains IP, port, and secret key for the web interface
 ============== ================
 
 
-Additional settings
+Additional Settings
 -------------------
 
 Advanced settings can be reviewed and adjusted on the Configuration page of the web interface. To change the settings, click the "Edit Settings" button at the bottom of the page. Once saved, the different service modules will automatically load the updated configuration. 
@@ -66,7 +66,7 @@ modules                     Configured modules - should be edited via web interf
 .. tip:: By default, the mercure DICOM receiver requests incoming DICOM images in uncompressed format. Thus, compressed images need to be decompressed by the sender prior to the transfer (e.g., if sending cases from a PACS that stores images in compressed form). This avoids potential incompatibilities between different implementations of the compression algorithms and ensures best compatibility. If using mercure solely for routing purpose, it can be more efficient to accept images also in compressed form. This can be enabled by setting accept_compressed_images to "True". However, this setting requires that all processing modules that are installed on the mercure server need to be able to handle compressed images (this might not be the case for many modules, including the demo modules). Also, if accepting compressed images, it can happen that the images will still be decompressed during dispatching if the target DICOM node indicates preference for uncompressed images.
 
 
-Scaling services
+Scaling Services
 ----------------
 
 By default, mercure uses only a single instance of each service module (i.e., in the case of the dispatcher, only one series per time is sent outwards). This provides sufficient performance for most applications. However, for demanding applications with very high volume of incoming DICOM series, it can be necessary run multiple instances of the modules (router, processor, dispatcher). All mercure modules have been written to allow for parallel execution, so that additional instances can be started. 
@@ -102,7 +102,7 @@ Afterwards, the .service files of the scaled service modules need to be duplicat
 As last step, it is necessary to authorize the mercure system user to control the duplicated services. This is done by editing the file **/etc/sudoers.d/mercure** (using a user account with sudo permission) and adding a line for each duplicated service (according to the name specified above). When copying an existing line from the file, make sure to change every occurrence of the service name in the line.
 
 
-Installation on Apple Macs with ARM processors
+Installation on Apple Macs with ARM Processors
 ----------------------------------------------
 
 Because the modern Apple Mac computers with M1/M2/M3 processors use a different architecture (ARM) than the older Intel-based Macs, it is not possible to directly run virtual machines with x86 architecture. Therefore, the installation instructions described in the Quickstart section do not work. It is still possible to run mercure on these Macs by using a software-based virtualization software called QEMU. However, this is VERY slow and may only be useful for initial testing purposes. 

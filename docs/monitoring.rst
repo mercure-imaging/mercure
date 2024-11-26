@@ -3,7 +3,7 @@ Monitoring
 
 mercure provides three different mechanisms for monitoring the server activity and health.
 
-Log files
+Log Files
 ---------
 
 All mercure services write detailed logging information into system log files. The most convenient way to review these logs is to use the "Logs" page of the mercure web interface. It shows a separate tab for every mercure service. The log display is updated whenever you switch between tabs or when you click the refresh button on the top-right.

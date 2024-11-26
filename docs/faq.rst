@@ -77,6 +77,6 @@ Yes, commercial use of mercure is generally possible, but it must adhere to the 
 Who is behind the project?
 --------------------------
 
-mercure has been developed by `Kai Tobias Block <http://tobias-block.net/>`_, `Roy Wiggins <http://roy.red/>`_, and `Joshy Cyriac <https://twitter.com/_joshycyriac_>`_. The development has been supported by the `Center for Advanced Imaging Innovation and Research (CAI2R) <https://cai2r.net>`_ at `NYU Langone Health <https://nyulangone.org>`_.
+mercure has been developed by `Kai Tobias Block <http://tobias-block.net/>`_, `Roy Wiggins <http://roy.red/>`_, `Amanpreet Singh Saimbhi <https://www.linkedin.com/in/amanpreet-singh-saimbhi/>`_, and `Joshy Cyriac <https://github.com/joshy>`_. The development has been supported by the `Center for Advanced Imaging Innovation and Research (CAI2R) <https://cai2r.net>`_ at `NYU Langone Health <https://nyulangone.org>`_.
 
 The name stems from the French translation of Mercury or Mercurius, the god of messages and communication in ancient Roman mythology. The project was initially called Hermes, Mercury's counterpart in Greek mythology, but the name was changed to avoid confusion with another existing software in the medical-imaging field.

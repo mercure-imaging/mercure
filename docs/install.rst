@@ -8,7 +8,7 @@ It is recommended to install mercure on a Linux machine running Ubuntu Server 20
 .. warning:: mercure servers and the web-based user interface should never be placed on the internet! mercure has been designed for use in intranet environments that are secured against unauthorized access. It has not been hardened and tested for installation on the public internet. Also, DICOM transfers should never be made over the public internet (unless encrypted and secured transfer protocols are used, e.g. based on  DICOMweb).
 
 
-Installation types
+Installation Types
 ------------------
 
 mercure can be installed in three different ways: 
@@ -62,8 +62,8 @@ Folder                                    Content
 
 .. tip:: The source code located in the /app folder is directly executed only for systemd-type installations. Docker and Nomad installations execute container images instead. By default, these images are downloaded from Docker Hub. If you want to modify the mercure source code, you need to rebuild the container images for the changes to go into effect. This can be done with the script build-docker.sh.
 
-DICOM Reception over TLS Connection
------------------------------------
+DICOM TLS Support
+-----------------
 
 .. important:: Support for the DICOM TLS receiver mode is still experimental and should be used with care.
 

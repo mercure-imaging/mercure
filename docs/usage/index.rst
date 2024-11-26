@@ -7,7 +7,7 @@ Usage
       
       *
 
-Web interface 
+Web Interface 
 -------------
 
 mercure can be conveniently configured and controlled using the web-based user interface. To access it, use a modern web browser (e.g., Chrome or Firefox) and enter the IP of your mercure server as URL. Depending on the port that you have selected during the installation (by default 8000), you need to add ":8000" to the URL.
@@ -23,7 +23,7 @@ During the installation, mercure creates a "seed account" that you need to use f
 
 To end your session, use the menu on the top-right and select "Logout".
 
-User management
+User Management
 ---------------
 
 Users can be created, modified, and deleted on the "Users" page. There are two types of users: Normal users, who can view the configuration and status but not change any settings, and administrators, who have full access. Users with administration rights are indicated by an icon with a shield in the user list. Users can also be added to permission groups. Permission groups are not yet used for anything, but they will be used in future mercure versions to provide granular access control.
@@ -36,7 +36,7 @@ Users can be created, modified, and deleted on the "Users" page. There are two t
 .. tip:: You should create separate accounts for every person using mercure. This will allow you to review which user made changes to the server configuration, as mercure is keeping track of all configuration changes.
 
 
-System status and control
+System Status and Control
 -------------------------
 
 The status of the mercure server and its service components can be monitored on the "Overview" page. If a service module is running, it will be shown in green color, otherwise it is shown in red. In normal operation, everything should be green. 

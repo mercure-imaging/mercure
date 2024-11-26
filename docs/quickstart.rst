@@ -63,7 +63,7 @@ While Orthanc already comes with a built-in DICOM viewer, we also included the o
 .. important:: The Orthanc and OHIF installation described here is only intended for local testing and development purpose. Do not expose these ports to the general network, as the installation might not be fully secured.
 
 
-First steps
+First Steps
 -----------
 
 After installing mercure and Orthanc using Vagrant, you can go through the following exercise to familiarize yourself with mercure. These instructions assume a systemd-type installation. In this example, a prostate segmentation is performed as processing step. Afterwards, the input images and segmentation masks are sent to the Orthanc instance. This example is also demonstrated in the `mercure overview video <https://youtu.be/LyJ4iQE1yLk?t=567>`_.
@@ -89,7 +89,7 @@ If you are interested how this segmentation module has been implemented, take a 
    "dcmsend 127.0.0.1 11112 *.dcm"
 
 
-Other installation modes
+Other Installation Modes
 ------------------------
 
 In addition to a systemd-based installation, as described above, Vagrant can also be used for Docker-based or Nomad-based installations of mercure. To do this, navigate instead to the folder "/mercure/addons/vagrant/docker" or "/mercure/addons/vagrant/nomad" before calling the "vagrant up" command.

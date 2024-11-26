@@ -167,7 +167,7 @@ The "email body" works much the same way as the "webhook body." Select "HTML con
 If either the email address or webhook url is blank, notifications will not be sent via that modality. 
 
 Information tab
-===============
+~~~~~~~~~~~~~~~
 
 The "Information" tab can be used to document the rule. The purpose of the rule can be written as free-text into the Comment field, and an email address can be written into the Contact field, so that it can be looked up at a later time why the rule was defined and who requested it. It is also possible to add tag attributes to the rule. These tags are not yet used for anything else, but might be used in future versions of mercure for filtering purpose and access control.
 
