@@ -54,7 +54,7 @@ def route_studies(pending_series: Dict[str, float]) -> None:
                     modificationTime = entry.stat().st_mtime
                     studies_ready[entry.name] = modificationTime
                 else:
-                    if not check_force_study_timeout(Path(entry.path), pending_series):
+                    if not check_force_study_timeout(Path(entry.path)):
                         logger.error(f"Error during checking force study timeout for study {entry.path}")
     logger.debug(f"Studies ready for processing: {studies_ready}")
     # Process all complete studies
@@ -177,7 +177,7 @@ def check_study_timeout(task: TaskHasStudy, pending_series: Dict[str, float]) ->
         return False
 
 
-def check_force_study_timeout(folder: Path, pending_series: Dict[str, float]) -> bool:
+def check_force_study_timeout(folder: Path) -> bool:
     """
     Checks if the duration since the creation of the study exceeds the force study completion timeout
     """

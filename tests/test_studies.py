@@ -311,3 +311,60 @@ def test_route_study_series_trigger(fs: FakeFilesystem, mercure_config, mocked):
 #     assert ( outgoing / study_uid).exists()
 
 #     assert list((outgoing / study_uid).glob("**/*.dcm")) != []
+
+
+@pytest.mark.parametrize("force_complete_action", ["ignore", "proceed", "discard"])
+def test_route_study_force_complete(fs: FakeFilesystem, mercure_config, mocked, force_complete_action):
+    """
+    Test that a study exceeding the force completion timeout is handled according to the action specified.
+    """
+    config = mercure_config(
+        {
+            "series_complete_trigger": 10,
+            "study_complete_trigger": 30,
+            "study_forcecomplete_trigger": 60,
+            "rules": {
+                "route_study": Rule(
+                    rule="True",
+                    action="route",
+                    study_trigger_condition="received_series",
+                    study_trigger_series=" 'test_series_complete' and 'test_series_missing' ",
+                    target="test_target_2",
+                    action_trigger="study",
+                    study_force_completion_action=force_complete_action,
+                ).dict(),
+            },
+        }
+    )
+    study_uid = str(uuid.uuid4())
+    series_uid = str(uuid.uuid4())
+    series_description = "test_series_complete"
+    out_path = Path(config.outgoing_folder)
+    discard_path = Path(config.discard_folder)
+
+    with freeze_time("2020-01-01 00:00:00") as frozen_time:
+        # Create the initial series.
+        create_series(mocked, fs, config, study_uid, series_uid, series_description)
+        frozen_time.tick(delta=timedelta(seconds=11))
+        # Run the router as the first series completes to generate a study task.
+        router.run_router()
+        frozen_time.tick(delta=timedelta(seconds=61))
+        # Run router after force complete trigger.
+        try:
+            router.run_router()
+        except Exception as e:
+            # workaround for moving the study folder while using iterator.
+            assert str(e) == "dictionary changed size during iteration"
+
+        if force_complete_action == "ignore":
+            # ensure that the study is not routed
+            assert list(out_path.glob("**/*")) == []
+            assert list(discard_path.glob("**/*")) == []
+        elif force_complete_action == "proceed":
+            # run router again to proceed with the force complete file.
+            router.run_router()
+            assert list(out_path.glob("**/*")) != []
+            assert list(discard_path.glob("**/*")) == []
+        elif force_complete_action == "discard":
+            assert list(discard_path.glob("**/*")) != []
+            assert list(out_path.glob("**/*")) == []
