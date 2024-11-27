@@ -14,6 +14,8 @@ import shutil
 import daiquiri
 from datetime import datetime, timedelta
 
+import pyfakefs
+
 # App-specific includes
 import common.config as config
 import common.rule_evaluation as rule_evaluation
@@ -48,6 +50,8 @@ def route_studies(pending_series: Dict[str, float]) -> None:
     # TODO: Handle studies that exceed the "force completion" timeout in the "CONDITION_RECEIVED_SERIES" mode
     studies_ready = {}
     with os.scandir(config.mercure.studies_folder) as it:
+        if isinstance(it,pyfakefs.fake_scandir.ScanDirIter):
+            it = list(it) # prevent pyfakefs issue
         for entry in it:
             if entry.is_dir() and not is_study_locked(entry.path):
                 if is_study_complete(entry.path, pending_series):

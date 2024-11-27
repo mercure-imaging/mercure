@@ -350,11 +350,7 @@ def test_route_study_force_complete(fs: FakeFilesystem, mercure_config, mocked, 
         router.run_router()
         frozen_time.tick(delta=timedelta(seconds=61))
         # Run router after force complete trigger.
-        try:
-            router.run_router()
-        except Exception as e:
-            # workaround for moving the study folder while using iterator.
-            assert str(e) == "dictionary changed size during iteration"
+        router.run_router()
 
         if force_complete_action == "ignore":
             # ensure that the study is not routed
