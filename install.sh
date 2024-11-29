@@ -307,6 +307,25 @@ install_docker () {
     sudo chmod +x /usr/local/bin/docker-compose
     sudo docker-compose --version
   fi
+
+  # Setup daemon.json if an CIDR has specified
+  if [ -n "$DOCKER_CIDR" ]; then
+    echo "## Configuring Docker daemon with CIDR $DOCKER_CIDR..."
+    DOCKER_BIP="${DOCKER_CIDR%.*}.1/24"
+    DOCKER_BASE="${DOCKER_CIDR%.*}.0/16"
+    DAEMON_JSON="/etc/docker/daemon.json"
+    sudo mkdir -p "$(dirname $DAEMON_JSON)"
+    cat << EOF | sudo tee $DAEMON_JSON
+{
+  "bip": "${DOCKER_BIP}",
+  "default-address-pools": [
+    {"base": "${DOCKER_BASE}", "size": 24}
+  ],
+  "mtu": 9000
+}
+EOF
+    sudo systemctl restart docker
+  fi
 }
 
 setup_docker () {
@@ -476,24 +495,28 @@ systemd_update () {
 }
 
 FORCE_INSTALL="n"
+DOCKER_CIDR=""
 
-while getopts ":hy" opt; do
+while getopts ":hyc:" opt; do
   case ${opt} in
     h )
       echo "Usage:"
       echo "    install.sh -h                     Display this help message."
-      echo "    install.sh [-y] docker [OPTIONS]  Install with docker-compose."
-      echo "    install.sh [-y] systemd           Install as systemd service."
-      echo "    install.sh [-y] nomad             Install as nomad job."
-
+      echo "    install.sh [-y] [-c CIDR] docker [OPTIONS]  Install with docker-compose."
+      echo "    install.sh [-y] [-c CIDR] systemd           Install as systemd service."
+      echo "    install.sh [-y] [-c CIDR] nomad             Install as nomad job."
       echo "    Options:   "
       echo "              docker:"
       echo "                      -d              Development mode "
       echo "                      -b              Build containers"
+      echo "              -c CIDR                 Specify Docker CIDR (e.g., 10.10.0.0/16)"
       exit 0
       ;;
     y )
       FORCE_INSTALL="y"
+      ;;
+    c )
+      DOCKER_CIDR="$OPTARG"
       ;;
     \? )
       echo "Invalid Option: -$OPTARG" 1>&2
@@ -506,7 +529,6 @@ while getopts ":hy" opt; do
   esac
 done
 shift $((OPTIND -1))
-OPTIND=1
 INSTALL_TYPE="${1:-docker}"
 if [[ $# > 0 ]];  then shift; fi
 
@@ -517,13 +539,16 @@ fi
 if [ $INSTALL_TYPE = "docker" ]; then
   DOCKER_DEV=false
   DOCKER_BUILD=false
-  while getopts ":db" opt; do
+  while getopts ":dbc:" opt; do
     case ${opt} in
       d )
         DOCKER_DEV=true
         ;;
       b )
         DOCKER_BUILD=true
+        ;;
+      c )
+        DOCKER_CIDR="$OPTARG"
         ;;
       \? )
         echo "Invalid Option for \"docker\": -$OPTARG" 1>&2
