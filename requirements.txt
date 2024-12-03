@@ -196,7 +196,7 @@ python-dateutil==2.9.0.post0
     #   rq-scheduler
 python-json-logger==2.0.7
     # via daiquiri
-python-multipart==0.0.9
+python-multipart==0.0.19
     # via -r requirements.in
 python-nomad==2.0.1
     # via -r requirements.in
