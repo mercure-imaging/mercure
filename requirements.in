@@ -39,7 +39,7 @@ starlette >= 0.40.0
 starlette-auth-toolkit
 uvicorn ~= 0.30.6
 itsdangerous
-python-multipart
+python-multipart>=0.0.18
 distro
 passlib
 sqlalchemy<=1.4.52
