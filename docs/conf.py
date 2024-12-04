@@ -13,7 +13,7 @@ copyright = '2019-2024 The "mercure" authors and contributors'
 author = ''
 def read_version() -> str:
     current_version = "0.0.0"
-    version_filepath = os.path.dirname(os.path.realpath(__file__)) + '/../VERSION'
+    version_filepath = os.path.dirname(os.path.realpath(__file__)) + '/../app/VERSION'
     version_file = Path(version_filepath)
     with open(version_file, "r") as version_filecontent:
         current_version = version_filecontent.readline().strip()

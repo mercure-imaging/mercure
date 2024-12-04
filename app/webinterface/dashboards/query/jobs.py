@@ -500,7 +500,7 @@ class QueryPipeline():
         return cast(datetime,self.job.enqueued_at)
 
     @classmethod
-    def get_all(cls, type:str="batch") -> Generator['QueryPipeline', None, None]:
+    def get_all(cls, type:str="batch", connection:Redis=redis) -> Generator['QueryPipeline', None, None]:
         """
         Get all jobs of a given type from the queue
         """
@@ -521,6 +521,6 @@ class QueryPipeline():
         for j_id in rq_slow_queue.job_ids:
             job_ids.add(j_id)
 
-        jobs = (Job.fetch(j_id) for j_id in job_ids)
+        jobs = (Job.fetch(j_id, connection) for j_id in job_ids)
         
-        return (QueryPipeline(j) for j in jobs if j and j.get_meta().get("type") == type)
+        return (QueryPipeline(j, connection) for j in jobs if j and j.get_meta().get("type") == type)

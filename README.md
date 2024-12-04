@@ -1,5 +1,5 @@
 
-![mercure](mercure.png)
+![mercure](docs/images/mercure.png)
 
 ![Python application](https://github.com/mercure-imaging/mercure/workflows/Python%20application/badge.svg)&nbsp; ![GitHub](https://img.shields.io/github/license/mercure-imaging/mercure?color=%233273dc)&nbsp; [![project chat](https://img.shields.io/badge/zulip-join_chat-brightgreen.svg)](https://mercure-imaging.zulipchat.com)
 

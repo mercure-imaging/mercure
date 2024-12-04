@@ -23,11 +23,11 @@ PREFIX="mercureimaging"
 # Read the version of the mercure source, which will be used for
 # tagging the Docker images, unless a tag has been provided 
 # through the environment variable MERCURE_TAG
-if [ ! -f "VERSION" ]; then
+if [ ! -f "app/VERSION" ]; then
     echo "Error: VERSION file missing. Unable to proceed."
     exit 1
 fi
-VERSION=`cat VERSION`
+VERSION=`cat app/VERSION`
 TAG=${MERCURE_TAG:-$VERSION}
 
 

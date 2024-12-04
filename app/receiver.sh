@@ -26,9 +26,14 @@ fi
 if [[ -f "$binary" ]] ; then
     echo "getdcmtags binary at '$binary'"
 else
-    echo "ERROR: Unable to locate getdcmtags binary at '$binary'"
-    echo "Terminating..."
-    exit 1
+    binary="$(dirname "$0")/$binary"
+    if [[ -f "$binary" ]] ; then
+        echo "getdcmtags binary at '$binary'"    
+    else
+        echo "ERROR: Unable to locate getdcmtags binary at '$binary'"
+        echo "Terminating..."
+        exit 1
+    fi
 fi
 
 if $binary -h &> /dev/null; then

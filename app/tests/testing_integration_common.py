@@ -258,7 +258,7 @@ def mercure_base() -> Generator[Path, None, None]:
 def mercure(supervisord: Callable[[Any], SupervisorManager], python_bin) -> Generator[Callable[[Any],SupervisorManager], None, None]:
     def py_service(service, **kwargs) -> MercureService:
         if 'command' not in kwargs:
-            kwargs['command'] = f"{python_bin} {here}/{service}.py"
+            kwargs['command'] = f"{python_bin} {here}/app/{service}.py"
         return MercureService(service,**kwargs)
     services = [
         py_service("bookkeeper",startsecs=6),
@@ -268,7 +268,7 @@ def mercure(supervisord: Callable[[Any], SupervisorManager], python_bin) -> Gene
         py_service("worker_fast", command=f"{python_bin} -m rq.cli worker mercure_fast"),
         py_service("worker_slow", command=f"{python_bin} -m rq.cli worker mercure_slow")
     ]
-    services += [MercureService(f"receiver", f"{here}/receiver.sh --inject-errors", stopasgroup=True)]
+    services += [MercureService(f"receiver", f"{here}/app/receiver.sh --inject-errors", stopasgroup=True)]
     supervisor = supervisord(services)
     def do_start(services_to_start=["bookkeeper", "reciever", "router", "processor", "dispatcher"]) -> SupervisorManager:
         for service in services_to_start:

@@ -95,7 +95,7 @@ def test_case_process(mercure, mercure_config, mercure_base, receiver_port, book
     }
     mercure_config(config)
     mercure(["bookkeeper", "receiver", "router:*", "dispatcher:*", "processor:*"])
-    time.sleep(1)
+    time.sleep(5)
     ds = [create_minimal_dicom(None, None, additional_tags={'PatientName': 'Test'}) for _ in range(n_series)]
     for d in ds:
         send_dicom(d, "localhost", receiver_port)

@@ -21,7 +21,7 @@ if [ ! -f "VERSION" ]; then
     echo "Error: VERSION file missing. Unable to proceed."
     exit 1
 fi
-VERSION=`cat VERSION`
+VERSION=`cat app/VERSION`
 IMAGE_TAG=":$VERSION"
 VER_LENGTH=${#VERSION}+28
 echo ""
