@@ -35,11 +35,11 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: typecheck with mypy
       run: |
-        mypy --exclude /tests --no-namespace-packages . 
+        mypy --exclude app/tests --no-namespace-packages . 
     - name: Test with pytest
       if: always()
       run: |
-        python -m pytest -vvv tests
+        python -m pytest -vvv
     - name: Check getdcmtags version
       run: |
         cd getdcmtags && ./check_version.sh
