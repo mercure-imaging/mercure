@@ -11,7 +11,7 @@ WORKDIR /opt/mercure/app
 # Note: you must run this Dockerfile from the root directory of the project
 COPY ./installation ./installation
 COPY ./configuration ./configuration
-COPY ./requirements.txt .
+COPY ./app/requirements.txt .
 
 # This fixes the install script trying to write the configuration files
 # and makes sure we can definitely read everything
@@ -20,7 +20,7 @@ RUN chown -R mercure ./configuration && \
     ./installation/install-env.sh
 
 # This fixes the issue that every code update rebuilds Conda
-COPY ./ .
+COPY ./app .
 
 RUN ln -s /opt/mercure/app/bin/ubuntu22.04/getdcmtags /opt/mercure/app/bin/getdcmtags
 

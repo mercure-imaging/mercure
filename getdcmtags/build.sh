@@ -26,7 +26,7 @@ build_qt_project() {
 
     docker run -it mercure-getdcmtags-build:$UBUNTU_VERSION
     local last_container=$(docker ps -lq)
-    docker cp $last_container:/build/getdcmtags ../bin/ubuntu${UBUNTU_VERSION}/getdcmtags
+    docker cp $last_container:/build/getdcmtags ../app/bin/ubuntu${UBUNTU_VERSION}/getdcmtags
     docker rm $last_container
 
     echo "Build for Ubuntu $UBUNTU_VERSION completed"

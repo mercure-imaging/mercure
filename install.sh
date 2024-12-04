@@ -326,7 +326,7 @@ setup_docker_dev () {
   if [ ! -f "$MERCURE_BASE"/docker-compose.override.yml ]; then
     echo "## Copying docker-compose.override.yml..."
     sudo cp $MERCURE_SRC/docker/docker-compose.override.yml $MERCURE_BASE
-    sudo sed -i -e "s;MERCURE_SRC;$(readlink -f $MERCURE_SRC);" "$MERCURE_BASE"/docker-compose.override.yml
+    sudo sed -i -e "s;MERCURE_SRC;$(readlink -f $MERCURE_SRC)/app;" "$MERCURE_BASE"/docker-compose.override.yml
     sudo chown $OWNER:$OWNER "$MERCURE_BASE"/docker-compose.override.yml
   fi
 }
@@ -353,7 +353,7 @@ install_app_files() {
     echo "## Installing app files..."
     [ "$overwrite" = true ] || sudo mkdir "$MERCURE_BASE"/app
     if [ ! "$MERCURE_SRC" -ef "$MERCURE_BASE"/app ]; then
-      sudo cp -R "$MERCURE_SRC" "$MERCURE_BASE"/app
+      sudo cp -R "$MERCURE_SRC/app" "$MERCURE_BASE"
     fi
     link_binaries
     sudo chown -R $OWNER:$OWNER "$MERCURE_BASE/app"
