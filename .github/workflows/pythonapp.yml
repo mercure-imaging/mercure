@@ -24,7 +24,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install pip-tools
-        if [ -f requirements.txt ]; then pip-sync requirements.txt dev-requirements.txt; fi
+        pip-sync app/requirements.txt app/dev-requirements.txt
         sudo apt-get install -y build-essential dcmtk inetutils-ping libqt5core5a redis
         pip install flake8 pytest pytest-asyncio
     - name: Lint with flake8
