@@ -1,8 +1,7 @@
 import json
 
-from dispatch.retry import increase_retry
 from common.constants import mercure_names
-
+from dispatch.retry import increase_retry
 
 dummy_info = {
     "action": "route",

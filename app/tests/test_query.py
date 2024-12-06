@@ -1,29 +1,29 @@
 import json
 import os
-from pathlib import Path
 import subprocess
 import tempfile
+from logging import getLogger
+from pathlib import Path
 from typing import Dict, Optional, Tuple
+
 import pydicom
-import pyfakefs
 import pytest
-from pynetdicom import AE, evt, StoragePresentationContexts, build_role
-from pynetdicom.sop_class import Verification, StudyRootQueryRetrieveInformationModelFind, StudyRootQueryRetrieveInformationModelGet,PatientRootQueryRetrieveInformationModelGet,  CTImageStorage # type: ignore
-from pynetdicom.status import Status
-from pydicom.uid import generate_uid
+from common.types import DicomTarget, DicomWebTarget, Rule
+from fakeredis import FakeStrictRedis
 from pydicom.dataset import Dataset, FileMetaDataset
-from rq import Worker
+from pydicom.uid import ExplicitVRLittleEndian, generate_uid
+from pynetdicom import AE, StoragePresentationContexts, evt
+from pynetdicom.sop_class import (CTImageStorage,  # type: ignore
+                                  PatientRootQueryRetrieveInformationModelGet,
+                                  StudyRootQueryRetrieveInformationModelFind,
+                                  StudyRootQueryRetrieveInformationModelGet,
+                                  Verification)
+from pynetdicom.status import Status
 from routing import router
+from rq import SimpleWorker, Worker
+from testing_common import bookkeeper_port, mercure_config, receiver_port
 from webinterface.dashboards.query.jobs import GetAccessionTask, QueryPipeline
 from webinterface.dicom_client import SimpleDicomClient
-
-from common.types import DicomTarget, DicomWebTarget, Rule
-from webinterface.common import redis
-from pydicom.uid import ExplicitVRLittleEndian, ImplicitVRLittleEndian
-from testing_common import receiver_port, mercure_config, bookkeeper_port
-from logging import getLogger
-from rq import SimpleWorker, Queue, Connection
-from fakeredis import FakeStrictRedis
 
 getLogger('pynetdicom').setLevel('WARNING')
 # Mock data for testing

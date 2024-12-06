@@ -1,15 +1,12 @@
 import json
-import os
 import time
 from pathlib import Path
 from subprocess import CalledProcessError
 from unittest.mock import call
-from common.monitor import m_events, task_event, severity
 
-import pytest
-
-from dispatch.send import execute, is_ready_for_sending
 from common.constants import mercure_names
+from common.monitor import m_events, severity, task_event
+from dispatch.send import execute, is_ready_for_sending
 from tests.testing_common import *
 
 dummy_info = {

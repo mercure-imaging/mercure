@@ -1,8 +1,7 @@
 import json
-from common.types import Task
 
-from dispatch.status import is_ready_for_sending, is_target_json_valid
 from common.constants import mercure_names
+from dispatch.status import is_ready_for_sending, is_target_json_valid
 
 pytest_plugins = ("pyfakefs",)
 dummy_info = {

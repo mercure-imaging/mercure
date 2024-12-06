@@ -1,28 +1,28 @@
+import copy
 import json
 import os
 import time
-import copy
-from pathlib import Path
-from subprocess import CalledProcessError
-import common.config as config
-
-import pytest
+import unittest
 import uuid
+from pathlib import Path
+from typing import Callable, Tuple
+
+import common.config as config
+import pytest
 import routing
 import routing.generate_taskfile
-import unittest
-
-import router
+from common.constants import mercure_actions, mercure_names
+from common.types import *
+from dispatch.send import execute
+from docker.models.containers import ContainerCollection
 # import processor
 from process import processor
-from dispatch.send import execute, is_ready_for_sending
-from docker.models.containers import ContainerCollection
-from webinterface.queue import RestartTaskErrors, restart_dispatch
-from common.constants import mercure_names, mercure_actions
-from common.types import *
-from tests.testing_common import mock_incoming_uid, mock_task_ids, make_fake_processor, mercure_config, FakeDockerContainer, mocked, bookkeeper_port
-from typing import Tuple, Callable
 from pytest_mock import MockerFixture
+from routing import router
+from tests.testing_common import (FakeDockerContainer, bookkeeper_port,
+                                  make_fake_processor, mercure_config,
+                                  mock_incoming_uid, mock_task_ids, mocked)
+from webinterface.queue import RestartTaskErrors, restart_dispatch
 
 logger = config.get_logger()
 
@@ -192,9 +192,9 @@ def create_and_route(fs, mocked, task_id, config, uid="TESTFAKEUID") -> Tuple[Li
 
     mock_task_ids(mocked, task_id, new_task_id)
     # mocked.patch("routing.route_series.parse_ascconv", new=lambda x: {})
-    routing.router.run_router()
+    router.run_router()
 
-    routing.router.route_series.assert_called_once_with(task_id, uid)  # type: ignore
+    router.route_series.assert_called_once_with(task_id, uid)  # type: ignore
     routing.route_series.push_series_serieslevel.assert_called_once_with(task_id, {"catchall": True}, [f"{uid}#bar"], uid, unittest.mock.ANY)  # type: ignore
     routing.route_series.push_serieslevel_outgoing.assert_called_once_with(task_id, {"catchall": True}, [f"{uid}#bar"], uid, unittest.mock.ANY, {})  # type: ignore
 

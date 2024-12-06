@@ -3,13 +3,13 @@ test_bookkeeper.py
 ==================
 """
 import multiprocessing
-from pathlib import Path
 import time
-import testing_common
-from testing_common import bookkeeper_port, mercure_config
+from pathlib import Path
 
 import requests
+import testing_common
 from bookkeeping import bookkeeper
+from testing_common import bookkeeper_port, mercure_config
 
 # def run_server(app, port):
 #     b.uvicorn.run(app, host="localhost", port=port)

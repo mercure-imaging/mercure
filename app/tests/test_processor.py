@@ -2,40 +2,33 @@
 test_processor.py
 ==============
 """
-from typing import Tuple
+import json
 import os
 import shutil
+import socket
 import unittest
-from unittest.mock import call
 import uuid
-from pytest_mock import MockerFixture
-import common
-from common.monitor import task_event
-
-
-from process import processor
 from itertools import permutations
-from common.constants import mercure_version, mercure_names
-
-import json
-from common.types import *
-import process.process_series
-from routing import router
-import routing.generate_taskfile
 from pathlib import Path
+from typing import Callable, Tuple
+from unittest.mock import call
 
-from testing_common import *
-from testing_common import mock_task_ids
-
+import common
+import process.process_series
+import pytest
+import routing.generate_taskfile
+from common.constants import mercure_names, mercure_version
+from common.monitor import task_event
+from common.types import *
 from docker.models.containers import ContainerCollection
 from docker.models.images import ImageCollection
-
 from nomad.api.job import Job
 from nomad.api.jobs import Jobs
-import socket
-
-from typing import Callable
-import pytest
+from process import processor
+from pytest_mock import MockerFixture
+from routing import router
+from testing_common import *
+from testing_common import mock_task_ids
 
 logger = config.get_logger()
 

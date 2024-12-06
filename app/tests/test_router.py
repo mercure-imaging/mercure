@@ -2,30 +2,22 @@
 test_router.py
 ==============
 """
-import importlib
+import json
 import os
-import stat
+import unittest
+import uuid
+from pathlib import Path
 from typing import Tuple
 from unittest.mock import call
-import json
-from pprint import pprint
-import uuid
 
-import pytest
-from common.helper import FileLock
-from common.monitor import m_events, task_event, severity
-from common.types import *
 import common
-from pyfakefs.fake_filesystem import FakeFilesystem
-from pyfakefs import fake_filesystem
 import routing.generate_taskfile
+from common.monitor import m_events, severity, task_event
+from common.types import *
 from dispatch import dispatcher
+from pyfakefs.fake_filesystem import FakeFilesystem
 from routing import router
-from pathlib import Path
-import unittest
-
 from testing_common import *
-
 from testing_common import mock_task_ids
 
 # import common.config as config

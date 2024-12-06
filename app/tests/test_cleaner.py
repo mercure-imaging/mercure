@@ -2,17 +2,15 @@
 test_cleaner.py
 ===============
 """
-from datetime import datetime, timedelta
-from datetime import time
-import shutil
-
-from freezegun import freeze_time
-import cleaner as c
-import common.helper as helper
-from pyfakefs.fake_filesystem import FakeFilesystem
+from datetime import datetime, time, timedelta
 from pathlib import Path
-from testing_common import *
+
 import cleaner
+import common.helper as helper
+from freezegun import freeze_time
+from pyfakefs.fake_filesystem import FakeFilesystem
+from testing_common import *
+
 
 # helper func
 def _to_time(time) -> time:
@@ -21,7 +19,7 @@ def _to_time(time) -> time:
 
 def test_cleaner_no_syntax_errors():
     """Checks if cleaner.py can be started."""
-    assert c
+    assert cleaner
 
 
 def test_is_not_offpeak():

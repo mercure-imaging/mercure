@@ -4,26 +4,28 @@ testing_common.py
 """
 import json
 import os
-from pathlib import Path
 import shutil
 import socket
-from typing import Callable, Dict, Any, Iterator, List, Optional, Tuple
 import uuid
+from pathlib import Path
+from typing import Any, Callable, Dict, Iterator, Optional, Tuple
 
 import pydicom
+
 pydicom.config.settings.reading_validation_mode = pydicom.config.IGNORE
 pydicom.config.settings.writing_validation_mode = pydicom.config.IGNORE
 
 
+import bookkeeping
+import common
+import common.config as config
+import docker.errors
+import process
+import pytest
+import routing
+from common.types import Config
 from pydicom.dataset import Dataset, FileDataset, FileMetaDataset
 from pydicom.uid import generate_uid
-
-import pytest
-import routing, common, process, bookkeeping
-import common.config as config
-from common.types import Config
-import docker.errors
-
 from tests.getdcmtags import process_dicom
 
 

@@ -1,9 +1,9 @@
 import itertools
-import os
 from pathlib import Path
 
-from pydicom.dataset import FileMetaDataset, Dataset
-from pydicom.uid import generate_uid, ExplicitVRLittleEndian, CTImageStorage
+from pydicom.dataset import Dataset, FileMetaDataset
+from pydicom.uid import CTImageStorage, ExplicitVRLittleEndian, generate_uid
+
 
 def generate_dicom_files(accession_number, destination_folder:Path, num_files=10, num_studies=2, num_series=2):
     """

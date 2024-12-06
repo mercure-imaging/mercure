@@ -3,8 +3,6 @@ test_bookkeeper.py
 ==================
 """
 import bookkeeper as b
-
-
 import testing_common
 from testing_common import *
 

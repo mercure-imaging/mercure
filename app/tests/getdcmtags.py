@@ -1,12 +1,12 @@
-import os
-import sys
+import argparse
 import json
 import shutil
-import argparse
+import sys
+from pathlib import Path
 from typing import Dict, List, Optional, Tuple
+
 import pydicom
 import requests
-from pathlib import Path
 
 VERSION = "1.0"
 

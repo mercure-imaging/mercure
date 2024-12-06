@@ -1,26 +1,25 @@
-from dataclasses import dataclass
 import json
 import multiprocessing
 import os
-from pathlib import Path
+import socket
 import subprocess
 import sys
+import tempfile
 import threading
 import time
-from typing import Any, Callable, Dict, Generator, Optional
+import xmlrpc.client
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Callable, Generator, Optional
+
+import pydicom
 import pytest
 import requests
-from supervisor.supervisord import Supervisor
-from supervisor.states import RUNNING_STATES
-from supervisor.options import ServerOptions
-from supervisor.xmlrpc import SupervisorTransport
-import xmlrpc.client
-import tempfile
 from common.config import mercure_defaults
-import pydicom
-import socket
-import tempfile
-
+from supervisor.options import ServerOptions
+from supervisor.states import RUNNING_STATES
+from supervisor.supervisord import Supervisor
+from supervisor.xmlrpc import SupervisorTransport
 
 # current workding directory
 here = os.path.abspath(os.getcwd())

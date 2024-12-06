@@ -1,29 +1,20 @@
 import asyncio
-from datetime import datetime, timedelta
-import importlib
-
-from typing import Tuple
-from pprint import pprint
 import unittest
 import uuid
+from datetime import timedelta
+from pathlib import Path
+from typing import Tuple
 
 import pytest
-from common import helper
+from common import notification
 from common.constants import mercure_events, mercure_names
 from common.types import *
-from common import notification
-import common
-from pyfakefs.fake_filesystem import FakeFilesystem
-from pyfakefs import fake_filesystem
-import routing.generate_taskfile
-
-from routing import router
-from process import processor
-
-from pathlib import Path
 from freezegun import freeze_time
-from testing_common import *
 from nomad.api.job import Job
+from process import processor
+from pyfakefs.fake_filesystem import FakeFilesystem
+from routing import router
+from testing_common import *
 
 
 def create_series(mocked, fs, config, study_uid, series_uid, series_description, study_description="") -> Tuple[str, str]:

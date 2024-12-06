@@ -1,26 +1,23 @@
-import asyncio
-from itertools import product
-import time
-import unittest
-from unittest.mock import call
-import uuid
-from pytest_mock import MockerFixture
-from common import notification
-import router
-from process import processor
-from dispatch import dispatcher
-
-from common.constants import mercure_events
-from collections.abc import Iterable
-from pprint import pprint
-from common.types import *
-from pathlib import Path
-from testing_common import *
-from docker.models.containers import ContainerCollection
-import unittest.mock
 import itertools
-from typing import Iterator, Callable
+import unittest
+import unittest.mock
+import uuid
+from collections.abc import Iterable
+from itertools import product
+from pathlib import Path
+from typing import Callable, Iterator
+from unittest.mock import call
+
 import pytest
+from common import notification
+from common.constants import mercure_events
+from common.types import *
+from dispatch import dispatcher
+from docker.models.containers import ContainerCollection
+from process import processor
+from pytest_mock import MockerFixture
+from routing import router
+from testing_common import *
 
 logger = config.get_logger()
 
@@ -124,7 +121,7 @@ async def test_notifications(fs, mercure_config: Callable[[Dict], Config], mocke
     )
     mock_incoming_uid(config, fs, uid)
     mocked.patch("uuid.uuid1", new=lambda: next(generator))
-    routing.router.run_router()
+    router.run_router()
     if action=="notification":
         notification.trigger_notification_for_rule.assert_has_calls(  # type: ignore
             [

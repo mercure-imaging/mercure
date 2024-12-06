@@ -1,12 +1,11 @@
-from dataclasses import dataclass
-import os
-from pathlib import Path
 import time
+from pathlib import Path
+
 import pytest
-from common.types import FolderTarget, Module, Rule, Target
+from common.types import FolderTarget, Module, Rule
+from testing_integration_common import *
 from tests.testing_common import create_minimal_dicom
 
-from testing_integration_common import *
 
 @pytest.mark.parametrize("n_series",(2,))
 @pytest.mark.skipif("os.getenv('TEST_FAST',False)")
