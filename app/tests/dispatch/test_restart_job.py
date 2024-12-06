@@ -13,8 +13,8 @@ import routing.generate_taskfile
 import unittest
 
 import router
-import processor
-
+# import processor
+from process import processor
 from dispatch.send import execute, is_ready_for_sending
 from docker.models.containers import ContainerCollection
 from webinterface.queue import RestartTaskErrors, restart_dispatch
@@ -192,9 +192,9 @@ def create_and_route(fs, mocked, task_id, config, uid="TESTFAKEUID") -> Tuple[Li
 
     mock_task_ids(mocked, task_id, new_task_id)
     # mocked.patch("routing.route_series.parse_ascconv", new=lambda x: {})
-    router.run_router()
+    routing.router.run_router()
 
-    router.route_series.assert_called_once_with(task_id, uid)  # type: ignore
+    routing.router.route_series.assert_called_once_with(task_id, uid)  # type: ignore
     routing.route_series.push_series_serieslevel.assert_called_once_with(task_id, {"catchall": True}, [f"{uid}#bar"], uid, unittest.mock.ANY)  # type: ignore
     routing.route_series.push_serieslevel_outgoing.assert_called_once_with(task_id, {"catchall": True}, [f"{uid}#bar"], uid, unittest.mock.ANY, {})  # type: ignore
 
@@ -202,7 +202,7 @@ def create_and_route(fs, mocked, task_id, config, uid="TESTFAKEUID") -> Tuple[Li
         k.name for k in Path("/var/processing").glob("**/*") if k.is_file()
     ]
 
-    mocked.patch("processor.process_series", new=mocked.spy(processor, "process_series"))
+    # mocked.patch("process.processor.process_series", new=mocked.spy(processor, "process_series"))
     return ["task.json", f"{uid}#bar.dcm", f"{uid}#bar.tags"], new_task_id
 
 @pytest.mark.asyncio

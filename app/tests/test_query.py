@@ -13,7 +13,7 @@ from pynetdicom.status import Status
 from pydicom.uid import generate_uid
 from pydicom.dataset import Dataset, FileMetaDataset
 from rq import Worker
-import router
+from routing import router
 from webinterface.dashboards.query.jobs import GetAccessionTask, QueryPipeline
 from webinterface.dicom_client import SimpleDicomClient
 

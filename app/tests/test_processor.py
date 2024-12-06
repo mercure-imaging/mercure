@@ -12,14 +12,15 @@ from pytest_mock import MockerFixture
 import common
 from common.monitor import task_event
 
-import router
-import processor
+
+from process import processor
 from itertools import permutations
 from common.constants import mercure_version, mercure_names
 
 import json
 from common.types import *
-import routing
+import process.process_series
+from routing import router
 import routing.generate_taskfile
 from pathlib import Path
 
@@ -90,7 +91,7 @@ def create_and_route(fs, mocked, task_id, config, uid="TESTFAKEUID") -> Tuple[Li
         k.name for k in Path("/var/processing").glob("**/*") if k.is_file()
     ]
 
-    mocked.patch("processor.process_series", new=mocked.spy(processor, "process_series"))
+    # mocked.patch("process.processor.process_series", new=mocked.spy(processor, "process_series"))
     return ["task.json", f"{uid}#bar.dcm", f"{uid}#bar.tags"], new_task_id
 
 def create_and_route_priority(fs, mocked, task_id, config, uid="TESTFAKEUID") -> Tuple[List[str], List[str]]:
@@ -112,7 +113,7 @@ def create_and_route_priority(fs, mocked, task_id, config, uid="TESTFAKEUID") ->
 
     created_tasks = [k.name for k in Path("/var/processing").iterdir() if k.is_dir()]
     assert set(created_tasks).issubset(set(new_task_ids))
-    mocked.patch("processor.process_series", new=mocked.spy(processor, "process_series"))
+    mocked.patch("process.process_series.process_series", new=mocked.spy(process.process_series, "process_series"))
     return ["task.json", f"{uid}#bar.dcm", f"{uid}#bar.tags"], created_tasks
 
 

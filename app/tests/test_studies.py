@@ -15,9 +15,11 @@ from common import notification
 import common
 from pyfakefs.fake_filesystem import FakeFilesystem
 from pyfakefs import fake_filesystem
-import routing
 import routing.generate_taskfile
-import router, dispatcher
+
+from routing import router
+from process import processor
+
 from pathlib import Path
 from freezegun import freeze_time
 from testing_common import *

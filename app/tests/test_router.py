@@ -18,9 +18,9 @@ from common.types import *
 import common
 from pyfakefs.fake_filesystem import FakeFilesystem
 from pyfakefs import fake_filesystem
-import routing
 import routing.generate_taskfile
-import router, dispatcher
+from dispatch import dispatcher
+from routing import router
 from pathlib import Path
 import unittest
 

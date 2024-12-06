@@ -19,8 +19,7 @@ from pydicom.dataset import Dataset, FileDataset, FileMetaDataset
 from pydicom.uid import generate_uid
 
 import pytest
-import process
-import routing, common, router, processor, bookkeeper
+import routing, common, process, bookkeeping
 import common.config as config
 from common.types import Config
 import docker.errors
@@ -50,9 +49,10 @@ def attach_spies(mocker) -> None:
             "routing.route_studies.move_study_folder",
             "routing.route_studies.push_studylevel_error",
             "routing.generate_taskfile.create_study_task",
-            "router.route_series",
-            "router.route_studies",
-            "process.process_series",
+            "routing.router.route_series",
+            "routing.router.route_studies",
+            "process.processor.process_series",
+            # "process.process_series",
             "common.monitor.post",
             "common.monitor.send_event",
             "common.monitor.send_register_series",
@@ -122,11 +122,10 @@ def mercure_config(fs, bookkeeper_port) -> Callable[[Dict], Config]:
     bookkeeper_env = f"""PORT={bookkeeper_port}
 HOST=0.0.0.0
 DATABASE_URL={config.mercure.bookkeeper}"""
-    fs.create_file(bookkeeper.bk_config.config_filename, contents=bookkeeper_env)
+    fs.create_file(bookkeeping.bookkeeper.bk_config.config_filename, contents=bookkeeper_env)
 
-    fs.add_real_directory(os.path.dirname(os.path.realpath(__file__))+'/../alembic')
-
-    fs.add_real_file(os.path.dirname(os.path.realpath(__file__))+'/../alembic.ini',read_only=True)
+    fs.add_real_directory(os.path.abspath(os.path.dirname(os.path.realpath(__file__))+'/../alembic'))
+    fs.add_real_file(os.path.abspath(os.path.dirname(os.path.realpath(__file__))+'/../alembic.ini'),read_only=True)
     return set_config
 
 

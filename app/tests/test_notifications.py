@@ -7,7 +7,9 @@ import uuid
 from pytest_mock import MockerFixture
 from common import notification
 import router
-import processor, dispatcher
+from process import processor
+from dispatch import dispatcher
+
 from common.constants import mercure_events
 from collections.abc import Iterable
 from pprint import pprint
@@ -122,7 +124,7 @@ async def test_notifications(fs, mercure_config: Callable[[Dict], Config], mocke
     )
     mock_incoming_uid(config, fs, uid)
     mocked.patch("uuid.uuid1", new=lambda: next(generator))
-    router.run_router()
+    routing.router.run_router()
     if action=="notification":
         notification.trigger_notification_for_rule.assert_has_calls(  # type: ignore
             [
