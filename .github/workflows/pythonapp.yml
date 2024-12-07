@@ -32,8 +32,8 @@ jobs:
         # stop the build if there are Python syntax errors or undefined names
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-        # ignore a few flake8 issues that we're choosing to live with for now
-        flake8 . --ignore F405,W503,W504,W293,F403 --count --exit-zero --max-complexity=10  --max-line-length=127 --statistics
+        # ignore a few flake8 issues that we're choosing to live with for now, eg complexity, star imports
+        flake8 . --ignore C901,F405,W503,W504,W293,F403 --count --exit-zero --max-complexity=10  --max-line-length=127 --statistics
     - name: typecheck with mypy
       run: |
         mypy --exclude app/tests --no-namespace-packages . 
