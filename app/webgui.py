@@ -6,12 +6,9 @@ The web-based graphical user interface of mercure.
 
 # Standard python includes
 import contextlib
-import pprint
 import random
-from re import L
 import string
 import subprocess
-from tempfile import tempdir
 import traceback
 
 import dateutil
@@ -25,14 +22,12 @@ import json
 import distro
 import os
 import datetime
-import daiquiri
 import html
 from pathlib import Path
-from typing import Any, Dict, List, Optional, TypedDict, Union
+from typing import Any, Dict, List, Optional, Union
 import docker
 import hupper
 import nomad
-import base64
 
 # Starlette-related includes
 from starlette.applications import Starlette
@@ -50,7 +45,7 @@ from starlette.authentication import (
 from starlette.middleware.authentication import AuthenticationMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.config import Config
-from starlette.datastructures import URL, Secret
+from starlette.datastructures import Secret
 from starlette.routing import Route, Router
 
 # App-specific includes
@@ -60,7 +55,6 @@ import common.helper as helper
 from common.constants import mercure_defs, mercure_names
 
 import webinterface.users as users
-import common.tagslist as tagslist
 import webinterface.services as services
 import webinterface.rules as rules
 import webinterface.targets as targets
@@ -75,7 +69,7 @@ router = decoRouter()
 
 
 ###################################################################################
-## Helper classes
+# Helper classes
 ###################################################################################
 
 
@@ -83,10 +77,10 @@ logger = config.get_logger()
 
 
 try:
-    nomad_connection = nomad.Nomad(host="172.17.0.1", timeout=5) # type: ignore
+    nomad_connection = nomad.Nomad(host="172.17.0.1", timeout=5)  # type: ignore
     # TODO: Print message only if connection to Nomad successful
     logger.info("Connected to Nomad")
-except:
+except Exception:
     nomad_connection = None
 
 
@@ -104,7 +98,7 @@ class SessionAuthBackend(AuthenticationBackend):
     async def authenticate(self, request):
 
         username = request.session.get("user")
-        if username == None:
+        if username is None:
             return
 
         credentials = ["authenticated"]
@@ -116,16 +110,18 @@ class SessionAuthBackend(AuthenticationBackend):
 
         return AuthCredentials(credentials), ExtendedUser(username, is_admin)
 
+
 webgui_config = None
 SECRET_KEY: Secret
 WEBGUI_PORT: int
 WEBGUI_HOST: str
 DEBUG_MODE: bool
+
+
 def read_webgui_config() -> Config:
     global webgui_config, SECRET_KEY, WEBGUI_HOST, WEBGUI_PORT, DEBUG_MODE
     webgui_config = Config((os.getenv("MERCURE_CONFIG_FOLDER") or "/opt/mercure/config") + "/webgui.env")
-
-
+    
     # Note: PutSomethingRandomHere is the default value in the shipped configuration file.
     #       The app will not start with this value, forcing the users to set their onw secret
     #       key. Therefore, the value is used as default here as well.
@@ -134,6 +130,7 @@ def read_webgui_config() -> Config:
     WEBGUI_HOST = webgui_config("HOST", default="0.0.0.0")
     DEBUG_MODE = webgui_config("DEBUG", cast=bool, default=True)
     return webgui_config
+
 
 @contextlib.asynccontextmanager
 async def lifespan(app):
@@ -151,12 +148,12 @@ def startup(app: Starlette):
             state["redis_connected"] = True
         else:
             raise Exception("Redis connection failed")
-    except:
+    except Exception:
         logger.error("Could not connect to Redis", exc_info=True)
     
     if state["redis_connected"]:
         scheduled_jobs = rq_fast_scheduler.get_jobs()
-        for job in scheduled_jobs: 
+        for job in scheduled_jobs:
             if job.meta.get("type") != "offpeak":
                 continue
             rq_fast_scheduler.cancel(job)
@@ -170,6 +167,7 @@ def startup(app: Starlette):
     monitor.configure("webgui", "main", config.mercure.bookkeeper)
     monitor.send_event(monitor.m_events.BOOT, monitor.severity.INFO, f"PID = {os.getpid()}")
     return state
+
 
 async def shutdown() -> None:
     monitor.send_event(monitor.m_events.SHUTDOWN, monitor.severity.INFO, "")
@@ -202,7 +200,7 @@ async def delete_old_tests() -> Response:
 
 
 ###################################################################################
-## Logs endpoints
+# Logs endpoints
 ###################################################################################
 
 
@@ -290,7 +288,7 @@ async def show_log(request) -> Response:
         try:
             raw_logs = get_nomad_logs(requested_service, 50000)
             return_code = 0
-        except:
+        except Exception:
             pass
         sub_services = []
     elif runtime == "systemd":
@@ -306,7 +304,8 @@ async def show_log(request) -> Response:
             service_name = request.query_params.get("subservice", "missing")
             # Redirect to the first sub-service if none has been specified in the URL
             if service_name == "missing":
-                return RedirectResponse(url="/logs/" + requested_service + "?subservice="+service_name_or_list[0], status_code=303) 
+                return RedirectResponse(url="/logs/" + requested_service + "?subservice=" + service_name_or_list[0],
+                                        status_code=303)
             sub_services = service_name_or_list
         else:
             service_name = service_name_or_list
@@ -322,14 +321,15 @@ async def show_log(request) -> Response:
         raw_logs = run_result[1]
 
     elif runtime == "docker":
-        client = docker.from_env() # type: ignore
+        client = docker.from_env()  # type: ignore
         try:
             service_name_or_list = services.services_list[requested_service]["docker_service"]
             if isinstance(service_name_or_list, list):
                 service_name = request.query_params.get("subservice", "missing")
                 # Redirect to the first sub-service if none has been specified in the URL
                 if service_name == "missing":
-                    return RedirectResponse(url="/logs/" + requested_service + "?subservice="+service_name_or_list[0], status_code=303) 
+                    return RedirectResponse(url="/logs/" + requested_service + "?subservice=" + service_name_or_list[0],
+                                            status_code=303)
                 sub_services = service_name_or_list
             else:
                 service_name = service_name_or_list
@@ -338,16 +338,16 @@ async def show_log(request) -> Response:
             container = client.containers.get(service_name)
             container.reload()
             try:
-                local_tz: datetime.tzinfo = dateutil.tz.gettz(config.mercure.local_time)  # type: ignore 
+                local_tz: datetime.tzinfo = dateutil.tz.gettz(config.mercure.local_time)  # type: ignore
                 if start_dt:
                     start_dt = start_dt.replace(tzinfo=local_tz)
                 if end_dt:
                     end_dt = end_dt.replace(tzinfo=local_tz)
-            except:
+            except Exception:
                 pass
             raw_logs = container.logs(since=start_dt, until=end_dt, timestamps=True, tail=1000)
             return_code = 0
-        except (docker.errors.NotFound, docker.errors.APIError) as e: # type: ignore
+        except (docker.errors.NotFound, docker.errors.APIError) as e:  # type: ignore
             logger.error(e)
             return_code = 1
 
@@ -357,13 +357,13 @@ async def show_log(request) -> Response:
         log_content = helper.localize_log_timestamps(log_content, config)
 
     else:
-        log_content = f"Error reading log information"
+        log_content = "Error reading log information"
         if start_date or end_date:
             log_content = log_content + "<br /><br />Are the From/To settings valid?"
 
     if request.headers["accept"] == 'application/json':
         if return_code == 0:
-            return JSONResponse({"logs":str(raw_logs.decode())})
+            return JSONResponse({"logs": str(raw_logs.decode())})
     template = "logs.html"
     context = {
         "request": request,
@@ -385,7 +385,7 @@ async def show_log(request) -> Response:
 
 
 ###################################################################################
-## Configuration endpoints
+# Configuration endpoints
 ###################################################################################
 
 
@@ -395,7 +395,7 @@ async def configuration(request) -> Response:
     """Shows the current configuration of the mercure appliance."""
     try:
         config.read_config()
-    except:
+    except Exception:
         return PlainTextResponse("Error reading configuration file.")
     template = "configuration.html"
     config_edited = int(request.query_params.get("edited", 0))
@@ -427,7 +427,7 @@ async def configuration_edit(request) -> Response:
     try:
         with open(cfg_file, "r") as json_file:
             config_content = json.load(json_file)
-    except:
+    except Exception:
         return PlainTextResponse("Error reading configuration file.")
 
     config_content = json.dumps(config_content, indent=4, sort_keys=False)
@@ -460,14 +460,14 @@ async def configuration_edit_post(request) -> Response:
     except ValueError:
         return PlainTextResponse("Unable to write config file. Might be locked.")
 
-    logger.info(f"Updates mercure configuration file.")
+    logger.info("Updates mercure configuration file.")
     monitor.send_webgui_event(monitor.w_events.CONFIG_EDIT, request.user.display_name, "")
 
     return RedirectResponse(url="/configuration?edited=1", status_code=303)
 
 
 ###################################################################################
-## Login/logout endpoints
+# Login/logout endpoints
 ###################################################################################
 
 
@@ -476,7 +476,7 @@ async def login(request) -> Response:
     """Shows the login page."""
     try:
         config.read_config()
-    except:
+    except Exception:
         return PlainTextResponse("Error reading configuration file.")
     request.session.clear()
     template = "login.html"
@@ -587,13 +587,14 @@ async def self_test(request) -> Response:
         )
         if test_type == "process":
             config.mercure.modules[test_rule + "_self_test_module"] = Module(
-                docker_tag=f"mercureimaging/mercure-dummy-processor:latest",
+                docker_tag="mercureimaging/mercure-dummy-processor:latest",
             )
             config.mercure.modules[test_rule + "_self_test_module_2"] = Module(
                 docker_tag="mercureimaging/mercure-dummy-processor:latest",
             )
             config.mercure.rules[test_rule + "_begin"].action = "both"
-            config.mercure.rules[test_rule + "_begin"].processing_module = [test_rule + "_self_test_module", test_rule + "_self_test_module_2"]
+            config.mercure.rules[test_rule + "_begin"].processing_module = [test_rule + "_self_test_module",
+                                                                            test_rule + "_self_test_module_2"]
 
         # "end" rule is triggered when the test is completed. It just performs a notification to register the test success.
         config.mercure.rules[test_rule + "_end"] = Rule(
@@ -616,20 +617,21 @@ async def self_test(request) -> Response:
         else:
             generate_series(tmpdir, 10, series_description="self_test_series " + test_id)
 
-    except Exception as e:
+    except Exception:
         return PlainTextResponse(f"Error initializing test: {traceback.format_exc()}", status_code=500)
 
     # shutil.copytree("./test_series", tmpdir)
-    command = f"""dcmsend {receiver_host} {receiver_port} +r +sd {tmpdir} -aet "mercure" -aec "{test_id}_begin" -nuc +sp '*.dcm' -to 60"""
+    command = (f"""dcmsend {receiver_host} {receiver_port} +r +sd {tmpdir} """
+               f"""-aet "mercure" -aec "{test_id}_begin" -nuc +sp '*.dcm' -to 60""")
     try:
-        output = subprocess.check_output(command, shell=True, stderr=subprocess.STDOUT)
+        subprocess.check_output(command, shell=True, stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as e:
         logger.error(f"Error sending dicoms: {command}")
         return PlainTextResponse("Could not submit dicoms for test:\n" + e.output.decode("utf-8"))
 
     await monitor.do_post("test-begin", dict(json=dict(id=test_id, type=test_type, rule_type=rule_type)))
     # logger.info(f"self_test: {output.decode('utf-8')}")
-    return JSONResponse({"success":"true", "test_id":test_id})
+    return JSONResponse({"success": "true", "test_id": test_id})
 
 
 @router.post("/login")
@@ -638,7 +640,7 @@ async def login_post(request) -> Response:
     On the first login, the user will be directed to the settings page and asked to change the password."""
     try:
         users.read_users()
-    except:
+    except Exception:
         return PlainTextResponse("Configuration is being updated. Try again in a minute.")
 
     form = dict(await request.form())
@@ -646,7 +648,7 @@ async def login_post(request) -> Response:
     if users.evaluate_password(form.get("username", ""), form.get("password", "")):
         request.session.update({"user": form["username"]})
 
-        if users.is_admin(form["username"]) == True:
+        if users.is_admin(form["username"]) is True:
             request.session.update({"is_admin": "Jawohl"})
 
         monitor.send_webgui_event(
@@ -687,10 +689,11 @@ async def logout(request):
 @router.get("/settings")
 @requires(["authenticated"], redirect="login")
 async def settings_edit(request) -> Response:
-    """Shows the settings for the current user. Renders the same template as the normal user edit, but with parameter own_settings=True."""
+    """Shows the settings for the current user.
+       Renders the same template as the normal user edit, but with parameter own_settings=True."""
     try:
         users.read_users()
-    except:
+    except Exception:
         return PlainTextResponse("Configuration is being updated. Try again in a minute.")
 
     own_name = request.user.display_name
@@ -709,14 +712,14 @@ async def settings_edit(request) -> Response:
 
 
 ###################################################################################
-## Homepage endpoints
+# Homepage endpoints
 ###################################################################################
 
 async def get_service_status(runtime) -> List[Dict[str, Any]]:
     service_status = {service: {
-            "id": service,
-            "name": value["name"],
-            "running": None
+        "id": service,
+        "name": value["name"],
+        "running": None
     } for service, value in services.services_list.items()}
     logger.warning(service_status)
     logger.warning(services.services_list)
@@ -738,7 +741,7 @@ async def get_service_status(runtime) -> List[Dict[str, Any]]:
                         break
 
             elif runtime == "docker":
-                client = docker.from_env() # type: ignore
+                client = docker.from_env()  # type: ignore
                 docker_services = service_info["docker_service"]
                 if not isinstance(docker_services, list):
                     docker_services = [docker_services]
@@ -752,7 +755,7 @@ async def get_service_status(runtime) -> List[Dict[str, Any]]:
                         if status == "running":
                             running_status = True
 
-                except (docker.errors.NotFound, docker.errors.APIError): # type: ignore
+                except (docker.errors.NotFound, docker.errors.APIError):  # type: ignore
                     running_status = False
             elif runtime == "nomad":
                 if nomad_connection is None:
@@ -766,14 +769,15 @@ async def get_service_status(runtime) -> List[Dict[str, Any]]:
                         alloc = running_alloc[0]
                         if not alloc["TaskStates"].get(service_id):
                             running_status = False
-                        else: # TODO: fix this for workers?
+                        else:  # TODO: fix this for workers?
                             running_status = alloc["TaskStates"][service_id]["State"] == "running"
 
             service_status[service_id]["running"] = running_status
-    except:
+    except Exception:
         logger.exception("Failed to get service status.")
     finally:
         return list(service_status.values())
+
 
 @router.get("/")
 @requires("authenticated", redirect="login")
@@ -794,7 +798,7 @@ async def homepage(request) -> Response:
         used_space = 100 * disk_used / disk_total
         free_space = disk_free // (2**30)
         total_space = disk_total // (2**30)
-    except:
+    except Exception:
         used_space = -1
         free_space = "N/A"
         disk_total = "N/A"
@@ -853,7 +857,7 @@ async def control_services(request) -> Response:
                     await async_run(command)
 
             elif runtime == "docker":
-                client = docker.from_env() # type: ignore
+                client = docker.from_env()  # type: ignore
                 docker_services = services.services_list[service]["docker_service"]
                 if not isinstance(docker_services, list):
                     docker_services = [docker_services]
@@ -870,7 +874,7 @@ async def control_services(request) -> Response:
                             container.restart()
                         if action == "kill":
                             container.kill()
-                    except (docker.errors.NotFound, docker.errors.APIError) as docker_error: # type: ignore
+                    except (docker.errors.NotFound, docker.errors.APIError) as docker_error:  # type: ignore
                         logger.error(f"{docker_error}")
                         pass
 
@@ -884,7 +888,7 @@ async def control_services(request) -> Response:
 
 
 ###################################################################################
-## Error handlers
+# Error handlers
 ###################################################################################
 
 
@@ -894,7 +898,6 @@ async def error(request):
     An example error. Switch the `debug` setting to see either tracebacks or 500 pages.
     """
     raise RuntimeError("Oh no")
-
 
 
 async def not_found(request, exc) -> Response:
@@ -922,6 +925,7 @@ exception_handlers = {
 }
 app = None
 
+
 def create_app() -> Starlette:
     global app, DEBUG_MODE, SECRET_KEY
     app = Starlette(debug=DEBUG_MODE, lifespan=lifespan, exception_handlers=exception_handlers, routes=router)
@@ -940,15 +944,16 @@ def create_app() -> Starlette:
     return app
 
 
-
 ###################################################################################
-## Emergency error handler
+# Emergency error handler
 ###################################################################################
 
 
 async def emergency_response(request) -> Response:
     """Shows emergency message about invalid configuration."""
-    return PlainTextResponse("ERROR: mercure configuration is invalid. Check configuration and restart webgui service.", status_code=500)
+    return PlainTextResponse(("ERROR: mercure configuration is invalid. "
+                              "Check configuration and restart webgui service."),
+                             status_code=500)
 
 
 def launch_emergency_app() -> None:
@@ -962,9 +967,8 @@ def launch_emergency_app() -> None:
     uvicorn.run(emergency_app, host=WEBGUI_HOST, port=WEBGUI_PORT)
 
 
-
 ###################################################################################
-## Entry function
+# Entry function
 ###################################################################################
 
 
@@ -972,7 +976,7 @@ def main(args=sys.argv[1:]) -> None:
     global app, WEBGUI_HOST, WEBGUI_PORT, SECRET_KEY
     if "--reload" in args or os.getenv("MERCURE_ENV", "PROD").lower() == "dev":
         # start_reloader will only return in a monitored subprocess
-        reloader = hupper.start_reloader("webgui.main")
+        hupper.start_reloader("webgui.main")
         import logging
 
         logging.getLogger("watchdog").setLevel(logging.WARNING)
@@ -995,6 +999,7 @@ def main(args=sys.argv[1:]) -> None:
         launch_emergency_app()
         logger.info("Going down.")
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

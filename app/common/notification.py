@@ -7,21 +7,21 @@ Helper functions for triggering webhook calls.
 # Standard python includes
 import json
 import ssl
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
+from typing import Any, Dict, List, Optional
 import typing
 import aiohttp
-import daiquiri
-import json
 import asyncio
 import traceback
 
 import jinja2.utils
 
 from common import monitor
-from common.types import EmptyDict, Rule, Task, TaskProcessing
+from common.types import Rule, Task, TaskProcessing
 from .helper import loop
 import common.config as config
 from jinja2 import Template
+import smtplib
+from email.message import EmailMessage
 
 # App-specific includes
 from common.constants import (
@@ -35,7 +35,7 @@ logger = config.get_logger()
 ssl_context = ssl.create_default_context()
 
 
-def setup() -> bool:   
+def setup() -> bool:
     """Load the SSL certificate if it is configured (after the configuration has been read)."""
     global ssl_context
     if config.mercure.webhook_certificate_location:
@@ -89,7 +89,7 @@ def parse_payload(
     return Template(payload_parsed).render(context)
     
 
-def send_webhook(url:str, payload: str) -> None:
+def send_webhook(url: str, payload: str) -> None:
     if not url:
         return
 
@@ -103,27 +103,23 @@ def send_webhook(url:str, payload: str) -> None:
         # if (response.status_code != 200) and (response.status_code != 204):
         #     logger.error(f"ERROR: Webhook notification failed (status code {response.status_code})")
         #     logger.error(f"ERROR: {response.text}")
-    except:
-        logger.error(f"ERROR: Webhook notification failed")
+    except Exception:
+        logger.error("ERROR: Webhook notification failed")
         logger.error(traceback.format_exc())
         return
 
 
-
-import smtplib
-from email.message import EmailMessage
-
-def send_email(address: str, payload: str, event: mercure_events, rule_name: str, rule_type:str) -> None:
+def send_email(address: str, payload: str, event: mercure_events, rule_name: str, rule_type: str) -> None:
     if not address:
         return
     subject = f"Rule {rule_name}: {event.name}"
-    try: 
+    try:
         send_email_helper(address, subject, payload, rule_type)
-    except:
-        logger.exception(f"ERROR: Email notification failed")
+    except Exception:
+        logger.exception("ERROR: Email notification failed")
 
 
-def send_email_helper(to:str, subject:str, content:str, rule_type="plain") -> None:
+def send_email_helper(to: str, subject: str, content: str, rule_type="plain") -> None:
     # Create a text/plain message
     msg = EmailMessage()
     msg['Subject'] = f'[Mercure] {subject}'
@@ -133,18 +129,18 @@ def send_email_helper(to:str, subject:str, content:str, rule_type="plain") -> No
 
     # Send the message via our own SMTP server.
     s = smtplib.SMTP('localhost')
-    try: 
+    try:
         s.send_message(msg)
     finally:
         s.quit()
 
 
-def get_task_requested_notification(task:Task) -> bool:
+def get_task_requested_notification(task: Task) -> bool:
     process_infos = task.process
-    if not isinstance(process_infos,(TaskProcessing,List)):
+    if not isinstance(process_infos, (TaskProcessing, List)):
         return False
 
-    for process in (process_infos if isinstance(process_infos,List) else [process_infos]):
+    for process in (process_infos if isinstance(process_infos, List) else [process_infos]):
         if not process.output:
             continue
         if (notification_info := process.output.get("__mercure_notification")) and notification_info.get("requested"):
@@ -152,21 +148,21 @@ def get_task_requested_notification(task:Task) -> bool:
     return False
 
 
-def get_task_custom_notification(task:Task) -> Optional[str]:
+def get_task_custom_notification(task: Task) -> Optional[str]:
     results = []
     process_infos = task.process
-    if not isinstance(process_infos,(TaskProcessing,List)):
+    if not isinstance(process_infos, (TaskProcessing, List)):
         return None
 
-    for process in (process_infos if isinstance(process_infos,List) else [process_infos]):
+    for process in (process_infos if isinstance(process_infos, List) else [process_infos]):
         if not process.output:
             continue
         if (notification_info := process.output.get("__mercure_notification")) and (text := notification_info.get("text")):
-            results.append((process.module_name,text))
+            results.append((process.module_name, text))
     if not results:
         return None
 
-    str_results = [ f"{module_name}: {text}" for module_name, text in results]
+    str_results = [f"{module_name}: {text}" for module_name, text in results]
     return "\n".join(str_results)
 
 
@@ -178,7 +174,7 @@ def trigger_notification_for_rule(
     *,
     task: Task,
     details: Optional[str] = "",
-    send_always: bool=False,
+    send_always: bool = False,
 ):
     ...
 
@@ -220,17 +216,17 @@ def trigger_notification_for_rule(
     # Now fire the webhook if configured
     if (
         event == mercure_events.RECEIVED
-        and current_rule.notification_trigger_reception == True
+        and current_rule.notification_trigger_reception is True
     ):
         do_send = True
     elif (
         event == mercure_events.COMPLETED
-        and current_rule.notification_trigger_completion == True
+        and current_rule.notification_trigger_completion is True
     ):
         do_send = True
     elif (
         event == mercure_events.ERROR
-        and current_rule.notification_trigger_error == True
+        and current_rule.notification_trigger_error is True
     ):
         do_send = True
 
@@ -254,7 +250,8 @@ def trigger_notification_for_rule(
                 patient_name=task.info.patient_name or "",
             )
 
-        context = dict(body=jinja2.utils.htmlsafe_json_dumps(parse_payload(body, event, rule_name, task_id, details, phi_data, task=task, tags_list=tags_list))[1:-1])  # type: ignore
+        context = dict(body=jinja2.utils.htmlsafe_json_dumps(  # type: ignore
+            parse_payload(body, event, rule_name, task_id, details, phi_data, task=task, tags_list=tags_list))[1:-1])
         context.update(phi_data)
 
         webhook_payload = parse_payload(

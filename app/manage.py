@@ -2,6 +2,8 @@
 import click
 import webinterface.users as users
 import test as mercure_test
+
+
 @click.group()
 def manage():
     """
@@ -9,15 +11,18 @@ def manage():
     """
     pass
 
+
 @click.group()
 def user():
     """User management commands."""
     pass
 
+
 @click.command()
 def test():
     """Test command to check the setup."""
     mercure_test.run_test()
+
 
 @click.command()
 @click.argument('username')
@@ -32,11 +37,13 @@ def add(username, admin: bool):
     users.save_users()
     click.echo("User added successfully.")
 
+
 @click.command()
 def list():
     """List all users."""
     for user in users.users_list:
         click.echo(user)
+
 
 @click.command()
 @click.argument('username')
@@ -62,6 +69,7 @@ def set_password(username):
     user['password'] = users.hash_password(new_password)
     users.save_users()
     click.echo("Password updated successfully.")
+
 
 # Adding commands to the user group
 user.add_command(add)

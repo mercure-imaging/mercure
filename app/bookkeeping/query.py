@@ -16,7 +16,6 @@ from starlette.responses import JSONResponse
 from starlette.authentication import requires
 
 # App-specific includes
-import bookkeeping.config as bk_config
 import bookkeeping.database as db
 from bookkeeping.helper import *
 from common import config
@@ -25,6 +24,7 @@ router = decoRouter()
 
 tz_conversion = ""
 
+
 def set_timezone_conversion() -> None:
     global tz_conversion
     tz_conversion = ""
@@ -32,7 +32,7 @@ def set_timezone_conversion() -> None:
         tz_conversion = f" AT time zone '{config.mercure.server_time}' at time zone '{config.mercure.local_time}' "
 
 ###################################################################################
-## Query endpoints
+# Query endpoints
 ###################################################################################
 
 
@@ -74,8 +74,10 @@ async def get_tasks(request) -> JSONResponse:
         )
     )
     # query = sqlalchemy.text(
-    #     """ select tasks.id as task_id, tasks.time, tasks.series_uid, tasks.study_uid, "tag_seriesdescription", "tag_modality" from tasks
-    #         join dicom_series on tasks.study_uid = dicom_series.study_uid or tasks.series_uid = dicom_series.series_uid """
+    #     """ select tasks.id as task_id, tasks.time, tasks.series_uid, tasks.study_uid,
+    #         "tag_seriesdescription", "tag_modality" from tasks
+    #         join dicom_series on tasks.study_uid = dicom_series.study_uid
+    #           or tasks.series_uid = dicom_series.series_uid """
     # )
     results = await db.database.fetch_all(query)
     return CustomJSONResponse(results)
@@ -136,8 +138,8 @@ async def get_task_events(request) -> JSONResponse:
         where task_events.task_id = '{task_id}' {subtask_ids_filter}
         order by task_events.task_id, task_events.time
         """
-    #print("SQL Query = " + query_string)
-    query = sqlalchemy.text(query_string)    
+    # print("SQL Query = " + query_string)
+    query = sqlalchemy.text(query_string)
 
     results = await db.database.fetch_all(query)
     return CustomJSONResponse(results)
@@ -170,10 +172,11 @@ async def get_task_process_logs(request) -> JSONResponse:
     subtasks = await db.database.fetch_all(subtask_query)
     subtask_ids = [row[0] for row in subtasks]
 
-    query = db.processor_logs_table.select(db.processor_logs_table.c.task_id.in_(subtask_ids)).order_by(db.processor_logs_table.c.id)
+    query = (db.processor_logs_table.select(db.processor_logs_table.c.task_id.in_(subtask_ids))
+                                    .order_by(db.processor_logs_table.c.id))
     results = [dict(r) for r in await db.database.fetch_all(query)]
     for result in results:
-        if result["logs"] == None:
+        if result["logs"] is None:
             if logs_folder := config.mercure.processing_logs.logs_file_store:
                 result["logs"] = (
                     Path(logs_folder) / result["task_id"] / f"{result['module_name']}.{result['id']}.txt"
@@ -187,7 +190,9 @@ async def get_task_process_results(request) -> JSONResponse:
     """Endpoint for getting all processing results from a task."""
     task_id = request.query_params.get("task_id", "")
 
-    query = db.processor_outputs_table.select().where(db.processor_outputs_table.c.task_id == task_id).order_by(db.processor_outputs_table.c.id)
+    query = (db.processor_outputs_table.select()
+                                       .where(db.processor_outputs_table.c.task_id == task_id)
+                                       .order_by(db.processor_outputs_table.c.id))
     results = [dict(r) for r in await db.database.fetch_all(query)]
     return CustomJSONResponse(results)
 
@@ -199,57 +204,60 @@ async def find_task(request) -> JSONResponse:
     study_filter = request.query_params.get("study_filter", "false")
     filter_term = ""
     if search_term:
-        filter_term = f"""and ((tag_accessionnumber ilike '{search_term}%') or (tag_patientid ilike '{search_term}%') or (tag_patientname ilike '%{search_term}%'))"""
+        filter_term = (f"""and ((tag_accessionnumber ilike '{search_term}%') """ +
+                       f"""or (tag_patientid ilike '{search_term}%') """ +
+                       f"""or (tag_patientname ilike '%{search_term}%'))""")
 
     study_filter_term = ""
-    if study_filter=="true":
+    if study_filter == "true":
         study_filter_term = "and tasks.study_uid is not null"
 
-    # query_string = f"""select max(a.acc) as acc, max(a.mrn) as mrn, max(a.task_id) as task_id, max(a.scope) as scope, max(a.time) as time, 
-    #                string_agg(b.data->'info'->>'applied_rule', ', ' order by b.id) as rule, 
-    #                string_agg(b.data->'info'->>'triggered_rules', ',' order by b.id) as triggered_rules 
-    #                from (select tasks.id as task_id, 
-    #                tag_accessionnumber as acc, 
+    # query_string = f"""select max(a.acc) as acc, max(a.mrn) as mrn,
+    #                   max(a.task_id) as task_id, max(a.scope) as scope, max(a.time) as time,
+    #                string_agg(b.data->'info'->>'applied_rule', ', ' order by b.id) as rule,
+    #                string_agg(b.data->'info'->>'triggered_rules', ',' order by b.id) as triggered_rules
+    #                from (select tasks.id as task_id,
+    #                tag_accessionnumber as acc,
     #                tag_patientid as mrn,
     #                data->'info'->>'uid_type' as scope,
-    #                tasks.time::timestamp {tz_conversion} as time        
+    #                tasks.time::timestamp {tz_conversion} as time
     #                from tasks
-    #                left join dicom_series on dicom_series.series_uid = tasks.series_uid 
+    #                left join dicom_series on dicom_series.series_uid = tasks.series_uid
     #                where parent_id is null {filter_term} {study_filter_term}
     #                order by date_trunc('second', tasks.time) desc, tasks.id desc
-    #                limit 512) a 
+    #                limit 512) a
     #                left join tasks b on (b.parent_id = a.task_id or b.id = a.task_id)
     #                group by a.task_id
     #                order by max(a.time) desc
     #                """
     
     query_string = f"""WITH task_data AS (
-                           SELECT 
-                               tasks.id AS task_id, 
-                               tag_accessionnumber AS acc, 
+                           SELECT
+                               tasks.id AS task_id,
+                               tag_accessionnumber AS acc,
                                tag_patientid AS mrn,
                                data->'info'->>'uid_type' AS scope,
                                tasks.time::timestamp {tz_conversion} AS time
                            FROM tasks
-                           LEFT JOIN dicom_series ON dicom_series.series_uid = tasks.series_uid 
+                           LEFT JOIN dicom_series ON dicom_series.series_uid = tasks.series_uid
                            WHERE parent_id IS NULL {filter_term} {study_filter_term}
                            ORDER BY tasks.time DESC, tasks.id DESC
                            LIMIT 512
                        )
-                       SELECT 
-                           MAX(a.acc) AS acc, 
-                           MAX(a.mrn) AS mrn, 
-                           MAX(a.task_id) AS task_id, 
-                           MAX(a.scope) AS scope, 
+                       SELECT
+                           MAX(a.acc) AS acc,
+                           MAX(a.mrn) AS mrn,
+                           MAX(a.task_id) AS task_id,
+                           MAX(a.scope) AS scope,
                            MAX(a.time) AS time,
-                           STRING_AGG(b.data->'info'->>'applied_rule', ', ' ORDER BY b.id) AS rule, 
-                           STRING_AGG(b.data->'info'->>'triggered_rules', ',' ORDER BY b.id) AS triggered_rules 
+                           STRING_AGG(b.data->'info'->>'applied_rule', ', ' ORDER BY b.id) AS rule,
+                           STRING_AGG(b.data->'info'->>'triggered_rules', ',' ORDER BY b.id) AS triggered_rules
                        FROM task_data a
                        LEFT JOIN tasks b ON (b.parent_id = a.task_id OR b.id = a.task_id)
                        GROUP BY a.task_id
                        ORDER BY MAX(a.time) DESC;
                    """
-    #print(query_string)
+    # print(query_string)
     query = sqlalchemy.text(query_string)
 
     response: Dict = {}
@@ -272,19 +280,19 @@ async def find_task(request) -> JSONResponse:
             if item["rule"] == ",":
                 item["rule"] = ""
 
-        rule_information = ""       
+        rule_information = ""
         if item["rule"]:
             rule_information = item["rule"]
-        else:            
+        else:
             if item["triggered_rules"]:
                 try:
-                    json_data = json.loads("["+item["triggered_rules"]+"]")
+                    json_data = json.loads("[" + item["triggered_rules"] + "]")
                     for entry in json_data:
                         rule_information += ", ".join(list(entry.keys())) + ", "
                     if rule_information:
                         rule_information = rule_information[:-2]
                 except json.JSONDecodeError:
-                    rule_information = "ERROR"       
+                    rule_information = "ERROR"
             else:
                 rule_information = ""
 
@@ -310,7 +318,7 @@ async def get_task_info(request) -> JSONResponse:
 
     # First, get general information about the series/study
     info_query = sqlalchemy.text(
-        f"""select 
+        f"""select
         dicom_series.tag_patientname as patientname,
         dicom_series.tag_patientbirthdate as birthdate,
         dicom_series.tag_patientsex as gender,
@@ -325,10 +333,10 @@ async def get_task_info(request) -> JSONResponse:
         dicom_series.tag_deviceserialnumber as deviceserialnumber,
         dicom_series.tag_magneticfieldstrength as magneticfieldstrength
         from tasks
-        left join dicom_series on dicom_series.series_uid = tasks.series_uid 
+        left join dicom_series on dicom_series.series_uid = tasks.series_uid
         where (tasks.id = '{task_id}') and (tasks.parent_id is null)
         limit 1"""
-    ) # TODO: use sqlalchemy interpolation
+    )  # TODO: use sqlalchemy interpolation
 
     info_rows = await db.database.fetch_all(info_query)
     info_results = [dict(row) for row in info_rows]

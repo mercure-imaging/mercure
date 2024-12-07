@@ -6,8 +6,6 @@ Create Date: 2022-05-23 15:58:27.767570
 
 """
 from alembic import op
-import sqlalchemy as sa
-
 
 # revision identifiers, used by Alembic.
 revision = "1c51b42f13d5"
@@ -20,7 +18,7 @@ def upgrade():
     connection = op.get_bind()
     dialect = connection.dialect
     if dialect.name == "sqlite":
-        op.execute("ALTER TABLE tests ADD COLUMN rule_type character varying NULL")    
+        op.execute("ALTER TABLE tests ADD COLUMN rule_type character varying NULL")
     else:
         op.execute("ALTER TABLE tests ADD COLUMN IF NOT EXISTS rule_type character varying NULL")
 

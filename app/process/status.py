@@ -21,7 +21,7 @@ def is_ready_for_processing(folder) -> bool:
             and len(list(path.glob("*.dcm"))) > 0
         )
         return folder_status
-    except:
-        # Capture exceptions that may be triggered if the folder has been removed 
+    except Exception:
+        # Capture exceptions that may be triggered if the folder has been removed
         # by another process in the meantime
         return False

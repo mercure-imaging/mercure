@@ -1,14 +1,13 @@
-from typing import Any, Dict, List, Union
-from common.types import RsyncTarget, Task, TaskDispatch
+from typing import Any
+from common.types import RsyncTarget, Task
 import common.config as config
-from webinterface.common import async_run, async_run_exec
+from webinterface.common import async_run_exec
 
 from pathlib import Path
-import shlex
 
 
 from .registry import handler_for
-from .base import SubprocessTargetHandler, TargetHandler, TargetTypeVar
+from .base import SubprocessTargetHandler
 
 logger = config.get_logger()
 
@@ -70,7 +69,8 @@ class RsyncTargetHandler(SubprocessTargetHandler[RsyncTarget]):
             #     *ssh_cmd,
             #     ssh_connection,
             #     "-C",
-            #     f"""bash -c 'set -x\nrpath="$(realpath "$1")"\necho "$rpath"\n[[ $rpath = $2* ]]' _ {fullpath} {target.folder}""",
+            #     f"""bash -c 'set -x\nrpath="$(realpath "$1")"\n
+            #       echo "$rpath"\n[[ $rpath = $2* ]]' _ {fullpath} {target.folder}""",
             # ]
             execute_oncomplete = [
                 *ssh_cmd,

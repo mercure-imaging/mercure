@@ -1,5 +1,8 @@
 import collections.abc
-import logging, re, sys, os
+import logging
+import re
+import sys
+import os
 from typing import Tuple
 import typing
 import daiquiri
@@ -76,7 +79,7 @@ class ExceptionsKeywordArgumentAdapter(daiquiri.KeywordArgumentAdapter):
 
     def setTask(self, task_id: str) -> None:
         self.extra["context_task"] = task_id  # type: ignore
-        logger.debug(f"Setting task")
+        logger.debug("Setting task")
 
     def clearTask(self) -> None:
         if self.extra and "context_task" in self.extra:
@@ -145,7 +148,8 @@ def get_loglevel() -> int:
 
 
 def get_logformat() -> str:
-    """Returns the format that should be used for log messages. Includes the time for docker and nomad, but not for systemd as journalctl
+    """Returns the format that should be used for log messages.
+    Includes the time for docker and nomad, but not for systemd as journalctl
     already outputs the time of the log events."""
     runner = helper.get_runner()
     if runner == "systemd":

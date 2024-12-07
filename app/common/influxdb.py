@@ -5,7 +5,7 @@ Send data to InfluxDB metrics server.
 import logging
 import time
 from influxdb_client import InfluxDBClient, Point
-from influxdb_client.client.write_api import SYNCHRONOUS, ASYNCHRONOUS
+from influxdb_client.client.write_api import ASYNCHRONOUS
 from typing import Optional, Union
 
 __all__ = ['Sender', 'init', 'send']
@@ -20,7 +20,8 @@ def _has_whitespace(value: str) -> bool:
 
 
 class Sender:
-    def __init__(self, host: str, token: str, org: str, bucket: str, prefix: str, log_sends: bool=False,raise_send_errors: bool=False):
+    def __init__(self, host: str, token: str, org: str, bucket: str, prefix: str,
+                 log_sends: bool = False, raise_send_errors: bool = False):
         """Initialize a Sender instance
         """
         self.host = host
@@ -31,7 +32,6 @@ class Sender:
         self.log_sends = log_sends
         self.raise_send_errors = raise_send_errors
         self.type = ASYNCHRONOUS
-
 
     def build_message(self, metric: str, value: Union[int, float], timestamp: Optional[float]) -> Point:
         """Build an InfluxDB message to send and return it."""
@@ -45,7 +45,7 @@ class Sender:
 
         return message
 
-    def send(self, metric: str, value: Union[int, float], timestamp: Optional[float]=None):
+    def send(self, metric: str, value: Union[int, float], timestamp: Optional[float] = None):
         """Send given metric and (int or float) value to InfluxDB host.
         """
         if timestamp is None:
@@ -74,7 +74,8 @@ class Sender:
             if self.log_sends:
                 elapsed_time = time.time() - start_time
                 logger.info('sent message {!r} to ({}, {}, {}, {}, {}) in {:.03f} seconds'.format(
-                        message.to_line_protocol(), self.host, self.token, self.org, self.bucket, self.type, elapsed_time))
+                    message.to_line_protocol(), self.host, self.token, self.org, self.bucket, self.type, elapsed_time))
+
 
 def init(*args, **kwargs) -> None:
     """Initialize default Sender instance with given args."""

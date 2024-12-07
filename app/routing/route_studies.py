@@ -1,17 +1,16 @@
 """
 route_studies.py
 ================
-Provides functions for routing and processing of studies (consisting of multiple series). 
+Provides functions for routing and processing of studies (consisting of multiple series).
 """
 
 # Standard python includes
 import os
 from pathlib import Path
-from typing import Dict, Optional, Union
+from typing import Dict, Union
 import uuid
 import json
 import shutil
-import daiquiri
 from datetime import datetime, timedelta
 
 # App-specific includes
@@ -21,18 +20,18 @@ import common.monitor as monitor
 import common.notification as notification
 import common.helper as helper
 import common.log_helpers as log_helpers
-from common.types import Rule, Task, TaskHasStudy, TaskInfo
+from common.types import Task, TaskHasStudy, TaskInfo
 from common.constants import (
-    mercure_defs,
+    # mercure_defs,
     mercure_names,
     mercure_actions,
     mercure_rule,
-    mercure_config,
-    mercure_options,
-    mercure_folders,
-    mercure_sections,
-    mercure_study,
-    mercure_info,
+    # mercure_config,
+    # mercure_options,
+    # mercure_folders,
+    # mercure_sections,
+    # mercure_study,
+    # mercure_info,
     mercure_events,
 )
 
@@ -92,7 +91,8 @@ def is_study_locked(folder: str) -> bool:
 
 def is_study_complete(folder: str, pending_series: Dict[str, float]) -> bool:
     """
-    Returns true if the study in the given folder is ready for processing, i.e. if the completeness criteria of the triggered rule has been met
+    Returns true if the study in the given folder is ready for processing,
+    i.e. if the completeness criteria of the triggered rule has been met
     """
     try:
         logger.debug(f"Checking completeness of study {folder}, with pending series: {pending_series}")
@@ -101,7 +101,7 @@ def is_study_complete(folder: str, pending_series: Dict[str, float]) -> bool:
         with open(Path(folder) / mercure_names.TASKFILE, "r") as json_file:
             task: TaskHasStudy = TaskHasStudy(**json.load(json_file))
 
-        if task.study.complete_force == True:
+        if task.study.complete_force is True:
             return True
         if (Path(folder) / mercure_names.FORCE_COMPLETE).exists():
             task.study.complete_force = True
@@ -155,7 +155,8 @@ def check_study_timeout(task: TaskHasStudy, pending_series: Dict[str, float]) ->
 
     last_receive_time = datetime.strptime(last_received_string, "%Y-%m-%d %H:%M:%S")
     if datetime.now() > last_receive_time + timedelta(seconds=config.mercure.study_complete_trigger):
-        # Check if there is a pending series on this study. If so, we need to wait for it to timeout before we can complete the study
+        # Check if there is a pending series on this study.
+        # If so, we need to wait for it to timeout before we can complete the study
         for series_uid in pending_series.keys():
             try:
                 example_file = next((Path(config.mercure.incoming_folder) / series_uid).glob(f"{series_uid}*.tags"))
@@ -204,13 +205,13 @@ def route_study(study) -> bool:
         return True
     try:
         lock = helper.FileLock(lock_file)
-    except:
+    except Exception:
         # Can't create lock file, so something must be seriously wrong
         try:
             with open(Path(study_folder) / mercure_names.TASKFILE, "r") as json_file:
                 task: Task = Task(**json.load(json_file))
             logger.error(f"Unable to create study lock file {lock_file}", task.id)  # handle_error
-        except:
+        except Exception:
             logger.error(f"Unable to create study lock file {lock_file}", None)  # handle_error
         return False
 
@@ -224,7 +225,7 @@ def route_study(study) -> bool:
                 logger.error(
                     f"Invalid task file in study folder {study_folder}", json.load(json_file)["id"]
                 )  # handle_error
-        except:
+        except Exception:
             logger.error(f"Invalid task file in study folder {study_folder}", None)  # handle_error
         return False
 
@@ -298,7 +299,7 @@ def push_studylevel_error(study: str) -> None:
         return
     try:
         lock = helper.FileLock(lock_file)
-    except:
+    except Exception:
         # Can't create lock file, so something must be seriously wrong
         logger.error(f"Unable to lock study for removal {lock_file}")  # handle_error
         return
@@ -353,13 +354,14 @@ def move_study_folder(task_id: Union[str, None], study: str, destination: str) -
     lock_file = Path(destination_folder) / mercure_names.LOCK
     try:
         lock = helper.FileLock(lock_file)
-    except:
+    except Exception:
         # Can't create lock file, so something must be seriously wrong
         logger.error(f"Unable to create lock file {destination_folder}/{mercure_names.LOCK}", task_id)  # handle_error
         return False
 
     # Move all files except the lock file
-    # FIXME: if we don't use a list instead of an iterator, in testing we get an error from pyfakefs about the iterator changing during the iteration
+    # FIXME: if we don't use a list instead of an iterator, in testing we get an error
+    # from pyfakefs about the iterator changing during the iteration
     for entry in list(os.scandir(source_folder)):
         # Move all files but exclude the lock file in the source folder
         if not entry.name.endswith(mercure_names.LOCK):
@@ -374,7 +376,7 @@ def move_study_folder(task_id: Union[str, None], study: str, destination: str) -
     # but better to do explicitly with error handling
     try:
         lock.free()
-    except:
+    except Exception:
         # Can't delete lock file, so something must be seriously wrong
         logger.error(f"Unable to remove lock file {lock_file}", task_id)  # handle_error
         return False
@@ -391,14 +393,14 @@ def remove_study_folder(task_id: Union[str, None], study: str, lock: helper.File
     # Remove the lock file
     try:
         lock.free()
-    except:
+    except Exception:
         # Can't delete lock file, so something must be seriously wrong
         logger.error(f"Unable to remove lock file while removing study folder {study}", task_id)  # handle_error
         return False
     # Remove the empty study folder
     try:
         shutil.rmtree(study_folder)
-    except Exception as e:
+    except Exception:
         logger.error(f"Unable to delete study folder {study_folder}", task_id)  # handle_error
     return True
 
@@ -409,5 +411,5 @@ def trigger_studylevel_notification(study: str, task: Task, event: mercure_event
     if not current_rule:
         logger.error(f"Missing applied_rule in task file in study {study}", task.id)  # handle_error
         return False
-    notification.trigger_notification_for_rule(current_rule, task.id, event,task=task)
+    notification.trigger_notification_for_rule(current_rule, task.id, event, task=task)
     return True

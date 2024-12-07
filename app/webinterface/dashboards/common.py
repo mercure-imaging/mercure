@@ -3,9 +3,11 @@ from starlette.responses import RedirectResponse, JSONResponse
 
 router = decoRouter()
 
+
 @router.get("/")
 async def index(request):
     return RedirectResponse(url="query")
+
 
 class JSONErrorResponse(JSONResponse):
     def __init__(self, message: str, status_code: int = 500):

@@ -10,10 +10,8 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Tuple, Union
 import typing
 from typing_extensions import Literal
-import uuid
 import json
 import shutil
-import daiquiri
 
 # App-specific includes
 import common.config as config
@@ -39,7 +37,7 @@ logger = config.get_logger()
 
 
 @log_helpers.clear_task_decorator
-def route_series(task_id: str, series_UID: str, files:typing.List[Path] = []) -> None:
+def route_series(task_id: str, series_UID: str, files: typing.List[Path] = []) -> None:
     """
     Processes the series with the given series UID from the incoming folder.
     """
@@ -62,7 +60,7 @@ def route_series(task_id: str, series_UID: str, files:typing.List[Path] = []) ->
         # Series likely already processed by other instance of router
         logger.debug("Series {} is locked, skipping".format(series_UID))
         return
-    except:
+    except Exception:
         # Can't create lock file, so something must be seriously wrong
         logger.error(f"Unable to create lock file {lock_file}", task_id)  # handle_error
         return
@@ -78,7 +76,7 @@ def route_series(task_id: str, series_UID: str, files:typing.List[Path] = []) ->
                 stemName = entry.name[:-5]
                 fileList.append(stemName)
         logger.debug(f"Found files: {fileList}")
-    else: 
+    else:
         fileList = [str(f.with_suffix("")) for f in files]
 
     logger.info("DICOM files found: " + str(len(fileList)))
@@ -123,7 +121,8 @@ def route_series(task_id: str, series_UID: str, files:typing.List[Path] = []) ->
 
     if (len(triggered_rules) == 0) or (discard_series):
         # If no routing rule has triggered or discarding has been enforced, discard the series
-        push_series_complete(task_id, fileList, series_UID, "DISCARD", discard_series, False, tagsList_encoding_error = tagsList_encoding_error)
+        push_series_complete(task_id, fileList, series_UID, "DISCARD", discard_series, False,
+                             tagsList_encoding_error=tagsList_encoding_error)
     else:
         # File handling strategy: If only one triggered rule, move files (faster than copying). If multiple rules, copy files
         push_series_studylevel(task_id, triggered_rules, fileList, series_UID, tagsList)
@@ -131,7 +130,7 @@ def route_series(task_id: str, series_UID: str, files:typing.List[Path] = []) ->
 
         # If more than one rule has triggered, the series files need to be removed
         # TODO: This can probably be avoided since the files are now contained in a separate folder
-        #       for each series, so that files will be removed automatically by the rmtree call 
+        #       for each series, so that files will be removed automatically by the rmtree call
         if len(triggered_rules) > 1:
             remove_series(task_id, fileList, series_UID)
 
@@ -166,11 +165,12 @@ def get_triggered_rules(
                 rule: Rule = config.mercure.rules[current_rule]
 
                 # Check if the current rule has been disabled
-                if rule.disabled == True:
+                if rule.disabled is True:
                     continue
 
-                # If the current rule is flagged as fallback rule, remember the name (to avoid having to iterate over the rules again)
-                if rule.fallback == True:
+                # If the current rule is flagged as fallback rule, remember the name
+                # (to avoid having to iterate over the rules again)
+                if rule.fallback is True:
                     fallback_rule = current_rule
 
                 # Check if the current rule is triggered for the provided tag set
@@ -181,7 +181,7 @@ def get_triggered_rules(
                         # If the triggered rule's action is to discard, stop further iteration over the rules
                         break
 
-            except Exception as e:
+            except Exception:
                 logger.error(f"Invalid rule found: {current_rule}", task_id)  # handle_error
                 continue
 
@@ -197,7 +197,8 @@ def get_triggered_rules(
 
 
 def push_series_complete(
-    task_id: str, file_list: List[str], series_UID: str, destination: str, discard_rule: str, copy_files: bool, *, tagsList_encoding_error=False
+    task_id: str, file_list: List[str], series_UID: str, destination: str,
+    discard_rule: str, copy_files: bool, *, tagsList_encoding_error=False
 ) -> None:
     """
     Moves all files of the series into either the "discard" or "success" folders, which both are periodically cleared.
@@ -236,16 +237,18 @@ def push_series_complete(
         else:
             info_text = "Discard by default."
             if tagsList_encoding_error:
-                info_text += " Decoding error detected: some tags were not properly decoded, likely due to a malformed DICOM file. The expected rule may therefore not have been triggered."
+                info_text += (" Decoding error detected: some tags were not properly decoded,"
+                              " likely due to a malformed DICOM file."
+                              " The expected rule may therefore not have been triggered.")
                 logger.warning(info_text)
         monitor.send_task_event(monitor.task_event.DISCARD, task_id, len(file_list), discard_rule or "", info_text)
 
     if not push_files(task_id, series_UID, file_list, destination_path, copy_files):
-        logger.error(f"Problem while moving completed files", task_id)  # handle_error
+        logger.error("Problem while moving completed files", task_id)  # handle_error
 
     operation_name = "MOVE"
     if copy_files:
-        operation_name = "COPY"        
+        operation_name = "COPY"
     monitor.send_task_event(monitor.task_event.MOVE, task_id, len(file_list), destination_path, operation_name)
 
     try:
@@ -287,7 +290,7 @@ def push_series_studylevel(
             lock_file = Path(folder_name) / mercure_names.LOCK
             try:
                 lock = helper.FileLock(lock_file)
-            except:
+            except Exception:
                 # Can't create lock file, so something must be seriously wrong
                 logger.error(f"Unable to create lock file {lock_file}", task_id)  # handle_error
                 continue
@@ -295,19 +298,27 @@ def push_series_studylevel(
             if first_series:
                 # Create task file with information on complete criteria
                 new_task_id = generate_task_id()
-                result = create_study_task(new_task_id, target_folder, triggered_rules, current_rule, study_UID, tags_list)
-                monitor.send_task_event(monitor.task_event.ASSIGN, task_id, len(file_list), current_rule, "Created study task")
-                monitor.send_task_event(monitor.task_event.DELEGATE, task_id, len(file_list), new_task_id, current_rule)
-                monitor.send_task_event(monitor.task_event.ASSIGN, new_task_id, len(file_list), task_id, "Added series to study")
+                result = create_study_task(new_task_id, target_folder, triggered_rules,
+                                           current_rule, study_UID, tags_list)
+                monitor.send_task_event(monitor.task_event.ASSIGN, task_id, len(file_list),
+                                        current_rule, "Created study task")
+                monitor.send_task_event(monitor.task_event.DELEGATE, task_id, len(file_list),
+                                        new_task_id, current_rule)
+                monitor.send_task_event(monitor.task_event.ASSIGN, new_task_id, len(file_list),
+                                        task_id, "Added series to study")
             else:
                 # Add data from latest series to task file
-                result, new_task_id = update_study_task(task_id, target_folder, triggered_rules, current_rule, study_UID, tags_list)
-                monitor.send_task_event(monitor.task_event.ASSIGN, task_id, len(file_list), current_rule, "Added to study task")
-                monitor.send_task_event(monitor.task_event.DELEGATE, task_id, len(file_list), new_task_id, current_rule)
-                monitor.send_task_event(monitor.task_event.ASSIGN, new_task_id, len(file_list), task_id, "Added series to study")
+                result, new_task_id = update_study_task(task_id, target_folder, triggered_rules,
+                                                        current_rule, study_UID, tags_list)
+                monitor.send_task_event(monitor.task_event.ASSIGN, task_id, len(file_list),
+                                        current_rule, "Added to study task")
+                monitor.send_task_event(monitor.task_event.DELEGATE, task_id, len(file_list),
+                                        new_task_id, current_rule)
+                monitor.send_task_event(monitor.task_event.ASSIGN, new_task_id, len(file_list),
+                                        task_id, "Added series to study")
 
             if not result:
-                logger.error(f"Problem assigning series to study ", task_id)
+                logger.error("Problem assigning series to study", task_id)
 
             # Copy (or move) the files into the study folder
             push_files(task_id, series_UID, file_list, folder_name, (len(triggered_rules) > 1))
@@ -373,7 +384,8 @@ def push_serieslevel_processing(
     series_UID: str,
     tags_list: Dict[str, str],
 ) -> bool:
-    # Rules with action "processing" or "processing & routing" need to be processed separately (because the processing step can create varying results).
+    # Rules with action "processing" or "processing & routing" need to be processed separately
+    # (because the processing step can create varying results).
     # Thus, loop over all series-level rules that have triggered.
     for current_rule in triggered_rules:
         if config.mercure.rules[current_rule].get("action_trigger", mercure_options.SERIES) == mercure_options.SERIES:
@@ -405,14 +417,14 @@ def push_serieslevel_processing(
                 lock_file = Path(folder_name) / mercure_names.LOCK
                 try:
                     lock = helper.FileLock(lock_file)
-                except:
+                except Exception:
                     # Can't create lock file, so something must be seriously wrong
                     logger.error(f"Unable to create lock file {lock_file}", task_id)  # handle_error
                     return False
 
                 monitor.send_task_event(monitor.task_event.DELEGATE, task_id, len(file_list), new_task_id, current_rule)
 
-                    # Generate task file with processing information
+                # Generate task file with processing information
                 if create_series_task(
                     new_task_id, target_folder, triggered_rules, current_rule, series_UID, tags_list, ""
                 ):
@@ -428,7 +440,7 @@ def push_serieslevel_processing(
 
                 try:
                     lock.free()
-                except:
+                except Exception:
                     # Can't delete lock file, so something must be seriously wrong
                     logger.error(f"Unable to remove lock file {lock_file}", task_id)  # handle_error
                     return False
@@ -484,8 +496,8 @@ def push_serieslevel_outgoing(
     if len(triggered_rules) == 1:
         move_operation = True
 
-    for i,target in enumerate(selected_targets):
-        if not target in config.mercure.targets:
+    for i, target in enumerate(selected_targets):
+        if target not in config.mercure.targets:
             logger.error(f"Invalid target selected {target}", task_id)  # handle_error
             # TODO: Better error handling!
             continue
@@ -507,7 +519,7 @@ def push_serieslevel_outgoing(
         lock_file = Path(folder_name) / mercure_names.LOCK
         try:
             lock = helper.FileLock(lock_file)
-        except:
+        except Exception:
             logger.error(f"Unable to create lock file {lock_file}", task_id)  # handle_error
             return
 
@@ -522,14 +534,15 @@ def push_serieslevel_outgoing(
         else:
             continue
 
-        monitor.send_task_event(monitor.task_event.DELEGATE, task_id, len(file_list), new_task_id, ", ".join(selected_targets[target]))
+        monitor.send_task_event(monitor.task_event.DELEGATE, task_id, len(file_list),
+                                new_task_id, ", ".join(selected_targets[target]))
 
         operation: Callable
         is_operation_move = False
 
         if move_operation:
             # If there are more targets for one rule, then move the files only for the last target
-            if i==len(selected_targets)-1:
+            if i == len(selected_targets) - 1:
                 operation = shutil.move
                 is_operation_move = True
             else:
@@ -543,7 +556,8 @@ def push_serieslevel_outgoing(
                 operation(source_folder / (entry + mercure_names.TAGS), target_folder / (entry + mercure_names.TAGS))
             except Exception:
                 logger.error(  # handle_error
-                    f"Problem while pushing file to outgoing [{entry}]\nSource folder {source_folder}\nTarget folder {target_folder}",
+                    (f"Problem while pushing file to outgoing [{entry}]\n"
+                     f"Source folder {source_folder}\nTarget folder {target_folder}"),
                     task_id,
                 )
                 raise
@@ -561,13 +575,13 @@ def push_serieslevel_outgoing(
             return
 
 
-def push_files(task_id: str, series_uid:str, file_list: List[str], target_path: str, copy_files: bool) -> bool:
+def push_files(task_id: str, series_uid: str, file_list: List[str], target_path: str, copy_files: bool) -> bool:
     """
     Copies or moves the given files to the target path. If copy_files is True, files are copied, otherwise moved.
     Note that this function does not create a lock file (this needs to be done by the calling function).
     """
     operation: Callable
-    if copy_files == False:
+    if copy_files is False:
         operation = shutil.move
     else:
         operation = shutil.copy
@@ -582,12 +596,13 @@ def push_files(task_id: str, series_uid:str, file_list: List[str], target_path: 
             logger.debug(f"Pushed {source_folder / (entry+mercure_names.DCM)}")
         except Exception:
             logger.error(  # handle_error
-                f"Problem while pushing file to outgoing {entry}\n Source folder {source_folder}\nTarget folder {target_folder}",
+                f"Problem while pushing file to outgoing {entry}\n "
+                f"Source folder {source_folder}\nTarget folder {target_folder}",
                 task_id,
             )
             return False
 
-    if copy_files == False:
+    if copy_files is False:
         monitor.send_task_event(monitor.task_event.MOVE, task_id, len(file_list), target_path, "Moved files")
     else:
         monitor.send_task_event(monitor.task_event.COPY, task_id, len(file_list), target_path, "Copied files")
@@ -595,7 +610,7 @@ def push_files(task_id: str, series_uid:str, file_list: List[str], target_path: 
     return True
 
 
-def remove_series(task_id: str, file_list: List[str], series_UID:str) -> bool:
+def remove_series(task_id: str, file_list: List[str], series_UID: str) -> bool:
     """
     Deletes the given files from the incoming folder.
     """
@@ -620,7 +635,7 @@ def route_error_files() -> None:
     """
     error_files_found = 0
     errors_folder = Path(config.mercure.incoming_folder) / "error"
-    entries:List[os.DirEntry] = []
+    entries: List[os.DirEntry] = []
     if errors_folder.is_dir():
         entries += list(os.scandir(errors_folder))
     entries += list(os.scandir(config.mercure.incoming_folder))
@@ -633,7 +648,7 @@ def route_error_files() -> None:
             continue
         try:
             lock = helper.FileLock(Path(lock_file))
-        except:
+        except Exception:
             continue
 
         logger.error(f"Found incoming error file {entry.name}")

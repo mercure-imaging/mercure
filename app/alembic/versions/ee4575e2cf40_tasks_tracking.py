@@ -38,9 +38,9 @@ def upgrade():
     connection = op.get_bind()
     dialect = connection.dialect
     if dialect.name == "sqlite":
-        jsonb = sa.Text() # type: ignore
+        jsonb = sa.Text()  # type: ignore
     else:
-        jsonb = postgresql.JSONB(astext_type=sa.Text()) # type: ignore
+        jsonb = postgresql.JSONB(astext_type=sa.Text())  # type: ignore
     create_table(
         "tasks",
         sa.Column("id", sa.String(), nullable=False),

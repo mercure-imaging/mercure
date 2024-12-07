@@ -1,5 +1,4 @@
 from typing import cast, Dict, Union
-from typing_extensions import Literal
 
 from common.types import Task, TaskDispatch, TaskDispatchStatus, EmptyDict
 import json
@@ -31,9 +30,9 @@ def increase_retry(source_folder, retry_max, retry_delay) -> bool:
     return True
 
 
-def update_dispatch_status(source_folder: Path, status : Union[Dict[str, TaskDispatchStatus], EmptyDict]) -> bool:
-    target_json_path : Path = source_folder / mercure_names.TASKFILE
-    try: 
+def update_dispatch_status(source_folder: Path, status: Union[Dict[str, TaskDispatchStatus], EmptyDict]) -> bool:
+    target_json_path: Path = source_folder / mercure_names.TASKFILE
+    try:
         with open(target_json_path, "r") as file:
             task: Task = Task(**json.load(file))
 
@@ -42,7 +41,7 @@ def update_dispatch_status(source_folder: Path, status : Union[Dict[str, TaskDis
 
         with open(target_json_path, "w") as file:
             json.dump(task.dict(), file)
-    except:
+    except Exception:
         return False
 
     return True

@@ -151,7 +151,7 @@ def generate_test_series(
     datasets = []
 
     for i in range(n):
-        pt_at = pt + 0.1j * (i - n / 2)
+        # pt_at = pt + 0.1j * (i - n / 2)
         # array = julia(pt_at)
         # print(array)
         datasets.append(

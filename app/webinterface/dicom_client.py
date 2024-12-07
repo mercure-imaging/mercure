@@ -1,17 +1,14 @@
 import os
 import re
-from typing import Any, Dict, Iterator, List, Optional, Sequence, cast
+from typing import Dict, Iterator, List
 from pynetdicom import (
-        AE,
-        QueryRetrievePresentationContexts, BasicWorklistManagementPresentationContexts, UnifiedProcedurePresentationContexts,
-        build_role,
-        evt,
-        StoragePresentationContexts
-    )
-from pynetdicom.sop_class import StudyRootQueryRetrieveInformationModelFind # type: ignore
-from pynetdicom.apps.common import create_dataset
-from pynetdicom._globals import DEFAULT_MAX_LENGTH
-from pynetdicom.pdu_primitives import SOPClassExtendedNegotiation
+    AE,
+    QueryRetrievePresentationContexts,
+    build_role,
+    evt,
+    StoragePresentationContexts
+)
+from pynetdicom.sop_class import StudyRootQueryRetrieveInformationModelFind  # type: ignore
 from pynetdicom.sop_class import (  # type: ignore
     PatientRootQueryRetrieveInformationModelGet,
     StudyRootQueryRetrieveInformationModelGet,
@@ -20,19 +17,22 @@ from pynetdicom.sop_class import (  # type: ignore
     EncapsulatedOBJStorage,
     EncapsulatedMTLStorage,
 )
-from pydicom.uid import DeflatedExplicitVRLittleEndian 
+from pydicom.uid import DeflatedExplicitVRLittleEndian
 from pydicom import Dataset
 import sys
-import subprocess
+
 
 class DicomClientCouldNotAssociate(Exception):
     pass
 
+
 class DicomClientCouldNotFind(Exception):
     pass
 
+
 class DicomClientBadStatus(Exception):
     pass
+
 
 SOP_CLASS_PREFIXES = {
     "1.2.840.10008.5.1.4.1.1.2": ("CT", "CT Image Storage"),
@@ -53,11 +53,14 @@ SOP_CLASS_PREFIXES = {
     "1.2.840.10008.5.1.4.1.1.20": ("NM", "Nuclear Medicine Image Storage"),
     "1.2.840.10008.5.1.4.1.1.7": ("SC", "Secondary Capture Image Storage"),
 }
+
+
 class SimpleDicomClient():
     host: str
     port: int
     called_aet: str
     output_dir: str
+
     def __init__(self, host, port, called_aet, calling_aet, out_dir) -> None:
         self.host = host
         self.port = int(port)
@@ -99,7 +102,7 @@ class SimpleDicomClient():
         status_ds.Status = 0x0000
         try:
             if event.context.transfer_syntax == DeflatedExplicitVRLittleEndian:
-                # Workaround for pydicom issue #1086
+                # Workaround for pydicom issue  #1086
                 with open(filename, "wb") as f:
                     f.write(event.encoded_dataset())
             else:
@@ -122,7 +125,6 @@ class SimpleDicomClient():
             status_ds.Status = 0xA701
 
         return status_ds
-
 
     def getscu(self, accession_number: str, search_filters: Dict[str, List[str]]) -> Iterator[Dataset]:
         # Exclude these SOP Classes
@@ -153,12 +155,12 @@ class SimpleDicomClient():
             ext_neg.append(build_role(cx.abstract_syntax, scp_role=True))
         query_model = StudyRootQueryRetrieveInformationModelGet
         assoc = ae.associate(
-                self.host, self.port,
-                ae_title=self.called_aet,
-                ext_neg=ext_neg, # type: ignore
-                evt_handlers=[(evt.EVT_C_STORE, self.handle_store, [])],
-                max_pdu=0,
-            )
+            self.host, self.port,
+            ae_title=self.called_aet,
+            ext_neg=ext_neg,  # type: ignore
+            evt_handlers=[(evt.EVT_C_STORE, self.handle_store, [])],
+            max_pdu=0,
+        )
         if not assoc.is_established:
             raise DicomClientCouldNotAssociate()
             # Send query
@@ -167,7 +169,7 @@ class SimpleDicomClient():
         ds.QueryRetrieveLevel = 'STUDY'
         ds.AccessionNumber = accession_number
         for key in search_filters:
-            setattr(ds, key, "\\".join(search_filters.get(key,[])))
+            setattr(ds, key, "\\".join(search_filters.get(key, [])))
 
         responses = assoc.send_c_get(ds, query_model)
         success = False
@@ -185,15 +187,15 @@ class SimpleDicomClient():
 
         assoc.release()
 
-    def findscu(self,accession_number, search_filters={}) -> List[Dataset]:
+    def findscu(self, accession_number, search_filters={}) -> List[Dataset]:
         # Create application entity
         ae = AE(ae_title=self.calling_aet)
 
         # Add a requested presentation context
         # ae.add_requested_context(StudyRootQueryRetrieveInformationModelFind)
         ae.requested_contexts = QueryRetrievePresentationContexts
-                # + BasicWorklistManagementPresentationContexts
-                # + UnifiedProcedurePresentationContexts )
+        # + BasicWorklistManagementPresentationContexts
+        # + UnifiedProcedurePresentationContexts )
 
         # Associate with the peer AE
         assoc = ae.associate(self.host, self.port, ae_title=self.called_aet, max_pdu=0, ext_neg=[])
@@ -208,7 +210,7 @@ class SimpleDicomClient():
         ds.SeriesDescription = ''
         ds.StudyDescription = ''
         for key in search_filters:
-            setattr(ds, key, "\\".join(search_filters.get(key,[])))
+            setattr(ds, key, "\\".join(search_filters.get(key, [])))
 
         if not assoc.is_established:
             raise DicomClientCouldNotAssociate()
@@ -235,6 +237,7 @@ class SimpleDicomClient():
             return results
         finally:
             assoc.release()
+
 
 if __name__ == "__main__":
     # Replace these variables with your actual values

@@ -1,26 +1,22 @@
 """
 router.py
 =========
-mercure's central router module that evaluates the routing rules and decides which series should be sent to which target. 
+mercure's central router module that evaluates the routing rules and decides which series should be sent to which target.
 """
 
 # Standard python includes
 import asyncio
-from pathlib import Path
-import shutil
 import time
 import signal
 import os
 import sys
 import typing
-import uuid
 import graphyte
-import daiquiri
 import hupper
 from typing import Dict
 
 # App-specific includes
-from common.constants import mercure_defs, mercure_names
+from common.constants import mercure_defs
 import common.helper as helper
 import common.config as config
 import common.monitor as monitor
@@ -29,8 +25,8 @@ from routing.route_studies import route_studies
 from routing.common import generate_task_id, SeriesItem
 import common.influxdb
 import common.notification as notification
-from dataclasses import dataclass,field
-import itertools
+from dataclasses import dataclass, field
+
 
 @dataclass
 class RouterState():
@@ -39,9 +35,11 @@ class RouterState():
     complete_series: typing.Set[str] = field(default_factory=set)
     pending_series: Dict[str, float] = field(default_factory=dict)  # Every series that hasn't timed out yet
 
+
 # Create local logger instance
 logger = config.get_logger()
-main_loop = None  # type: helper.AsyncTimer # type: ignore
+main_loop = None  # type: helper.AsyncTimer  # type: ignore
+
 
 async def terminate_process(signalNumber, frame) -> None:
     """
@@ -54,6 +52,7 @@ async def terminate_process(signalNumber, frame) -> None:
     if "main_loop" in globals() and main_loop.is_running:
         main_loop.stop()
     helper.trigger_terminate()
+
 
 def run_router() -> None:
     """
@@ -98,7 +97,7 @@ def run_router() -> None:
 
     # Check if any of the series exceeds the "series complete" threshold
     for series_uid, series_item in r.series.items():
-        if ( time.time() - series_item.modification_time ) > config.mercure.series_complete_trigger:
+        if (time.time() - series_item.modification_time) > config.mercure.series_complete_trigger:
             r.complete_series.add(series_uid)
             logger.debug("Complete series: " + str(series_uid))
         else:
@@ -143,7 +142,7 @@ def exit_router(args) -> None:
 def main(args=sys.argv[1:]) -> None:
     if "--reload" in args or os.getenv("MERCURE_ENV", "PROD").lower() == "dev":
         # start_reloader will only return in a monitored subprocess
-        reloader = hupper.start_reloader("router.main")
+        _ = hupper.start_reloader("router.main")
 
     logger.info("")
     logger.info(f"mercure DICOM Router ver {mercure_defs.VERSION}")
@@ -221,4 +220,3 @@ def main(args=sys.argv[1:]) -> None:
             helper.loop.run_until_complete(helper.asyncio.gather(*remaining_tasks))
 
     logger.info("Going down now")
-

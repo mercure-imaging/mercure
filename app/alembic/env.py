@@ -1,4 +1,4 @@
-from logging.config import fileConfig
+# from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
@@ -16,7 +16,7 @@ if _os_env_database_url is not None:
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
-# fileConfig(config.config_file_name) # type: ignore
+# fileConfig(config.config_file_name)  # type: ignore
 
 # add your model's MetaData object here
 # for 'autogenerate' support

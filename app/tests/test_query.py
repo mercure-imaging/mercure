@@ -43,7 +43,7 @@ def mock_node(receiver_port):
 class DummyDICOMServer:
     remaining_allowed_accessions: Optional[int] = None
     """A simple DICOM server for testing purposes."""
-    def __init__(self, port:int, datasets: Dict[str,Dataset]):
+    def __init__(self, port:int, datasets: Dict[str, Dataset]):
         assert isinstance(port, int), "Port must be an integer"
         for ds in datasets.values():
             assert isinstance(ds, Dataset), "Dataset must be a pydicom Dataset"
@@ -123,6 +123,7 @@ def dummy_datasets():
         dss[acc] = ds
     return dss
 
+
 @pytest.fixture(scope="function")
 def dicom_server(mock_node, dummy_datasets):
     """
@@ -132,6 +133,7 @@ def dicom_server(mock_node, dummy_datasets):
     server = DummyDICOMServer(int(mock_node.port), dummy_datasets)
     yield mock_node
     server.stop()
+
 
 @pytest.fixture(scope="function")
 def dicom_server_2(mock_node, dummy_datasets):
@@ -159,6 +161,7 @@ def dicomweb_server(dummy_datasets, tempdir):
 
     yield DicomWebTarget(url=f"file://{tempdir}/dicomweb")
 
+
 def test_simple_dicom_client(dicom_server):
     """Test the SimpleDicomClient can connect to and query the DICOM server."""
     client = SimpleDicomClient(dicom_server.ip, dicom_server.port, dicom_server.aet_target, dicom_server.aet_source, None)
@@ -167,10 +170,12 @@ def test_simple_dicom_client(dicom_server):
     assert result is not None  # We expect some result, even if it's an empty dataset
     assert result[0].AccessionNumber == MOCK_ACCESSIONS[0]  # Check if the accession number matches
 
+
 @pytest.fixture(scope="function")
 def tempdir():
     with tempfile.TemporaryDirectory(prefix="mercure_temp") as d:
         yield Path(d)
+
 
 def test_get_accession_job(dicom_server, dicomweb_server, mercure_config):
     """Test the get_accession_job function."""
@@ -188,14 +193,15 @@ def test_get_accession_job(dicom_server, dicomweb_server, mercure_config):
         assert results[0].remaining == 0
         assert pydicom.dcmread(next(k for k in Path(config.jobs_folder).rglob("*.dcm"))).AccessionNumber == MOCK_ACCESSIONS[0]
 
-def test_query_job(dicom_server, tempdir, rq_connection,fs):
+
+def test_query_job(dicom_server, tempdir, rq_connection, fs):
     """
     Test the create_job function.
     We use mocker to mock the queue and avoid actually creating jobs.
     """
     fs.pause()
     try:
-        if (subprocess.run(['systemctl', 'is-active', "mercure_worker*"],capture_output=True,text=True,check=False,
+        if (subprocess.run(['systemctl', 'is-active', "mercure_worker*"], capture_output=True, text=True, check=False,
         ).stdout.strip() == 'active'):
             raise Exception("At least one mercure worker is running, stop it before running test.")
     except subprocess.CalledProcessError:
@@ -212,6 +218,7 @@ def test_query_job(dicom_server, tempdir, rq_connection,fs):
     except StopIteration:
         raise Exception(f"No DICOM file found in {tempdir}")
     assert pydicom.dcmread(example_dcm).AccessionNumber == MOCK_ACCESSIONS[0]
+
 
 def test_query_job_to_mercure(dicom_server, tempdir, rq_connection, fs, mercure_config):
     """
@@ -265,6 +272,7 @@ def tree(path, prefix='', level=0) -> None:
         if entry.is_dir():
             tree(entry.path, prefix + ('    ' if i == len(entries) - 1 else '│   '), level+1)
 
+
 def test_query_dicomweb(dicomweb_server, tempdir, dummy_datasets, fs, rq_connection):
     (tempdir / "outdir").mkdir()
     ds = list(dummy_datasets.values())[0]
@@ -278,6 +286,7 @@ def test_query_dicomweb(dicomweb_server, tempdir, dummy_datasets, fs, rq_connect
     task.get_meta()
     assert task.meta['completed'] == 1
     assert task.meta['total'] == 1
+
 
 def test_query_operations(dicomweb_server, tempdir, dummy_datasets, fs, rq_connection):
     (tempdir / "outdir").mkdir()
@@ -311,12 +320,13 @@ def test_query_operations(dicomweb_server, tempdir, dummy_datasets, fs, rq_conne
     assert task.meta['completed'] == len(dummy_datasets)
     assert task.meta['total'] == len(dummy_datasets)
 
-def test_query_retry(dicom_server_2: Tuple[DicomTarget,DummyDICOMServer], tempdir, dummy_datasets, fs, rq_connection):
+
+def test_query_retry(dicom_server_2: Tuple[DicomTarget, DummyDICOMServer], tempdir, dummy_datasets, fs, rq_connection):
     (tempdir / "outdir").mkdir()
     target, server = dicom_server_2
     task = QueryPipeline.create([ds.AccessionNumber for ds in dummy_datasets.values()], {}, target, (tempdir / "outdir"), redis_server=rq_connection)
 
-    server.remaining_allowed_accessions = 1 # Only one accession is allowed to be retrieved
+    server.remaining_allowed_accessions = 1  # Only one accession is allowed to be retrieved
     w = SimpleWorker(["mercure_fast", "mercure_slow"], connection=rq_connection)
     w.work(burst=True)
     task.get_meta()

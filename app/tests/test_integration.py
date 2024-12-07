@@ -8,7 +8,7 @@ from tests.testing_common import create_minimal_dicom
 
 
 @pytest.mark.parametrize("n_series",(2,))
-@pytest.mark.skipif("os.getenv('TEST_FAST',False)")
+@pytest.mark.skipif("os.getenv('TEST_FAST', False)")
 def test_case_simple(mercure, mercure_config, mercure_base, receiver_port, bookkeeper_port, n_series):
     config = {
         "rules": {
@@ -39,8 +39,8 @@ def test_case_simple(mercure, mercure_config, mercure_base, receiver_port, bookk
                 raise
 
 @pytest.mark.parametrize("n_series",(2,))
-@pytest.mark.skipif("os.getenv('TEST_FAST',False)")
-def test_case_dispatch(mercure,mercure_config, mercure_base, receiver_port, bookkeeper_port, n_series):
+@pytest.mark.skipif("os.getenv('TEST_FAST', False)")
+def test_case_dispatch(mercure, mercure_config, mercure_base, receiver_port, bookkeeper_port, n_series):
     config = {
         "rules": {
             "test_series": Rule(
@@ -75,7 +75,7 @@ def test_case_dispatch(mercure,mercure_config, mercure_base, receiver_port, book
                 raise
 
 @pytest.mark.parametrize("n_series",(1,))
-@pytest.mark.skipif("os.getenv('TEST_FAST',False)")
+@pytest.mark.skipif("os.getenv('TEST_FAST', False)")
 def test_case_process(mercure, mercure_config, mercure_base, receiver_port, bookkeeper_port, n_series):
     config = {
         "rules": {
@@ -118,8 +118,8 @@ def inject_error():
     yield inject
     inject_path.unlink(missing_ok=True)
 
-@pytest.mark.skipif("os.getenv('TEST_FAST',False)")
-@pytest.mark.parametrize("error", range(1,8))
+@pytest.mark.skipif("os.getenv('TEST_FAST', False)")
+@pytest.mark.parametrize("error", range(1, 8))
 def test_case_error_inject(mercure, mercure_config, mercure_base, receiver_port, inject_error, error):
     config = {
         "rules": {
@@ -154,7 +154,7 @@ def test_case_error_inject(mercure, mercure_config, mercure_base, receiver_port,
             print(d)
         raise
 
-@pytest.mark.skipif("os.getenv('TEST_FAST',False)")
+@pytest.mark.skipif("os.getenv('TEST_FAST', False)")
 def test_case_error_real(mercure, mercure_config, mercure_base, receiver_port, bookkeeper_port):
     config = {
         "rules": {

@@ -22,9 +22,9 @@ def upgrade():
     dialect = connection.dialect
     print(dialect.name)
     if dialect.name == "sqlite":
-        jsonb = sa.Text() # type: ignore
+        jsonb = sa.Text()  # type: ignore
     else:
-        jsonb = JSONB(astext_type=sa.Text()) # type: ignore
+        jsonb = JSONB(astext_type=sa.Text())  # type: ignore
 
     op.create_table(
         "tests",

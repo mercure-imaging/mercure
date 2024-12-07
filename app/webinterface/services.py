@@ -8,7 +8,6 @@ Helper functions for controlling the services from the graphical user interface 
 import json
 import os
 from pathlib import Path
-import daiquiri
 
 # App-specific includes
 from common import config

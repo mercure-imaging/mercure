@@ -9,13 +9,11 @@ to minimum when receiving and sending exams.
 
 # Standard python includes
 import asyncio
-import logging
 import os
 import signal
 import sys
 import time
 from datetime import timedelta, datetime
-from datetime import time as _time
 from pathlib import Path
 from shutil import rmtree, disk_usage
 import graphyte
@@ -66,7 +64,7 @@ def clean() -> None:
         )
         return
 
-    ## Emergency cleaning procedure: Check if server is running out of disk space. If so, clean images right away
+    # Emergency cleaning procedure: Check if server is running out of disk space. If so, clean images right away
 
     # Get the percentage of disk usage that should trigger the emergency cleaning
     emergency_clean_trigger: float = config.mercure.emergency_clean_percentage / 100.0
@@ -91,7 +89,8 @@ def clean() -> None:
             monitor.send_event(
                 monitor.m_events.PROCESSING,
                 monitor.severity.WARNING,
-                f"Disk is almost full. Emergency cleaning of the {success_folder} and {discard_folder} folders. Consider adjusting retention period.",
+                (f"Disk is almost full. Emergency cleaning of the {success_folder} and {discard_folder} folders."
+                 " Consider adjusting retention period."),
             )
     else:
         bytes_to_clear = 0
@@ -107,7 +106,7 @@ def clean() -> None:
                     f"Disk is almost full. Emergency cleaning of the {folder} folder. Consider adjusting retention period.",
                 )
 
-    ## Regular cleaning procedure
+    # Regular cleaning procedure
     if helper._is_offpeak(
         config.mercure.offpeak_start,
         config.mercure.offpeak_end,
@@ -116,8 +115,6 @@ def clean() -> None:
         retention = timedelta(seconds=config.mercure.retention)
         clean_dir(success_folder, retention)
         clean_dir(discard_folder, retention)
-
-
 
 
 def clean_dir(folder, retention) -> None:
@@ -142,7 +139,7 @@ def delete_folder(entry) -> None:
         rmtree(delete_path)
         logger.info(f"Deleted folder {delete_path} from {series_uid}")
         monitor.send_task_event(task_event.CLEAN, Path(delete_path).stem, 0, delete_path, "Deleted folder")
-    except Exception as e:
+    except Exception:
         logger.error(
             f"Unable to delete folder {delete_path}",
             Path(delete_path).stem,
@@ -170,7 +167,7 @@ def exit_cleaner(args) -> None:
 def main(args=sys.argv[1:]) -> None:
     if "--reload" in args or os.getenv("MERCURE_ENV", "PROD").lower() == "dev":
         # start_reloader will only return in a monitored subprocess
-        reloader = hupper.start_reloader("cleaner.main")
+        hupper.start_reloader("cleaner.main")
         import logging
 
         logging.getLogger("watchdog").setLevel(logging.WARNING)

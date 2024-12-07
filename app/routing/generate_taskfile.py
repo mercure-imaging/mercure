@@ -1,13 +1,13 @@
 """
 generate_taskfile.py
 ====================
-Helper functions for generating task files in json format, which describe the job to be done and maintain a journal of the executed actions.
+Helper functions for generating task files in json format,
+which describe the job to be done and maintain a journal of the executed actions.
 """
 
 # Standard python includes
 import json
 from pathlib import Path
-import daiquiri
 import socket
 from datetime import datetime
 import pprint
@@ -20,7 +20,6 @@ from common.types import *
 # App-specific includes
 import common.config as config
 import common.monitor as monitor
-from common.types import *
 from common.constants import (
     mercure_defs,
     mercure_names,
@@ -66,11 +65,14 @@ def compose_task(
     return task
 
 
-def add_processing(uid: str, applied_rule: str, tags_list: Dict[str, str]) -> Optional[Union[TaskProcessing,List[TaskProcessing]]]:
+def add_processing(uid: str, applied_rule: str, tags_list: Dict[str, str]
+                   ) -> Optional[Union[TaskProcessing, List[TaskProcessing]]]:
     """
-    Adds information about the desired processing step into the task file, which is evaluated by the processing module
+    Adds information about the desired processing step into the task file,
+    which is evaluated by the processing module
     """
-    # If the applied_rule name is empty, don't add processing information (rules with processing steps always have applied_rule set)
+    # If the applied_rule name is empty, don't add processing information
+    # (rules with processing steps always have applied_rule set)
     if not applied_rule:
         return None
 
@@ -87,7 +89,7 @@ def add_processing(uid: str, applied_rule: str, tags_list: Dict[str, str]) -> Op
 
     # Get the name of the module that should be triggered
     module_names: List[str] = []
-    if isinstance(applied_rule_info.processing_module,str):
+    if isinstance(applied_rule_info.processing_module, str):
         module_names = [applied_rule_info.processing_module]
     else:
         module_names = applied_rule_info.processing_module
@@ -106,7 +108,7 @@ def add_processing(uid: str, applied_rule: str, tags_list: Dict[str, str]) -> Op
         if module_config is not None:
             settings.update(module_config.settings)
 
-        if isinstance(applied_rule_info.processing_settings,list):
+        if isinstance(applied_rule_info.processing_settings, list):
             if i < len(applied_rule_info.processing_settings):
                 settings.update(applied_rule_info.processing_settings[i])
         else:
@@ -150,12 +152,13 @@ def add_study(
 
 
 def add_dispatching(
-    task_id: str, uid: str, applied_rule: str, tags_list: Dict[str, str], target: Union[str,List[str]]
+    task_id: str, uid: str, applied_rule: str, tags_list: Dict[str, str], target: Union[str, List[str]]
 ) -> Optional[TaskDispatch]:
     """
-    Adds information about the desired dispatching step into the task file, which is evaluated by the dispatcher. For series-level dispatching,
-    the target information is provided in string "target", as dispatch operations from multiple rules to the same target are combined (to avoid
-    double sending). In all other cases, the applied_rule is provided and the target information is taken from the rule definition.
+    Adds information about the desired dispatching step into the task file, which is evaluated by the dispatcher.
+    For series-level dispatching, the target information is provided in string "target", as dispatch operations
+    from multiple rules to the same target are combined (to avoid double sending). In all other cases, the
+    applied_rule is provided and the target information is taken from the rule definition.
     """
     logger.debug("Maybe adding dispatching...")
     perform_dispatch = False
@@ -166,15 +169,16 @@ def add_dispatching(
         return None
 
     targets_used: List[str] = []
-    if isinstance(target,str):
-        # Only insert string into list if it is not empty 
-        if target: 
+    if isinstance(target, str):
+        # Only insert string into list if it is not empty
+        if target:
             targets_used = [target]
     else:
-        targets_used = target    
+        targets_used = target
 
-    # Check if a target string is provided (i.e., job is from series-level dispatching). If so, the images should be dispatched in any case
-    if len(targets_used)>0:
+    # Check if a target string is provided (i.e., job is from series-level dispatching).
+    # If so, the images should be dispatched in any case
+    if len(targets_used) > 0:
         logger.debug(f"Adding dispatching info because series-level target {target} specified")
         perform_dispatch = True
     else:
@@ -189,7 +193,7 @@ def add_dispatching(
         if (
             config.mercure.rules[applied_rule].get(mercure_rule.ACTION, mercure_actions.PROCESS)
             in (mercure_actions.ROUTE, mercure_actions.BOTH)
-        ) and len(targets_used)>0:
+        ) and len(targets_used) > 0:
             logger.debug(f"Adding dispatching info because rule specified target {target}")
             perform_dispatch = True
 
@@ -198,15 +202,15 @@ def add_dispatching(
         logger.debug("Not adding dispatch information.")
         return None
 
-    target_status : Dict[str, TaskDispatchStatus] = {}
-    current_time=get_now_str() 
+    target_status: Dict[str, TaskDispatchStatus] = {}
+    current_time = get_now_str()
     for target_item in targets_used:
-        #logger.info(f"Adding target {target_item} to dispatching info")
+        # logger.info(f"Adding target {target_item} to dispatching info")
         # Check if all selected targets actually exist in the configuration (could have been deleted by now)
         if not config.mercure.targets.get(target_item, {}):
             logger.error(f"Target {target_item} does not exist for UID {uid}", task_id)  # handle_error
-            return None            
-        target_status[target_item]=TaskDispatchStatus(state="waiting", time=current_time)
+            return None
+        target_status[target_item] = TaskDispatchStatus(state="waiting", time=current_time)
 
     # All looks good, fill the dispatching section and return it
     return TaskDispatch(
@@ -248,7 +252,6 @@ def add_info(
     )
 
 
-
 def create_series_task(
     task_id: str,
     folder_name: Path,
@@ -259,7 +262,8 @@ def create_series_task(
     target: str,
 ) -> bool:
     """
-    Writes a task file for the received series, containing all information needed by the processor and dispatcher. Additional information is written into the file as well
+    Writes a task file for the received series, containing all information needed by the processor and dispatcher.
+    Additional information is written into the file as well
     """
     # Compose the JSON content for the file
     task = compose_task(task_id, series_UID, "series", triggered_rules, applied_rule, tags_list, target)
@@ -269,7 +273,7 @@ def create_series_task(
     try:
         with open(task_filename, "w") as task_file:
             json.dump(task.dict(), task_file)
-    except:
+    except Exception:
         logger.error(
             f"Unable to create series task file {task_filename} with contents {task.dict()}", task.id
         )  # handle_error
@@ -297,7 +301,7 @@ def create_study_task(
     try:
         with open(task_filename, "w") as task_file:
             json.dump(task.dict(), task_file)
-    except:
+    except Exception:
         logger.error(f"Unable to create study task file {task_filename}", task.id)  # handle_error
         return False
 
@@ -323,7 +327,7 @@ def update_study_task(
     try:
         with open(task_filename, "r") as task_file:
             task: Task = Task(**json.load(task_file))
-    except:
+    except Exception:
         logger.error(f"Unable to open study task file {task_filename}", task_id)  # handle_error
         return False, ""
 
@@ -353,7 +357,7 @@ def update_study_task(
     try:
         with open(task_filename, "w") as task_file:
             json.dump(task.dict(), task_file)
-    except:
+    except Exception:
         logger.error(f"Unable to write task file {task_filename}", task.id)  # handle_error
         return False, ""
 

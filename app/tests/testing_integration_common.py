@@ -24,15 +24,17 @@ from supervisor.xmlrpc import SupervisorTransport
 # current workding directory
 here = os.path.abspath(os.getcwd())
 
+
 def send_dicom(ds, dest_host, dest_port) -> None:
     with tempfile.NamedTemporaryFile('w') as ds_temp:
         ds.save_as(ds_temp.name)
-        subprocess.run(["dcmsend", dest_host, str(dest_port), ds_temp.name],check=True)
+        subprocess.run(["dcmsend", dest_host, str(dest_port), ds_temp.name], check=True)
 
 
 class SupervisorManager:
     process: Optional[multiprocessing.Process] = None
     config_path: Optional[Path] = None
+    
     def __init__(self, mercure_base: Path) -> None:
         self.mercure_base = mercure_base
         self.socket = mercure_base / "supervisor.sock"
@@ -79,7 +81,7 @@ redirect_stderr=true
 startsecs={service.startsecs}
 stopasgroup={str(service.stopasgroup).lower()}
 numprocs={service.numprocs}
-environment=MERCURE_CONFIG_FOLDER="{self.mercure_base}/config",MERCURE_BASEPATH="{self.mercure_base}"
+environment=MERCURE_CONFIG_FOLDER="{self.mercure_base}/config", MERCURE_BASEPATH="{self.mercure_base}"
 """)
 
     def run(self) -> None:
@@ -110,15 +112,15 @@ environment=MERCURE_CONFIG_FOLDER="{self.mercure_base}/config",MERCURE_BASEPATH=
         self.rpc.supervisor.stopProcess(name)
 
     def all_services(self) -> Any:
-        return self.rpc.supervisor.getAllProcessInfo() # type: ignore
+        return self.rpc.supervisor.getAllProcessInfo()  # type: ignore
 
     def get_service_log(self, name, offset=0, length=10000) -> Any:
-        return self.rpc.supervisor.readProcessStdoutLog(name, offset, length) # type: ignore
+        return self.rpc.supervisor.readProcessStdoutLog(name, offset, length)  # type: ignore
 
     def stream_service_logs(self, name, timeout=1) -> None:
         offset = 0
         while True:
-            log_data, offset, overflow = self.rpc.supervisor.tailProcessStdoutLog(name, offset, 1024) # type: ignore
+            log_data, offset, overflow = self.rpc.supervisor.tailProcessStdoutLog(name, offset, 1024)  # type: ignore
             if log_data:
                 print(log_data, end='', flush=True)
             if overflow:
@@ -129,12 +131,14 @@ environment=MERCURE_CONFIG_FOLDER="{self.mercure_base}/config",MERCURE_BASEPATH=
         thread = threading.Thread(target=self.stream_service_logs, args=(name, timeout))
         thread.start()
         return thread
+    
     def wait_for_start(self) -> None:
         while True:
             if Path(self.socket).exists():
                 break
             else:
                 time.sleep(0.1)
+
     def stop(self) -> None:
         if not self.process:
             return
@@ -146,6 +150,7 @@ environment=MERCURE_CONFIG_FOLDER="{self.mercure_base}/config",MERCURE_BASEPATH=
             print(e)
             pass
 
+
 @dataclass
 class MercureService:
     name: str
@@ -153,6 +158,7 @@ class MercureService:
     numprocs: int = 1
     stopasgroup: bool = False
     startsecs: int = 0
+
 
 def is_dicoms_received(mercure_base, dicoms) -> None:
     dicoms_recieved = set()
@@ -162,7 +168,7 @@ def is_dicoms_received(mercure_base, dicoms) -> None:
             assert ds_.SeriesInstanceUID == series_folder.name
             assert ds_.SOPInstanceUID not in dicoms_recieved
             dicoms_recieved.add(ds_.SOPInstanceUID) 
-            
+
     assert dicoms_recieved == set(ds.SOPInstanceUID for ds in dicoms)
     print(f"Received {len(dicoms)} dicoms as expected")
 
@@ -187,7 +193,7 @@ def is_dicoms_in_folder(folder, dicoms) -> None:
             pass
     try:
         assert uids_found == set(ds.SOPInstanceUID for ds in dicoms), f"Dicoms missing from {folder}"
-    except:
+    except Exception:
         print("Expected dicoms not found")
         for dicom in folder.glob('**/*.dcm'):
             print(dicom)
@@ -201,9 +207,11 @@ def is_series_registered(bookkeeper_port, dicoms) -> None:
     result_json = result.json()
     assert set([r['series_uid'] for r in result_json]) == set([d.SeriesInstanceUID for d in dicoms])
 
+
 @pytest.fixture(scope="function")
 def supervisord(mercure_base):
     supervisor: Optional[SupervisorManager] = None
+
     def starter(services=[]):
         nonlocal supervisor
         if not supervisor:
@@ -227,10 +235,11 @@ def stop_mercure(supervisor: SupervisorManager):
                     supervisor.stop_service(service['group']+":*")
         # log = get_service_log(service['name'])
         # if log:
-        log =  Path(service['stdout_logfile']).read_text()
+        log = Path(service['stdout_logfile']).read_text()
         if log:
             logs[service['name']] = log
     return logs
+
 
 @pytest.fixture(scope="session")
 def python_bin():
@@ -247,20 +256,20 @@ def python_bin():
 def mercure_base() -> Generator[Path, None, None]:
     with tempfile.TemporaryDirectory(prefix='mercure_') as temp_dir:
         temp_path = Path(temp_dir)
-        for d in ['config','data']:
+        for d in ['config', 'data']:
             (temp_path / d).mkdir()
         for k in ["incoming", "studies", "outgoing", "success", "error", "discard", "processing", "jobs"]:
             (temp_path / 'data' / k).mkdir()
         yield temp_path
 
 @pytest.fixture(scope="function")
-def mercure(supervisord: Callable[[Any], SupervisorManager], python_bin) -> Generator[Callable[[Any],SupervisorManager], None, None]:
+def mercure(supervisord: Callable[[Any], SupervisorManager], python_bin) -> Generator[Callable[[Any], SupervisorManager], None, None]:
     def py_service(service, **kwargs) -> MercureService:
         if 'command' not in kwargs:
             kwargs['command'] = f"{python_bin} {here}/app/{service}.py"
         return MercureService(service,**kwargs)
     services = [
-        py_service("bookkeeper",startsecs=6),
+        py_service("bookkeeper", startsecs=6),
         py_service("router", numprocs=5),
         py_service("processor", numprocs=2),
         py_service("dispatcher", numprocs=5),
@@ -285,8 +294,8 @@ def random_port() -> int:
     Generate a free port number to use as an ephemeral endpoint.
     """
     s = socket.socket() 
-    s.bind(('',0)) # bind to any available port
-    port = s.getsockname()[1] # get the port number
+    s.bind(('', 0))  # bind to any available port
+    port = s.getsockname()[1]  # get the port number
     s.close()
     return int(port)
 

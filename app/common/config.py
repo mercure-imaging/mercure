@@ -1,17 +1,15 @@
 """
 config.py
 =========
-mercure's configuration management, used by various mercure modules 
+mercure's configuration management, used by various mercure modules
 """
 
 # Standard python includes
 import json
-import os, sys
+import os
 from pathlib import Path
 from typing_extensions import Literal
-import daiquiri
 from typing import Dict, cast
-import re
 
 # App-specific includes
 import common.monitor as monitor
@@ -55,7 +53,7 @@ mercure_defaults = {
     "dispatcher_scan_interval": 1,  # in seconds
     "cleaner_scan_interval": 60,  # in seconds
     "retention": 259200,  # in seconds (3 days)
-    "emergency_clean_percentage": 90,  # in % of disk space 
+    "emergency_clean_percentage": 90,  # in % of disk space
     "retry_delay": 900,  # in seconds (15 min)
     "retry_max": 5,
     "series_complete_trigger": 60,  # in seconds
@@ -77,7 +75,7 @@ mercure_defaults = {
     "modules": {},
     "features": {"dummy_target": False},
     "processing_logs": {"discard_logs": False},
-    "email_notification_from":"mercure@mercure.mercure",
+    "email_notification_from": "mercure@mercure.mercure",
     "support_root_modules": False,
     "phi_notifications": False,
     "server_time": "UTC",
@@ -161,7 +159,7 @@ def save_config() -> None:
 
     try:
         lock = helper.FileLock(lock_file)
-    except:
+    except Exception:
         raise ResourceWarning(f"Unable to lock configuration file: {lock_file}")
 
     with open(configuration_file, "w") as json_file:
@@ -178,7 +176,7 @@ def save_config() -> None:
 
     try:
         lock.free()
-    except:
+    except Exception:
 
         # Can't delete lock file, so something must be seriously wrong
         logger.error(f"Unable to remove lock file {lock_file}", None)  # handle_error
@@ -197,7 +195,7 @@ def write_configfile(json_content) -> None:
 
     try:
         lock = helper.FileLock(lock_file)
-    except:
+    except Exception:
         raise ResourceWarning(f"Unable to lock configuration file: {lock_file}")
 
     with open(configuration_file, "w") as json_file:
@@ -208,7 +206,7 @@ def write_configfile(json_content) -> None:
 
     try:
         lock.free()
-    except:
+    except Exception:
 
         # Can't delete lock file, so something must be seriously wrong
         logger.error(f"Unable to remove lock file {lock_file}", None)  # handle_error

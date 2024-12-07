@@ -23,6 +23,7 @@ class Compat:
 class EmptyDict(TypedDict):
     pass
 
+
 class Target(BaseModel, Compat):
     target_type: Any
     contact: Optional[str] = ""
@@ -32,6 +33,7 @@ class Target(BaseModel, Compat):
     @property
     def short_description(self) -> str:
         return ""
+    
     @classmethod
     def __get_validators__(cls):
         # one or more validators may be yielded which will be called in the
@@ -48,7 +50,7 @@ class Target(BaseModel, Compat):
         for k in subclass_dict:
             try:
                 return subclass_dict[k](**v)
-            except:
+            except Exception:
                 pass
 
         raise ValueError("Couldn't validate target as any of", list(subclass_dict.keys()))
@@ -84,6 +86,7 @@ class DicomTLSTarget(Target):
     def short_description(self) -> str:
         return f"{self.ip}:{self.port}"
 
+
 class DicomWebTarget(Target):
     target_type: Literal["dicomweb"] = "dicomweb"
     url: str
@@ -97,6 +100,7 @@ class DicomWebTarget(Target):
     @property
     def short_description(self) -> str:
         return self.url
+
 
 class SftpTarget(Target):
     target_type: Literal["sftp"] = "sftp"
@@ -122,6 +126,7 @@ class RsyncTarget(Target):
     def short_description(self) -> str:
         return f"{self.host}:{self.folder}"
 
+
 class XnatTarget(Target):
     target_type: Literal["xnat"] = "xnat"
     project_id: str
@@ -132,8 +137,6 @@ class XnatTarget(Target):
     @property
     def short_description(self) -> str:
         return self.host
-
-
 
 
 class S3Target(Target):
@@ -158,6 +161,7 @@ class FolderTarget(Target):
     def short_description(self) -> str:
         return self.folder
 
+
 class DummyTarget(Target):
     target_type: Literal["dummy"] = "dummy"
 
@@ -181,7 +185,7 @@ class UnsetRule(TypedDict):
 
 class Rule(BaseModel, Compat):
     rule: str = "False"
-    target: Union[str,List[str]] = ""
+    target: Union[str, List[str]] = ""
     disabled: bool = False
     fallback: bool = False
     contact: str = ""
@@ -192,8 +196,8 @@ class Rule(BaseModel, Compat):
     study_trigger_condition: Literal["timeout", "received_series"] = "timeout"
     study_trigger_series: str = ""
     priority: Literal["normal", "urgent", "offpeak"] = "normal"
-    processing_module: Union[str,List[str]] = ""
-    processing_settings: Union[List[Dict[str, Any]],Dict[str, Any]] = {}
+    processing_module: Union[str, List[str]] = ""
+    processing_settings: Union[List[Dict[str, Any]], Dict[str, Any]] = {}
     processing_retain_images: bool = False
     notification_email: str = ""
     notification_webhook: str = ""
@@ -213,7 +217,7 @@ class ProcessingLogsConfig(BaseModel):
 
 
 class DicomReceiverConfig(BaseModel):
-    additional_tags: Dict[str,str] = {}
+    additional_tags: Dict[str, str] = {}
 
 
 class DicomNodeBase(BaseModel):
@@ -233,7 +237,7 @@ class DicomNodeBase(BaseModel):
         for k in subclass_dict:
             try:
                 return subclass_dict[k](**v)
-            except:
+            except Exception:
                 pass
         raise ValueError("Couldn't validate dicom node as any of", list(subclass_dict.keys()))
 
@@ -241,14 +245,17 @@ class DicomNodeBase(BaseModel):
     def get_name(cls) -> str:
         return cls.construct().node_type  # type: ignore
 
+
 class DicomDestination(BaseModel):
     name: str
     path: str
+
 
 class DicomRetrieveConfig(BaseModel):
     dicom_nodes: List[DicomNodeBase] = []
     destination_folders: List[DicomDestination] = []
     
+
 class Config(BaseModel, Compat):
     appliance_name: str
     appliance_color: str = "#FFF"
@@ -266,7 +273,7 @@ class Config(BaseModel, Compat):
     dispatcher_scan_interval: int   # in seconds
     cleaner_scan_interval: int      # in seconds
     retention: int                  # in seconds (3 days)
-    emergency_clean_percentage: int # in % of disk space
+    emergency_clean_percentage: int  # in % of disk space
     retry_delay: int                # in seconds (15 min)
     retry_max: int
     series_complete_trigger: int    # in seconds
@@ -322,7 +329,7 @@ class TaskDispatchStatus(BaseModel, Compat):
 
 
 class TaskDispatch(BaseModel, Compat):
-    target_name: Union[str,List[str]]
+    target_name: Union[str, List[str]]
     status: Union[Dict[str, TaskDispatchStatus], EmptyDict] = cast(EmptyDict, {})
     retries: Optional[int] = 0
     next_retry_at: Optional[float] = 0
@@ -377,7 +384,7 @@ class Task(BaseModel, Compat):
     info: TaskInfo
     id: str
     dispatch: Union[TaskDispatch, EmptyDict] = cast(EmptyDict, {})
-    process: Union[TaskProcessing, EmptyDict,List[TaskProcessing]] = cast(EmptyDict, {})
+    process: Union[TaskProcessing, EmptyDict, List[TaskProcessing]] = cast(EmptyDict, {})
     study: Union[TaskStudy, EmptyDict] = cast(EmptyDict, {})
     nomad_info: Optional[Any]
 

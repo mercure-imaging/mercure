@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 import sqlite3
-from typing import Any, Dict, Generator, List, Union
+from typing import Dict, Generator, List, Union
 from dicomweb_client import DICOMfileClient
 from requests.exceptions import HTTPError
 import time
@@ -34,10 +34,10 @@ class DicomWebTargetHandler(TargetHandler[DicomWebTarget]):
         if target.url.startswith("file://"):
             try:
                 return DICOMfileClient(url=target.url, in_memory=False, update_db=True)
-            except sqlite3.OperationalError as e: 
+            except sqlite3.OperationalError:
                 # if sqlite3.OperationalError, try in-memory database
                 # Todo: store the db elsewhere if we don't have write access to this folder
-                # This also makes it possible to run tests under pyfakefs since it can't patch sqlite3 
+                # This also makes it possible to run tests under pyfakefs since it can't patch sqlite3
                 return DICOMfileClient(url=target.url, in_memory=True, update_db=True)
           
         if target.http_user and target.http_password:
@@ -57,7 +57,8 @@ class DicomWebTargetHandler(TargetHandler[DicomWebTarget]):
         logger.info(client)
         return client
 
-    def find_from_target(self, target: DicomWebTarget, accession: str, search_filters: Dict[str,List[str]]={}) -> List[pydicom.Dataset]:
+    def find_from_target(self, target: DicomWebTarget, accession: str, search_filters: Dict[str, List[str]] = {}
+                         ) -> List[pydicom.Dataset]:
         super().find_from_target(target, accession, search_filters)
         client = self.create_client(target)
         use_filters = {'AccessionNumber': accession}
@@ -69,13 +70,17 @@ class DicomWebTargetHandler(TargetHandler[DicomWebTarget]):
             if len(filter_values) > 1:
                 break
         else:
-            use_filters.update({k: v[0] for k,v in search_filters.items()})
+            use_filters.update({k: v[0] for k, v in search_filters.items()})
         
-        metadata = client.search_for_series(search_filters=use_filters, get_remaining=True, fields=['StudyInstanceUID', 'SeriesInstanceUID', 'NumberOfSeriesRelatedInstances', 'StudyDescription', 'SeriesDescription'] + list(search_filters.keys()))
+        metadata = client.search_for_series(search_filters=use_filters, get_remaining=True,
+                                            fields=['StudyInstanceUID',
+                                                    'SeriesInstanceUID',
+                                                    'NumberOfSeriesRelatedInstances',
+                                                    'StudyDescription', 'SeriesDescription'] + list(search_filters.keys()))
         meta_datasets = [pydicom.Dataset.from_json(ds) for ds in metadata]
         result = []
         
-         # In case the server didn't filter as strictly as we expected it to, filter again
+        # In case the server didn't filter as strictly as we expected it to, filter again
         for d in meta_datasets:
             for filter in search_filters:
                 if d.get(filter) not in search_filters[filter]:
@@ -85,7 +90,8 @@ class DicomWebTargetHandler(TargetHandler[DicomWebTarget]):
         logger.debug(result)
         return result
 
-    def get_from_target(self, target: DicomWebTarget, accession, search_filters, destination_path:str) -> Generator[ProgressInfo, None, None]:
+    def get_from_target(self, target: DicomWebTarget, accession, search_filters, destination_path: str
+                        ) -> Generator[ProgressInfo, None, None]:
         series = self.find_from_target(target, accession, search_filters=search_filters)
         if not series:
             raise ValueError("No series found with accession number {}".format(accession))
@@ -117,7 +123,6 @@ class DicomWebTargetHandler(TargetHandler[DicomWebTarget]):
         return ""
 
     def from_form(self, form: dict, factory, current_target) -> DicomWebTarget:
-        url = form["url"]
 
         for x in [
             "qido_url_prefix",
@@ -139,7 +144,7 @@ class DicomWebTargetHandler(TargetHandler[DicomWebTarget]):
         results["Authentication"] = None
         if isinstance(client, DICOMwebClient):
             try:
-                result = client._http_get(target.url)
+                client._http_get(target.url)
                 results["Authentication"] = True
             except HTTPError as e:
                 if e.errno == 401:
@@ -159,7 +164,7 @@ class DicomWebTargetHandler(TargetHandler[DicomWebTarget]):
         try:
             client.search_for_studies(limit=1)
             results["QIDO query"] = True
-        except HTTPError as e:
+        except HTTPError:
             results["QIDO query"] = False
 
         return results

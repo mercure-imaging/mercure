@@ -80,7 +80,7 @@ def test_route_study_pending(fs: FakeFilesystem, mercure_config, mocked):
         assert list(out_path.glob("**/*")) != []
 
 
-@pytest.mark.parametrize("action,force", [("route",True),("route",False),("notification", False)])
+@pytest.mark.parametrize("action, force", [("route", True),("route", False),("notification", False)])
 def test_route_study_simple(fs: FakeFilesystem, mercure_config, mocked, action, force):
     """
     Test that a study with a pending series is not routed until the pending series itself times out.
@@ -170,7 +170,7 @@ def test_route_study_processing(fs: FakeFilesystem, mercure_config, mocked, do_e
     config = mercure_config(
         {
             "modules": {
-                "test_module_1": Module(docker_tag="busybox:stable",settings={"fizz":"buzz","result":{"value":[1,2,3,4]}}).dict(),
+                "test_module_1": Module(docker_tag="busybox:stable", settings={"fizz":"buzz","result":{"value":[1, 2, 3, 4]}}).dict(),
             },
             "series_complete_trigger": 10,
             "study_complete_trigger": 30,

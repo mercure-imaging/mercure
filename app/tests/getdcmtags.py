@@ -73,7 +73,7 @@ def write_error_information(dcm_file: Path, error_string: str) -> None:
         if lock_file.exists():
             lock_file.unlink()
 
-def read_extra_tags(dataset, extra_tags_file) -> List[Tuple[str,str]]:
+def read_extra_tags(dataset, extra_tags_file) -> List[Tuple[str, str]]:
     """Read extra tags from a file."""
     extra_tags = []
     if extra_tags_file.exists():
@@ -124,7 +124,7 @@ def create_series_folder(path, series_uid) -> bool:
         print(f"ERROR: Unable to create directory {series_folder}: {e}")
         return False
 
-def process_dicom(dcm_file, sender_address, sender_aet, receiver_aet, bookkeeper_address='', bookkeeper_token='', set_tags:List[Tuple[str,str]]=[]) -> Optional[Path]:
+def process_dicom(dcm_file, sender_address, sender_aet, receiver_aet, bookkeeper_address='', bookkeeper_token='', set_tags: List[Tuple[str, str]]=[]) -> Optional[Path]:
     """Process the DICOM file according to the provided arguments."""
     dcm_file = Path(dcm_file)
     

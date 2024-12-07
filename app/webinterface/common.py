@@ -18,10 +18,11 @@ from common.constants import mercure_defs
 from rq_scheduler import Scheduler
 import common.config as config
 
-redis = Redis.from_url(os.getenv("REDIS_URL","redis://localhost:6379/0"))
+redis = Redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379/0"))
 rq_slow_queue = Queue(name="mercure_slow", connection=redis)
 rq_fast_queue = Queue(name="mercure_fast", connection=redis)
-rq_fast_scheduler = Scheduler(queue=rq_fast_queue, connection=rq_fast_queue.connection) 
+rq_fast_scheduler = Scheduler(queue=rq_fast_queue, connection=rq_fast_queue.connection)
+
 
 def get_user_information(request) -> dict:
     """Returns dictionary of values that should always be passed to the templates when the user is logged in."""
@@ -33,8 +34,10 @@ def get_user_information(request) -> dict:
         "appliance_color": config.mercure.appliance_color,
     }
 
+
 def get_mercure_version(request) -> dict:
-    return { "mercure_version": mercure_defs.VERSION }
+    return {"mercure_version": mercure_defs.VERSION}
+
 
 templates = Jinja2Templates(directory="webinterface/templates", context_processors=[get_user_information, get_mercure_version])
 

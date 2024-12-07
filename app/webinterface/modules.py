@@ -10,16 +10,14 @@ from typing import Dict
 
 # Starlette-related includes
 from starlette.applications import Starlette
-from starlette.responses import Response, PlainTextResponse, RedirectResponse
+from starlette.responses import PlainTextResponse, RedirectResponse
 from starlette.authentication import requires
 
 # App-specific includes
 import common.config as config
 import common.helper as helper
-from common.constants import mercure_defs
 from common.types import Module
 
-from webinterface.common import get_user_information
 from webinterface.common import templates
 
 import docker
@@ -31,7 +29,7 @@ logger = config.get_logger()
 
 
 ###################################################################################
-## Common functions
+# Common functions
 ###################################################################################
 
 
@@ -53,7 +51,7 @@ async def save_module(form, name) -> None:
     # Ensure that the module settings are valid. Should happen on the client side too, but can't hurt to check again.
     try:
         new_settings: Dict = json.loads(form.get("settings", "{}"))
-    except:
+    except Exception:
         new_settings = {}
 
     config.mercure.modules[name] = Module(
@@ -73,7 +71,7 @@ async def save_module(form, name) -> None:
 
 
 ###################################################################################
-## Modules endpoints
+# Modules endpoints
 ###################################################################################
 
 
@@ -84,7 +82,7 @@ async def show_modules(request):
 
     try:
         config.read_config()
-    except:
+    except Exception:
         return PlainTextResponse(
             "Configuration is being updated. Try again in a minute."
         )
@@ -115,7 +113,7 @@ async def add_module(request):
     """Creates a new module and forwards the user to the module edit page."""
     try:
         config.read_config()
-    except:
+    except Exception:
         return PlainTextResponse(
             "Configuration is being updated. Try again in a minute."
         )
@@ -140,7 +138,7 @@ async def add_module(request):
         except docker.errors.APIError as e:
             if e.response.status_code == 403:
                 return ServerErrorResponse(
-                    f"A Docker container with this tag does not exist locally or in the Docker Hub registry."
+                    "A Docker container with this tag does not exist locally or in the Docker Hub registry."
                 )
             else:
                 logger.exception(e)
@@ -164,10 +162,12 @@ async def add_module(request):
         )
     if (
         form["container_type"] == "monai"
-        and config.mercure.support_root_modules != True
+        and config.mercure.support_root_modules is not True
     ):
         return BadRequestResponse(
-            f"MONAI modules must run as root user, but the setting 'Support Root Modules' is disabled in the mercure configuration. Enable it on the Configuration page before installing MONAI modules."
+            "MONAI modules must run as root user, but the setting 'Support Root Modules' "
+            "is disabled in the mercure configuration."
+            "Enable it on the Configuration page before installing MONAI modules."
         )
     # logger.info(f'Created rule {name}')
     # monitor.send_webgui_event(monitor.w_events.RULE_CREATE, request.user.display_name, name)
@@ -187,7 +187,7 @@ async def edit_module(request):
     module = request.path_params["module"]
     try:
         config.read_config()
-    except:
+    except Exception:
         return PlainTextResponse(
             "Configuration is being updated. Try again in a minute."
         )
@@ -220,7 +220,7 @@ async def edit_module_POST(request):
     """Save the settings for the given module name."""
     try:
         config.read_config()
-    except:
+    except Exception:
         return PlainTextResponse(
             "Configuration is being updated. Try again in a minute."
         )
@@ -246,7 +246,7 @@ async def delete_module(request):
     """Deletes the module with the given module name."""
     try:
         config.read_config()
-    except:
+    except Exception:
         return PlainTextResponse(
             "Configuration is being updated. Try again in a minute."
         )
@@ -257,7 +257,7 @@ async def delete_module(request):
 
     try:
         config.save_config()
-    except:
+    except Exception:
         return PlainTextResponse("ERROR: Unable to write configuration. Try again.")
     # logger.info(f'Created rule {newrule}')
     # monitor.send_webgui_event(monitor.w_events.RULE_CREATE, request.user.display_name, newrule)

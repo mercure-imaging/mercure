@@ -11,7 +11,7 @@ import inspect
 from pathlib import Path
 import re
 import threading
-from typing import Callable, List, Optional, Tuple
+from typing import Callable, Optional, Tuple
 import dateutil
 import graphyte
 import os
@@ -20,30 +20,31 @@ import common.influxdb
 # Global variable to broadcast when the process should terminate
 terminate = False
 
-
 loop = asyncio.get_event_loop()
 
+
 def validate_folders(config) -> Tuple[bool, str]:
-    for folder in ( config.incoming_folder, config.studies_folder, config.outgoing_folder,
-                    config.success_folder, config.error_folder, config.discard_folder,
-                    config.processing_folder, config.jobs_folder ):
+    for folder in (config.incoming_folder, config.studies_folder, config.outgoing_folder,
+                   config.success_folder, config.error_folder, config.discard_folder,
+                   config.processing_folder, config.jobs_folder):
         if not Path(folder).is_dir():
             try:
                 Path(folder).mkdir(parents=False)
                 print(f"Created directory: {folder}")
-            except Exception as e:
+            except Exception:
                 return False, f"Folder {folder} does not exist."
             
-        if not os.access( folder, os.R_OK | os.W_OK ):
+        if not os.access(folder, os.R_OK | os.W_OK):
             return False, f"No read/write access to {folder}"
     return True, ""
+
 
 def localize_log_timestamps(logstring: str, config) -> str:
     if config.mercure.local_time == "UTC":
         return logstring
     try:
-        local_tz = dateutil.tz.gettz(config.mercure.local_time) # type: ignore 
-    except:
+        local_tz = dateutil.tz.gettz(config.mercure.local_time)  # type: ignore
+    except Exception:
         return logstring
 
     timestamp_pattern = re.compile(r'^(\S+)(.*?)$', re.MULTILINE)
@@ -51,21 +52,24 @@ def localize_log_timestamps(logstring: str, config) -> str:
     def replace_timestamp(match):
         timestamp, rest_of_line = match.groups()
         try:
-            parsed_dt = dateutil.parser.isoparse(timestamp)  # type: ignore 
+            parsed_dt = dateutil.parser.isoparse(timestamp)  # type: ignore
             dt_localtime: datetime = parsed_dt.astimezone(local_tz)
             localized_timestamp = dt_localtime.isoformat(timespec='seconds')
             return f"{localized_timestamp}{rest_of_line}"
-        except:
+        except Exception:
             return match.group(0)  # Return the original line if parsing fails
 
     return timestamp_pattern.sub(replace_timestamp, logstring)
+
 
 def get_now_str() -> str:
     """Returns the current time as string with mercure-wide formatting"""
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+
 def get_runner() -> str:
-    """Returns the name of the mechanism that is used for running mercure in the current installation (systemd, docker, nomad)."""
+    """Returns the name of the mechanism that is used for running mercure
+       in the current installation (systemd, docker, nomad)."""
     return os.getenv("MERCURE_RUNNER", "systemd")
 
 
@@ -82,7 +86,7 @@ def is_terminated() -> bool:
 
 def send_to_graphite(*args, **kwargs) -> None:
     """Wrapper for asynchronous graphite call to avoid wait time of main loop."""
-    if graphyte.default_sender == None:
+    if graphyte.default_sender is None:
         return
     graphyte.default_sender.send(*args, **kwargs)
 
@@ -101,7 +105,7 @@ def g_log(*args, **kwargs) -> None:
         loop = asyncio.get_running_loop()
         loop.call_soon(send_to_graphite, *args, **kwargs)
         loop.call_soon(send_to_influxdb, *args, **kwargs)
-    except:
+    except Exception:
         send_to_graphite(*args, **kwargs)
         send_to_influxdb(*args, **kwargs)
 
@@ -111,7 +115,7 @@ def _is_offpeak(offpeak_start: str, offpeak_end: str, current_time: _time) -> bo
     try:
         start_time = datetime.strptime(offpeak_start, "%H:%M").time()
         end_time = datetime.strptime(offpeak_end, "%H:%M").time()
-    except Exception as e:
+    except Exception:
         print(f"Unable to parse offpeak time: {offpeak_start}, {offpeak_end}", None)  # handle_error
         return True
 
@@ -208,6 +212,7 @@ class FileLock:
     """Helper class that implements a file lock. The lock file will be removed also from the destructor so that
     no spurious lock files remain if exceptions are raised."""
     lockCreated = False
+    
     def __init__(self, path_for_lockfile: Path):
         self.lockfile = path_for_lockfile
         # TODO: Handle case if lock file cannot be created

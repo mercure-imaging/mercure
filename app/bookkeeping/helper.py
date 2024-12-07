@@ -32,4 +32,3 @@ class CustomJSONEncoder(json.JSONEncoder):
 class CustomJSONResponse(JSONResponse):
     def render(self, content: Any) -> bytes:
         return json.dumps(content, cls=CustomJSONEncoder).encode("utf-8")
-

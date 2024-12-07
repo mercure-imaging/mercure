@@ -19,7 +19,7 @@ from common import config
 logger = config.get_logger()
 
 ###################################################################################
-## Definition of database tables
+# Definition of database tables
 ###################################################################################
 database: databases.Database
 metadata: sqlalchemy.MetaData
@@ -36,14 +36,17 @@ tests_table: sqlalchemy.Table
 processor_logs_table: sqlalchemy.Table
 processor_outputs_table: sqlalchemy.Table
 
+
 def init_database(url=None, schema=None) -> databases.Database:
-    global database, metadata, mercure_events, webgui_events, dicom_files, dicom_series, task_events, file_events, dicom_series_map, series_sequence_data, tasks_table, tests_table, processor_logs_table, processor_outputs_table
+    global database, metadata, mercure_events, webgui_events, dicom_files, dicom_series, task_events
+    global file_events, dicom_series_map, series_sequence_data, tasks_table, tests_table
+    global processor_logs_table, processor_outputs_table
+
     database = databases.Database(url or bk_config.DATABASE_URL)
     metadata = sqlalchemy.MetaData(schema=(schema or bk_config.DATABASE_SCHEMA))
-
     # SQLite does not support JSONB natively, so we use TEXT instead
     JSONB = sqlalchemy.types.Text() if 'sqlite://' in (url or bk_config.DATABASE_URL) else sqlalchemy.dialects.postgresql.JSONB
-    # 
+
     mercure_events = sqlalchemy.Table(
         "mercure_events",
         metadata,
@@ -190,7 +193,7 @@ def init_database(url=None, schema=None) -> databases.Database:
         metadata,
         sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
         sqlalchemy.Column("time", sqlalchemy.DateTime(timezone=True), server_default=func.now()),
-        sqlalchemy.Column("task_id", sqlalchemy.String, sqlalchemy.ForeignKey("tasks.id"),nullable=True),
+        sqlalchemy.Column("task_id", sqlalchemy.String, sqlalchemy.ForeignKey("tasks.id"), nullable=True),
         sqlalchemy.Column("task_acc", sqlalchemy.String),
         sqlalchemy.Column("task_mrn", sqlalchemy.String),
         sqlalchemy.Column("module", sqlalchemy.String),

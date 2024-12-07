@@ -5,7 +5,6 @@ Rules page for the graphical user interface of mercure.
 """
 
 # Standard python includes
-import daiquiri
 from typing import Any, Dict, Set
 import json
 
@@ -17,11 +16,9 @@ from starlette.authentication import requires
 # App-specific includes
 import common.config as config
 import common.monitor as monitor
-from common.constants import mercure_defs
 from common.tags_rule_interface import TagNotFoundException
 from common.types import Rule
 import common.rule_evaluation as rule_evaluation
-import common.helper as helper
 from webinterface.common import *
 import common.tagslist as tagslist
 from decoRouter import Router as decoRouter
@@ -32,7 +29,7 @@ logger = config.get_logger()
 
 
 ###################################################################################
-## Rules endpoints
+# Rules endpoints
 ###################################################################################
 
 @router.get("/")
@@ -41,7 +38,7 @@ async def rules(request) -> Response:
     """Show all defined routing rules. Can be executed by all logged-in users."""
     try:
         config.read_config()
-    except:
+    except Exception:
         return PlainTextResponse("Configuration is being updated. Try again in a minute.")
 
     template = "rules.html"
@@ -59,7 +56,7 @@ async def add_rule(request) -> Response:
     """Creates a new routing rule and forwards the user to the rule edit page."""
     try:
         config.read_config()
-    except:
+    except Exception:
         return PlainTextResponse("Configuration is being updated. Try again in a minute.")
 
     form = dict(await request.form())
@@ -81,11 +78,13 @@ MRN: {{ mrn }}
 Details:
 {{ details }}
 {% endif %}"""
-    config.mercure.rules[newrule] = Rule(rule="False",notification_payload_body=default_payload_body, notification_email_body=default_email_body)
+    config.mercure.rules[newrule] = Rule(rule="False",
+                                         notification_payload_body=default_payload_body,
+                                         notification_email_body=default_email_body)
 
     try:
         config.save_config()
-    except:
+    except Exception:
         return PlainTextResponse("ERROR: Unable to write configuration. Try again.")
 
     logger.info(f"Created rule {newrule}")
@@ -99,11 +98,11 @@ async def rules_edit(request) -> Response:
     """Shows the edit page for the given routing rule."""
     try:
         config.read_config()
-    except:
+    except Exception:
         return PlainTextResponse("Configuration is being updated. Try again in a minute.")
 
     rule = request.path_params["rule"]
-    if not rule in config.mercure.rules:
+    if rule not in config.mercure.rules:
         return PlainTextResponse("Rule does not exist anymore.")
 
     settings_string = ""
@@ -134,29 +133,29 @@ async def rules_edit_post(request) -> Response:
     """Updates the settings for the given routing rule."""
     try:
         config.read_config()
-    except:
+    except Exception:
         return PlainTextResponse("Configuration is being updated. Try again in a minute.")
 
-    editrule = request.path_params["rule"]   
-    if not editrule in config.mercure.rules:
+    editrule = request.path_params["rule"]
+    if editrule not in config.mercure.rules:
         return PlainTextResponse("Rule does not exist anymore.")
 
     try:
         form_data = await request.form()
         form = dict(form_data)
         target_list = form_data.getlist("target")
-    except:
+    except Exception:
         return PlainTextResponse("Invalid form data.")
 
     # Ensure that the processing settings are valid. Should happen on the client side too, but can't hurt
     # to check again
     try:
         new_processing_settings: Dict = json.loads(form.get("processing_settings", "{}"))
-    except:
+    except Exception:
         new_processing_settings = {}
 
     if "processing_module_list" in form:
-        processing_module = form.get("processing_module_list","").split(",")
+        processing_module = form.get("processing_module_list", "").split(",")
         if processing_module == [""]:
             processing_module = ""
     else:
@@ -186,7 +185,7 @@ async def rules_edit_post(request) -> Response:
         notification_payload=notification_payload,
         notification_payload_body=form.get("notification_payload_body", ""),
         notification_email_body=form.get("notification_email_body", ""),
-        notification_email_type="html" if form.get("notification_email_html",False) else "plain",
+        notification_email_type="html" if form.get("notification_email_html", False) else "plain",
         notification_trigger_reception=form.get("notification_trigger_reception", "False"),
         notification_trigger_completion=form.get("notification_trigger_completion", "False"),
         notification_trigger_completion_on_request=form.get("notification_trigger_completion_on_request", "False"),
@@ -196,7 +195,7 @@ async def rules_edit_post(request) -> Response:
 
     try:
         config.save_config()
-    except:
+    except Exception:
         return PlainTextResponse("ERROR: Unable to write configuration. Try again.")
 
     logger.info(f"Edited rule {editrule}")
@@ -210,7 +209,7 @@ async def rules_delete_post(request) -> Response:
     """Deletes the given routing rule"""
     try:
         config.read_config()
-    except:
+    except Exception:
         return PlainTextResponse("Configuration is being updated. Try again in a minute.")
 
     deleterule = request.path_params["rule"]
@@ -220,7 +219,7 @@ async def rules_delete_post(request) -> Response:
 
     try:
         config.save_config()
-    except:
+    except Exception:
         return PlainTextResponse("ERROR: Unable to write configuration. Try again.")
 
     logger.info(f"Deleted rule {deleterule}")
@@ -232,15 +231,16 @@ async def rules_delete_post(request) -> Response:
 @requires(["authenticated", "admin"], redirect="login")
 async def rules_test(request) -> Response:
     """Evalutes if a given routing rule is valid. The rule and testing dictionary have to be passed as form parameters."""
-    noresult:Set[Any] = set()
+    noresult: Set[Any] = set()
     attrs_accessed = set()
     try:
         form = dict(await request.form())
         testrule = form["rule"]
         testvalues = json.loads(form["testvalues"])
-    except:
+    except Exception:
         return PlainTextResponse(
-            '<span class="tag is-warning is-medium ruleresult"><i class="fas fa-bug"></i>&nbsp;Error</span>&nbsp;&nbsp;Invalid test values'
+            ('<span class="tag is-warning is-medium ruleresult">'
+             '<i class="fas fa-bug"></i>&nbsp;Error</span>&nbsp;&nbsp;Invalid test values')
         )
     try:
         result, attrs_accessed = rule_evaluation.eval_rule(testrule, testvalues)
@@ -268,11 +268,16 @@ async def rules_test(request) -> Response:
         text = "Error"
         inline = e
 
-    attrs_accessed_info = "\n".join([f"{x} = \"{testvalues[x]}\"" for x in attrs_accessed]) if len(attrs_accessed) > 0 else None
-    return PlainTextResponse(f'<span class="tag is-{style} is-medium ruleresult"><i class="fas fa-{icon}"></i>&nbsp;{text}</span>'
-                             + (f'<pre style="display:inline; margin-left: 1em">{repr(inline) if not isinstance(inline,Exception) else str(inline) }</pre>' if inline is not noresult else '')
-                             + (f'<pre style="margin: 1em">Tags evaluated:\n{attrs_accessed_info}</pre>' if attrs_accessed_info else '')
+    attrs_accessed_info = ("\n".join([f"{x} = \"{testvalues[x]}\"" for x in attrs_accessed])
+                           if len(attrs_accessed) > 0 else None)
+
+    _inline = repr(inline) if not isinstance(inline, Exception) else str(inline)
+    return PlainTextResponse(f'<span class="tag is-{style} is-medium ruleresult"><i class="fas fa-{icon}"></i>&nbsp;{text}</span>'  # noqa: E501
+                             + (f'<pre style="display:inline; margin-left: 1em">{_inline}</pre>'
+                                if inline is not noresult else '')
+                             + (f'<pre style="margin: 1em">Tags evaluated:\n{attrs_accessed_info}</pre>' if attrs_accessed_info else '')  # noqa: E501
                              )
+
 
 @router.post("/test_completionseries")
 @requires(["authenticated", "admin"], redirect="login")
@@ -281,7 +286,7 @@ async def rules_test_completionseries(request) -> Response:
     try:
         form = dict(await request.form())
         test_series_list = form["study_trigger_series"]
-    except:
+    except Exception:
         return PlainTextResponse(
             '<span class="tag is-warning is-medium ruleresult"><i class="fas fa-bug"></i>&nbsp;Error</span>&nbsp;&nbsp;Invalid'
         )

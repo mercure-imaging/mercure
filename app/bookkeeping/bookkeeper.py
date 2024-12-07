@@ -9,14 +9,11 @@ and stores the information in a database.
 import contextlib
 import os
 from pathlib import Path
-import subprocess
 import sys
-from typing import Union
 import asyncpg
 from sqlalchemy.dialects.postgresql import insert
 import uvicorn
 import datetime
-import daiquiri
 import hupper
 
 # Starlette-related includes
@@ -36,10 +33,13 @@ import bookkeeping.database as db
 import bookkeeping.query as query
 import bookkeeping.config as bk_config
 from decoRouter import Router as decoRouter
+from alembic.config import Config
+from alembic import command
+
 router = decoRouter()
 
 ###################################################################################
-## Configuration and initialization
+# Configuration and initialization
 ###################################################################################
 
 
@@ -56,25 +56,21 @@ class TokenAuth(BaseTokenAuth):
             return None
         return SimpleUser("user")
 
-
-
 ###################################################################################
-## Event handlers
+# Event handlers
 ###################################################################################
 
-
-from alembic.config import Config
-from alembic import command
 
 def migrate_database() -> None:
     alembic_cfg = Config()
-    alembic_cfg.set_main_option('script_location', os.path.abspath(os.path.dirname(os.path.realpath(__file__))+'/../alembic'))
+    alembic_cfg.set_main_option('script_location',
+                                os.path.abspath(os.path.dirname(os.path.realpath(__file__)) + '/../alembic'))
     alembic_cfg.set_main_option('sqlalchemy.url', bk_config.DATABASE_URL)
     command.upgrade(alembic_cfg, 'head')
 
 
 ###################################################################################
-## Endpoints for event submission
+# Endpoints for event submission
 ###################################################################################
 
 # async def execute_db_operation(operation) -> None:
@@ -82,7 +78,7 @@ def migrate_database() -> None:
 #     """Executes a previously prepared db.database operation."""
 #     try:
 #         connection.execute(operation)
-#     except:
+#     except Exception:
 #         pass
 
 @router.post()
@@ -128,7 +124,7 @@ async def processor_logs(request) -> JSONResponse:
     time = datetime.datetime.now()
     try:
         logs = str(payload.get("logs", ""))
-    except:
+    except Exception:
         return JSONResponse({"error": "unable to read logs"}, 400)
 
     if (logs_folder_str := config.mercure.processing_logs.logs_file_store) and (
@@ -349,13 +345,13 @@ async def post_task_event(request) -> JSONResponse:
     if "timestamp" in payload:
         try:
             client_timestamp = float(payload.get("timestamp"))  # type: ignore
-        except:
+        except Exception:
             pass
 
     if "time" in payload:
         try:
             event_time = datetime.datetime.fromisoformat(payload.get("time"))  # type: ignore
-        except:
+        except Exception:
             pass
 
     # series_uid = payload.get("series_uid", "")
@@ -388,14 +384,14 @@ async def post_task_event(request) -> JSONResponse:
 @requires("authenticated")
 async def store_processor_output(request) -> JSONResponse:
     payload = dict(await request.json())
-    values_dict = {k:payload[k] for k in ("task_id", "task_acc", "task_mrn", "module", "index", "settings", "output")}
+    values_dict = {k: payload[k] for k in ("task_id", "task_acc", "task_mrn", "module", "index", "settings", "output")}
     query = db.processor_outputs_table.insert().values(**values_dict)
     await db.database.execute(query)
     return JSONResponse({"ok": ""})
 
 
 ###################################################################################
-## Main entry function
+# Main entry function
 ###################################################################################
 
 
@@ -422,6 +418,7 @@ exception_handlers = {
 
 app: Starlette
 
+
 def create_app() -> Starlette:
     bk_config.read_bookkeeper_config()
     app = Starlette(debug=bk_config.DEBUG_MODE, routes=router, lifespan=lifespan, exception_handlers=exception_handlers)
@@ -433,11 +430,12 @@ def create_app() -> Starlette:
     app.mount("/query", query.query_app)
     return app
 
+
 def main(args=sys.argv[1:]) -> None:
     global app
     if "--reload" in args or os.getenv("MERCURE_ENV", "PROD").lower() == "dev":
         # start_reloader will only return in a monitored subprocess
-        reloader = hupper.start_reloader("bookkeeper.main")
+        hupper.start_reloader("bookkeeper.main")
         import logging
 
         logging.getLogger("multipart.multipart").setLevel(logging.WARNING)

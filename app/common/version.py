@@ -6,8 +6,6 @@ Semantic version handling for mercure.
 
 # Standard python includes
 import os
-import daiquiri
-import logging
 from pathlib import Path
 import common.log_helpers as log_helpers
 
@@ -92,7 +90,7 @@ class SemanticVersion:
             try:
                 with open(version_file, "r") as version_filecontent:
                     self.version_string = version_filecontent.readline().strip()
-            except:
+            except Exception:
                 error_message = f"Unable to open or read file {version_filepath}"
                 logger.error(error_message)
                 self.version_string = self.INVALID
@@ -103,11 +101,11 @@ class SemanticVersion:
             logger.error(error_message)
             # Invalidate the version numbers
             self.version_string = self.INVALID
-            major = 0
-            minor = 0
-            patch = 0
-            state = 0
-            dev = 0
+            self.major = 0
+            self.minor = 0
+            self.patch = 0
+            self.state = 0
+            self.dev = 0
 
         return True
 

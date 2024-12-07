@@ -5,8 +5,7 @@ Helper functions for evaluating routing rules and study-completion conditions.
 """
 
 # Standard python includes
-from typing import Any, Dict, Optional, Tuple, Union
-import daiquiri
+from typing import Any, Dict, Optional, Tuple
 
 # App-specific includes
 import common.monitor as monitor
@@ -33,7 +32,7 @@ def replace_tags(rule: str, tags: Dict[str, str]) -> Any:
         closing = rule.find("@", opening + 1)
         if closing < 0:
             break
-        tagstring = rule[opening + 1 : closing]
+        tagstring = rule[opening + 1:closing]
         if tagstring in tags:
             tags_found.append(tagstring)
         i = closing + 1
@@ -45,7 +44,11 @@ def replace_tags(rule: str, tags: Dict[str, str]) -> Any:
 
 # def eval_rule(rule, tags):
 # Allow some safe builtins
-safe_eval_cmds = {"float": float, "int": int, "str": str, "len": len, "bool": bool, "sum": sum, "round": round, "max": max, "min": min, "abs": abs, "pow": pow, "chr": chr, "ord": ord}
+
+
+safe_eval_cmds = {"float": float, "int": int, "str": str, "len": len, "bool": bool,
+                  "sum": sum, "round": round, "max": max, "min": min, "abs": abs,
+                  "pow": pow, "chr": chr, "ord": ord}
 
 
 def eval_rule(rule: str, tags_dict: Dict[str, str]) -> Any:
@@ -56,19 +59,20 @@ def eval_rule(rule: str, tags_dict: Dict[str, str]) -> Any:
     logger.info(f"Evaluated: {rule}")
     tags_obj = Tags(tags_dict)
     try:
-        result = eval(rule, {"__builtins__": {}}, {**safe_eval_cmds,"tags":tags_obj})
-    except SyntaxError as e:
+        result = eval(rule, {"__builtins__": {}}, {**safe_eval_cmds, "tags": tags_obj})
+    except SyntaxError:
         opening = rule.find("@")
-        closing = rule.find("@",opening+1)
-        if opening >-1 and closing>1:
+        closing = rule.find("@", opening + 1)
+        if opening > -1 and closing > 1:
             raise TagNotFoundException(f"No such tag '{rule[opening+1:closing]}' in tags list.")
         raise
     logger.info(", ".join([f"{tag} = \"{tags_dict[tag]}\"" for tag in tags_obj.tags_accessed()]))
     logger.info(f"Result: {result}")
     return result, tags_obj.tags_accessed()
 
-def parse_rule(rule: str, tags: Dict[str, str]) -> Tuple[bool,Optional[str], Optional[str]]:
-    try: 
+
+def parse_rule(rule: str, tags: Dict[str, str]) -> Tuple[bool, Optional[str], Optional[str]]:
+    try:
         result, _ = eval_rule(rule, tags)
         return True if result else False, result, None
     except TagNotFoundException:
@@ -79,18 +83,19 @@ def parse_rule(rule: str, tags: Dict[str, str]) -> Tuple[bool,Optional[str], Opt
         )  # handle_error
         return False, None, str(e)
 
+
 def test_completion_series(value: str) -> str:
     """Tests if the given string with the list of series required for study completion has valid format. If so, True
     is returned as string, otherwise the error description is returned."""
     if not value:
         return "Value cannot be empty"
-    if (not "'" in value) or ('"' in value):
+    if ("'" not in value) or ('"' in value):
         return "Series names must be enclosed by '...'"
     if value.count("'") % 2:
         return "Series names not properly enclosed by '...'"
     try:
         eval(value, {"__builtins__": {}}, {})
-    except Exception as e:
+    except Exception:
         return "Compare syntax with example shown above."
 
     series_found = []
@@ -102,7 +107,7 @@ def test_completion_series(value: str) -> str:
         closing = value.find("'", opening + 1)
         if closing < 0:
             break
-        series_string = value[opening + 1 : closing]
+        series_string = value[opening + 1:closing]
         series_found.append(series_string)
         i = closing + 1
     for series in series_found:
@@ -144,7 +149,7 @@ def parse_completion_series(task_id: str, completion_str: str, received_series: 
         closing = parsed_str.find("'", opening + 1)
         if closing < 0:
             break
-        series_string = parsed_str[opening + 1 : closing]
+        series_string = parsed_str[opening + 1:closing]
         entries_found.append(series_string)
         i = closing + 1
 
@@ -173,7 +178,7 @@ def parse_completion_series(task_id: str, completion_str: str, received_series: 
     try:
         result: bool = eval(parsed_str, {"__builtins__": {}}, {})
         return result
-    except Exception as e:
+    except Exception:
         logger.error(
             f"Invalid completion condition: {parsed_str}", task_id, event_type=monitor.m_events.CONFIG_UPDATE
         )  # handle_error
@@ -183,7 +188,7 @@ def parse_completion_series(task_id: str, completion_str: str, received_series: 
 # if __name__ == "__main__":
 #    tags = { "Tag1": "One", "TestTag": "Two", "AnotherTag": "Three" }
 #    result = "('Tr' in @Tag1@) | (@Tag1@ == 'Trio') @Three@ @AnotherTag@"
-#    parsed=replace_tags(result,tags)
+#    parsed=replace_tags(result, tags)
 #    print(result)
 #    print(parsed)
 

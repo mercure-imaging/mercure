@@ -56,7 +56,7 @@ def create_series(mocked, fs, config, tags, name="bar") -> Tuple[str, str]:
 
     mocked.patch("uuid.uuid1", new=lambda: task_id)
 
-    mock_incoming_uid(config, fs, series_uid, tags,name)
+    mock_incoming_uid(config, fs, series_uid, tags, name)
     return task_id, series_uid
 
 def test_route_series_fail1(fs: FakeFilesystem, mercure_config, mocked):
@@ -91,7 +91,7 @@ def test_route_series_fail2(fs: FakeFilesystem, mercure_config, mocked):
         severity.ERROR,
         "Invalid rule encountered:  1/0 ",
     )
-    common.monitor.send_task_event.assert_any_call(task_event.DISCARD, task_id,1, "","Discard by default.")  # type: ignore
+    common.monitor.send_task_event.assert_any_call(task_event.DISCARD, task_id, 1, "","Discard by default.")  # type: ignore
     common.monitor.send_task_event.reset_mock()  # type: ignore
 
 def test_route_series_fail3(fs: FakeFilesystem, mercure_config, mocked):
@@ -374,7 +374,7 @@ def test_route_series_fail_with_bad_tags(fs: FakeFilesystem, mercure_config, moc
     common.monitor.send_register_task.assert_any_call(task_id, series_uid)  # type: ignore
     router.route_series.assert_called_once_with(task_id, series_uid)  # type: ignore
 
-    common.monitor.send_task_event.assert_any_call(task_event.DISCARD, task_id,1, "","Discard by default. Decoding error detected: some tags were not properly decoded, likely due to a malformed DICOM file. The expected rule may therefore not have been triggered.")  # type: ignore
+    common.monitor.send_task_event.assert_any_call(task_event.DISCARD, task_id, 1, "","Discard by default. Decoding error detected: some tags were not properly decoded, likely due to a malformed DICOM file. The expected rule may therefore not have been triggered.")  # type: ignore
 
 
 

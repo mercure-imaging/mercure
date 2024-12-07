@@ -1,7 +1,7 @@
 from importlib import import_module
 from pathlib import Path
 
-from . import base, builtin
+from . import base, builtin  # noqa: F401
 
 for f in Path(__file__).parent.glob("*.py"):
     module_name = f.stem
@@ -12,4 +12,4 @@ del import_module, Path
 
 # for sbc in base.SubprocessTargetHandler.__subclasses__():
 #     registry.register_handler_class(sbc)
-from .registry import get_handler, target_types, type_from_name
+from .registry import get_handler, target_types, type_from_name  # noqa: F401,E402

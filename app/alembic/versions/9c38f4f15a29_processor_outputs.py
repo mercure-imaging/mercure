@@ -22,15 +22,15 @@ def upgrade():
     connection = op.get_bind()
     dialect = connection.dialect
     if dialect.name == "sqlite":
-        jsonb = sa.Text # type: ignore
+        jsonb = sa.Text  # type: ignore
     else:
-        jsonb = postgresql.JSONB # type: ignore
+        jsonb = postgresql.JSONB  # type: ignore
 
     op.create_table(
         "processor_outputs",
         sa.Column("id", sa.Integer, primary_key=True, autoincrement=True),
         sa.Column("time", sa.DateTime(timezone=True), server_default=func.now()),
-        sa.Column("task_id", sa.String, sa.ForeignKey("tasks.id"),nullable=True),
+        sa.Column("task_id", sa.String, sa.ForeignKey("tasks.id"), nullable=True),
         sa.Column("task_acc", sa.String),
         sa.Column("task_mrn", sa.String),
         sa.Column("module", sa.String),

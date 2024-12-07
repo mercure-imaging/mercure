@@ -15,7 +15,7 @@ def generate_dicom_files(accession_number, destination_folder:Path, num_files=10
     """
     # Create the accession subfolder
     
-    for (study_n,series_n,file_n) in itertools.product(range(num_studies), range(num_series), range(num_files)):
+    for (study_n, series_n, file_n) in itertools.product(range(num_studies), range(num_series), range(num_files)):
         if file_n == 0:
             series_uid = generate_uid()
             if series_n == 0:

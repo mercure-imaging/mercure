@@ -9,12 +9,10 @@ import json
 import os
 import logging
 from pathlib import Path
-from typing import Dict, cast
+from typing import Any, Dict, cast
 from passlib.apps import custom_app_context as pwd_context
-import daiquiri
 from mypy_extensions import TypedDict
 from typing_extensions import Literal
-from typing import Dict, Any
 
 # Starlette-related includes
 from starlette.applications import Starlette
@@ -24,14 +22,13 @@ from starlette.authentication import requires
 # App-specific includes
 from common.constants import mercure_names
 from webinterface.common import *
-from common.constants import mercure_defs, mercure_names
 import common.monitor as monitor
 import common.config as config
 from decoRouter import Router as decoRouter
 router = decoRouter()
 
 ###################################################################################
-## Helper functions
+# Helper functions
 ###################################################################################
 
 
@@ -128,7 +125,7 @@ def evaluate_password(username, password) -> bool:
     if (len(username) == 0) or (len(password) == 0):
         return False
 
-    if not username in users_list:
+    if username not in users_list:
         return False
 
     stored_password = users_list[username].get("password", "")
@@ -140,7 +137,7 @@ def evaluate_password(username, password) -> bool:
             return True
         else:
             return False
-    except:
+    except Exception:
         return False
 
 
@@ -151,7 +148,7 @@ def hash_password(password) -> str:
 
 def is_admin(username) -> bool:
     """Check in the user list if the given user has admin rights."""
-    if not username in users_list:
+    if username not in users_list:
         return False
 
     if users_list[username].get("is_admin", "False") == "True":
@@ -162,7 +159,7 @@ def is_admin(username) -> bool:
 
 def needs_change_password(username) -> bool:
     """Check if the given user has to change his password after login."""
-    if not username in users_list:
+    if username not in users_list:
         return False
 
     if users_list[username].get("change_password", "False") == "True":
@@ -172,9 +169,8 @@ def needs_change_password(username) -> bool:
 
 
 ###################################################################################
-## Users endpoints
+# Users endpoints
 ###################################################################################
-
 
 
 @router.get("/")
@@ -183,11 +179,11 @@ async def show_users(request) -> Response:
     """Shows all available users."""
     try:
         read_users()
-    except:
+    except Exception:
         return PlainTextResponse("Configuration is being updated. Try again in a minute.")
 
     template = "users.html"
-    context = {"request": request,  "page": "users", "users": users_list}
+    context = {"request": request, "page": "users", "users": users_list}
     return templates.TemplateResponse(template, context)
 
 
@@ -197,7 +193,7 @@ async def add_new_user(request) -> Response:
     """Creates a new user and redirects to the user-edit page."""
     try:
         read_users()
-    except:
+    except Exception:
         return PlainTextResponse("Configuration is being updated. Try again in a minute.")
 
     form = dict(await request.form())
@@ -211,7 +207,7 @@ async def add_new_user(request) -> Response:
 
     try:
         save_users()
-    except:
+    except Exception:
         return PlainTextResponse("ERROR: Unable to write user list. Try again.")
 
     logger.info(f"Created user {newuser}")
@@ -225,12 +221,12 @@ async def users_edit(request) -> Response:
     """Shows the settings for a given user."""
     try:
         read_users()
-    except:
+    except Exception:
         return PlainTextResponse("Configuration is being updated. Try again in a minute.")
 
     edituser = request.path_params["user"]
 
-    if not edituser in users_list:
+    if edituser not in users_list:
         return RedirectResponse(url="/users", status_code=303)
 
     template = "users_edit.html"
@@ -249,13 +245,13 @@ async def users_edit_post(request) -> Response:
     """Updates the given user with settings passed as form parameters."""
     try:
         read_users()
-    except:
+    except Exception:
         return PlainTextResponse("Configuration is being updated. Try again in a minute.")
 
     edituser = request.path_params["user"]
     form = dict(await request.form())
 
-    if not edituser in users_list:
+    if edituser not in users_list:
         return PlainTextResponse("User does not exist anymore.")
 
     to_edit = users_list[edituser]
@@ -274,7 +270,7 @@ async def users_edit_post(request) -> Response:
 
     try:
         save_users()
-    except:
+    except Exception:
         return PlainTextResponse("ERROR: Unable to write user list. Try again.")
 
     logger.info(f"Edited user {edituser}")
@@ -291,7 +287,7 @@ async def users_delete_post(request) -> Response:
     """Deletes the given users."""
     try:
         config.read_config()
-    except:
+    except Exception:
         return PlainTextResponse("Configuration is being updated. Try again in a minute.")
 
     deleteuser = request.path_params["user"]
@@ -301,7 +297,7 @@ async def users_delete_post(request) -> Response:
 
     try:
         save_users()
-    except:
+    except Exception:
         return PlainTextResponse("ERROR: Unable to write user list. Try again.")
 
     logger.info(f"Deleted user {deleteuser}")

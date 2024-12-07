@@ -12,7 +12,6 @@ import os
 import signal
 import sys
 from pathlib import Path
-import daiquiri
 import graphyte
 import hupper
 from datetime import datetime
@@ -32,7 +31,7 @@ from common.types import Task
 
 # Create local logger instance
 logger = config.get_logger()
-main_loop = None  # type: helper.AsyncTimer # type: ignore
+main_loop = None  # type: helper.AsyncTimer  # type: ignore
 
 
 dispatcher_lockfile = None
@@ -87,7 +86,7 @@ def dispatch() -> None:
                 # replace/return the priority if a rule with higher priority is found
                 priority = ""
                 for rule_name in triggered_rule_names:
-                    current_priority = config.mercure.get("rules",{}).get(rule_name,{}).get("priority")
+                    current_priority = config.mercure.get("rules", {}).get(rule_name, {}).get("priority")
                     if current_priority == "urgent":
                         return "urgent"
                     elif current_priority == "normal":
@@ -96,7 +95,7 @@ def dispatch() -> None:
                         priority = "offpeak"
                 return priority
             return applied_rule.priority
-        except:
+        except Exception:
             logger.exception("Error while checking priority")
             return ""
 
@@ -124,7 +123,7 @@ def dispatch() -> None:
             if dispatcher_lockfile and dispatcher_lockfile.exists():
                 if not dispatcher_is_locked:
                     dispatcher_is_locked = True
-                    logger.info(f"Dispatching halted")
+                    logger.info("Dispatching halted")
                 break
             else:
                 if dispatcher_is_locked:
@@ -138,9 +137,9 @@ def dispatch() -> None:
             if helper.is_terminated():
                 break
             counter += 1
-    except:
+    except Exception:
         logger.exception("Error while dispatching")
-        return    
+        return
 
 
 def exit_dispatcher(args) -> None:
@@ -153,7 +152,7 @@ def main(args=sys.argv[1:]) -> None:
 
     if "--reload" in args or os.getenv("MERCURE_ENV", "PROD").lower() == "dev":
         # start_reloader will only return in a monitored subprocess
-        reloader = hupper.start_reloader("dispatcher.main")
+        hupper.start_reloader("dispatcher.main")
     logger.info("")
     logger.info(f"mercure DICOM Dispatcher ver {mercure_defs.VERSION}")
     logger.info("--------------------------------------------")

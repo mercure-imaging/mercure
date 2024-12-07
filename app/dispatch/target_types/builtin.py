@@ -1,4 +1,4 @@
-from typing import Any, Dict, Generator, List, Optional
+from typing import Dict, Generator, List
 
 from pydicom import Dataset
 from common.types import DicomTarget, DicomTLSTarget, SftpTarget, DummyTarget, Task
@@ -6,12 +6,9 @@ import common.config as config
 from common.constants import mercure_names
 from webinterface.common import async_run
 
-import json
 
 from pathlib import Path
 from shlex import split
-
-from starlette.responses import JSONResponse
 
 from webinterface.dicom_client import DicomClientCouldNotFind, SimpleDicomClient
 
@@ -46,7 +43,7 @@ class DicomTargetHandler(SubprocessTargetHandler[DicomTarget]):
         if target_ip == "sender":
             # If results should be looped back to the original sender of the task, insert
             # the IP/address obtained from the DICOM receiver
-            target_ip = task.info.sender_address        
+            target_ip = task.info.sender_address
         if not target_ip:
             # If not target ip has been provided, insert a value that allows identifying the issue
             target_ip = "target_missing"
@@ -56,23 +53,25 @@ class DicomTargetHandler(SubprocessTargetHandler[DicomTarget]):
         target_aet_source = target.aet_source or ""
         dcmsend_status_file = str(Path(source_folder) / mercure_names.SENDLOG)
         command = split(
-            f"""dcmsend {target_ip} {target_port} +sd {source_folder} -aet {target_aet_source} -aec {target_aet_target} -nuc +sp '*.dcm' -to 60 +crf {dcmsend_status_file}"""
+            (f"""dcmsend {target_ip} {target_port} +sd {source_folder} -aet {target_aet_source} """
+             f"""-aec {target_aet_target} -nuc +sp '*.dcm' -to 60 +crf {dcmsend_status_file}""")
         )
         return command, {}
 
-    def find_from_target(self, target: DicomTarget, accession: str,  search_filters:Dict[str,List[str]]) -> List[Dataset]:
+    def find_from_target(self, target: DicomTarget, accession: str, search_filters: Dict[str, List[str]]) -> List[Dataset]:
         c = SimpleDicomClient(target.ip, target.port, target.aet_target, target.aet_source, None)
         try:
             return c.findscu(accession, search_filters)
-        except DicomClientCouldNotFind as e:
+        except DicomClientCouldNotFind:
             return []
         
-    def get_from_target(self, target: DicomTarget, accession: str, search_filters:Dict[str,List[str]], destination_path: str) -> Generator[ProgressInfo, None, None]:
+    def get_from_target(self, target: DicomTarget, accession: str,
+                        search_filters: Dict[str, List[str]], destination_path: str) -> Generator[ProgressInfo, None, None]:
         config.read_config()
         c = SimpleDicomClient(target.ip, target.port, target.aet_target, target.aet_source, destination_path)
         for identifier in c.getscu(accession, search_filters):
-            completed, remaining = identifier.NumberOfCompletedSuboperations, identifier.NumberOfRemainingSuboperations, 
-            progress = f"{ completed } / { completed + remaining }" 
+            completed, remaining = (identifier.NumberOfCompletedSuboperations, identifier.NumberOfRemainingSuboperations)
+            progress = f"{ completed } / { completed + remaining }"
             yield ProgressInfo(completed, remaining, progress)
 
     def handle_error(self, e, command):
@@ -124,7 +123,8 @@ class DicomTLSTargetHandler(SubprocessTargetHandler[DicomTLSTarget]):
         target_aet_source = target.aet_source or ""
 
         command = split(
-            f"""storescu +tls {target.tls_key} {target.tls_cert} +cf {target.ca_cert} {target_ip} {target_port} +sd {source_folder} -aet {target_aet_source} -aec {target_aet_target} +sp '*.dcm' -to 60"""
+            f"""storescu +tls {target.tls_key} {target.tls_cert} +cf {target.ca_cert} {target_ip} {target_port} """
+            f"""+sd {source_folder} -aet {target_aet_source} -aec {target_aet_target} +sp '*.dcm' -to 60"""
         )
         return command, {}
 
@@ -132,7 +132,6 @@ class DicomTLSTargetHandler(SubprocessTargetHandler[DicomTLSTarget]):
         dcmsend_error_message = DCMSEND_ERROR_CODES.get(e.returncode, None)
         logger.exception(f"Failed command:\n {command} \nbecause of {dcmsend_error_message}")
         raise RuntimeError(f"{dcmsend_error_message}")
-
 
     async def test_connection(self, target: DicomTLSTarget, target_name: str):
         cecho_response = False
@@ -152,7 +151,8 @@ class DicomTLSTargetHandler(SubprocessTargetHandler[DicomTLSTarget]):
             if ping_result == 0:
                 ping_response = True
 
-            cecho_command = f"echoscu -to 2 -aec {target_aec} -aet {target_aet} {target_ip} {target_port} +tls {tls_key} {tls_cert} +cf {ca_cert}"
+            cecho_command = (f"echoscu -to 2 -aec {target_aec} -aet {target_aet} {target_ip}"
+                             f" {target_port} +tls {tls_key} {tls_cert} +cf {ca_cert}")
             logger.info('Running %s' % cecho_command)
             cecho_result, *_ = await async_run(cecho_command)
             if cecho_result == 0:

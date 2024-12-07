@@ -2,11 +2,10 @@ from .common import router
 from starlette.authentication import requires
 
 # App-specific includes
-from common.constants import mercure_defs
-from webinterface.common import get_user_information, templates
+from webinterface.common import templates
 import common.config as config
 logger = config.get_logger()
-from .common import router
+
 
 @router.get("/tasks")
 @requires("authenticated", redirect="login")

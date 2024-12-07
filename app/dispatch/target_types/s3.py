@@ -1,18 +1,13 @@
 from pathlib import Path
-from requests.exceptions import HTTPError
 
-import pydicom
 from common.types import S3Target, TaskDispatch, Task
 from .base import TargetHandler
 from .registry import handler_for
 
-from dicomweb_client.api import DICOMwebClient
-from dicomweb_client.session_utils import create_session_from_user_pass
-
 
 import common.config as config
-import boto3, botocore
-from botocore.exceptions import ClientError
+import boto3
+import botocore
 
 logger = config.get_logger()
 
@@ -32,7 +27,8 @@ class S3TargetHandler(TargetHandler[S3Target]):
             aws_secret_access_key=target.secret_access_key,
         )
 
-    def send_to_target(self, task_id: str, target: S3Target, dispatch_info: TaskDispatch, source_folder: Path, task: Task) -> str:
+    def send_to_target(self, task_id: str, target: S3Target, dispatch_info: TaskDispatch, source_folder: Path, task: Task
+                       ) -> str:
         # send dicoms in source-folder to s3 bucket
         s3_client = self.create_client(target)
 
@@ -54,7 +50,7 @@ class S3TargetHandler(TargetHandler[S3Target]):
         s3_client = self.create_client(target)
         result = {}
         try:
-            bucket = s3_client.head_bucket(Bucket=target.bucket)
+            s3_client.head_bucket(Bucket=target.bucket)
             result["S3 connection"] = True
             result["Bucket exists"] = True
         except botocore.exceptions.ClientError as e:
@@ -66,7 +62,7 @@ class S3TargetHandler(TargetHandler[S3Target]):
                 result["Bucket exists"] = False
             else:
                 result["Bucket exists"] = True
-        except:
+        except Exception:
             result["S3 connection"] = False
             result["Bucket exists"] = False
         return result

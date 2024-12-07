@@ -16,7 +16,7 @@ pydicom.config.settings.reading_validation_mode = pydicom.config.IGNORE
 pydicom.config.settings.writing_validation_mode = pydicom.config.IGNORE
 
 
-import bookkeeping
+from bookkeeping import bookkeeper
 import common
 import common.config as config
 import docker.errors
@@ -119,15 +119,15 @@ def mercure_config(fs, bookkeeper_port) -> Callable[[Dict], Config]:
         return config.mercure
 
     # set_config()
-    set_config({"bookkeeper": "sqlite:///tmp/mercure_bookkeeper_"+str(uuid.uuid4())+".db"}) # sqlite3 is not inside the fakefs so this is going to be a real file
+    set_config({"bookkeeper": "sqlite:///tmp/mercure_bookkeeper_"+str(uuid.uuid4())+".db"})  # sqlite3 is not inside the fakefs so this is going to be a real file
 
     bookkeeper_env = f"""PORT={bookkeeper_port}
 HOST=0.0.0.0
 DATABASE_URL={config.mercure.bookkeeper}"""
-    fs.create_file(bookkeeping.bookkeeper.bk_config.config_filename, contents=bookkeeper_env)
+    fs.create_file(bookkeeper.bk_config.config_filename, contents=bookkeeper_env)
 
     fs.add_real_directory(os.path.abspath(os.path.dirname(os.path.realpath(__file__))+'/../alembic'))
-    fs.add_real_file(os.path.abspath(os.path.dirname(os.path.realpath(__file__))+'/../alembic.ini'),read_only=True)
+    fs.add_real_file(os.path.abspath(os.path.dirname(os.path.realpath(__file__))+'/../alembic.ini'), read_only=True)
     return set_config
 
 
@@ -169,7 +169,7 @@ def make_fake_processor(fs, mocked, fails):
     def fake_processor(tag, environment: Optional[Dict] = None, volumes: Optional[Dict] = None, **kwargs):
         global processor_path
         if "cat" in kwargs.get("command",""):
-            raise docker.errors.ContainerError(None,None,None,None,None)
+            raise docker.errors.ContainerError(None, None, None, None, None)
         if tag == "busybox:stable-musl":
             return mocked.DEFAULT
         if not volumes:
@@ -228,7 +228,7 @@ def create_minimal_dicom(output_filename, series_uid, additional_tags=None) -> D
     return ds
 
 
-def mock_incoming_uid(config, fs, series_uid, tags={}, name="bar", force_tags_output=None) -> Tuple[str,str]:    
+def mock_incoming_uid(config, fs, series_uid, tags={}, name="bar", force_tags_output=None) -> Tuple[str, str]:    
     incoming = Path(config.incoming_folder)
     dcm_file = incoming / f"{name}.dcm"
     create_minimal_dicom(dcm_file, series_uid, tags)
@@ -258,8 +258,8 @@ def random_port() -> int:
     Generate a free port number to use as an ephemeral endpoint.
     """
     s = socket.socket() 
-    s.bind(('',0)) # bind to any available port
-    port = s.getsockname()[1] # get the port number
+    s.bind(('', 0))  # bind to any available port
+    port = s.getsockname()[1]  # get the port number
     s.close()
     return int(port)
 

@@ -11,11 +11,9 @@ from json import JSONDecodeError
 import os
 import time
 from typing import Any, Dict, Optional
-from urllib.error import HTTPError
 import aiohttp
 import daiquiri
 import datetime
-import threading
 
 # App-specific includes
 from common.types import Task, TaskProcessing
@@ -59,7 +57,8 @@ async def do_post(endpoint, kwargs, catch_errors=False) -> None:
     logger.debug(f"Posting to {endpoint}: {kwargs}")
     try:
         async with aiohttp.ClientSession(headers={"Authorization": f"Token {api_key}"},
-                                         timeout=aiohttp.ClientTimeout(total=None, connect=120, sock_connect=120, sock_read=120)
+                                         timeout=aiohttp.ClientTimeout(total=None, connect=120,
+                                                                       sock_connect=120, sock_read=120)
                                          ) as session:
             async with session.post(bookkeeper_address + "/" + endpoint, **kwargs) as resp:
                 logger.debug(f"Response from {endpoint}: {resp.status}")
@@ -176,7 +175,7 @@ def send_webgui_event(event: w_events, user: str, description="") -> None:
 def send_register_series(tags: Dict[str, str]) -> None:
     """Registers a received series on the bookkeeper. This should be called when a series has been
     fully received and the DICOM tags have been parsed."""
-    logger.debug(f"Monitor (register-series): series_uid={tags.get('series_uid',None)}")
+    logger.debug(f"Monitor (register-series): series_uid={tags.get('series_uid', None)}")
     # requests.post(bookkeeper_address + "/register-series", data=tags, timeout=1)
     post("register-series", data=tags)
 
@@ -194,9 +193,14 @@ def send_update_task(task: Task) -> None:
 
     post("update-task", json=task_dict)
 
-def send_processor_output(task: Task, task_processing: TaskProcessing, index:int, output: dict) -> None:
-    post("store-processor-output", json=dict(task_id=task.id, task_acc=task.info.acc, task_mrn=task.info.mrn, module=task_processing.module_name, index=index, settings=task_processing.settings, output=output))
+
+def send_processor_output(task: Task, task_processing: TaskProcessing, index: int, output: dict) -> None:
+    post("store-processor-output",
+         json=dict(task_id=task.id, task_acc=task.info.acc, task_mrn=task.info.mrn,
+                   module=task_processing.module_name, index=index,
+                   settings=task_processing.settings, output=output))
     
+
 def task_event_payload(event: task_event, task_id: str, file_count: int, target, info):
     return {
         "sender": sender_name,

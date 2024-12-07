@@ -5,21 +5,15 @@ Helper functions for mercure's processor module
 """
 
 # Standard python includes
-from genericpath import isfile
 import json
 import os
 from pathlib import Path
-import stat
 import sys
-from typing import Any, Dict, List, cast, Optional
-import json
+from typing import Any, Dict, cast, Optional
 import shutil
-import daiquiri
 from datetime import datetime
 import docker
-from docker.models.containers import Container
 
-import traceback
 import nomad
 from jinja2 import Template
 
@@ -29,7 +23,7 @@ import common.helper as helper
 import common.config as config
 
 from common.constants import mercure_names
-from common.types import Task, TaskInfo, Module, Rule, TaskProcessing
+from common.types import Task, Module, TaskProcessing
 import common.notification as notification
 from common.version import mercure_version
 import common.log_helpers as log_helpers
@@ -43,8 +37,8 @@ from dispatch.send import update_fail_stage
 logger = config.get_logger()
 
 
-async def nomad_runtime(task: Task, folder: Path, file_count_begin: int, task_processing:TaskProcessing) -> bool:
-    nomad_connection = nomad.Nomad(host="172.17.0.1", timeout=5) # type: ignore
+async def nomad_runtime(task: Task, folder: Path, file_count_begin: int, task_processing: TaskProcessing) -> bool:
+    nomad_connection = nomad.Nomad(host="172.17.0.1", timeout=5)  # type: ignore
 
     if not task.process:
         return False
@@ -67,7 +61,7 @@ async def nomad_runtime(task: Task, folder: Path, file_count_begin: int, task_pr
     logger.debug(rendered)
     try:
         job_definition = nomad_connection.jobs.parse(rendered)
-    except nomad.api.exceptions.BadRequestNomadException as err: # type: ignore
+    except nomad.api.exceptions.BadRequestNomadException as err:  # type: ignore
         logger.error(err)
         print(err.nomad_resp.reason)
         print(err.nomad_resp.text)
@@ -97,7 +91,7 @@ async def nomad_runtime(task: Task, folder: Path, file_count_begin: int, task_pr
 docker_pull_throttle: Dict[str, datetime] = {}
 
 
-async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_processing:TaskProcessing) -> bool:
+async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_processing: TaskProcessing) -> bool:
     docker_client = docker.from_env()  # type: ignore
 
     if not task.process:
@@ -114,13 +108,13 @@ async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_p
             logger.error(f"Unable to convert JSON string {json_string}")
             return {}
 
-    real_folder = folder    
+    real_folder = folder
 
     if helper.get_runner() == "docker":
         # We want to bind the correct path into the processor, but if we're inside docker we need to use the host path
         try:
             base_path = Path(docker_client.api.inspect_volume("mercure_data")["Options"]["device"])
-        except Exception as e:
+        except Exception:
             base_path = Path("/opt/mercure/data")
             logger.error(f"Unable to find volume 'mercure_data'; assuming data directory is {base_path}")
 
@@ -157,9 +151,11 @@ async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_p
     set_command = {}
     image_is_monai_map = False
     try:
-        monai_app_manifest = json.loads(docker_client.containers.run(docker_tag, command="cat /etc/monai/app.json", entrypoint="").decode('utf-8'))
+        monai_app_manifest = json.loads(docker_client.containers.run(docker_tag,
+                                                                     command="cat /etc/monai/app.json",
+                                                                     entrypoint="").decode('utf-8'))
         image_is_monai_map = True
-        set_command = dict(entrypoint="",command=monai_app_manifest["command"])
+        set_command = dict(entrypoint="", command=monai_app_manifest["command"])
         logger.debug("Detected MONAI MAP, using command from manifest.")
     except docker.errors.ContainerError:
         pass
@@ -196,7 +192,7 @@ async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_p
             prune_result = docker_client.images.prune(filters={"dangling": True})
             logger.info(prune_result)
             logger.info("Update done")
-        except Exception as e:
+        except Exception:
             # Don't use ERROR here because the exception will be raised for all Docker images that
             # have been built locally and are not present in the Docker Registry.
             logger.info("Couldn't check for module update (this is normal for unpublished modules)")
@@ -218,7 +214,7 @@ async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_p
             task.id,
             file_count_begin,
             task_processing.module_name,
-            f"Processing module running",
+            "Processing module running",
         )
 
         # Run the container -- need to do in detached mode to be able to print the log output if container exits
@@ -231,22 +227,25 @@ async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_p
         )
         if module.requires_root:
             if not config.mercure.support_root_modules:
-                raise Exception("This module requires execution as root, but 'support_root_modules' is not set to true in the configuration. Aborting.")
+                raise Exception("This module requires execution as root, but "
+                                "'support_root_modules' is not set to true in the configuration. Aborting.")
             user_info = {}
             logger.debug("Executing module as root.")
         else:
             logger.debug("Executing module as mercure.")
 
-        # We might be operating in a user-remapped namespace. This makes sure that the user inside the container can read and write the files.
-        ( folder / "in" ).chmod(0o777)
+        # We might be operating in a user-remapped namespace.
+        # This makes sure that the user inside the container can read and write the files.
+        (folder / "in").chmod(0o777)
         try:
-            for k in ( real_folder / "in" ).glob("**/*"):
+            for k in (real_folder / "in").glob("**/*"):
                 k.chmod(0o666)
         except PermissionError:
-            raise Exception("Unable to prepare input files for processor. The receiver may be running as root, which is no longer supported. ")
-        ( folder / "out" ).chmod(0o777)
+            raise Exception("Unable to prepare input files for processor. "
+                            "The receiver may be running as root, which is no longer supported. ")
+        (folder / "out").chmod(0o777)
 
-        container  = docker_client.containers.run(
+        container = docker_client.containers.run(
             docker_tag,
             volumes=merged_volumes,
             environment=environment,
@@ -275,19 +274,23 @@ async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_p
         # In lieu of making mercure a sudoer...
         logger.debug("Changing the ownership of the output directory...")
         try:
-            if (datetime.now() - docker_pull_throttle.get("busybox:stable-musl",datetime.fromisocalendar(1,1,1))).total_seconds() > 86400:
-                docker_client.images.pull("busybox:stable-musl")
-                docker_pull_throttle["busybox:stable_musl"] = datetime.now()
-        except:
+            if (datetime.now() - docker_pull_throttle.get("busybox:stable-musl",
+                                                          datetime.fromisocalendar(1, 1, 1))
+                ).total_seconds() > 86400:  # noqa: 125
+                    docker_client.images.pull("busybox:stable-musl")  # noqa: E117
+                    docker_pull_throttle["busybox:stable_musl"] = datetime.now()
+        except Exception:
             logger.exception("could not pull busybox")
 
         if helper.get_runner() != "docker":
-            # We need to set the owner to the "real", unremapped mercure user that lives outside of the container, ie our actual uid.
+            # We need to set the owner to the "real", unremapped mercure user
+            # that lives outside of the container, ie our actual uid.
             # If docker isn't in usrns remap mode then this shouldn't have an effect.
-            set_usrns_mode = { "userns_mode": "host" } 
+            set_usrns_mode = {"userns_mode": "host"}
         else:
-            # We're running inside docker, so we need to set the owner to our actual uid inside this container (probably 1000), not the one outside.
-            # If docker is in userns remap mode then this will get mapped, which is what we want. 
+            # We're running inside docker, so we need to set the owner to our actual uid inside
+            # this container (probably 1000), not the one outside.
+            # If docker is in userns remap mode then this will get mapped, which is what we want.
             set_usrns_mode = {}
         docker_client.containers.run(
             "busybox:stable-musl",
@@ -297,22 +300,22 @@ async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_p
             detach=True
         )
 
-        # Reset the permissions to owner rwx, world readonly. 
-        ( folder / "out" ).chmod(0o755)
-        for k in ( folder / "out" ).glob("**/*"):
+        # Reset the permissions to owner rwx, world readonly.
+        (folder / "out").chmod(0o755)
+        for k in (folder / "out").glob("**/*"):
             if k.is_dir():
                 k.chmod(0o755)
 
-        for k in ( folder / "out" ).glob("**/*"):
+        for k in (folder / "out").glob("**/*"):
             if k.is_file():
-               k.chmod(0o644)
+                k.chmod(0o644)
 
         await monitor.async_send_task_event(
             monitor.task_event.PROCESS_MODULE_COMPLETE,
             task.id,
             file_count_begin,
             task_processing.module_name,
-            f"Processing module complete",
+            "Processing module complete",
         )
 
         # Check if the processing was successful (i.e., container returned exit code 0)
@@ -321,12 +324,12 @@ async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_p
             logger.error(f"Error while running container {docker_tag} - exit code {exit_code}", task.id)  # handle_error
             processing_success = False
 
-    except docker.errors.APIError: # type: ignore
+    except docker.errors.APIError:  # type: ignore
         # Something really serious happened
         logger.error(f"API error while trying to run Docker container, tag: {docker_tag}", task.id)  # handle_error
         processing_success = False
 
-    except docker.errors.ImageNotFound: # type: ignore
+    except docker.errors.ImageNotFound:  # type: ignore
         logger.error(f"Error running docker container. Image for tag {docker_tag} not found.", task.id)  # handle_error
         processing_success = False
     finally:
@@ -344,7 +347,6 @@ async def process_series(folder: Path) -> None:
     processing_success = False
     needs_dispatching = False
 
-
     lock_file = folder / mercure_names.PROCESSING
     lock = None
     task: Optional[Task] = None
@@ -357,7 +359,7 @@ async def process_series(folder: Path) -> None:
             # lock = helper.FileLock(lock_file)
         except FileExistsError:
             # Return if the case has already been locked by another instance in the meantime
-            return           
+            return
         except Exception as e:
             # Can't create lock file, so something must be seriously wrong
             # Not sure what should happen here- trying to copy the case out probably won't work,
@@ -371,8 +373,8 @@ async def process_series(folder: Path) -> None:
             raise e
 
         if not taskfile_path.exists():
-            logger.error(f"Task file does not exist")
-            raise Exception(f"Task file does not exist")
+            logger.error("Task file does not exist")
+            raise Exception("Task file does not exist")
 
         with open(taskfile_path, "r") as f:
             task = Task(**json.load(f))
@@ -401,20 +403,22 @@ async def process_series(folder: Path) -> None:
         else:
             processing_success = False
             raise Exception("Unable to determine valid runtime for processing")
-        
-        if runtime == docker_runtime: # docker runtime might run several processing steps, need to put this event here
+
+        if runtime == docker_runtime:  # docker runtime might run several processing steps, need to put this event here
             await monitor.async_send_task_event(
                 monitor.task_event.PROCESS_BEGIN,
                 task.id,
                 file_count_begin,
-                (task.process[0].module_name if isinstance(task.process,list) else task.process.module_name) if task.process else "UNKNOWN",
-                f"Processing job running",
+                (task.process[0].module_name if isinstance(task.process, list)
+                 else task.process.module_name)
+                if task.process else "UNKNOWN",
+                "Processing job running",
             )
         # There are multiple processing steps
-        if runtime == docker_runtime and isinstance(task.process,list):
-            if task.process[0].retain_input_images: # Keep a copy of the input files
+        if runtime == docker_runtime and isinstance(task.process, list):
+            if task.process[0].retain_input_images:  # Keep a copy of the input files
                 shutil.copytree(folder / "in", folder / "input_files")
-            logger.info("==== TASK ====",task.dict())
+            logger.info("==== TASK ====", task.dict())
             copied_task = task.copy(deep=True)
             try:
                 for i, task_processing in enumerate(task.process):
@@ -422,46 +426,44 @@ async def process_series(folder: Path) -> None:
                     # so we copy this one's information into a copy of the task file and hand that to the container.
                     copied_task.process = task_processing
 
-                    with open(folder / "in" / mercure_names.TASKFILE,"w") as task_file:
+                    with open(folder / "in" / mercure_names.TASKFILE, "w") as task_file:
                         json.dump(copied_task.dict(), task_file)
 
                     processing_success = await docker_runtime(task, folder, file_count_begin, task_processing)
                     if not processing_success:
                         break
                     output = handle_processor_output(task, task_processing, i, folder)
-                    outputs.append((task_processing.module_name,output))
+                    outputs.append((task_processing.module_name, output))
                     (folder / "out" / "result.json").unlink(missing_ok=True)
                     shutil.rmtree(folder / "in")
-                    if i < len(task.process)-1: # Move the results of the processing step to the input folder of the next one
+                    if i < len(task.process) - 1:  # Move the results of the processing step to the input folder of the next
                         (folder / "out").rename(folder / "in")
                         (folder / "out").mkdir()
                     task_processing.output = output
                 # Done all steps
                 if task.process[0].retain_input_images:
                     (folder / "input_files").rename(folder / "in")
-                
                 if outputs:
-                    with open(folder / "out" / "result.json","w") as fp:
+                    with open(folder / "out" / "result.json", "w") as fp:
                         json.dump(outputs, fp, indent=4)
 
             finally:
-                with open(folder / "out" / mercure_names.TASKFILE,"w") as task_file:
+                with open(folder / "out" / mercure_names.TASKFILE, "w") as task_file:
                     #  logger.warning(f"DUMPING to {folder / 'out' / mercure_names.TASKFILE} TASK {task=}")
-                     json.dump(task.dict(), task_file, indent=4)
-        elif isinstance(task.process,list):
+                    json.dump(task.dict(), task_file, indent=4)
+        elif isinstance(task.process, list):
             raise Exception("Multiple processing steps are only supported on the Docker runtime.")
         else:
-            task_process = cast(TaskProcessing,task.process)
+            task_process = cast(TaskProcessing, task.process)
             processing_success = await runtime(task, folder, file_count_begin, task_process)
             if processing_success:
                 output = handle_processor_output(task, task_process, 0, folder)
-                task.process.output = output # type: ignore
-                with open(folder / "out" / mercure_names.TASKFILE,"w") as fp:
+                task.process.output = output  # type: ignore
+                with open(folder / "out" / mercure_names.TASKFILE, "w") as fp:
                     # logger.warning(f"DUMPING to {folder / 'out' / mercure_names.TASKFILE} TASK {task=}")
                     json.dump(task.dict(), fp, indent=4)
-                outputs.append((task_process.module_name,output))
-        
-    except Exception as e:
+                outputs.append((task_process.module_name, output))
+    except Exception:
         processing_success = False
         task_id = None
         if task is not None:
@@ -469,7 +471,7 @@ async def process_series(folder: Path) -> None:
         else:
             try:
                 task_id = json.load(open(taskfile_path, "r"))["id"]
-            except:
+            except Exception:
                 pass
         logger.error("Processing error.", task_id)  # handle_error
     finally:
@@ -482,7 +484,9 @@ async def process_series(folder: Path) -> None:
             # Copy the task to the output folder (in case the module didn't move it)
             push_input_task(folder / "in", folder / "out")
             # If configured in the rule, copy the input images to the output folder
-            if task is not None and task.process and (task.process[0] if isinstance(task.process,list) else task.process).retain_input_images == True:
+            if (task is not None
+                    and task.process
+                    and (task.process[0] if isinstance(task.process, list) else task.process).retain_input_images is True):
                 push_input_images(task_id, folder / "in", folder / "out")
             # Remember the number of DCM files in the output folder (for logging purpose)
             file_count_complete = len(list((folder / "out").glob(mercure_names.DCMFILTER)))
@@ -502,19 +506,24 @@ async def process_series(folder: Path) -> None:
                     # TODO: task really is never none if processing_success is true
 
                     request_do_send = False
-                    if outputs and task and (applied_rule :=config.mercure.rules.get(task.info.get("applied_rule"))) and applied_rule.notification_trigger_completion_on_request:
+                    if (outputs
+                            and task
+                            and (applied_rule := config.mercure.rules.get(task.info.get("applied_rule")))
+                            and applied_rule.notification_trigger_completion_on_request):
                         if notification.get_task_requested_notification(task):
                             request_do_send = True
-                    trigger_notification(task, mercure_events.COMPLETED, notification.get_task_custom_notification(task), request_do_send)  # type: ignore
+                    trigger_notification(task,  # type: ignore
+                                         mercure_events.COMPLETED,
+                                         notification.get_task_custom_notification(task), request_do_send)  # type: ignore
             else:
                 monitor.send_task_event(monitor.task_event.ERROR, task_id, 0, "", "Processing failed")
                 if task is not None:  # TODO: handle if task is none?
                     trigger_notification(task, mercure_events.ERROR)
         else:
             if processing_success:
-                logger.info(f"Done submitting for processing")
+                logger.info("Done submitting for processing")
             else:
-                logger.info(f"Unable to process task")
+                logger.info("Unable to process task")
                 move_results(task_id, folder, lock, False, False)
                 monitor.send_task_event(monitor.task_event.ERROR, task_id, 0, "", "Unable to process task")
                 if task is not None:
@@ -527,7 +536,7 @@ def push_input_task(input_folder: Path, output_folder: Path):
     if not task_json.exists():
         try:
             shutil.copyfile(input_folder / "task.json", output_folder / "task.json")
-        except:
+        except Exception:
             try:
                 task_id = json.load(open(input_folder / "task.json", "r"))["id"]
                 logger.error(f"Error copying task file to outfolder {output_folder}", task_id)  # handle_error
@@ -541,7 +550,7 @@ def push_input_images(task_id: str, input_folder: Path, output_folder: Path):
         if entry.name.endswith(mercure_names.DCM):
             try:
                 shutil.copyfile(input_folder / entry.name, output_folder / entry.name)
-            except:
+            except Exception:
                 logger.exception(f"Error copying file to outfolder {entry.name}")
                 error_while_copying = True
                 error_info = sys.exc_info()
@@ -550,14 +559,15 @@ def push_input_images(task_id: str, input_folder: Path, output_folder: Path):
             f"Error while copying files to output folder {output_folder}", task_id, exc_info=error_info
         )  # handle_error
 
-def handle_processor_output(task:Task, task_processing:TaskProcessing, index:int, folder:Path) -> Any:
+
+def handle_processor_output(task: Task, task_processing: TaskProcessing, index: int, folder: Path) -> Any:
     output_file = folder / "out" / "result.json"
     if not output_file.is_file():
         logger.info("No result.json")
         return
     try:
         output = json.loads(output_file.read_text())
-    except json.JSONDecodeError as e: 
+    except json.JSONDecodeError:
         # Not json
         logger.info("Failed to parse result.json")
         return
@@ -565,6 +575,7 @@ def handle_processor_output(task:Task, task_processing:TaskProcessing, index:int
     logger.info(output)
     monitor.send_processor_output(task, task_processing, index, output)
     return output
+
 
 def move_results(
     task_id: str, folder: Path, lock: Optional[helper.FileLock], processing_success: bool, needs_dispatching: bool
@@ -612,17 +623,17 @@ def move_out_folder(task_id: str, source_folder: Path, destination_folder: Path,
         if move_all:
             shutil.move(str(source_folder), target_folder)
             if fail_stage and not update_fail_stage(target_folder, FailStage.PROCESSING):
-                logger.error(  f"Error updating fail stage for task {task_id}")
+                logger.error(f"Error updating fail stage for task {task_id}")
         else:
             shutil.move(str(source_folder / "out"), target_folder)
             lockfile = source_folder / mercure_names.LOCK
             lockfile.unlink()
 
-    except:
+    except Exception:
         logger.error(f"Error moving folder {source_folder} to {destination_folder}", task_id)  # handle_error
 
 
-def trigger_notification(task: Task, event: mercure_events, details: str="", send_always = False) -> None:
+def trigger_notification(task: Task, event: mercure_events, details: str = "", send_always=False) -> None:
     current_rule_name = task.info.get("applied_rule")
     logger.debug(f"Notification {event.name}")
     # Check if the rule is available

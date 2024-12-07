@@ -1,7 +1,7 @@
 """
 processor.py
 ============
-mercure' processor that executes processing modules on DICOM series filtered for processing. 
+mercure' processor that executes processing modules on DICOM series filtered for processing.
 """
 
 # Standard python includes
@@ -15,12 +15,10 @@ import json
 from typing import Dict, Optional
 import threading
 import graphyte
-import daiquiri
 import nomad
 from pathlib import Path
 import hupper
 from datetime import datetime
-from datetime import time as _time
 
 # App-specific includes
 import common.helper as helper
@@ -43,16 +41,16 @@ import common.notification as notification
 
 # Create local logger instance
 logger = config.get_logger()
-processing_loop = None  # type: helper.AsyncTimer # type: ignore
+processing_loop = None  # type: helper.AsyncTimer  # type: ignore
 
 
 processor_lockfile = None
 processor_is_locked = False
 
 try:
-    nomad_connection = nomad.Nomad(host="172.17.0.1", timeout=5) # type: ignore
+    nomad_connection = nomad.Nomad(host="172.17.0.1", timeout=5)  # type: ignore
     logger.info("Connected to Nomad")
-except:
+except Exception:
     nomad_connection = None
 
 
@@ -100,7 +98,7 @@ async def search_folder(counter) -> bool:
                                 result = f"{s}:\n" + result
                                 logs.append(result)
                                 logger.info(result)
-                    except:
+                    except Exception:
                         logger.exception("Failed to retrieve process logs.")
 
                     if not config.mercure.processing_logs.discard_logs:
@@ -134,10 +132,10 @@ async def search_folder(counter) -> bool:
             json.dump(task.dict(), f)
 
         # Copy input images if configured in rule
-        task_processing = (task.process[0] if isinstance(task.process,list) else task.process)
+        task_processing = (task.process[0] if isinstance(task.process, list) else task.process)
         if not task_processing:
             continue
-        if task_processing.retain_input_images == True:
+        if task_processing.retain_input_images is True:
             push_input_images(task.id, in_folder, out_folder)
 
         # Remember the number of DCM files in the output folder (for logging purpose)
@@ -169,7 +167,7 @@ async def search_folder(counter) -> bool:
     if processor_lockfile and processor_lockfile.exists():
         if not processor_is_locked:
             processor_is_locked = True
-            logger.info(f"Processing halted")
+            logger.info("Processing halted")
         return False
     else:
         if processor_is_locked:
@@ -210,7 +208,7 @@ async def search_folder(counter) -> bool:
                 task_id = json.load(open(p))["id"]
                 logger.error("Exception while processing", task_id)  # handle_error
                 break
-            except:
+            except Exception:
                 pass
         else:
             logger.error("Exception while processing", None)  # handle_error
@@ -241,6 +239,7 @@ def prioritize_tasks(sorted_tasks: list, counter: int) -> Optional[Path]:
     if (counter % 3) < 2:
         return urgent_task or normal_task
     return normal_task or urgent_task
+
 
 async def run_processor() -> None:
     """Main processing function that is called every second."""
@@ -286,7 +285,7 @@ def main(args=sys.argv[1:]) -> None:
 
     if "--reload" in args or os.getenv("MERCURE_ENV", "PROD").lower() == "dev":
         # start_reloader will only return in a monitored subprocess
-        reloader = hupper.start_reloader("processor.main")
+        hupper.start_reloader("processor.main")
         import logging
 
         logging.getLogger("watchdog").setLevel(logging.WARNING)

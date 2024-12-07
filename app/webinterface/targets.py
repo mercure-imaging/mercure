@@ -5,20 +5,17 @@ Targets page for the graphical user interface of mercure.
 """
 
 # Standard python includes
-import json
-import daiquiri
 from typing import Union
 
 # Starlette-related includes
 from starlette.applications import Starlette
-from starlette.responses import Response, PlainTextResponse, JSONResponse, RedirectResponse
+from starlette.responses import Response, PlainTextResponse, RedirectResponse
 from starlette.authentication import requires
 
 # App-specific includes
 import common.config as config
 import common.monitor as monitor
-from common.constants import mercure_defs
-from common.types import DicomTarget, SftpTarget
+from common.types import DicomTarget
 from webinterface.common import *
 import dispatch.target_types as target_types
 from decoRouter import Router as decoRouter
@@ -28,9 +25,8 @@ logger = config.get_logger()
 
 
 ###################################################################################
-## Targets endpoints
+# Targets endpoints
 ###################################################################################
-
 
 
 @router.get("/")
@@ -39,12 +35,12 @@ async def show_targets(request) -> Response:
     """Shows all configured targets."""
     try:
         config.read_config()
-    except:
+    except Exception:
         return PlainTextResponse("Configuration is being updated. Try again in a minute.")
 
     used_targets = {}
     for rule in config.mercure.rules:
-        if isinstance(config.mercure.rules[rule].target,str):
+        if isinstance(config.mercure.rules[rule].target, str):
             used_target = config.mercure.rules[rule].get("target", "NONE")
             used_targets[used_target] = rule
         else:
@@ -69,7 +65,7 @@ async def add_target(request) -> Response:
     """Creates a new target."""
     try:
         config.read_config()
-    except:
+    except Exception:
         return PlainTextResponse("Configuration is being updated. Try again in a minute.")
 
     form = dict(await request.form())
@@ -82,7 +78,7 @@ async def add_target(request) -> Response:
 
     try:
         config.save_config()
-    except:
+    except Exception:
         return PlainTextResponse("ERROR: Unable to write configuration. Try again.")
 
     logger.info(f"Created target {newtarget}")
@@ -96,12 +92,12 @@ async def targets_edit(request) -> Response:
     """Shows the edit page for the given target."""
     try:
         config.read_config()
-    except:
+    except Exception:
         return PlainTextResponse("Configuration is being updated. Try again in a minute.")
 
     edittarget = request.path_params["target"]
 
-    if not edittarget in config.mercure.targets:
+    if edittarget not in config.mercure.targets:
         return RedirectResponse(url="/targets", status_code=303)
 
     template = "targets_edit.html"
@@ -128,13 +124,13 @@ async def targets_edit_post(request) -> Union[RedirectResponse, PlainTextRespons
     """Updates the given target using the form values posted with the request."""
     try:
         config.read_config()
-    except:
+    except Exception:
         return PlainTextResponse("Configuration is being updated. Try again in a minute.")
 
     edittarget: str = request.path_params["target"]
     form = dict(await request.form())
 
-    if not edittarget in config.mercure.targets:
+    if edittarget not in config.mercure.targets:
         return PlainTextResponse("Target does not exist anymore.")
 
     TargetType = target_types.type_from_name(form["target_type"])
@@ -145,7 +141,7 @@ async def targets_edit_post(request) -> Union[RedirectResponse, PlainTextRespons
 
     try:
         config.save_config()
-    except:
+    except Exception:
         return PlainTextResponse("ERROR: Unable to write configuration. Try again.")
 
     logger.info(f"Edited target {edittarget}")
@@ -159,7 +155,7 @@ async def targets_delete_post(request) -> Response:
     """Deletes the given target."""
     try:
         config.read_config()
-    except:
+    except Exception:
         return PlainTextResponse("Configuration is being updated. Try again in a minute.")
 
     deletetarget = request.path_params["target"]
@@ -169,7 +165,7 @@ async def targets_delete_post(request) -> Response:
 
     try:
         config.save_config()
-    except:
+    except Exception:
         return PlainTextResponse("ERROR: Unable to write configuration. Try again.")
 
     logger.info(f"Deleted target {deletetarget}")
@@ -183,7 +179,7 @@ async def targets_test_post(request) -> Response:
     """Tests the connectivity of the given target by executing ping and c-echo requests."""
     try:
         config.read_config()
-    except:
+    except Exception:
         return PlainTextResponse("Configuration is being updated. Try again in a minute.")
 
     testtarget = request.path_params["target"]

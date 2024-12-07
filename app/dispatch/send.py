@@ -8,13 +8,10 @@ to target destinations.
 # Standard python includes
 import json
 import shutil
-import subprocess
 import time
 from datetime import datetime
 from pathlib import Path
-from shlex import split
-from subprocess import PIPE, CalledProcessError, check_output
-from typing import Dict, Tuple, cast, Union
+from typing import Dict, cast
 from typing_extensions import Literal
 
 # App-specific includes
@@ -23,8 +20,7 @@ from dispatch.retry import increase_retry, update_dispatch_status
 from dispatch.status import is_ready_for_sending
 from common.constants import mercure_names
 from common.types import (
-    DicomTarget, DicomTLSTarget, EmptyDict, SftpTarget,
-    Task, TaskDispatch, TaskDispatchStatus, TaskInfo, Rule)
+    Task, TaskDispatch, TaskDispatchStatus)
 import common.config as config
 import common.monitor as monitor
 import common.notification as notification
@@ -52,7 +48,8 @@ logger = config.get_logger()
 #         target_aet_target = target_dicom.aet_target or ""
 #         target_aet_source = target_dicom.aet_source or ""
 #         dcmsend_status_file = Path(folder) / mercure_names.SENDLOG
-#         command = f"""dcmsend {target_ip} {target_port} +sd {folder} -aet {target_aet_source} -aec {target_aet_target} -nuc +sp '*.dcm' -to 60 +crf {dcmsend_status_file}"""
+#         command = f"""dcmsend {target_ip} {target_port} +sd {folder} -aet {target_aet_source} -aec {target_aet_target}
+#            -nuc +sp '*.dcm' -to 60 +crf {dcmsend_status_file}"""
 #         return command, {}, True
 
 #     elif isinstance(config.mercure.targets.get(target_name, ""), DicomTLSTarget):
@@ -66,7 +63,8 @@ logger = config.get_logger()
 #         tls_cert = tls_dicom.tls_cert
 #         ca_cert = tls_dicom.ca_cert
 
-#         command = f"""storescu +tls {tls_key} {tls_cert} +cf {ca_cert} {target_ip} {target_port} +sd {folder} -aet {target_aet_source} -aec {target_aet_target} +sp '*.dcm' -to 60"""
+#         command = f"""storescu +tls {tls_key} {tls_cert} +cf {ca_cert} {target_ip} {target_port} +sd {folder}
+#           -aet {target_aet_source} -aec {target_aet_target} +sp '*.dcm' -to 60"""
 #         return command, {}, True
 
 #     elif isinstance(config.mercure.targets.get(target_name, ""), SftpTarget):
@@ -120,19 +118,19 @@ def execute(
         return
     task_info = task_content.info
 
-    if time.time() < dispatch_info.get("next_retry_at",0):
+    if time.time() < dispatch_info.get("next_retry_at", 0):
         return
 
     uid = task_info.get("uid", "uid-missing")
     if (uid == "uid-missing"):
         logger.warning(f"Missing information for folder {source_folder}", task_content.id)
 
-    # Ensure that the target_name is a list. Needed just for backwards compatibility 
+    # Ensure that the target_name is a list. Needed just for backwards compatibility
     # (i.e., if the task.json file was created with an older mercure version)
     if isinstance(dispatch_info.target_name, str):
         dispatch_info.target_name = [dispatch_info.target_name]
 
-    if len(dispatch_info.target_name)==0:
+    if len(dispatch_info.target_name) == 0:
         logger.error(  # handle_error
             f"No targets provided. Unable to dispatch job {uid}",
             task_content.id,
@@ -161,7 +159,7 @@ def execute(
     except FileExistsError:
         # Return if the case has already been locked by another instance in the meantime
         return
-    except:
+    except Exception:
         # TODO: Put a limit on these error messages -- log will run full at some point
         logger.error(  # handle_error
             f"Error sending {uid} to {dispatch_info.target_name}, could not create lock file for folder {source_folder}",
@@ -178,7 +176,7 @@ def execute(
     if sendlog.exists():
         try:
             sendlog.unlink()
-        except:
+        except Exception:
             logger.error(  # handle_error
                 f"Error sending {uid} to {dispatch_info.target_name}: unable to remove former sendlog {sendlog}",
                 task_content.id,
@@ -188,10 +186,11 @@ def execute(
     current_status = dispatch_info.status
     # Needed just for backwards compatibility (i.e., if the task.json file was created with an older mercure version)
     if len(current_status) != len(dispatch_info.target_name):
-        current_status = {target_item: TaskDispatchStatus(state="waiting", time=get_now_str()) for target_item in dispatch_info.target_name}
+        current_status = {target_item: TaskDispatchStatus(state="waiting", time=get_now_str())
+                          for target_item in dispatch_info.target_name}
      
     for target_item in dispatch_info.target_name:
-        if current_status[target_item] and current_status[target_item].state != "complete": # type: ignore
+        if current_status[target_item] and current_status[target_item].state != "complete":  # type: ignore
 
             # Compose the command for dispatching the results
             target = config.mercure.targets.get(target_item, None)
@@ -200,7 +199,7 @@ def execute(
                     f"Error sending {uid} to {target_item}: unable to get target information",
                     task_content.id,
                 )
-                current_status[target_item] = TaskDispatchStatus(state="error", time=get_now_str()) # type: ignore               
+                current_status[target_item] = TaskDispatchStatus(state="error", time=get_now_str())  # type: ignore
                 continue
 
             try:
@@ -213,7 +212,7 @@ def execute(
                     target_item,
                     "Routing job running",
                 )
-                result = handler.send_to_target(task_content.id, target, cast(TaskDispatch,dispatch_info), source_folder, task_content)
+                handler.send_to_target(task_content.id, target, cast(TaskDispatch, dispatch_info), source_folder, task_content)
                 monitor.send_task_event(
                     task_event.DISPATCH_COMPLETE,
                     task_content.id,
@@ -221,7 +220,7 @@ def execute(
                     target_item,
                     "Routing job complete",
                 )
-                current_status[target_item] = TaskDispatchStatus(state="complete", time=get_now_str()) # type: ignore                
+                current_status[target_item] = TaskDispatchStatus(state="complete", time=get_now_str())  # type: ignore
 
             except Exception as e:
                 logger.error(  # handle_error
@@ -229,24 +228,25 @@ def execute(
                     task_content.id,
                     target=target_item,
                 )
-                current_status[target_item] = TaskDispatchStatus(state="error", time=get_now_str()) # type: ignore               
+                current_status[target_item] = TaskDispatchStatus(state="error", time=get_now_str())  # type: ignore
 
     dispatch_success = True
     for item in current_status:
-        if current_status[item].state != "complete": # type: ignore
+        if current_status[item].state != "complete":  # type: ignore
             dispatch_success = False
-            break        
+            break
 
     if not update_dispatch_status(source_folder, current_status):
         logger.error(  # handle_error
             f"Error updating dispatch status for task {uid}",
             task_content.id,
-        )        
+        )
 
     if dispatch_success:
         # Dispatching of successful
         _move_sent_directory(task_content.id, source_folder, success_folder)
-        monitor.send_task_event(task_event.MOVE, task_content.id, 0, str(success_folder)+"/"+str(source_folder.name), "Moved to success folder")
+        monitor.send_task_event(task_event.MOVE, task_content.id, 0,
+                                str(success_folder) + "/" + str(source_folder.name), "Moved to success folder")
         _trigger_notification(task_content, mercure_events.COMPLETED)
         monitor.send_task_event(monitor.task_event.COMPLETE, task_content.id, 0, "", "Task complete")
         logger.info(f"Done with dispatching folder {source_folder}")
@@ -258,10 +258,13 @@ def execute(
             lock_file.unlink()
         else:
             logger.info(f"Max retries reached, moving to {error_folder}")
-            monitor.send_task_event(task_event.SUSPEND, task_content.id, 0, ",".join(dispatch_info.target_name), "Max retries reached")
+            monitor.send_task_event(task_event.SUSPEND, task_content.id, 0,
+                                    ",".join(dispatch_info.target_name), "Max retries reached")
             _move_sent_directory(task_content.id, source_folder, error_folder, FailStage.DISPATCHING)
-            monitor.send_task_event(task_event.MOVE, task_content.id, 0, str(error_folder), "Moved to error folder")
-            monitor.send_event(m_events.PROCESSING, severity.ERROR, f"Series suspended after reaching max retries")
+            monitor.send_task_event(task_event.MOVE, task_content.id, 0,
+                                    str(error_folder), "Moved to error folder")
+            monitor.send_event(m_events.PROCESSING, severity.ERROR,
+                               "Series suspended after reaching max retries")
             _trigger_notification(task_content, mercure_events.ERROR)
             logger.info(f"Dispatching folder {source_folder} not successful")
 
@@ -286,7 +289,7 @@ def _move_sent_directory(task_id, source_folder, destination_folder, fail_stage=
             if fail_stage and not update_fail_stage(destination_folder / source_folder.name, fail_stage):
                 logger.error(f"Error updating fail stage for task {task_id}")
             (destination_folder / source_folder.name / mercure_names.PROCESSING).unlink()
-    except:
+    except Exception:
         logger.error(f"Error moving folder {source_folder} to {destination_folder}", task_id)  # handle_error
 
 
@@ -317,19 +320,19 @@ def _trigger_notification(task: Task, event: mercure_events) -> None:
         )
 
 
-def update_fail_stage(source_folder: Path, fail_stage : FailStage) -> bool:
+def update_fail_stage(source_folder: Path, fail_stage: FailStage) -> bool:
     in_string = "in" if fail_stage == FailStage.PROCESSING else ""
-    target_json_path : Path = source_folder / in_string / mercure_names.TASKFILE
+    target_json_path: Path = source_folder / in_string / mercure_names.TASKFILE
     try:
         with open(target_json_path, "r") as file:
             task: Task = Task(**json.load(file))
 
         task_info = task.info
-        task_info.fail_stage = str(fail_stage) # type: ignore
+        task_info.fail_stage = str(fail_stage)  # type: ignore
 
         with open(target_json_path, "w") as file:
             json.dump(task.dict(), file)
-    except Exception as e:
+    except Exception:
         return False
 
     return True

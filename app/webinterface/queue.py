@@ -9,8 +9,7 @@ from enum import Enum
 import os
 from pathlib import Path
 import json
-import daiquiri
-from typing import cast, Dict
+from typing import Dict
 import collections
 import shutil
 
@@ -21,14 +20,14 @@ from starlette.authentication import requires
 
 # App-specific includes
 import common.config as config
-from common.constants import mercure_defs, mercure_names, mercure_actions
-from webinterface.common import get_user_information
+from common.constants import mercure_names, mercure_actions
 from webinterface.common import templates
-from common.types import Task, TaskDispatch
+from common.types import Task
 from decoRouter import Router as decoRouter
 router = decoRouter()
 
 logger = config.get_logger()
+
 
 class RestartTaskErrors(str, Enum):
     TASK_NOT_READY = "not_ready"
@@ -37,7 +36,7 @@ class RestartTaskErrors(str, Enum):
     NO_DISPATCH_STATUS = "no_dispatch_status"
 
 ###################################################################################
-## Queue endpoints
+# Queue endpoints
 ###################################################################################
 
 
@@ -48,7 +47,7 @@ async def show_queues(request):
 
     try:
         config.read_config()
-    except:
+    except Exception:
         return PlainTextResponse("Configuration is being updated. Try again in a minute.")
 
     processing_suspended = False
@@ -76,7 +75,7 @@ async def show_queues(request):
 async def show_jobs_processing(request):
     try:
         config.read_config()
-    except:
+    except Exception:
         return PlainTextResponse("Configuration is being updated. Try again in a minute.")
 
     # TODO: Order by time
@@ -132,7 +131,9 @@ async def show_jobs_processing(request):
                 "Scope": job_scope,
             }
 
-    sorted_jobs = collections.OrderedDict(sorted(job_list.items(), key=lambda x: (x[1]["Status"], x[1]["Creation_Time"]), reverse=False))  # type: ignore
+    sorted_jobs = collections.OrderedDict(sorted(job_list.items(),
+                                                 key=lambda x: (x[1]["Status"], x[1]["Creation_Time"]),
+                                                 reverse=False))  # type: ignore
     return JSONResponse(sorted_jobs)
 
 
@@ -141,7 +142,7 @@ async def show_jobs_processing(request):
 async def show_jobs_routing(request):
     try:
         config.read_config()
-    except:
+    except Exception:
         return PlainTextResponse("Configuration is being updated. Try again in a minute.")
 
     job_list = {}
@@ -192,7 +193,9 @@ async def show_jobs_routing(request):
                 "Scope": job_scope,
             }
 
-    sorted_jobs = collections.OrderedDict(sorted(job_list.items(), key=lambda x: (x[1]["Status"], x[1]["Creation_Time"]), reverse=False))  # type: ignore
+    sorted_jobs = collections.OrderedDict(sorted(job_list.items(),
+                                                 key=lambda x: (x[1]["Status"], x[1]["Creation_Time"]),
+                                                 reverse=False))  # type: ignore
     return JSONResponse(sorted_jobs)
 
 
@@ -214,7 +217,7 @@ async def force_study_complete(request):
 async def show_jobs_studies(request):
     try:
         config.read_config()
-    except:
+    except Exception:
         return PlainTextResponse("Configuration is being updated. Try again in a minute.")
 
     job_list = {}
@@ -240,7 +243,7 @@ async def show_jobs_studies(request):
                         job_rule = task.info.applied_rule
                     job_acc = task.info.acc
                     job_mrn = task.info.mrn
-                    if task.study.complete_force == True:
+                    if task.study.complete_force is True:
                         job_completion = "Force"
                     else:
                         if task.study.complete_trigger == "received_series":
@@ -275,7 +278,7 @@ async def show_jobs_studies(request):
 async def show_jobs_fail(request):
     try:
         config.read_config()
-    except:
+    except Exception:
         return PlainTextResponse("Configuration is being updated. Try again in a minute.")
 
     job_list: Dict = {}
@@ -323,7 +326,9 @@ async def show_jobs_fail(request):
                 "FailStage": job_failstage,
                 "CreationTime": timestamp,
             }
-    sorted_jobs = collections.OrderedDict(sorted(job_list.items(), key=lambda x: x[1]["CreationTime"], reverse=False))  # type: ignore
+    sorted_jobs = collections.OrderedDict(sorted(job_list.items(),  # type: ignore
+                                                 key=lambda x: x[1]["CreationTime"],  # type: ignore
+                                                 reverse=False))  # type: ignore
     return JSONResponse(sorted_jobs)
 
 
@@ -333,7 +338,7 @@ async def show_queues_status(request):
 
     try:
         config.read_config()
-    except:
+    except Exception:
         return PlainTextResponse("Configuration is being updated. Try again in a minute.")
 
     processing_suspended = False
@@ -398,7 +403,7 @@ async def set_queues_status(request):
 
     try:
         config.read_config()
-    except:
+    except Exception:
         return PlainTextResponse("Configuration is being updated. Try again in a minute.")
 
     processing_halt_file = Path(config.mercure.processing_folder + "/" + mercure_names.HALT)
@@ -410,7 +415,7 @@ async def set_queues_status(request):
             processing_halt_file.touch()
         else:
             processing_halt_file.unlink()
-    except:
+    except Exception:
         pass
 
     try:
@@ -418,7 +423,7 @@ async def set_queues_status(request):
             routing_halt_file.touch()
         else:
             routing_halt_file.unlink()
-    except:
+    except Exception:
         pass
 
     return JSONResponse({"result": "OK"})
@@ -429,7 +434,7 @@ async def set_queues_status(request):
 async def get_jobinfo(request):
     try:
         config.read_config()
-    except:
+    except Exception:
         return PlainTextResponse("Configuration is being updated. Try again in a minute.")
 
     job_category = request.path_params["category"]
@@ -444,7 +449,7 @@ async def get_jobinfo(request):
         # Note: For studies, the job_id contains a dash character, which is removed from the URL. Thus,
         #       take the information from the request body instead.
         params = dict(await request.form())
-        job_id = params["jobId"]        
+        job_id = params["jobId"]
         job_pathstr = config.mercure.studies_folder + "/" + job_id
     elif job_category == "failure":
         job_pathstr = config.mercure.error_folder + "/" + job_id
@@ -475,6 +480,7 @@ async def restart_job(request):
     taskfile_folder: Path = Path(config.mercure.error_folder) / task_id
     response = restart_dispatch(taskfile_folder, Path(config.mercure.outgoing_folder))
     return JSONResponse(response)
+
 
 def restart_dispatch(taskfile_folder: Path, outgoing_folder: Path) -> dict:
     # For now, verify if only dispatching failed and previous steps were successful
@@ -514,6 +520,7 @@ def restart_dispatch(taskfile_folder: Path, outgoing_folder: Path) -> dict:
 
     return {"success": "task restarted"}
 
+
 def get_fail_stage(taskfile_folder: Path) -> str:
     if not taskfile_folder.exists():
         return "Unknown"
@@ -536,5 +543,6 @@ def get_fail_stage(taskfile_folder: Path) -> str:
         return "Unknown"
 
     return "Dispatching"
+
 
 queue_app = Starlette(routes=router)

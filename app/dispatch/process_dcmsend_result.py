@@ -3,7 +3,6 @@ import json
 import sys
 from pathlib import Path
 from typing import Dict
-import daiquiri
 from common import config
 
 logger = config.get_logger()

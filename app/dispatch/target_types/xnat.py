@@ -1,4 +1,4 @@
-from common.types import Target, TaskDispatch, XnatTarget, Task
+from common.types import Task, TaskDispatch, XnatTarget
 import common.config as config
 from webinterface.common import async_run
 
@@ -86,12 +86,14 @@ def _send_dicom_to_xnat(target: XnatTarget, dispatch_info: TaskDispatch, folder:
     logger.info(
         f"Connecting to {dispatch_info.target_name}({target.host}) XNAT server..."
     )
-    with InterfaceManager(server=target.host, user=target.user, password=target.password).open() as session:  # type: ignore
+    with InterfaceManager(server=target.host, user=target.user,  # type: ignore
+                          password=target.password).open() as session:  # type: ignore
         project_id = target.project_id
         dicom_file_path = glob.glob(os.path.join(folder, "*.dcm"))[0]
         dcmFile = dcmread(dicom_file_path, stop_before_pixels=True)
         subject_id = f"{dcmFile.PatientID}"
-        experiment_id = f"{subject_id}_{datetime.datetime.strptime(dcmFile.StudyDate, '%Y%m%d').strftime('%Y-%m-%d')}"  # TODO make it more generic.
+        # TODO make experiment_id more generic.
+        experiment_id = f"{subject_id}_{datetime.datetime.strptime(dcmFile.StudyDate, '%Y%m%d').strftime('%Y-%m-%d')}"
 
         logger.info(f"Uploading {folder} to {dispatch_info.target_name} ...")
         _upload_dicom_session_to_xnat(
