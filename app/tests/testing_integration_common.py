@@ -34,7 +34,7 @@ def send_dicom(ds, dest_host, dest_port) -> None:
 class SupervisorManager:
     process: Optional[multiprocessing.Process] = None
     config_path: Optional[Path] = None
-    
+
     def __init__(self, mercure_base: Path) -> None:
         self.mercure_base = mercure_base
         self.socket = mercure_base / "supervisor.sock"
@@ -88,7 +88,7 @@ environment=MERCURE_CONFIG_FOLDER="{self.mercure_base}/config", MERCURE_BASEPATH
         args = ['-c', str(self.config_path)]
         options = ServerOptions()
         options.realize(args)
-        
+
         s = Supervisor(options)
         options.first = True
         options.test = False
@@ -108,7 +108,7 @@ environment=MERCURE_CONFIG_FOLDER="{self.mercure_base}/config", MERCURE_BASEPATH
     def start_service(self, name) -> None:
         self.rpc.supervisor.startProcess(name)
 
-    def stop_service(self, name)-> None:
+    def stop_service(self, name) -> None:
         self.rpc.supervisor.stopProcess(name)
 
     def all_services(self) -> Any:
@@ -131,7 +131,7 @@ environment=MERCURE_CONFIG_FOLDER="{self.mercure_base}/config", MERCURE_BASEPATH
         thread = threading.Thread(target=self.stream_service_logs, args=(name, timeout))
         thread.start()
         return thread
-    
+
     def wait_for_start(self) -> None:
         while True:
             if Path(self.socket).exists():
@@ -167,10 +167,11 @@ def is_dicoms_received(mercure_base, dicoms) -> None:
             ds_ = pydicom.dcmread(dicom)
             assert ds_.SeriesInstanceUID == series_folder.name
             assert ds_.SOPInstanceUID not in dicoms_recieved
-            dicoms_recieved.add(ds_.SOPInstanceUID) 
+            dicoms_recieved.add(ds_.SOPInstanceUID)
 
     assert dicoms_recieved == set(ds.SOPInstanceUID for ds in dicoms)
     print(f"Received {len(dicoms)} dicoms as expected")
+
 
 def is_dicoms_in_folder(folder, dicoms) -> None:
     uids_found = set()
@@ -181,15 +182,15 @@ def is_dicoms_in_folder(folder, dicoms) -> None:
             continue
         if f.suffix == '.dcm':
             dicoms_found.append(f)
-        if f.suffix not in ('.error','.tags'):
+        if f.suffix not in ('.error', '.tags'):
             dicoms_found.append(f)
     print("Dicoms", dicoms_found)
     for dicom in dicoms_found:
-        
+
         try:
             uid = pydicom.dcmread(dicom).SOPInstanceUID
             uids_found.add(uid)
-        except Exception as e:
+        except Exception:
             pass
     try:
         assert uids_found == set(ds.SOPInstanceUID for ds in dicoms), f"Dicoms missing from {folder}"
@@ -200,9 +201,10 @@ def is_dicoms_in_folder(folder, dicoms) -> None:
         raise
     print(f"Found {len(dicoms)} dicoms in {folder.name} as expected")
 
+
 def is_series_registered(bookkeeper_port, dicoms) -> None:
     result = requests.get(f"http://localhost:{bookkeeper_port}/query/series",
-                            headers={"Authorization": f"Token test"})
+                          headers={"Authorization": "Token test"})
     assert result.status_code == 200
     result_json = result.json()
     assert set([r['series_uid'] for r in result_json]) == set([d.SeriesInstanceUID for d in dicoms])
@@ -232,7 +234,7 @@ def stop_mercure(supervisor: SupervisorManager):
                 supervisor.stop_service(service['name'])
             except xmlrpc.client.Fault as e:
                 if e.faultCode == 10:
-                    supervisor.stop_service(service['group']+":*")
+                    supervisor.stop_service(service['group'] + ":*")
         # log = get_service_log(service['name'])
         # if log:
         log = Path(service['stdout_logfile']).read_text()
@@ -247,7 +249,7 @@ def python_bin():
         with tempfile.TemporaryDirectory(prefix="mercure_venv") as venvdir:
             subprocess.run([sys.executable, "-m", "venv", venvdir], check=True)
             subprocess.run([os.path.join(venvdir, "bin", "pip"), "install", "-r", f"{here}/requirements.txt"], check=True)
-            yield venvdir+"/bin/python"
+            yield (venvdir + "/bin/python")
     else:
         yield sys.executable
 
@@ -262,12 +264,14 @@ def mercure_base() -> Generator[Path, None, None]:
             (temp_path / 'data' / k).mkdir()
         yield temp_path
 
+
 @pytest.fixture(scope="function")
-def mercure(supervisord: Callable[[Any], SupervisorManager], python_bin) -> Generator[Callable[[Any], SupervisorManager], None, None]:
+def mercure(supervisord: Callable[[Any], SupervisorManager], python_bin
+            ) -> Generator[Callable[[Any], SupervisorManager], None, None]:
     def py_service(service, **kwargs) -> MercureService:
         if 'command' not in kwargs:
             kwargs['command'] = f"{python_bin} {here}/app/{service}.py"
-        return MercureService(service,**kwargs)
+        return MercureService(service, **kwargs)
     services = [
         py_service("bookkeeper", startsecs=6),
         py_service("router", numprocs=5),
@@ -276,24 +280,26 @@ def mercure(supervisord: Callable[[Any], SupervisorManager], python_bin) -> Gene
         py_service("worker_fast", command=f"{python_bin} -m rq.cli worker mercure_fast"),
         py_service("worker_slow", command=f"{python_bin} -m rq.cli worker mercure_slow")
     ]
-    services += [MercureService(f"receiver", f"{here}/app/receiver.sh --inject-errors", stopasgroup=True)]
+    services += [MercureService("receiver", f"{here}/app/receiver.sh --inject-errors", stopasgroup=True)]
     supervisor = supervisord(services)
+
     def do_start(services_to_start=["bookkeeper", "reciever", "router", "processor", "dispatcher"]) -> SupervisorManager:
         for service in services_to_start:
             supervisor.start_service(service)
         return supervisor
     yield do_start
     logs = stop_mercure(supervisor)
-    for l in logs:
-        print(f"====== {l} ======")
-        print(logs[l])
+    for log_title in logs:
+        print(f"====== {log_title} ======")
+        print(logs[log_title])
     print("=============")
+
 
 def random_port() -> int:
     """
     Generate a free port number to use as an ephemeral endpoint.
     """
-    s = socket.socket() 
+    s = socket.socket()
     s.bind(('', 0))  # bind to any available port
     port = s.getsockname()[1]  # get the port number
     s.close()
@@ -304,6 +310,7 @@ def random_port() -> int:
 def receiver_port():
     return random_port()
 
+
 @pytest.fixture(scope="module")
 def bookkeeper_port():
     return random_port()
@@ -311,7 +318,7 @@ def bookkeeper_port():
 
 @pytest.fixture(scope="function")
 def mercure_config(mercure_base, receiver_port, bookkeeper_port):
-    mercure_config = { k: v for k, v in mercure_defaults.items()}
+    mercure_config = {k: v for k, v in mercure_defaults.items()}
     for folder in (mercure_base / 'data').iterdir():
         mercure_config[f"{folder.name}_folder"] = str(folder)
 
@@ -331,7 +338,7 @@ DEBUG=True
 """
     with (mercure_base / 'config' / 'bookkeeper.env').open('w') as fp:
         fp.write(bookkeeper_config)
-    
+
     def update_config(config):
         with (mercure_base / 'config' / 'mercure.json').open('r+') as fp:
             data = json.load(fp)

@@ -8,10 +8,12 @@
         "uvicorn",
         "dicom"
     ],
-    "python.formatting.blackArgs": [
-        "--line-length=120  "
-    ],
-    "python.formatting.provider": "black",
+    // "python.formatting.blackArgs": [
+    //     "--line-length=120  "
+    // ],
+    "python.formatting.provider": "autopep8",
+    "autopep8.args": ["--max-line-length", "127"],
+    "editor.rulers": [127],
     "python.testing.pytestArgs": [
         "tests"
     ],

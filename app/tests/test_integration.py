@@ -7,7 +7,7 @@ from testing_integration_common import *
 from tests.testing_common import create_minimal_dicom
 
 
-@pytest.mark.parametrize("n_series",(2,))
+@pytest.mark.parametrize("n_series", (2,))
 @pytest.mark.skipif("os.getenv('TEST_FAST', False)")
 def test_case_simple(mercure, mercure_config, mercure_base, receiver_port, bookkeeper_port, n_series):
     config = {
@@ -27,18 +27,19 @@ def test_case_simple(mercure, mercure_config, mercure_base, receiver_port, bookk
     is_dicoms_received(mercure_base, ds)
     supervisor.start_service("router:*")
 
-    for n in range(1+n_series//2):
+    for n in range(1 + n_series // 2):
         try:
             is_dicoms_in_folder(mercure_base / "data" / "success", ds)
             is_series_registered(bookkeeper_port, ds)
             break
         except AssertionError:
-            if n < n_series//2+1:
+            if n < n_series // 2 + 1:
                 time.sleep(1)
             else:
                 raise
 
-@pytest.mark.parametrize("n_series",(2,))
+
+@pytest.mark.parametrize("n_series", (2,))
 @pytest.mark.skipif("os.getenv('TEST_FAST', False)")
 def test_case_dispatch(mercure, mercure_config, mercure_base, receiver_port, bookkeeper_port, n_series):
     config = {
@@ -52,7 +53,7 @@ def test_case_dispatch(mercure, mercure_config, mercure_base, receiver_port, boo
         }
     }
     mercure_config(config)
-    supervisor = mercure(["receiver", "router:*","bookkeeper"])
+    supervisor = mercure(["receiver", "router:*", "bookkeeper"])
     (mercure_base / "target").mkdir(parents=True, exist_ok=True)
 
     time.sleep(1)
@@ -60,21 +61,22 @@ def test_case_dispatch(mercure, mercure_config, mercure_base, receiver_port, boo
     for d in ds:
         send_dicom(d, "localhost", receiver_port)
 
-    time.sleep(2+n_series/2)
+    time.sleep(2 + n_series / 2)
     is_dicoms_in_folder(mercure_base / "data" / "outgoing", ds)
-    
+
     supervisor.start_service("dispatcher:*")
-    for n in range(2+n_series//2):
+    for n in range(2 + n_series // 2):
         try:
             is_dicoms_in_folder(mercure_base / "target", ds)
             is_series_registered(bookkeeper_port, ds)
         except AssertionError:
-            if n < n_series//2+2:
+            if n < n_series // 2 + 2:
                 time.sleep(1)
             else:
                 raise
 
-@pytest.mark.parametrize("n_series",(1,))
+
+@pytest.mark.parametrize("n_series", (1,))
 @pytest.mark.skipif("os.getenv('TEST_FAST', False)")
 def test_case_process(mercure, mercure_config, mercure_base, receiver_port, bookkeeper_port, n_series):
     config = {
@@ -103,20 +105,23 @@ def test_case_process(mercure, mercure_config, mercure_base, receiver_port, book
         try:
             is_dicoms_in_folder(mercure_base / "target", ds)
             break
-        except AssertionError as e:
+        except AssertionError:
             time.sleep(1)
     else:
         raise Exception("Failed to find dicoms in target folder after 60 seconds.")
     is_series_registered(bookkeeper_port, ds)
     # t1.join(0.1)
 
+
 @pytest.fixture(scope='function')
 def inject_error():
     inject_path = Path("./dcm_inject_error")
+
     def inject(error_n):
         inject_path.write_text(str(error_n))
     yield inject
     inject_path.unlink(missing_ok=True)
+
 
 @pytest.mark.skipif("os.getenv('TEST_FAST', False)")
 @pytest.mark.parametrize("error", range(1, 8))
@@ -132,7 +137,7 @@ def test_case_error_inject(mercure, mercure_config, mercure_base, receiver_port,
         }
     }
     mercure_config(config)
-    supervisor = mercure(["receiver","router:*"])
+    mercure(["receiver", "router:*"])
     time.sleep(2)
     ds = [create_minimal_dicom(None, None, additional_tags={'PatientName': 'Greg'}) for _ in range(1)]
     inject_error(error)
@@ -140,7 +145,7 @@ def test_case_error_inject(mercure, mercure_config, mercure_base, receiver_port,
         send_dicom(d, "localhost", receiver_port)
     time.sleep(2)
     try:
-        is_dicoms_in_folder(mercure_base / "data"/"error", ds)
+        is_dicoms_in_folder(mercure_base / "data" / "error", ds)
         for d in (mercure_base / 'data' / "error").rglob('*'):
             if d.suffix == '.dcm':
                 assert d.with_suffix('.dcm.error').exists(), f"Expected {d.with_suffix('.dcm.error')}"
@@ -149,10 +154,11 @@ def test_case_error_inject(mercure, mercure_config, mercure_base, receiver_port,
             if d.suffix == '.error':
                 assert d.with_suffix('').exists(), f"Expected {d.with_suffix('')}"
 
-    except AssertionError as e:
+    except AssertionError:
         for d in (mercure_base).rglob('*'):
             print(d)
         raise
+
 
 @pytest.mark.skipif("os.getenv('TEST_FAST', False)")
 def test_case_error_real(mercure, mercure_config, mercure_base, receiver_port, bookkeeper_port):
@@ -166,7 +172,7 @@ def test_case_error_real(mercure, mercure_config, mercure_base, receiver_port, b
             "additional_tags": {"GarbageTag": "Value"}
         }
     }
-    
+
     mercure_config(config)
     try:
         supervisor = mercure(["receiver"])
@@ -183,6 +189,7 @@ def test_case_error_real(mercure, mercure_config, mercure_base, receiver_port, b
         supervisor.start_service("router:*")
         time.sleep(5)
         is_dicoms_in_folder(mercure_base / "data" / "error", ds)
-        assert "Unable to read extra_tags file" in (next(d for d in (mercure_base / "data" / "error").glob('*.error')).read_text())
+        assert "Unable to read extra_tags file" in (
+            next(d for d in (mercure_base / "data" / "error").glob('*.error')).read_text())
     finally:
         Path("./dicom_extra_tags").unlink(missing_ok=True)

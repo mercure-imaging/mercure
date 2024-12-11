@@ -5,7 +5,7 @@ from pydicom.dataset import Dataset, FileMetaDataset
 from pydicom.uid import CTImageStorage, ExplicitVRLittleEndian, generate_uid
 
 
-def generate_dicom_files(accession_number, destination_folder:Path, num_files=10, num_studies=2, num_series=2):
+def generate_dicom_files(accession_number, destination_folder: Path, num_files=10, num_studies=2, num_series=2):
     """
     Generate a folder of DICOM files with the given accession number.
 
@@ -14,13 +14,13 @@ def generate_dicom_files(accession_number, destination_folder:Path, num_files=10
     :param num_files: The number of DICOM files to generate (default: 10)
     """
     # Create the accession subfolder
-    
+
     for (study_n, series_n, file_n) in itertools.product(range(num_studies), range(num_series), range(num_files)):
         if file_n == 0:
             series_uid = generate_uid()
             if series_n == 0:
                 study_uid = generate_uid()
-        
+
         ds = Dataset()
         ds.PatientName = "Test^Patient"
         ds.PatientID = "12345"
@@ -39,7 +39,7 @@ def generate_dicom_files(accession_number, destination_folder:Path, num_files=10
         ds.SeriesNumber = series_n + 1
         ds.SeriesDescription = f"series_{series_n + 1}"
 
-        ds.PixelData = b"\x00" * (100 * 100 * 2) 
+        ds.PixelData = b"\x00" * (100 * 100 * 2)
         ds.NumberOfFrames = "1"
         ds.Rows = 100
         ds.Columns = 100
@@ -59,19 +59,22 @@ def generate_dicom_files(accession_number, destination_folder:Path, num_files=10
 
         ds.save_as(dir / filename, write_like_original=False)
 
-    print(f"Generated {num_files * num_series * num_studies} DICOM files with accession number {accession_number} in { destination_folder / accession_number}")
+    print(f"Generated {num_files * num_series * num_studies} DICOM files "
+          f"with accession number {accession_number} in { destination_folder / accession_number}")
+
 
 if __name__ == "__main__":
     import argparse
 
     def dir_path(string) -> Path:
-        if (p:=Path(string)).is_dir():
+        if (p := Path(string)).is_dir():
             return p
         raise NotADirectoryError(string)
 
     parser = argparse.ArgumentParser(description="Generate DICOM files with a specific accession number")
     parser.add_argument("accession_number", help="Accession number for the DICOM files")
-    parser.add_argument("destination_folder", type=dir_path, help="Parent folder where the accession subfolder will be created")
+    parser.add_argument("destination_folder", type=dir_path,
+                        help="Parent folder where the accession subfolder will be created")
     parser.add_argument("--num_files", type=int, default=10, help="Number of DICOM files to generate (default: 10)")
 
     args = parser.parse_args()

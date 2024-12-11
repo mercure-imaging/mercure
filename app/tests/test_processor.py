@@ -35,7 +35,7 @@ logger = config.get_logger()
 processor_path = Path()
 config_partial: Dict[str, Dict] = {
     "modules": {
-        "test_module": Module(docker_tag="busybox:stable", settings={"fizz":"buzz"}).dict(),
+        "test_module": Module(docker_tag="busybox:stable", settings={"fizz": "buzz"}).dict(),
     },
     "rules": {
         "catchall": Rule(
@@ -49,21 +49,22 @@ config_partial: Dict[str, Dict] = {
 }
 
 expected_task_info = {
-            "uid": "TESTFAKEUID",
-            "action": "process",
-            "applied_rule": "catchall",
-            "uid_type": "series",
-            "triggered_rules": {"catchall": True},
-            "patient_name": "MISSING",
-            "mrn": "MISSING",
-            "acc": "MISSING",
-            "mercure_version": mercure_version.get_version_string(),
-            "mercure_appliance": "master",
-            "mercure_server": socket.gethostname(),
-            "device_serial_number": None,
-            "sender_address": "0.0.0.0",
-            "fail_stage": None
-        }
+    "uid": "TESTFAKEUID",
+    "action": "process",
+    "applied_rule": "catchall",
+    "uid_type": "series",
+    "triggered_rules": {"catchall": True},
+    "patient_name": "MISSING",
+    "mrn": "MISSING",
+    "acc": "MISSING",
+    "mercure_version": mercure_version.get_version_string(),
+    "mercure_appliance": "master",
+    "mercure_server": socket.gethostname(),
+    "device_serial_number": None,
+    "sender_address": "0.0.0.0",
+    "fail_stage": None
+}
+
 
 def create_and_route(fs, mocked, task_id, config, uid="TESTFAKEUID") -> Tuple[List[str], str]:
     print("Mocked task_id is", task_id)
@@ -77,8 +78,10 @@ def create_and_route(fs, mocked, task_id, config, uid="TESTFAKEUID") -> Tuple[Li
     router.run_router()
 
     router.route_series.assert_called_once_with(task_id, uid)  # type: ignore
-    routing.route_series.push_series_serieslevel.assert_called_once_with(task_id, {"catchall": True}, [f"{uid}#bar"], uid, unittest.mock.ANY)  # type: ignore
-    routing.route_series.push_serieslevel_outgoing.assert_called_once_with(task_id, {"catchall": True}, [f"{uid}#bar"], uid, unittest.mock.ANY, {})  # type: ignore
+    routing.route_series.push_series_serieslevel.assert_called_once_with(  # type: ignore
+        task_id, {"catchall": True}, [f"{uid}#bar"], uid, unittest.mock.ANY)
+    routing.route_series.push_serieslevel_outgoing.assert_called_once_with(  # type: ignore
+        task_id, {"catchall": True}, [f"{uid}#bar"], uid, unittest.mock.ANY, {})
 
     assert ["task.json", f"{uid}#bar.dcm", f"{uid}#bar.tags"] == [
         k.name for k in Path("/var/processing").glob("**/*") if k.is_file()
@@ -87,10 +90,11 @@ def create_and_route(fs, mocked, task_id, config, uid="TESTFAKEUID") -> Tuple[Li
     # mocked.patch("process.processor.process_series", new=mocked.spy(processor, "process_series"))
     return ["task.json", f"{uid}#bar.dcm", f"{uid}#bar.tags"], new_task_id
 
+
 def create_and_route_priority(fs, mocked, task_id, config, uid="TESTFAKEUID") -> Tuple[List[str], List[str]]:
     print("Mocked task_id is", task_id)
 
-    new_task_ids = ["new-task-" + str(uuid.uuid1()) for _ in range(1000)] # todo: support arbitrary number of tasks created?
+    new_task_ids = ["new-task-" + str(uuid.uuid1()) for _ in range(1000)]  # todo: support arbitrary number of tasks created?
     mock_incoming_uid(config, fs, uid)
 
     mock_task_ids(mocked, task_id, new_task_ids)
@@ -99,7 +103,8 @@ def create_and_route_priority(fs, mocked, task_id, config, uid="TESTFAKEUID") ->
     router.route_series.assert_called_once_with(task_id, uid)  # type: ignore
 
     for case in Path("/var/processing").iterdir():
-        if not case.is_dir(): continue
+        if not case.is_dir():
+            continue
         assert ["task.json", f"{uid}#bar.dcm", f"{uid}#bar.tags"] == [
             k.name for k in case.iterdir() if k.is_file()
         ]
@@ -115,7 +120,7 @@ async def test_process_series_nomad(fs, mercure_config: Callable[[Dict], Config]
     config = mercure_config(
         {"process_runner": "nomad", **config_partial},
     )
-    fs.create_file(f"nomad/mercure-processor-template.nomad", contents="foo")
+    fs.create_file("nomad/mercure-processor-template.nomad", contents="foo")
     mocked.patch.object(Jobs, "parse", new=lambda x, y: {})
 
     task_id = str(uuid.uuid1())
@@ -170,7 +175,7 @@ async def test_process_series_nomad(fs, mercure_config: Callable[[Dict], Config]
         "process": {
             "module_name": "test_module",
             "module_config": {"constraints": "", "resources": "", **config_partial["modules"]["test_module"]},
-            "settings": {"fizz":"buzz"},
+            "settings": {"fizz": "buzz"},
             "retain_input_images": False,
             "output": None,
         },
@@ -228,7 +233,6 @@ async def test_process_series_nomad(fs, mercure_config: Callable[[Dict], Config]
     )
 
 
-
 @pytest.mark.asyncio
 async def test_process_series(fs, mercure_config: Callable[[Dict], Config], mocked: MockerFixture):
     global processor_path
@@ -251,7 +255,8 @@ async def test_process_series(fs, mercure_config: Callable[[Dict], Config], mock
 
     #     return mocked.DEFAULT
 
-    fake_run = mocked.Mock(return_value=FakeDockerContainer(), side_effect=make_fake_processor(fs, mocked, False))  # type: ignore
+    fake_run = mocked.Mock(return_value=FakeDockerContainer(),
+                           side_effect=make_fake_processor(fs, mocked, False))  # type: ignore
     mocked.patch.object(ContainerCollection, "run", new=fake_run)
     await processor.run_processor()
 
@@ -265,15 +270,16 @@ async def test_process_series(fs, mercure_config: Callable[[Dict], Config], mock
             call('busybox:stable', command='cat /etc/monai/app.json', entrypoint=''),
             call(
                 config.modules["test_module"].docker_tag,
-                environment={'HOLOSCAN_INPUT_PATH': '/tmp/data', 'HOLOSCAN_OUTPUT_PATH': '/tmp/output', 
-                             "MERCURE_IN_DIR": "/tmp/data", "MERCURE_OUT_DIR": "/tmp/output",  
+                environment={'HOLOSCAN_INPUT_PATH': '/tmp/data', 'HOLOSCAN_OUTPUT_PATH': '/tmp/output',
+                             "MERCURE_IN_DIR": "/tmp/data", "MERCURE_OUT_DIR": "/tmp/output",
                              'MONAI_INPUTPATH': '/tmp/data', 'MONAI_OUTPUTPATH': '/tmp/output'},
                 user=uid_string,
                 group_add=[os.getegid()],
                 volumes=unittest.mock.ANY,
                 runtime="runc",
                 detach=True),
-            call('busybox:stable-musl', volumes=unittest.mock.ANY, userns_mode='host', command=f'chown -R {uid_string} /tmp/output', detach=True)
+            call('busybox:stable-musl', volumes=unittest.mock.ANY, userns_mode='host',
+                 command=f'chown -R {uid_string} /tmp/output', detach=True)
         ]
     )
     print("FAKE RUN RESULT FILES", list((Path("/var/success")).glob("**/*")))
@@ -296,15 +302,16 @@ async def test_process_series(fs, mercure_config: Callable[[Dict], Config], mock
     )
 
 
-
 @pytest.mark.asyncio
 async def test_multi_process_series(fs, mercure_config: Callable[[Dict], Config], mocked: MockerFixture):
     partial: Dict[str, Dict] = {
         "modules": {
-            "test_module_1": Module(docker_tag="busybox:stable", settings=
-                                    {"fizz": "buzz", "result": {"value": [1, 2, 3, 4]}}).dict(),
-            "test_module_2": Module(docker_tag="busybox:stable", settings=
-                                    {"fizz": "bing", "result": {"value": [100, 200, 300, 400]}}).dict(),
+            "test_module_1": Module(docker_tag="busybox:stable",
+                                    settings={"fizz": "buzz", "result":
+                                              {"value": [1, 2, 3, 4]}}).dict(),
+            "test_module_2": Module(docker_tag="busybox:stable",
+                                    settings={"fizz": "bing", "result":
+                                              {"value": [100, 200, 300, 400]}}).dict(),
         },
         "rules": {
             "catchall": Rule(
@@ -312,7 +319,7 @@ async def test_multi_process_series(fs, mercure_config: Callable[[Dict], Config]
                 action="process",
                 action_trigger="series",
                 study_trigger_condition="timeout",
-                processing_module=["test_module_1","test_module_2"],
+                processing_module=["test_module_1", "test_module_2"],
                 processing_settings=[{"foo": "bar"}, {"bar": "baz"}],
                 processing_retain_images=True
             ).dict()
@@ -339,7 +346,8 @@ async def test_multi_process_series(fs, mercure_config: Callable[[Dict], Config]
     #     fs.create_file(out_ / "result.json", contents=json.dumps(results))
     #     return mocked.DEFAULT
 
-    fake_run = mocked.Mock(return_value=FakeDockerContainer(), side_effect=make_fake_processor(fs, mocked, False))  # type: ignore
+    fake_run = mocked.Mock(return_value=FakeDockerContainer(),
+                           side_effect=make_fake_processor(fs, mocked, False))
     mocked.patch.object(ContainerCollection, "run", new=fake_run)
     await processor.run_processor()
 
@@ -349,16 +357,18 @@ async def test_multi_process_series(fs, mercure_config: Callable[[Dict], Config]
     uid_string = f"{os.getuid()}:{os.getegid()}"
     for m in partial["rules"]["catchall"]["processing_module"]:
         fake_run.assert_any_call(
-                config.modules[m].docker_tag,
-                environment={'HOLOSCAN_INPUT_PATH': '/tmp/data', 'HOLOSCAN_OUTPUT_PATH': '/tmp/output', "MERCURE_IN_DIR": "/tmp/data", "MERCURE_OUT_DIR": "/tmp/output",  'MONAI_INPUTPATH': '/tmp/data', 'MONAI_OUTPUTPATH': '/tmp/output'},
-                user=uid_string,
-                group_add=[os.getegid()],
-                runtime="runc",
-                volumes={
+            config.modules[m].docker_tag,
+            environment={'HOLOSCAN_INPUT_PATH': '/tmp/data', 'HOLOSCAN_OUTPUT_PATH': '/tmp/output',
+                         "MERCURE_IN_DIR": "/tmp/data", "MERCURE_OUT_DIR": "/tmp/output",
+                         'MONAI_INPUTPATH': '/tmp/data', 'MONAI_OUTPUTPATH': '/tmp/output'},
+            user=uid_string,
+            group_add=[os.getegid()],
+            runtime="runc",
+            volumes={
                     str(processor_path / "in"): {"bind": "/tmp/data", "mode": "rw"},
                     str(processor_path / "out"): {"bind": "/tmp/output", "mode": "rw"},
-                },
-                detach=True,
+            },
+            detach=True,
         )
 
     assert [] == [k.name for k in Path("/var/processing").glob("**/*")]
@@ -374,7 +384,7 @@ async def test_multi_process_series(fs, mercure_config: Callable[[Dict], Config]
         "process": [{
             "module_name": m,
             "module_config": {"constraints": "", "resources": "", **partial["modules"][m]},
-            "settings": { **partial["modules"][m]["settings"],**partial["rules"]["catchall"]["processing_settings"][i]},
+            "settings": {**partial["modules"][m]["settings"], **partial["rules"]["catchall"]["processing_settings"][i]},
             "retain_input_images": True,
             "output": partial["modules"][m]["settings"]["result"],
         } for i, m in enumerate(partial["modules"])],
@@ -401,10 +411,10 @@ async def test_multi_process_series(fs, mercure_config: Callable[[Dict], Config]
     )
     common.monitor.send_processor_output.assert_has_calls(  # type: ignore
         [
-            call(Task(**task), TaskProcessing(**task["process"][i]), i, partial["modules"][m]["settings"]["result"]) for i, m in enumerate(partial["modules"])
+            call(Task(**task), TaskProcessing(**task["process"][i]), i, partial["modules"][m]["settings"]["result"])
+            for i, m in enumerate(partial["modules"])
         ]
     )
-
 
 
 @pytest.mark.asyncio
@@ -413,9 +423,12 @@ async def test_priority_process(fs, mercure_config: Callable[[Dict], Config], mo
     global processor_path
     partial: Dict[str, Dict] = {
         "modules": {
-            "test_module_1": Module(docker_tag="busybox:stable", settings={"fizz": "buzz", "result": {"value": [1, 2, 3, 4]}}).dict(),
-            "test_module_2": Module(docker_tag="busybox:stable", settings={"fizz": "bing", "result": {"value": [100, 200, 300, 400]}}).dict(),
-            "test_module_3": Module(docker_tag="busybox:stable", settings={"fizz": "bong", "result": {"value": [1000, 2000, 3000, 4000]}}).dict(),
+            "test_module_1": Module(docker_tag="busybox:stable",
+                                    settings={"fizz": "buzz", "result": {"value": [1, 2, 3, 4]}}).dict(),
+            "test_module_2": Module(docker_tag="busybox:stable",
+                                    settings={"fizz": "bing", "result": {"value": [100, 200, 300, 400]}}).dict(),
+            "test_module_3": Module(docker_tag="busybox:stable",
+                                    settings={"fizz": "bong", "result": {"value": [1000, 2000, 3000, 4000]}}).dict(),
         },
         "rules": {
             "normal_rule": Rule(
@@ -452,12 +465,13 @@ async def test_priority_process(fs, mercure_config: Callable[[Dict], Config], mo
     )
     task_id = str(uuid.uuid1())
     files, new_task_ids = create_and_route_priority(fs, mocked, task_id, config)
-    processor_path = Path(f"/var/processing/")
+    processor_path = Path("/var/processing/")
 
-    fake_run = mocked.Mock(return_value=FakeDockerContainer(), side_effect=make_fake_processor(fs, mocked, False))  # type: ignore
+    fake_run = mocked.Mock(return_value=FakeDockerContainer(),
+                           side_effect=make_fake_processor(fs, mocked, False))
     mocked.patch.object(ContainerCollection, "run", new=fake_run)
 
-    fake_pull = mocked.Mock(return_value=FakeImageContainer())  # type: ignore
+    fake_pull = mocked.Mock(return_value=FakeImageContainer())
     mocked.patch.object(ImageCollection, "pull", new=fake_pull)
 
     mocked.patch("common.helper._is_offpeak", lambda x, y, z: is_offpeak)
@@ -473,14 +487,14 @@ async def test_priority_process(fs, mercure_config: Callable[[Dict], Config], mo
 
     tasks_folders = [processor_path / k for k in new_task_ids]
     for permutation in permutations(tasks_folders, len(tasks_folders)):
-        prioritized_task = processor.prioritize_tasks(list(permutation), 0) # check for default run
+        prioritized_task = processor.prioritize_tasks(list(permutation), 0)  # check for default run
         assert prioritized_task and get_priority(prioritized_task) == "urgent"
-        prioritized_task = processor.prioritize_tasks(list(permutation), 2) # check for reverse run
+        prioritized_task = processor.prioritize_tasks(list(permutation), 2)  # check for reverse run
         assert prioritized_task and get_priority(prioritized_task) in ["normal", "offpeak"] if is_offpeak else ["normal"]
 
     await processor.run_processor()
     assert len(processor.process_series.call_args_list) == 3 if is_offpeak else 2
     args, _ = processor.process_series.call_args_list[0]
     task_id = os.path.basename(args[0])
-    task_folder = Path(f"/var/success/") / task_id
+    task_folder = Path("/var/success/") / task_id
     assert get_priority(task_folder) == "urgent"

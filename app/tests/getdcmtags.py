@@ -3,7 +3,7 @@ import json
 import shutil
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
 import pydicom
 import requests
@@ -31,7 +31,8 @@ MAIN_TAGS = [
     'SOPClassUID'
 ]
 
-def send_bookkeeper_post(filename, file_uid, series_uid, bookkeeper_address, bookkeeper_token)-> None:
+
+def send_bookkeeper_post(filename, file_uid, series_uid, bookkeeper_address, bookkeeper_token) -> None:
     """Send a POST request to the bookkeeper."""
     if not bookkeeper_address:
         return
@@ -50,6 +51,7 @@ def send_bookkeeper_post(filename, file_uid, series_uid, bookkeeper_address, boo
     except requests.RequestException as e:
         print(f"Error sending request to bookkeeper: {e}")
 
+
 def write_error_information(dcm_file: Path, error_string: str) -> None:
     """Write error information to a file."""
     err_folder = dcm_file.parent / "error"
@@ -58,7 +60,7 @@ def write_error_information(dcm_file: Path, error_string: str) -> None:
 
     error_file = dcm_file.with_suffix('.error')
     lock_file = dcm_file.with_suffix('.error.lock')
-    
+
     try:
         with lock_file.open('w') as _:
             pass
@@ -73,6 +75,7 @@ def write_error_information(dcm_file: Path, error_string: str) -> None:
         if lock_file.exists():
             lock_file.unlink()
 
+
 def read_extra_tags(dataset, extra_tags_file) -> List[Tuple[str, str]]:
     """Read extra tags from a file."""
     extra_tags = []
@@ -84,10 +87,12 @@ def read_extra_tags(dataset, extra_tags_file) -> List[Tuple[str, str]]:
                     extra_tags.append((tag, str(dataset[tag].value)))
     return extra_tags
 
-def write_tags_file(dcm_file, original_file, dataset, main_tags, additional_tags, sender_address, sender_aet, receiver_aet) -> bool:
+
+def write_tags_file(dcm_file, original_file, dataset, main_tags, additional_tags, sender_address, sender_aet, receiver_aet
+                    ) -> bool:
     """Write extracted tags to a JSON file."""
     tags_file = dcm_file.with_suffix('.tags')
-    
+
     tags_data = {
         "SpecificCharacterSet": str(dataset.get("SpecificCharacterSet", "")),
         "SeriesInstanceUID": str(dataset.get("SeriesInstanceUID", "")),
@@ -114,6 +119,7 @@ def write_tags_file(dcm_file, original_file, dataset, main_tags, additional_tags
         print(f"ERROR: Unable to write tag file {tags_file}: {e}")
         return False
 
+
 def create_series_folder(path, series_uid) -> bool:
     """Create a folder for the series if it doesn't exist."""
     series_folder = path / series_uid
@@ -124,10 +130,12 @@ def create_series_folder(path, series_uid) -> bool:
         print(f"ERROR: Unable to create directory {series_folder}: {e}")
         return False
 
-def process_dicom(dcm_file, sender_address, sender_aet, receiver_aet, bookkeeper_address='', bookkeeper_token='', set_tags: List[Tuple[str, str]]=[]) -> Optional[Path]:
+
+def process_dicom(dcm_file, sender_address, sender_aet, receiver_aet, bookkeeper_address='', bookkeeper_token='',
+                  set_tags: List[Tuple[str, str]] = []) -> Optional[Path]:
     """Process the DICOM file according to the provided arguments."""
     dcm_file = Path(dcm_file)
-    
+
     try:
         dataset = pydicom.dcmread(dcm_file, stop_before_pixels=True)
     except pydicom.errors.InvalidDicomError as e:
@@ -136,7 +144,7 @@ def process_dicom(dcm_file, sender_address, sender_aet, receiver_aet, bookkeeper
 
     series_uid = str(dataset.get("SeriesInstanceUID", ""))
     sop_instance_uid = str(dataset.get("SOPInstanceUID", ""))
-    
+
     new_filename = f"{series_uid}#{dcm_file.name}"
     series_folder = dcm_file.parent / series_uid
 
@@ -154,11 +162,11 @@ def process_dicom(dcm_file, sender_address, sender_aet, receiver_aet, bookkeeper
     extra_tags_file = Path("./dcm_extra_tags")
     if not extra_tags_file.exists():
         extra_tags_file = Path(sys.argv[0]).parent / "dcm_extra_tags"
-    
+
     additional_tags = read_extra_tags(dataset, extra_tags_file)
     additional_tags.extend(set_tags)
 
-    if not write_tags_file(new_dcm_file, dcm_file.name, dataset, MAIN_TAGS, additional_tags, 
+    if not write_tags_file(new_dcm_file, dcm_file.name, dataset, MAIN_TAGS, additional_tags,
                            sender_address, sender_aet, receiver_aet):
         write_error_information(new_dcm_file, f"Unable to write tags file for {new_filename}")
         # Move DICOM file back to original location
@@ -167,6 +175,7 @@ def process_dicom(dcm_file, sender_address, sender_aet, receiver_aet, bookkeeper
 
     send_bookkeeper_post(new_filename, sop_instance_uid, series_uid, bookkeeper_address, bookkeeper_token)
     return new_dcm_file
+
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=f"getdcmtags Version {VERSION}")
@@ -190,6 +199,7 @@ def main() -> int:
         return 1
     else:
         return 0
-    
+
+
 if __name__ == "__main__":
     sys.exit(main())

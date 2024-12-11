@@ -2,6 +2,19 @@
 testing_common.py
 =================
 """
+from tests.getdcmtags import process_dicom
+from pydicom.uid import generate_uid
+from pydicom.dataset import Dataset, FileDataset, FileMetaDataset
+from common.types import Config
+import pytest
+
+import routing  # noqa: F401
+import process  # noqa: F401
+import common   # noqa: F401
+
+import docker.errors
+import common.config as config
+from bookkeeping import bookkeeper
 import json
 import os
 import shutil
@@ -14,19 +27,6 @@ import pydicom
 
 pydicom.config.settings.reading_validation_mode = pydicom.config.IGNORE
 pydicom.config.settings.writing_validation_mode = pydicom.config.IGNORE
-
-
-from bookkeeping import bookkeeper
-import common
-import common.config as config
-import docker.errors
-import process
-import pytest
-import routing
-from common.types import Config
-from pydicom.dataset import Dataset, FileDataset, FileMetaDataset
-from pydicom.uid import generate_uid
-from tests.getdcmtags import process_dicom
 
 
 def spy_on(mocker, obj) -> None:
@@ -97,6 +97,7 @@ def mocked(mocker):
     attach_spies(mocker)
     return mocker
 
+
 @pytest.fixture(scope="module")
 def bookkeeper_port():
     return random_port()
@@ -113,21 +114,22 @@ def mercure_config(fs, bookkeeper_port) -> Callable[[Dict], Config]:
 
     def set_config(extra: Dict[Any, Any] = {}) -> Config:
         config.read_config()
-        config.mercure = Config(**{**config.mercure.dict(), **extra})  #   # type: ignore
+        config.mercure = Config(**{**config.mercure.dict(), **extra})  # type: ignore
         print(config.mercure.targets)
         config.save_config()
         return config.mercure
 
     # set_config()
-    set_config({"bookkeeper": "sqlite:///tmp/mercure_bookkeeper_"+str(uuid.uuid4())+".db"})  # sqlite3 is not inside the fakefs so this is going to be a real file
+    # sqlite3 is not inside the fakefs so this is going to be a real file
+    set_config({"bookkeeper": "sqlite:///tmp/mercure_bookkeeper_" + str(uuid.uuid4()) + ".db"})
 
     bookkeeper_env = f"""PORT={bookkeeper_port}
 HOST=0.0.0.0
 DATABASE_URL={config.mercure.bookkeeper}"""
     fs.create_file(bookkeeper.bk_config.config_filename, contents=bookkeeper_env)
 
-    fs.add_real_directory(os.path.abspath(os.path.dirname(os.path.realpath(__file__))+'/../alembic'))
-    fs.add_real_file(os.path.abspath(os.path.dirname(os.path.realpath(__file__))+'/../alembic.ini'), read_only=True)
+    fs.add_real_directory(os.path.abspath(os.path.dirname(os.path.realpath(__file__)) + '/../alembic'))
+    fs.add_real_file(os.path.abspath(os.path.dirname(os.path.realpath(__file__)) + '/../alembic.ini'), read_only=True)
     return set_config
 
 
@@ -135,17 +137,18 @@ def mock_task_ids(mocker, task_id, next_task_id) -> None:
     if not isinstance(next_task_id, list):
         next_task_id = [next_task_id]
     real_uuid = uuid.uuid1
+
     def generate_uuids() -> Iterator[str]:
         yield from [task_id] + next_task_id
         while True:
             yield str(real_uuid())
     generator = generate_uuids()
-    
+
     mocker.patch("uuid.uuid1", new=lambda: next(generator))
 
 
 class FakeDockerContainer:
-    def __init__(self):
+    def __init__(self) -> None:
         pass
 
     def wait(self):
@@ -158,17 +161,21 @@ class FakeDockerContainer:
     def remove(self):
         pass
 
+
 class FakeImageContainer:
     attrs: Any = {}
-    def __init__(self):
+
+    def __init__(self) -> None:
         pass
+
     def pull(self, etc):
         pass
 
-def make_fake_processor(fs, mocked, fails):
+
+def make_fake_processor(fs, mocked, fails) -> Callable:
     def fake_processor(tag, environment: Optional[Dict] = None, volumes: Optional[Dict] = None, **kwargs):
         global processor_path
-        if "cat" in kwargs.get("command",""):
+        if "cat" in kwargs.get("command", ""):
             raise docker.errors.ContainerError(None, None, None, None, None)
         if tag == "busybox:stable-musl":
             return mocked.DEFAULT
@@ -182,7 +189,7 @@ def make_fake_processor(fs, mocked, fails):
             print(f"FAKE PROCESSOR: Moving {child} to {out_ / child.name})")
             shutil.copy(child, out_ / child.name)
         with (in_ / "task.json").open("r") as fp:
-            results = json.load(fp)["process"]["settings"].get("result",{})
+            results = json.load(fp)["process"]["settings"].get("result", {})
         fs.create_file(out_ / "result.json", contents=json.dumps(results))
         if fails:
             raise Exception("failed")
@@ -193,7 +200,7 @@ def make_fake_processor(fs, mocked, fails):
 def create_minimal_dicom(output_filename, series_uid, additional_tags=None) -> Dataset:
     """
     Create a minimal DICOM file with the given series UID and additional tags.
-    
+
     :param output_filename: The filename to save the DICOM file
     :param series_uid: The Series Instance UID to use
     :param additional_tags: A dictionary of additional DICOM tags and their values
@@ -228,19 +235,18 @@ def create_minimal_dicom(output_filename, series_uid, additional_tags=None) -> D
     return ds
 
 
-def mock_incoming_uid(config, fs, series_uid, tags={}, name="bar", force_tags_output=None) -> Tuple[str, str]:    
+def mock_incoming_uid(config, fs, series_uid, tags={}, name="bar", force_tags_output=None) -> Tuple[str, str]:
     incoming = Path(config.incoming_folder)
     dcm_file = incoming / f"{name}.dcm"
     create_minimal_dicom(dcm_file, series_uid, tags)
-    dcm_file = process_dicom(str(dcm_file), "0.0.0.0","mercure","mercure")
-    tags_f = str(dcm_file).replace('.dcm','.tags')
+    dcm_file = process_dicom(str(dcm_file), "0.0.0.0", "mercure", "mercure")
+    tags_f = str(dcm_file).replace('.dcm', '.tags')
 
     # print("@@@@@@@", dcm_file, tags_f)
     # print("$$$$$$$" + Path(tags_f).read_text())
     # dcm_file = fs.create_file(incoming / series_uid / f"{series_uid}#{name}.dcm", contents="asdfasdfafd")
     # tags_f = fs.create_file(incoming / series_uid / f"{series_uid}#{name}.tags", contents=json.dumps(tags))
     # print("@@@@@@@", dcm_file, tags_f)
-
 
     if force_tags_output is not None:
         with open(tags_f, 'wb') as f:
@@ -253,11 +259,12 @@ def mock_incoming_uid(config, fs, series_uid, tags={}, name="bar", force_tags_ou
     # ( incoming / "receiver_info" / (series_uid+".received")).touch()
     return str(dcm_file), tags_f
 
+
 def random_port() -> int:
     """
     Generate a free port number to use as an ephemeral endpoint.
     """
-    s = socket.socket() 
+    s = socket.socket()
     s.bind(('', 0))  # bind to any available port
     port = s.getsockname()[1]  # get the port number
     s.close()

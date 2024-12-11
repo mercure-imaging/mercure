@@ -76,7 +76,7 @@ def test_execute_error_case(fs, mocked):
                 severity.ERROR,
                 """Failed command:
  ['dcmsend', '0.0.0.0', '11112', '+sd', '/var/data/source/a', '-aet', '-aec', 'foo', '-nuc', '+sp', '*.dcm', '-to', '60', '+crf', '/var/data/source/a/sent.txt'] 
-because of EXITCODE_COMMANDLINE_SYNTAX_ERROR""",
+because of EXITCODE_COMMANDLINE_SYNTAX_ERROR""",  # noqa: E501,W291
             ),
             call(
                 m_events.PROCESSING,
@@ -96,7 +96,7 @@ because of EXITCODE_COMMANDLINE_SYNTAX_ERROR""",
                 "",
                 """Failed command:
  ['dcmsend', '0.0.0.0', '11112', '+sd', '/var/data/source/a', '-aet', '-aec', 'foo', '-nuc', '+sp', '*.dcm', '-to', '60', '+crf', '/var/data/source/a/sent.txt'] 
-because of EXITCODE_COMMANDLINE_SYNTAX_ERROR""",
+because of EXITCODE_COMMANDLINE_SYNTAX_ERROR""",  # noqa: E501,W291
             ),
             call(
                 task_event.ERROR,

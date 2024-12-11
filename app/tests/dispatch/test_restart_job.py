@@ -1,6 +1,5 @@
 import copy
 import json
-import os
 import time
 import unittest
 import uuid
@@ -19,9 +18,9 @@ from docker.models.containers import ContainerCollection
 from process import processor
 from pytest_mock import MockerFixture
 from routing import router
-from tests.testing_common import (FakeDockerContainer, bookkeeper_port,
-                                  make_fake_processor, mercure_config,
-                                  mock_incoming_uid, mock_task_ids, mocked)
+from tests.testing_common import (FakeDockerContainer, bookkeeper_port,  # noqa: F401
+                                  make_fake_processor, mercure_config,  # noqa: F401
+                                  mock_incoming_uid, mock_task_ids, mocked)  # noqa: F401
 from webinterface.queue import RestartTaskErrors, restart_dispatch
 
 logger = config.get_logger()
@@ -29,7 +28,7 @@ logger = config.get_logger()
 processor_path = Path()
 config_partial: Dict[str, Dict] = {
     "modules": {
-        "test_module": Module(docker_tag="busybox:stable", settings={"fizz":"buzz"}).dict(),
+        "test_module": Module(docker_tag="busybox:stable", settings={"fizz": "buzz"}).dict(),
     },
     "rules": {
         "catchall": Rule(
@@ -43,15 +42,15 @@ config_partial: Dict[str, Dict] = {
 }
 
 dispatch_info = {
-        "target_name": ["test_target"],
-        "retries": 5,
-        "next_retry_at": time.time() - 5,
-        "status": {
-            "test_target": {
-                "state": "waiting",
-                "time": "2024-10-03 16:03:35"
-            }
+    "target_name": ["test_target"],
+    "retries": 5,
+    "next_retry_at": time.time() - 5,
+    "status": {
+        "test_target": {
+            "state": "waiting",
+            "time": "2024-10-03 16:03:35"
         }
+    }
 }
 
 dummy_task_file = {
@@ -84,7 +83,8 @@ dummy_info = {
     "mercure_server": "",
 }
 
-def test_restart_dispatch_success(fs, mocked):
+
+def test_restart_dispatch_success(fs, mocked):   # noqa: F811
     error_folder = Path("/var/data/error")
     outgoing_folder = Path("/var/data/outgoing")
     success_folder = Path("/var/data/success")
@@ -184,7 +184,7 @@ def test_restart_dispatch_fail(fs):
 
 
 # Taken directly from tests/test_processor.py
-def create_and_route(fs, mocked, task_id, config, uid="TESTFAKEUID") -> Tuple[List[str], str]:
+def create_and_route(fs, mocked, task_id, config, uid="TESTFAKEUID") -> Tuple[List[str], str]:   # noqa: F811
     print("Mocked task_id is", task_id)
 
     new_task_id = "new-task-" + str(uuid.uuid1())
@@ -196,8 +196,10 @@ def create_and_route(fs, mocked, task_id, config, uid="TESTFAKEUID") -> Tuple[Li
     router.run_router()
 
     router.route_series.assert_called_once_with(task_id, uid)  # type: ignore
-    routing.route_series.push_series_serieslevel.assert_called_once_with(task_id, {"catchall": True}, [f"{uid}#bar"], uid, unittest.mock.ANY)  # type: ignore
-    routing.route_series.push_serieslevel_outgoing.assert_called_once_with(task_id, {"catchall": True}, [f"{uid}#bar"], uid, unittest.mock.ANY, {})  # type: ignore
+    routing.route_series.push_series_serieslevel.assert_called_once_with(  # type: ignore
+        task_id, {"catchall": True}, [f"{uid}#bar"], uid, unittest.mock.ANY)
+    routing.route_series.push_serieslevel_outgoing.assert_called_once_with(  # type: ignore
+        task_id, {"catchall": True}, [f"{uid}#bar"], uid, unittest.mock.ANY, {})
 
     assert ["task.json", f"{uid}#bar.dcm", f"{uid}#bar.tags"] == [
         k.name for k in Path("/var/processing").glob("**/*") if k.is_file()
@@ -206,10 +208,11 @@ def create_and_route(fs, mocked, task_id, config, uid="TESTFAKEUID") -> Tuple[Li
     # mocked.patch("process.processor.process_series", new=mocked.spy(processor, "process_series"))
     return ["task.json", f"{uid}#bar.dcm", f"{uid}#bar.tags"], new_task_id
 
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("fail_processor", (True, False))
-async def test_dispatching_with_processing(fs, mercure_config: Callable[[Dict], Config], 
-                                           mocked: MockerFixture, fail_processor: bool):
+async def test_dispatching_with_processing(fs, mercure_config: Callable[[Dict], Config],  # noqa: F811
+                                           mocked: MockerFixture, fail_processor: bool):  # noqa: F811
     global processor_path
     config = mercure_config(
         {"process_runner": "docker", **config_partial},
@@ -218,7 +221,8 @@ async def test_dispatching_with_processing(fs, mercure_config: Callable[[Dict], 
     files, new_task_id = create_and_route(fs, mocked, task_id, config)
     processor_path = Path(f"/var/processing/{task_id}")
 
-    fake_run = mocked.Mock(return_value=FakeDockerContainer(), side_effect=make_fake_processor(fs, mocked, fail_processor))  # type: ignore
+    fake_run = mocked.Mock(return_value=FakeDockerContainer(),
+                           side_effect=make_fake_processor(fs, mocked, fail_processor))  # type: ignore
     mocked.patch.object(ContainerCollection, "run", new=fake_run)
     await processor.run_processor()
     assert not processor_path.exists()
@@ -245,7 +249,7 @@ async def test_dispatching_with_processing(fs, mercure_config: Callable[[Dict], 
     assert not folder_path.exists()  # it's not in the success folder
     assert (outgoing_folder / new_task_id).exists()  # it's in the outgoing folder ready to retry
     task_file_json = json.loads((outgoing_folder / new_task_id / mercure_names.TASKFILE).read_text())
-    assert task_file_json["dispatch"]["retries"] == None  # indicates that it hasn't retried at all
+    assert task_file_json["dispatch"]["retries"] is None  # indicates that it hasn't retried at all
 
     # Once moved to outgoing folder, verify the execution/dispatching
     mocked.patch("dispatch.target_types.base.check_output", return_value="Success")

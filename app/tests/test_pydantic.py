@@ -2,9 +2,9 @@
 test_bookkeeper.py
 ==================
 """
-import bookkeeper as b
-import testing_common
-from testing_common import *
+# import bookkeeper as b
+# import testing_common
+from testing_common import *  # noqa: F401
 
 
 def test_config(mercure_config, mocker):

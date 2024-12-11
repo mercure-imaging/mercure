@@ -4,17 +4,16 @@ test_bookkeeper.py
 """
 import multiprocessing
 import time
-from pathlib import Path
 
 import requests
-import testing_common
 from bookkeeping import bookkeeper
-from testing_common import bookkeeper_port, mercure_config
+from testing_common import bookkeeper_port, mercure_config  # noqa: F401
 
 # def run_server(app, port):
 #     b.uvicorn.run(app, host="localhost", port=port)
 
-def test_bookkeeper_starts(fs, bookkeeper_port, mercure_config):
+
+def test_bookkeeper_starts(fs, bookkeeper_port, mercure_config):   # noqa: F811
     """ Checks if bookkeeper.py can be started. """
     bookkeeper_process = multiprocessing.Process(target=bookkeeper.main)
     bookkeeper_process.start()

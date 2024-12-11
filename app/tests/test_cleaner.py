@@ -9,7 +9,7 @@ import cleaner
 import common.helper as helper
 from freezegun import freeze_time
 from pyfakefs.fake_filesystem import FakeFilesystem
-from testing_common import *
+from testing_common import *  # noqa: F401
 
 
 # helper func

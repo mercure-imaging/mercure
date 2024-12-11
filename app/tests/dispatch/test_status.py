@@ -18,6 +18,8 @@ dummy_info = {
 }
 
 # "fs" is the reference to the fake file system
+
+
 def test_is_not_read_for_sending_for_empty_dir(fs):
     fs.create_dir("/var/data/")
     assert not is_ready_for_sending("/var/data")
