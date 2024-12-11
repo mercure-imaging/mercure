@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% block title %}Overview{% endblock %}
+
+{% block content %}
+<main role="main">
+
+  <div class="container">
+    <h1 class="title">System Status</h1>
+
+    <h5 class="title is-5 configtitle" style="margin-top: 34px; margin-bottom: 4px !important;"><i
+        class="fas fa-sitemap has-text-success"></i>&nbsp;&nbsp;Services</h5>
+    <div class="columns">
+      <div class="column">
+        <div class="field is-grouped is-grouped-multiline" style="margin-top: 16px;">
+          {% for service in service_status %}
+          <div class="control">
+            <div class="tags has-addons">
+              <span class="tag is-dark">{{ service['name'] }}</span>
+              <span {% if service['running'] == True %} class="tag is-success">
+                UP
+                {% elif service['running'] == False %} class="tag is-danger">DOWN
+                {% else %} class="tag">UNKNOWN
+                {% endif %}</span>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        <h5 class="title is-5 configtitle" style="margin-top: 40px; margin-bottom: 0px !important;"><i
+            class="fas fa-heartbeat has-text-success"></i>&nbsp;&nbsp;Server Health</h5>
+        <div class="columns" style="margin-top: 0px;">
+          <div class="column is-one-third">
+            <label class="label">Diskspace:</label>
+            <progress
+              class="progress {% if used_space|int < 60 %}is-success{% else %}{% if used_space|int > 80 %} is-danger{% else %}is-warning{% endif %}{% endif %}"
+              value="{{used_space}}" max="100"></progress>{{free_space}} / {{total_space}} GB available
+          </div>
+        </div>
+        <h5 class="title is-5 configtitle" style="margin-top: 40px; margin-bottom: 0px !important;"><i
+          class="fas fa-toolbox has-text-success"></i>&nbsp;&nbsp;Control</h5>
+        <div class="columns" style="margin-top: 10px;">
+          <div class="column is-one-third">
+            {% if is_admin %}
+            {% if runtime != "nomad" %}
+            <button class="button" id="servicecontrol" value="" onclick="showControlModal()" style="margin-right: 4px;"><i
+                class="fas fa-wrench"></i>&nbsp;Service Control</button>
+            {% endif %}                
+            {% endif %}
+            <a class="button" href="/configuration" id="configurationbutton" ><i
+              class="fas fa-sliders-h" ></i>&nbsp;Configuration</a>             
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="controlmodal">
+    <div class="modal-background"></div>
+    <div class="modal-card">
+      <header class="modal-card-head">
+        <p class="modal-card-title">Service Control</p>
+      </header>
+      <section class="modal-card-body">
+        <div class="field">
+          <label class="label">Selected Services</label>
+          <div class="control select is-multiple is-fullwidth">
+            <select name='services[]' multiple size="9" id="controlserviceselector" style="overflow-y: auto;">
+              {% for service in service_status %}
+              <option {% if loop.index> 1 %}selected{% endif %} value="{{service["id"]}}">{{service['name']}}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label class="label">Action</label>
+          <div class="select">
+            <div class="control">
+              <select name="action" id="controlserviceaction">
+                <option value="start">Start</option>
+                <option value="stop">Stop</option>
+                <option value="restart">Restart</option>
+                <option value="kill">Kill</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="field">
+          <p class="control" style="margin-top: 20px;">
+            <a id="confirmcontrolmodal" class="button is-success">Execute</a>
+            <a id="closecontrolmodal" class="button">Cancel</a>
+          </p>
+        </div>
+      </section>
+    </div>
+  </div>
+  <div class="pageloader is-success" id="controlpageloader"><span class="title">Please Wait...</span></div>
+</main>
+
+<script>
+  function showControlModal(val) {
+    $("#controlmodal").addClass("is-active");
+    $("#controlserviceselector").focus();
+  }
+
+  $(function () {
+    $('#closecontrolmodal').click(function () {
+      $("#controlmodal").removeClass("is-active");
+    })
+  });
+
+  $('#confirmcontrolmodal').click(function () {
+    $("#controlpageloader").addClass('is-active');
+    $("#controlmodal").removeClass("is-active");
+    $.ajax({
+      type: 'POST',
+      url: '/services/control',
+      data: {
+        "services": $("#controlserviceselector").val().join(),
+        "action": $("#controlserviceaction").val()
+      },
+      dataType: 'json',
+      success: function (data) {
+        var pageloaderTimeout = setTimeout(function () {
+          $("#controlpageloader").removeClass('is-active');
+          clearTimeout(pageloaderTimeout);
+          location.reload();
+        }, 2000);
+      },
+      error: function (data) {
+        $("#controlpageloader").removeClass('is-active');
+        alert('An error occurred while trying to execute the action.')
+      }
+    });
+  })
+
+</script>
+
+{% endblock %}
