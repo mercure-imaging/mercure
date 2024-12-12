@@ -49,9 +49,7 @@ def route_studies(pending_series: Dict[str, float]) -> None:
     # TODO: Handle studies that exceed the "force completion" timeout in the "CONDITION_RECEIVED_SERIES" mode
     studies_ready = {}
     with os.scandir(config.mercure.studies_folder) as it:
-        if isinstance(it,pyfakefs.fake_scandir.ScanDirIter):
-            # prevent pyfakefs issue
-            it = list(it) # type: ignore
+        it = list(it) # type: ignore
         for entry in it:
             if entry.is_dir() and not is_study_locked(entry.path):
                 if is_study_complete(entry.path, pending_series):
