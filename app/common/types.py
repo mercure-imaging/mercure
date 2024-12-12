@@ -194,6 +194,7 @@ class Rule(BaseModel, Compat):
     action: Literal["route", "both", "process", "discard", "notification"] = "route"
     action_trigger: Literal["series", "study"] = "series"
     study_trigger_condition: Literal["timeout", "received_series"] = "timeout"
+    study_force_completion_action: Literal["discard", "proceed", "ignore"] = "discard"
     study_trigger_series: str = ""
     priority: Literal["normal", "urgent", "offpeak"] = "normal"
     processing_module: Union[str, List[str]] = ""
@@ -345,6 +346,7 @@ class TaskStudy(BaseModel, Compat):
     received_series: Optional[List[str]]
     received_series_uid: Optional[List[str]]
     complete_force: bool = False
+    complete_force_action: Optional[str] = "discard"
 
 
 class TaskProcessing(BaseModel, Compat):

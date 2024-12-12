@@ -67,6 +67,7 @@ class mercure_rule:
     ACTION = "action"
     ACTION_TRIGGER = "action_trigger"
     STUDY_TRIGGER_CONDITION = "study_trigger_condition"
+    STUDY_FORCE_COMPLETION_ACTION = "study_force_completion_action"
     STUDY_TRIGGER_CONDITION_TIMEOUT = "timeout"
     STUDY_TRIGGER_CONDITION_RECEIVED_SERIES = "received_series"
     STUDY_TRIGGER = "study_trigger"
@@ -91,6 +92,7 @@ class mercure_study:
     COMPLETE_TRIGGER = "complete_trigger"
     COMPLETE_REQUIRED_SERIES = "complete_required_series"
     COMPLETE_FORCE = "complete_force"
+    COMPLETE_FORCE_ACTION = "complete_force_action"
 
 
 class mercure_info:
