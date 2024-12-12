@@ -188,7 +188,7 @@ def execute(
     if len(current_status) != len(dispatch_info.target_name):
         current_status = {target_item: TaskDispatchStatus(state="waiting", time=get_now_str())
                           for target_item in dispatch_info.target_name}
-     
+
     for target_item in dispatch_info.target_name:
         if current_status[target_item] and current_status[target_item].state != "complete":  # type: ignore
 

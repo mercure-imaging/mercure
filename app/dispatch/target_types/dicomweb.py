@@ -27,7 +27,7 @@ class DicomWebTargetHandler(TargetHandler[DicomWebTarget]):
     icon = "fa-share-alt"
     display_name = "DICOMweb"
     can_pull = True
-    
+
     def create_client(self, target: DicomWebTarget) -> Union[DICOMfileClient, DICOMwebClient]:
         session = None
         headers = None
@@ -39,7 +39,7 @@ class DicomWebTargetHandler(TargetHandler[DicomWebTarget]):
                 # Todo: store the db elsewhere if we don't have write access to this folder
                 # This also makes it possible to run tests under pyfakefs since it can't patch sqlite3
                 return DICOMfileClient(url=target.url, in_memory=True, update_db=True)
-          
+
         if target.http_user and target.http_password:
             session = create_session_from_user_pass(username=target.http_user, password=target.http_password)
         elif target.access_token:
@@ -71,7 +71,7 @@ class DicomWebTargetHandler(TargetHandler[DicomWebTarget]):
                 break
         else:
             use_filters.update({k: v[0] for k, v in search_filters.items()})
-        
+
         metadata = client.search_for_series(search_filters=use_filters, get_remaining=True,
                                             fields=['StudyInstanceUID',
                                                     'SeriesInstanceUID',
@@ -79,7 +79,7 @@ class DicomWebTargetHandler(TargetHandler[DicomWebTarget]):
                                                     'StudyDescription', 'SeriesDescription'] + list(search_filters.keys()))
         meta_datasets = [pydicom.Dataset.from_json(ds) for ds in metadata]
         result = []
-        
+
         # In case the server didn't filter as strictly as we expected it to, filter again
         for d in meta_datasets:
             for filter in search_filters:

@@ -99,7 +99,7 @@ async def show_modules(request):
     template = "modules.html"
     context = {
         "request": request,
-        
+
         "page": "modules",
         "modules": config.mercure.modules,
         "used_modules": used_modules,
@@ -203,7 +203,7 @@ async def edit_module(request):
     template = "modules_edit.html"
     context = {
         "request": request,
-        
+
         "page": "modules",
         "module": config.mercure.modules[module],
         "module_name": module,

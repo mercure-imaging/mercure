@@ -25,7 +25,7 @@ class ProgressInfo():
 class TargetHandler(Generic[TargetTypeVar]):
     test_template = "targets/base-test.html"
     can_pull = False
-    
+
     def __init__(self):
         pass
 
@@ -45,7 +45,7 @@ class TargetHandler(Generic[TargetTypeVar]):
 
     class NoSuchTagException(Exception):
         pass
-    
+
     def get_from_target(self, target: TargetTypeVar, accession: str,
                         search_filters: Dict[str, List[str]], destination_path: str) -> Generator[ProgressInfo, None, None]:
         raise Exception()
@@ -57,7 +57,7 @@ class TargetHandler(Generic[TargetTypeVar]):
             if not tag_for_keyword(t):
                 raise TargetHandler.NoSuchTagException(f"Invalid search filter: no such tag '{t}'")
         return []
-    
+
     def handle_error(self, e, command) -> None:
         pass
 

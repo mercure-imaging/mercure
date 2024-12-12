@@ -136,7 +136,7 @@ class ClassBasedRQTask():
             (dest_folder / ".complete").touch()
             lock.free()
             return
-        
+
         config.read_config()
         moved_files = []
         try:
@@ -167,7 +167,7 @@ class ClassBasedRQTask():
 class CheckAccessionsTask(ClassBasedRQTask):
     type: str = "check_accessions"
     _queue: str = rq_fast_queue.name
-    
+
     def execute(self, *, accessions: List[str], node: Union[DicomTarget, DicomWebTarget],
                 search_filters: Dict[str, List[str]] = {}):
         """
@@ -211,7 +211,7 @@ class GetAccessionTask(ClassBasedRQTask):
     def execute(self, *, accession: str, node: Union[DicomTarget, DicomWebTarget],
                 search_filters: Dict[str, List[str]], path: str, force_rule: Optional[str] = None):
         logger.info(f"Getting ACC {accession}")
-        
+
         def error_handler(reason) -> None:
             logger.error(reason)
             if not job_parent:
@@ -262,13 +262,13 @@ class GetAccessionTask(ClassBasedRQTask):
                     except Exception as e:
                         error_handler(f"Failure during move to destination of accession {accession}: {e}")
                         raise
-                        
+
                 job_parent.get_meta()  # there is technically a race condition here...
                 job_parent.meta['completed'] += 1
                 job_parent.meta['progress'] = (f"{job_parent.meta['started'] } /"
                                                f" {job_parent.meta['completed'] } / {job_parent.meta['total']}")
                 job_parent.save_meta()  # type: ignore
-            
+
         except Exception as e:
             error_handler(f"Failure with accession {accession}: {e}")
             raise
@@ -325,7 +325,7 @@ class MainTask(ClassBasedRQTask):
 class QueryPipeline():
     job: Job
     connection: Redis
-    
+
     def __init__(self, job: Union[Job, str], connection: Redis = redis):
         self.connection = connection
         if isinstance(job, str):
@@ -482,11 +482,11 @@ class QueryPipeline():
 
     def get_meta(self) -> Any:
         return cast(dict, self.job.get_meta())
-        
+
     @property
     def meta(self) -> typing.Dict:
         return cast(dict, self.job.meta)
-    
+
     @property
     def is_failed(self) -> bool:
         return cast(bool, self.job.is_failed)
@@ -494,7 +494,7 @@ class QueryPipeline():
     @property
     def is_finished(self) -> bool:
         return cast(bool, self.job.is_finished)
-    
+
     @property
     def is_paused(self) -> bool:
         return cast(bool, self.meta.get("paused", False))
@@ -510,15 +510,15 @@ class QueryPipeline():
         except rq.exceptions.DeserializationError:
             logger.info(f"Failed to deserialize job kwargs: {self.job.data}")
             raise
-    
+
     @property
     def result(self) -> Any:
         return self.job.result
-    
+
     @property
     def created_at(self) -> datetime:
         return cast(datetime, self.job.created_at)
-    
+
     @property
     def enqueued_at(self) -> datetime:
         return cast(datetime, self.job.enqueued_at)
@@ -546,5 +546,5 @@ class QueryPipeline():
             job_ids.add(j_id)
 
         jobs = (Job.fetch(j_id, connection) for j_id in job_ids)
-        
+
         return (QueryPipeline(j, connection) for j in jobs if j and j.get_meta().get("type") == type)

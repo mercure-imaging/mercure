@@ -134,11 +134,11 @@ async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_p
     else:
         logger.error("No docker tag supplied")
         return False
-      
+
     runtime = {}
     if config.mercure.processing_runtime:
         runtime = dict(runtime=config.mercure.processing_runtime)
-        
+
     additional_volumes: Dict[str, Dict[str, str]] = decode_task_json(module.additional_volumes)
     module_environment = decode_task_json(module.environment)
     mercure_environment = dict(MERCURE_IN_DIR=container_in_dir, MERCURE_OUT_DIR=container_out_dir)
@@ -163,7 +163,7 @@ async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_p
         raise Exception(f"Docker tag {docker_tag} not found, aborting.") from None
     except (json.decoder.JSONDecodeError, KeyError):
         raise Exception("Failed to parse MONAI app manifest.")
-    
+
     module.requires_root = module.requires_root or image_is_monai_map
 
     # Merge the two dictionaries
@@ -267,7 +267,7 @@ async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_p
             logs = helper.localize_log_timestamps(logs, config)
             if not config.mercure.processing_logs.discard_logs:
                 monitor.send_process_logs(task.id, task_processing.module_name, logs)
-            
+
             logger.info(logs)
         logger.info("=== MODULE OUTPUT - END ==========================================")
 
@@ -277,8 +277,8 @@ async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_p
             if (datetime.now() - docker_pull_throttle.get("busybox:stable-musl",
                                                           datetime.fromisocalendar(1, 1, 1))
                 ).total_seconds() > 86400:  # noqa: 125
-                    docker_client.images.pull("busybox:stable-musl")  # noqa: E117
-                    docker_pull_throttle["busybox:stable_musl"] = datetime.now()
+                docker_client.images.pull("busybox:stable-musl")  # noqa: E117
+                docker_pull_throttle["busybox:stable_musl"] = datetime.now()
         except Exception:
             logger.exception("could not pull busybox")
 
@@ -499,7 +499,7 @@ async def process_series(folder: Path) -> None:
                 monitor.send_task_event(
                     monitor.task_event.PROCESS_COMPLETE, task_id, file_count_complete, "", "Processing job complete"
                 )
-                
+
                 # If dispatching not needed, then trigger the completion notification (for docker/systemd)
                 if not needs_dispatching:
                     monitor.send_task_event(monitor.task_event.COMPLETE, task_id, 0, "", "Task complete")
@@ -530,7 +530,7 @@ async def process_series(folder: Path) -> None:
                     trigger_notification(task, mercure_events.ERROR)
     return
 
-        
+
 def push_input_task(input_folder: Path, output_folder: Path):
     task_json = output_folder / "task.json"
     if not task_json.exists():

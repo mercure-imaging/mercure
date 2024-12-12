@@ -18,16 +18,16 @@ from .common import router, JSONErrorResponse
 from .query.jobs import CheckAccessionsTask, QueryPipeline
 
 logger = config.get_logger()
- 
+
 
 @router.post("/query/retry_job")
 @requires(["authenticated", "admin"], redirect="login")
 async def post_retry_job(request):
     job = QueryPipeline(request.query_params['id'])
-    
+
     if not job:
         return JSONErrorResponse(f"Job with id {request.query_params['id']} not found.", status_code=404)
-    
+
     try:
         job.retry()
     except Exception:
@@ -78,7 +78,7 @@ async def get_job_info(request):
     job = QueryPipeline(job_id)
     if not job:
         return JSONErrorResponse('Job not found', status_code=404)
-    
+
     subjob_info: List[Dict[str, Any]] = []
     for subjob in job.get_subjobs():
         if not subjob:
@@ -197,7 +197,7 @@ async def query_jobs(request):
             task_dict["progress"] = f"{n_total} / {n_total}"
         elif task_dict["status"] in ("deferred", "started", "paused", "canceled"):
             task_dict["progress"] = f"{n_completed} / {n_total}"
-        
+
         # if task_dict["status"] == "canceled" and
         if task.meta.get('paused', False) and task_dict["status"] not in ("finished", "failed"):
             if n_started < n_completed:  # TODO: this does not work
@@ -266,7 +266,7 @@ async def check_accessions(request):
 
     node_name = form.get("dicom_node")
     accessions = form.get("accessions", "").split(",")
-    
+
     search_filters = {}
     if search_filter := form.get("series_description"):
         search_filters["SeriesDescription"] = [x.strip() for x in search_filter.split(",")]
@@ -276,7 +276,7 @@ async def check_accessions(request):
     node = config.mercure.targets.get(node_name)
     if not isinstance(node, (DicomWebTarget, DicomTarget)):
         return JSONErrorResponse(f"Invalid DICOM node '{node_name}'.", status_code=400)
-    
+
     try:
         job = CheckAccessionsTask().create_job(connection=redis, accessions=accessions,
                                                node=node, search_filters=search_filters)

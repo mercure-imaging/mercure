@@ -69,7 +69,7 @@ class task_event(StringEnum):
     REMOVE = auto()
     PROCESS_MODULE_BEGIN = auto()
     PROCESS_MODULE_COMPLETE = auto()
-    
+
 
 class severity(Enum):
     """Severity level associated to the mercure events."""

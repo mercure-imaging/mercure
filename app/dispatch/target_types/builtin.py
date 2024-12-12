@@ -64,7 +64,7 @@ class DicomTargetHandler(SubprocessTargetHandler[DicomTarget]):
             return c.findscu(accession, search_filters)
         except DicomClientCouldNotFind:
             return []
-        
+
     def get_from_target(self, target: DicomTarget, accession: str,
                         search_filters: Dict[str, List[str]], destination_path: str) -> Generator[ProgressInfo, None, None]:
         config.read_config()

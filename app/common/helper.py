@@ -33,7 +33,7 @@ def validate_folders(config) -> Tuple[bool, str]:
                 print(f"Created directory: {folder}")
             except Exception:
                 return False, f"Folder {folder} does not exist."
-            
+
         if not os.access(folder, os.R_OK | os.W_OK):
             return False, f"No read/write access to {folder}"
     return True, ""
@@ -212,7 +212,7 @@ class FileLock:
     """Helper class that implements a file lock. The lock file will be removed also from the destructor so that
     no spurious lock files remain if exceptions are raised."""
     lockCreated = False
-    
+
     def __init__(self, path_for_lockfile: Path):
         self.lockfile = path_for_lockfile
         # TODO: Handle case if lock file cannot be created

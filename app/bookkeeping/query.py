@@ -204,9 +204,9 @@ async def find_task(request) -> JSONResponse:
     study_filter = request.query_params.get("study_filter", "false")
     filter_term = ""
     if search_term:
-        filter_term = (f"""and ((tag_accessionnumber ilike '{search_term}%') """ +
-                       f"""or (tag_patientid ilike '{search_term}%') """ +
-                       f"""or (tag_patientname ilike '%{search_term}%'))""")
+        filter_term = (f"""and ((tag_accessionnumber ilike '{search_term}%') """
+                       + f"""or (tag_patientid ilike '{search_term}%') """
+                       + f"""or (tag_patientname ilike '%{search_term}%'))""")
 
     study_filter_term = ""
     if study_filter == "true":

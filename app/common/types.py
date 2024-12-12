@@ -33,7 +33,7 @@ class Target(BaseModel, Compat):
     @property
     def short_description(self) -> str:
         return ""
-    
+
     @classmethod
     def __get_validators__(cls):
         # one or more validators may be yielded which will be called in the
@@ -121,7 +121,7 @@ class RsyncTarget(Target):
     host: str
     password: Optional[str]
     run_on_complete: bool = False
-    
+
     @property
     def short_description(self) -> str:
         return f"{self.host}:{self.folder}"
@@ -254,7 +254,7 @@ class DicomDestination(BaseModel):
 class DicomRetrieveConfig(BaseModel):
     dicom_nodes: List[DicomNodeBase] = []
     destination_folders: List[DicomDestination] = []
-    
+
 
 class Config(BaseModel, Compat):
     appliance_name: str

@@ -67,7 +67,7 @@ class SimpleDicomClient():
         self.calling_aet = calling_aet or "MERCURE"
         self.called_aet = called_aet
         self.output_dir = out_dir
-    
+
     def handle_store(self, event):
         try:
             ds = event.dataset
@@ -178,7 +178,7 @@ class SimpleDicomClient():
             #   `rsp_identifier` is the C-GET response's Identifier dataset
             if not status:
                 raise DicomClientBadStatus()
-            
+
             if status.Status in [0xFF00, 0xFF01]:
                 yield status
                 success = True

@@ -366,7 +366,7 @@ def push_serieslevel_routing(
                         targets.append(rule_definition.get("target"))
                 else:
                     targets = rule_definition.get("target")
-            
+
             for target in targets:
                 if not selected_targets.get(target):
                     selected_targets[target] = [current_rule]
@@ -622,7 +622,7 @@ def remove_series(task_id: str, file_list: List[str], series_UID: str) -> bool:
         except Exception:
             logger.error(f"Error while removing file {entry}", task_id)  # handle_error
             return False
- 
+
     monitor.send_task_event(monitor.task_event.REMOVE, task_id, len(file_list), "", "Removed duplicate files")
 
     return True

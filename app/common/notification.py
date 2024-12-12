@@ -87,7 +87,7 @@ def parse_payload(
         **context,
     }
     return Template(payload_parsed).render(context)
-    
+
 
 def send_webhook(url: str, payload: str) -> None:
     if not url:

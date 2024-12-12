@@ -202,7 +202,7 @@ def main(args=sys.argv[1:]) -> None:
             config.mercure.influxdb_bucket,
             "mercure." + appliance_name + ".dispatcher." + instance_name
         )
-    
+
     logger.info(f"Dispatching folder: {config.mercure.outgoing_folder}")
     dispatcher_lockfile = Path(config.mercure.outgoing_folder + "/" + mercure_names.HALT)
 
