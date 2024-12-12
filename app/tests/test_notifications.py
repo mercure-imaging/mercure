@@ -17,17 +17,16 @@ from docker.models.containers import ContainerCollection
 from process import processor
 from pytest_mock import MockerFixture
 from routing import router
-from testing_common import *
-from testing_common import FakeDockerContainer, make_fake_processor, mock_incoming_uid
+
+from .testing_common import FakeDockerContainer, make_fake_processor, mock_incoming_uid
 
 logger = config.get_logger()
 
 processor_path = Path()
 
 
-def make_config(action, trigger_reception, trigger_completion,
-                trigger_completion_on_request,
-                trigger_error, do_request, do_error) -> Dict[str, Dict]:
+def make_config(action, trigger_reception, trigger_completion, trigger_completion_on_request, trigger_error, do_request, do_error
+                ) -> Dict[str, Dict]:
     if action in ("both", "route"):
         if do_error:
             target = "dummy_error"

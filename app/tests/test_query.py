@@ -20,7 +20,7 @@ from pynetdicom.sop_class import StudyRootQueryRetrieveInformationModelGet  # ty
 from pynetdicom.sop_class import Verification  # type: ignore
 from routing import router
 from rq import SimpleWorker
-from testing_common import bookkeeper_port, mercure_config, receiver_port  # noqa: F401
+# from testing_common import bookkeeper_port, mercure_config, receiver_port  # noqa: F401
 from webinterface.dashboards.query.jobs import GetAccessionTask, QueryPipeline
 from webinterface.dicom_client import SimpleDicomClient
 
@@ -206,8 +206,8 @@ def test_query_job(dicom_server, tempdir, rq_connection, fs):
     """
     fs.pause()
     try:
-        if (subprocess.run(['systemctl', 'is-active', "mercure_worker*"], capture_output=True, text=True, check=False,
-                           ).stdout.strip() == 'active'):
+        if (subprocess.run(['systemctl', 'is-active', "mercure_worker*"],
+                           capture_output=True, text=True, check=False).stdout.strip() == 'active'):
             raise Exception("At least one mercure worker is running, stop it before running test.")
     except subprocess.CalledProcessError:
         pass
@@ -295,8 +295,8 @@ def test_query_dicomweb(dicomweb_server, tempdir, dummy_datasets, fs, rq_connect
 
 def test_query_operations(dicomweb_server, tempdir, dummy_datasets, fs, rq_connection):
     (tempdir / "outdir").mkdir()
-    task = QueryPipeline.create([ds.AccessionNumber for ds in dummy_datasets.values()], {},
-                                dicomweb_server, (tempdir / "outdir"), redis_server=rq_connection)
+    task = QueryPipeline.create([ds.AccessionNumber for ds in dummy_datasets.values()],
+                                {}, dicomweb_server, (tempdir / "outdir"), redis_server=rq_connection)
     assert task
     assert task.meta['total'] == len(dummy_datasets)
     assert task.meta['completed'] == 0
@@ -330,8 +330,8 @@ def test_query_operations(dicomweb_server, tempdir, dummy_datasets, fs, rq_conne
 def test_query_retry(dicom_server_2: Tuple[DicomTarget, DummyDICOMServer], tempdir, dummy_datasets, fs, rq_connection):
     (tempdir / "outdir").mkdir()
     target, server = dicom_server_2
-    task = QueryPipeline.create([ds.AccessionNumber for ds in dummy_datasets.values()], {},
-                                target, (tempdir / "outdir"), redis_server=rq_connection)
+    task = QueryPipeline.create([ds.AccessionNumber for ds in dummy_datasets.values()],
+                                {}, target, (tempdir / "outdir"), redis_server=rq_connection)
 
     server.remaining_allowed_accessions = 1  # Only one accession is allowed to be retrieved
     w = SimpleWorker(["mercure_fast", "mercure_slow"], connection=rq_connection)

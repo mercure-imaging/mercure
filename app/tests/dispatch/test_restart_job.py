@@ -17,8 +17,7 @@ from docker.models.containers import ContainerCollection
 from process import processor
 from pytest_mock import MockerFixture
 from routing import router
-from tests.testing_common import (FakeDockerContainer, bookkeeper_port, make_fake_processor, mercure_config,  # noqa: F401
-                                  mock_incoming_uid, mock_task_ids, mocked)
+from tests.testing_common import FakeDockerContainer, make_fake_processor, mock_incoming_uid, mock_task_ids
 from webinterface.queue import RestartTaskErrors, restart_dispatch
 
 logger = config.get_logger()

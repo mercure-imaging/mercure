@@ -28,8 +28,8 @@ from nomad.api.jobs import Jobs
 from process import processor
 from pytest_mock import MockerFixture
 from routing import router
-from testing_common import *
-from testing_common import FakeDockerContainer, FakeImageContainer, make_fake_processor, mock_incoming_uid, mock_task_ids
+
+from .testing_common import FakeDockerContainer, FakeImageContainer, make_fake_processor, mock_incoming_uid, mock_task_ids
 
 logger = config.get_logger()
 

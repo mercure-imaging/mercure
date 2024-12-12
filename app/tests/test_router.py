@@ -17,8 +17,8 @@ from common.types import Rule, Task, TaskStudy
 from dispatch import dispatcher
 from pyfakefs.fake_filesystem import FakeFilesystem
 from routing import router
-from testing_common import *
-from testing_common import generate_uid, mock_incoming_uid, mock_task_ids, process_dicom
+
+from .testing_common import generate_uid, mock_incoming_uid, mock_task_ids, process_dicom
 
 rules = {
     "rules": {

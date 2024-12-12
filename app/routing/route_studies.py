@@ -13,8 +13,6 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, Union
 
-import pyfakefs
-
 # App-specific includes
 import common.config as config
 import common.helper as helper
@@ -36,7 +34,7 @@ def route_studies(pending_series: Dict[str, float]) -> None:
     # TODO: Handle studies that exceed the "force completion" timeout in the "CONDITION_RECEIVED_SERIES" mode
     studies_ready = {}
     with os.scandir(config.mercure.studies_folder) as it:
-        it = list(it) # type: ignore
+        it = list(it)  # type: ignore
         for entry in it:
             if entry.is_dir() and not is_study_locked(entry.path):
                 if is_study_complete(entry.path, pending_series):
@@ -198,7 +196,7 @@ def check_force_study_timeout(folder: Path) -> bool:
                 lock_file = Path(folder / mercure_names.LOCK)
                 try:
                     lock = helper.FileLock(lock_file)
-                except:
+                except Exception:
                     logger.error(f"Unable to lock study for removal {lock_file}")  # handle_error
                     return False
                 if not move_study_folder(task.id, folder.name, "DISCARD"):

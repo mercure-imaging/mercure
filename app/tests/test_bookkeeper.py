@@ -7,7 +7,6 @@ import time
 
 import requests
 from bookkeeping import bookkeeper
-from testing_common import bookkeeper_port, mercure_config  # noqa: F401
 
 # def run_server(app, port):
 #     b.uvicorn.run(app, host="localhost", port=port)

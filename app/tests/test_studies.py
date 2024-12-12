@@ -15,8 +15,8 @@ from nomad.api.job import Job
 from process import processor
 from pyfakefs.fake_filesystem import FakeFilesystem
 from routing import router
-from testing_common import *
-from testing_common import mock_incoming_uid
+
+from .testing_common import mock_incoming_uid
 
 
 def create_series(mocked, fs, config, study_uid, series_uid, series_description, study_description="") -> Tuple[str, str]:

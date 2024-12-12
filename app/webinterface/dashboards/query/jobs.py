@@ -65,8 +65,8 @@ def invoke_getdcmtags(file: Path, node: Union[DicomTarget, DicomWebTarget], forc
 
     is_fake_fs = isinstance(Path, pyfakefs.fake_pathlib.FakePathlibPathModule)
     if is_fake_fs:  # running a test
-        result = process_dicom(file, sender_address, sender_aet, receiver_aet,
-                               set_tags=[("mercureForceRule", force_rule)])  # don't bother with bookkeeper
+        result = process_dicom(file, sender_address, sender_aet, receiver_aet,   # don't bother with bookkeeper
+                               set_tags=[("mercureForceRule", force_rule)] if force_rule else [])
         if result is None:
             raise Exception("Failed to get DICOM tags from the file.")
         else:
