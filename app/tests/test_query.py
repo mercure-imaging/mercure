@@ -37,7 +37,7 @@ def rq_connection():
 
 
 @pytest.fixture(scope="module")
-def mock_node(receiver_port):  # noqa: F811
+def mock_node(receiver_port):
     return DicomTarget(ip="127.0.0.1", port=str(receiver_port), aet_target="TEST")
 
 
@@ -181,7 +181,7 @@ def tempdir():
         yield Path(d)
 
 
-def test_get_accession_job(dicom_server, dicomweb_server, mercure_config):  # noqa: F811
+def test_get_accession_job(dicom_server, dicomweb_server, mercure_config):
     """Test the get_accession_job function."""
     config = mercure_config()
     job_id = "test_job"
@@ -225,7 +225,7 @@ def test_query_job(dicom_server, tempdir, rq_connection, fs):
     assert pydicom.dcmread(example_dcm).AccessionNumber == MOCK_ACCESSIONS[0]
 
 
-def test_query_job_to_mercure(dicom_server, tempdir, rq_connection, fs, mercure_config):  # noqa: F811
+def test_query_job_to_mercure(dicom_server, tempdir, rq_connection, fs, mercure_config):
     """
     Test the create_job function.
     We use mocker to mock the queue and avoid actually creating jobs.

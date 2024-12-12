@@ -12,7 +12,7 @@ from bookkeeping import bookkeeper
 #     b.uvicorn.run(app, host="localhost", port=port)
 
 
-def test_bookkeeper_starts(fs, bookkeeper_port, mercure_config):   # noqa: F811
+def test_bookkeeper_starts(fs, bookkeeper_port, mercure_config):
     """ Checks if bookkeeper.py can be started. """
     bookkeeper_process = multiprocessing.Process(target=bookkeeper.main)
     bookkeeper_process.start()

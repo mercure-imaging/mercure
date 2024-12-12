@@ -81,7 +81,7 @@ dummy_info = {
 }
 
 
-def test_restart_dispatch_success(fs, mocked):   # noqa: F811
+def test_restart_dispatch_success(fs, mocked):
     error_folder = Path("/var/data/error")
     outgoing_folder = Path("/var/data/outgoing")
     success_folder = Path("/var/data/success")
@@ -181,7 +181,7 @@ def test_restart_dispatch_fail(fs):
 
 
 # Taken directly from tests/test_processor.py
-def create_and_route(fs, mocked, task_id, config, uid="TESTFAKEUID") -> Tuple[List[str], str]:   # noqa: F811
+def create_and_route(fs, mocked, task_id, config, uid="TESTFAKEUID") -> Tuple[List[str], str]:
     print("Mocked task_id is", task_id)
 
     new_task_id = "new-task-" + str(uuid.uuid1())
@@ -208,8 +208,8 @@ def create_and_route(fs, mocked, task_id, config, uid="TESTFAKEUID") -> Tuple[Li
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("fail_processor", (True, False))
-async def test_dispatching_with_processing(fs, mercure_config: Callable[[Dict], Config],  # noqa: F811
-                                           mocked: MockerFixture, fail_processor: bool):  # noqa: F811
+async def test_dispatching_with_processing(fs, mercure_config: Callable[[Dict], Config],
+                                           mocked: MockerFixture, fail_processor: bool):
     global processor_path
     config = mercure_config(
         {"process_runner": "docker", **config_partial},

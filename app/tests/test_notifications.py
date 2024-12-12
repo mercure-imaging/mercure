@@ -25,8 +25,8 @@ logger = config.get_logger()
 processor_path = Path()
 
 
-def make_config(action, trigger_reception, trigger_completion, trigger_completion_on_request, trigger_error, do_request, do_error
-                ) -> Dict[str, Dict]:
+def make_config(action, trigger_reception, trigger_completion, trigger_completion_on_request, trigger_error, do_request,
+                do_error) -> Dict[str, Dict]:
     if action in ("both", "route"):
         if do_error:
             target = "dummy_error"
