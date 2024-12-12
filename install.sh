@@ -537,8 +537,12 @@ if [[ $# > 0 ]];  then shift; fi
 DO_DEV_INSTALL=false
 DOCKER_BUILD=false
 DO_OPERATION="install"
-while getopts ":dbu" opt; do
+INSTALL_ORTHANC=false
+while getopts ":dbuo" opt; do
   case ${opt} in
+    o ) 
+      INSTALL_ORTHANC=true
+      ;;
     u )
       if [ $INSTALL_TYPE != "systemd" ]; then 
         echo "Invalid option for \"$INSTALL_TYPE\": -u" 1>&2
@@ -555,7 +559,7 @@ while getopts ":dbu" opt; do
       DOCKER_BUILD=true
       ;;
     \? )
-      echo "Invalid Option for \"docker\": -$OPTARG" 1>&2
+      echo "Invalid Option for \"$INSTALL_TYPE\": -$OPTARG" 1>&2
       exit 1
       ;;
   esac
@@ -593,5 +597,11 @@ case "$INSTALL_TYPE" in
     exit 1
     ;;
 esac
-
+if [ $INSTALL_ORTHANC == true ]; then 
+  echo "Installing Orthanc..."
+  cd addons/orthanc
+  sudo docker network create mercure_default || true
+  sudo docker-compose up -d
+  cd -
+fi
 echo "Installation complete"
