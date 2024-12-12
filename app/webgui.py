@@ -28,6 +28,7 @@ from typing import Any, Dict, List, Optional, Union
 import docker
 import hupper
 import nomad
+import asyncio
 
 # Starlette-related includes
 from starlette.applications import Starlette
@@ -62,7 +63,7 @@ import webinterface.modules as modules
 import webinterface.queue as queue
 import webinterface.api as api
 import webinterface.dashboards as dashboards
-from webinterface.common import *
+from webinterface.common import templates, async_run, rq_fast_scheduler, redis
 from webinterface.dashboards.query.jobs import QueryPipeline
 from decoRouter import Router as decoRouter
 router = decoRouter()
@@ -121,7 +122,7 @@ DEBUG_MODE: bool
 def read_webgui_config() -> Config:
     global webgui_config, SECRET_KEY, WEBGUI_HOST, WEBGUI_PORT, DEBUG_MODE
     webgui_config = Config((os.getenv("MERCURE_CONFIG_FOLDER") or "/opt/mercure/config") + "/webgui.env")
-    
+
     # Note: PutSomethingRandomHere is the default value in the shipped configuration file.
     #       The app will not start with this value, forcing the users to set their onw secret
     #       key. Therefore, the value is used as default here as well.
@@ -150,7 +151,7 @@ def startup(app: Starlette):
             raise Exception("Redis connection failed")
     except Exception:
         logger.error("Could not connect to Redis", exc_info=True)
-    
+
     if state["redis_connected"]:
         scheduled_jobs = rq_fast_scheduler.get_jobs()
         for job in scheduled_jobs:
@@ -240,7 +241,7 @@ async def show_log(request) -> Response:
     start_time = "00:00"
     end_date = ""
     end_time = "00:00"
-    
+
     try:
         start_date = request.query_params.get("from", "")
         start_time = request.query_params.get("from_time", "00:00")
@@ -367,7 +368,7 @@ async def show_log(request) -> Response:
     template = "logs.html"
     context = {
         "request": request,
-        
+
         "page": "logs",
         "service_logs": service_logs,
         "log_id": requested_service,
@@ -482,7 +483,7 @@ async def login(request) -> Response:
     template = "login.html"
     context = {
         "request": request,
-        
+
         "appliance_name": config.mercure.get("appliance_name", "master"),
     }
     return templates.TemplateResponse(template, context)
@@ -672,7 +673,7 @@ async def login_post(request) -> Response:
         context = {
             "request": request,
             "invalid_password": 1,
-            
+
             "appliance_name": config.mercure.get("appliance_name", "mercure Router"),
         }
         return templates.TemplateResponse(template, context)
@@ -701,7 +702,7 @@ async def settings_edit(request) -> Response:
     template = "users_edit.html"
     context = {
         "request": request,
-        
+
         "page": "settings",
         "edituser": own_name,
         "edituser_info": users.users_list[own_name],
@@ -812,7 +813,7 @@ async def homepage(request) -> Response:
     template = "index.html"
     context = {
         "request": request,
-        
+
         "page": "homepage",
         "used_space": used_space,
         "free_space": free_space,

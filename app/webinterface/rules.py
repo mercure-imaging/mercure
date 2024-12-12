@@ -19,7 +19,7 @@ import common.monitor as monitor
 from common.tags_rule_interface import TagNotFoundException
 from common.types import Rule
 import common.rule_evaluation as rule_evaluation
-from webinterface.common import *
+from webinterface.common import templates
 import common.tagslist as tagslist
 from decoRouter import Router as decoRouter
 router = decoRouter()
@@ -244,7 +244,7 @@ async def rules_test(request) -> Response:
         )
     try:
         result, attrs_accessed = rule_evaluation.eval_rule(testrule, testvalues)
-    
+
         if result:
             style = "success"
             icon = "thumbs-up"

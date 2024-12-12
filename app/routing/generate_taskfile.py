@@ -14,8 +14,8 @@ import pprint
 
 # from mypy_extensions import TypedDict
 from typing_extensions import Literal
-from typing import Dict, Optional, cast, Tuple
-from common.types import *
+from typing import Dict, Optional, cast, Tuple, Union, List, Any
+from common.types import Task, TaskInfo, TaskDispatch, TaskDispatchStatus, TaskProcessing, TaskStudy, Rule, EmptyDict
 
 # App-specific includes
 import common.config as config
@@ -93,7 +93,7 @@ def add_processing(uid: str, applied_rule: str, tags_list: Dict[str, str]
         module_names = [applied_rule_info.processing_module]
     else:
         module_names = applied_rule_info.processing_module
-    
+
     logger.info(f"module: {module_names}")
 
     process_infos = []

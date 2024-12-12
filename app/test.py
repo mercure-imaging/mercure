@@ -1,7 +1,7 @@
 import logging
 from typing import List
 from starlette.testclient import TestClient
-from webgui import *
+from webgui import services, users, create_app, startup
 import time
 import common.config as config
 
@@ -76,7 +76,7 @@ def run_test() -> None:
                     event_ids.append(line["id"])
                     p = [line[col] for col in cols]
                     print("{:<20} | {:<25} | {:<31} | {:<20}".format(*p))
- 
+
             if tests[0]["status"] == "success":
                 logger.info("Success!")
                 return

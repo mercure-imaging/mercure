@@ -17,7 +17,7 @@ from starlette.authentication import requires
 
 # App-specific includes
 import bookkeeping.database as db
-from bookkeeping.helper import *
+from bookkeeping.helper import json, CustomJSONResponse
 from common import config
 from decoRouter import Router as decoRouter
 router = decoRouter()
@@ -116,7 +116,7 @@ async def get_task_events(request) -> JSONResponse:
 
     task_id = request.query_params.get("task_id", "")
     subtask_query = sqlalchemy.select(db.tasks_table.c.id).where(db.tasks_table.c.parent_id == task_id)
-    
+
     # Note: The space at the end is needed for the case that there are no subtasks
     subtask_ids_str = ""
     for row in await db.database.fetch_all(subtask_query):
@@ -230,7 +230,7 @@ async def find_task(request) -> JSONResponse:
     #                group by a.task_id
     #                order by max(a.time) desc
     #                """
-    
+
     query_string = f"""WITH task_data AS (
                            SELECT
                                tasks.id AS task_id,

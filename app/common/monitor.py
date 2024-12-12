@@ -17,7 +17,7 @@ import datetime
 
 # App-specific includes
 from common.types import Task, TaskProcessing
-from common.event_types import *
+from common.event_types import m_events, w_events, task_event, severity
 
 
 # Create local logger instance
@@ -199,7 +199,7 @@ def send_processor_output(task: Task, task_processing: TaskProcessing, index: in
          json=dict(task_id=task.id, task_acc=task.info.acc, task_mrn=task.info.mrn,
                    module=task_processing.module_name, index=index,
                    settings=task_processing.settings, output=output))
-    
+
 
 def task_event_payload(event: task_event, task_id: str, file_count: int, target, info):
     return {

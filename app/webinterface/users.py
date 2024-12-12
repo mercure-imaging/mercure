@@ -21,7 +21,7 @@ from starlette.authentication import requires
 
 # App-specific includes
 from common.constants import mercure_names
-from webinterface.common import *
+from webinterface.common import templates
 import common.monitor as monitor
 import common.config as config
 from decoRouter import Router as decoRouter

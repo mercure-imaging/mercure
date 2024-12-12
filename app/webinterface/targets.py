@@ -16,7 +16,7 @@ from starlette.authentication import requires
 import common.config as config
 import common.monitor as monitor
 from common.types import DicomTarget
-from webinterface.common import *
+from webinterface.common import templates, get_user_information
 import dispatch.target_types as target_types
 from decoRouter import Router as decoRouter
 router = decoRouter()
