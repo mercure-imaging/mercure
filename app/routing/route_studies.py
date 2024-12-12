@@ -50,7 +50,8 @@ def route_studies(pending_series: Dict[str, float]) -> None:
     studies_ready = {}
     with os.scandir(config.mercure.studies_folder) as it:
         if isinstance(it,pyfakefs.fake_scandir.ScanDirIter):
-            it = list(it) # prevent pyfakefs issue
+            # prevent pyfakefs issue
+            it = list(it) # type: ignore
         for entry in it:
             if entry.is_dir() and not is_study_locked(entry.path):
                 if is_study_complete(entry.path, pending_series):
