@@ -1,13 +1,12 @@
+from pathlib import Path
 from typing import Any
-from common.types import RsyncTarget, Task
+
 import common.config as config
+from common.types import RsyncTarget, Task
 from webinterface.common import async_run_exec
 
-from pathlib import Path
-
-
-from .registry import handler_for
 from .base import SubprocessTargetHandler
+from .registry import handler_for
 
 logger = config.get_logger()
 

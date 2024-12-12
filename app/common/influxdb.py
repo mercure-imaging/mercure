@@ -4,9 +4,10 @@ Send data to InfluxDB metrics server.
 
 import logging
 import time
+from typing import Optional, Union
+
 from influxdb_client import InfluxDBClient, Point
 from influxdb_client.client.write_api import ASYNCHRONOUS
-from typing import Optional, Union
 
 __all__ = ['Sender', 'init', 'send']
 

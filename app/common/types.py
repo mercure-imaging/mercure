@@ -4,13 +4,13 @@ types.py
 Definitions for using TypedDicts throughout mercure.
 """
 
+import typing
 # Standard python includes
 from typing import Any, Dict, List, Optional, Type, Union, cast
-from typing_extensions import Literal, TypedDict
-from pydantic import BaseModel
-import typing
 
 from common.event_types import FailStage
+from pydantic import BaseModel
+from typing_extensions import Literal, TypedDict
 
 # TODO: Add description for the individual classes
 

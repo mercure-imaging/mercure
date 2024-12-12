@@ -3,9 +3,8 @@ from pathlib import Path
 
 import pytest
 from common.types import FolderTarget, Module, Rule
-from testing_integration_common import send_dicom, is_dicoms_in_folder, is_dicoms_received, is_series_registered
 from testing_integration_common import *
-
+from testing_integration_common import is_dicoms_in_folder, is_dicoms_received, is_series_registered, send_dicom
 from tests.testing_common import create_minimal_dicom
 
 

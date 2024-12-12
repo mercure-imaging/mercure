@@ -1,20 +1,17 @@
-from typing import Any, Dict, List
 from datetime import datetime
+from typing import Any, Dict, List
 
+import common.config as config
 # Starlette-related includes
 import rq
+from common.types import DicomTarget, DicomWebTarget, FolderTarget
+from rq.job import Job
 from starlette.authentication import requires
 from starlette.responses import JSONResponse
-
-from rq.job import Job
-
 # App-specific includes
-from webinterface.common import templates
-import common.config as config
-from common.types import DicomTarget, DicomWebTarget, FolderTarget
+from webinterface.common import redis, templates
 
-from webinterface.common import redis
-from .common import router, JSONErrorResponse
+from .common import JSONErrorResponse, router
 from .query.jobs import CheckAccessionsTask, QueryPipeline
 
 logger = config.get_logger()

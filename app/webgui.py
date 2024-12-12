@@ -4,68 +4,59 @@ webgui.py
 The web-based graphical user interface of mercure.
 """
 
+import asyncio
+import base64
 # Standard python includes
 import contextlib
-import random
-import string
-import subprocess
-import traceback
-
-import dateutil
-from common.generate_test_series import generate_series, generate_several_protocols
-from common.types import DicomTarget, Rule, Module
-import uvicorn
-import base64
-import sys
-import shutil
-import json
-import distro
-import os
 import datetime
 import html
+import json
+import os
+import random
+import shutil
+import string
+import subprocess
+import sys
+import traceback
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
-import docker
-import hupper
-import nomad
-import asyncio
-
-# Starlette-related includes
-from starlette.applications import Starlette
-from starlette.staticfiles import StaticFiles
-from starlette.responses import Response
-from starlette.responses import PlainTextResponse
-from starlette.responses import JSONResponse
-from starlette.responses import RedirectResponse
-from starlette.authentication import requires
-from starlette.authentication import (
-    AuthenticationBackend,
-    SimpleUser,
-    AuthCredentials,
-)
-from starlette.middleware.authentication import AuthenticationMiddleware
-from starlette.middleware.sessions import SessionMiddleware
-from starlette.config import Config
-from starlette.datastructures import Secret
-from starlette.routing import Route, Router
 
 # App-specific includes
 import common.config as config
-import common.monitor as monitor
 import common.helper as helper
-from common.constants import mercure_defs, mercure_names
-
-import webinterface.users as users
-import webinterface.services as services
-import webinterface.rules as rules
-import webinterface.targets as targets
-import webinterface.modules as modules
-import webinterface.queue as queue
+import common.monitor as monitor
+import dateutil
+import distro
+import hupper
+import uvicorn
 import webinterface.api as api
 import webinterface.dashboards as dashboards
-from webinterface.common import templates, async_run, rq_fast_scheduler, redis
-from webinterface.dashboards.query.jobs import QueryPipeline
+import webinterface.modules as modules
+import webinterface.queue as queue
+import webinterface.rules as rules
+import webinterface.services as services
+import webinterface.targets as targets
+import webinterface.users as users
+from common.constants import mercure_defs, mercure_names
+from common.generate_test_series import generate_series, generate_several_protocols
+from common.types import DicomTarget, Module, Rule
 from decoRouter import Router as decoRouter
+# Starlette-related includes
+from starlette.applications import Starlette
+from starlette.authentication import AuthCredentials, AuthenticationBackend, SimpleUser, requires
+from starlette.config import Config
+from starlette.datastructures import Secret
+from starlette.middleware.authentication import AuthenticationMiddleware
+from starlette.middleware.sessions import SessionMiddleware
+from starlette.responses import JSONResponse, PlainTextResponse, RedirectResponse, Response
+from starlette.routing import Route, Router
+from starlette.staticfiles import StaticFiles
+from webinterface.common import async_run, redis, rq_fast_scheduler, templates
+from webinterface.dashboards.query.jobs import QueryPipeline
+
+import docker
+import nomad
+
 router = decoRouter()
 
 

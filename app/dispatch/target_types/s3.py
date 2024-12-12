@@ -1,13 +1,12 @@
 from pathlib import Path
 
-from common.types import S3Target, TaskDispatch, Task
-from .base import TargetHandler
-from .registry import handler_for
-
-
-import common.config as config
 import boto3
 import botocore
+import common.config as config
+from common.types import S3Target, Task, TaskDispatch
+
+from .base import TargetHandler
+from .registry import handler_for
 
 logger = config.get_logger()
 

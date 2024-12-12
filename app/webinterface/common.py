@@ -4,19 +4,18 @@ common.py
 Helper functions for the graphical user interface of mercure.
 """
 
+import asyncio
 # Standard python includes
 import os
 from typing import Optional, Tuple
-import asyncio
+
+import common.config as config
+from common.constants import mercure_defs
 from redis import Redis
 from rq import Queue
-
+from rq_scheduler import Scheduler
 # Starlette-related includes
 from starlette.templating import Jinja2Templates
-
-from common.constants import mercure_defs
-from rq_scheduler import Scheduler
-import common.config as config
 
 redis = Redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379/0"))
 rq_slow_queue = Queue(name="mercure_slow", connection=redis)

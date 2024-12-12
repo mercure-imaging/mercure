@@ -1,5 +1,5 @@
-from enum import Enum, auto
 import enum
+from enum import Enum, auto
 
 
 @enum.unique

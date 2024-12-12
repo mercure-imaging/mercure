@@ -1,21 +1,21 @@
-from common.types import Task, TaskDispatch, XnatTarget
-import common.config as config
-from webinterface.common import async_run
-
-from .registry import handler_for
-from .base import TargetHandler
-
-from pathlib import Path
-import aiohttp
-import pyxnat
-from contextlib import contextmanager
-import tempfile
-import os
-import zipfile
 import datetime
 import glob
-from pydicom import dcmread
+import os
+import tempfile
+import zipfile
+from contextlib import contextmanager
+from pathlib import Path
 from urllib.parse import urlparse
+
+import aiohttp
+import common.config as config
+import pyxnat
+from common.types import Task, TaskDispatch, XnatTarget
+from pydicom import dcmread
+from webinterface.common import async_run
+
+from .base import TargetHandler
+from .registry import handler_for
 
 logger = config.get_logger()
 

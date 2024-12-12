@@ -1,8 +1,7 @@
 import asyncio
+import shutil
 import unittest
 import uuid
-import shutil
-
 from datetime import timedelta
 from pathlib import Path
 from typing import Tuple
@@ -10,14 +9,14 @@ from typing import Tuple
 import pytest
 from common import notification
 from common.constants import mercure_events, mercure_names
-from common.types import Rule, Module
+from common.types import Module, Rule
 from freezegun import freeze_time
 from nomad.api.job import Job
 from process import processor
 from pyfakefs.fake_filesystem import FakeFilesystem
 from routing import router
-from testing_common import mock_incoming_uid
 from testing_common import *
+from testing_common import mock_incoming_uid
 
 
 def create_series(mocked, fs, config, study_uid, series_uid, series_description, study_description="") -> Tuple[str, str]:

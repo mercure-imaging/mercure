@@ -1,17 +1,25 @@
 {
-    "python.linting.enabled": true,
     "html.format.enable": false,
     "cSpell.words": [
-        "mercure",
-        "starlette",
+        "dicom",
+        "dicomweb",
         "distro",
-        "uvicorn",
-        "dicom"
+        "mercure",
+        "pydicom",
+        "pynetdicom",
+        "starlette",
+        "uvicorn"
     ],
-    // "python.formatting.blackArgs": [
-    //     "--line-length=120  "
-    // ],
-    "python.formatting.provider": "autopep8",
+    "cSpell.includeRegExpList": [
+        "strings"
+    ],
+    "[python]": {
+        "editor.defaultFormatter": "ms-python.autopep8",
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": "explicit"
+        },
+    },
     "autopep8.args": ["--max-line-length", "127"],
     "editor.rulers": [127],
     "python.testing.pytestArgs": [

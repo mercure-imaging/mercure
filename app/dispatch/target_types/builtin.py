@@ -1,19 +1,16 @@
-from typing import Dict, Generator, List
-
-from pydicom import Dataset
-from common.types import DicomTarget, DicomTLSTarget, SftpTarget, DummyTarget, Task
-import common.config as config
-from common.constants import mercure_names
-from webinterface.common import async_run
-
-
 from pathlib import Path
 from shlex import split
+from typing import Dict, Generator, List
 
+import common.config as config
+from common.constants import mercure_names
+from common.types import DicomTarget, DicomTLSTarget, DummyTarget, SftpTarget, Task
+from pydicom import Dataset
+from webinterface.common import async_run
 from webinterface.dicom_client import DicomClientCouldNotFind, SimpleDicomClient
 
-from .registry import handler_for
 from .base import ProgressInfo, SubprocessTargetHandler, TargetHandler
+from .registry import handler_for
 
 DCMSEND_ERROR_CODES = {
     1: "EXITCODE_COMMANDLINE_SYNTAX_ERROR",

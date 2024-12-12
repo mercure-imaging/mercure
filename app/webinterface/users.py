@@ -6,25 +6,25 @@ Users page and user support functions for the graphical user interface of mercur
 
 # Standard python includes
 import json
-import os
 import logging
+import os
 from pathlib import Path
 from typing import Any, Dict, cast
-from passlib.apps import custom_app_context as pwd_context
-from mypy_extensions import TypedDict
-from typing_extensions import Literal
 
-# Starlette-related includes
-from starlette.applications import Starlette
-from starlette.responses import Response, PlainTextResponse, RedirectResponse
-from starlette.authentication import requires
-
+import common.config as config
+import common.monitor as monitor
 # App-specific includes
 from common.constants import mercure_names
-from webinterface.common import templates
-import common.monitor as monitor
-import common.config as config
 from decoRouter import Router as decoRouter
+from mypy_extensions import TypedDict
+from passlib.apps import custom_app_context as pwd_context
+# Starlette-related includes
+from starlette.applications import Starlette
+from starlette.authentication import requires
+from starlette.responses import PlainTextResponse, RedirectResponse, Response
+from typing_extensions import Literal
+from webinterface.common import templates
+
 router = decoRouter()
 
 ###################################################################################

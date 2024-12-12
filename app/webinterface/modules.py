@@ -8,21 +8,18 @@ Modules page for the graphical user interface of mercure.
 import json
 from typing import Dict
 
-# Starlette-related includes
-from starlette.applications import Starlette
-from starlette.responses import PlainTextResponse, RedirectResponse
-from starlette.authentication import requires
-
 # App-specific includes
 import common.config as config
 import common.helper as helper
 from common.types import Module
-
+from decoRouter import Router as decoRouter
+# Starlette-related includes
+from starlette.applications import Starlette
+from starlette.authentication import requires
+from starlette.responses import PlainTextResponse, RedirectResponse
 from webinterface.common import templates
 
 import docker
-
-from decoRouter import Router as decoRouter
 
 router = decoRouter()
 logger = config.get_logger()

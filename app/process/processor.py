@@ -4,40 +4,34 @@ processor.py
 mercure' processor that executes processing modules on DICOM series filtered for processing.
 """
 
+import asyncio
 # Standard python includes
 import base64
-import asyncio
+import json
+import os
 import shutil
 import signal
-import os
 import sys
-import json
-from typing import Dict, Optional
 import threading
-import graphyte
-import nomad
-from pathlib import Path
-import hupper
 from datetime import datetime
+from pathlib import Path
+from typing import Dict, Optional
 
+import common.config as config
 # App-specific includes
 import common.helper as helper
-import common.config as config
-import common.monitor as monitor
-from common.constants import mercure_defs, mercure_names, mercure_events
-from process.status import is_ready_for_processing
-from process.process_series import (
-    process_series,
-    move_results,
-    trigger_notification,
-    push_input_task,
-    push_input_images,
-    handle_processor_output,
-)
-from common.types import Task, TaskProcessing
 import common.influxdb
+import common.monitor as monitor
 import common.notification as notification
+import graphyte
+import hupper
+from common.constants import mercure_defs, mercure_events, mercure_names
+from common.types import Task, TaskProcessing
+from process.process_series import (handle_processor_output, move_results, process_series, push_input_images, push_input_task,
+                                    trigger_notification)
+from process.status import is_ready_for_processing
 
+import nomad
 
 # Create local logger instance
 logger = config.get_logger()

@@ -7,34 +7,31 @@ and stores the information in a database.
 
 # Standard python includes
 import contextlib
-import os
-from pathlib import Path
-import sys
-import asyncpg
-from sqlalchemy.dialects.postgresql import insert
-import uvicorn
 import datetime
-import hupper
+import os
+import sys
+from pathlib import Path
 
-# Starlette-related includes
-from starlette.applications import Starlette
-from starlette.responses import Response
-from starlette.responses import JSONResponse, PlainTextResponse
-from starlette.middleware.authentication import AuthenticationMiddleware
-from starlette_auth_toolkit.base.backends import BaseTokenAuth
-from starlette.authentication import requires
-from starlette.authentication import SimpleUser
-
-# App-specific includes
-from common import config
-import common.monitor as monitor
-from common.constants import mercure_defs
+import asyncpg
+import bookkeeping.config as bk_config
 import bookkeeping.database as db
 import bookkeeping.query as query
-import bookkeeping.config as bk_config
-from decoRouter import Router as decoRouter
-from alembic.config import Config
+import common.monitor as monitor
+import hupper
+import uvicorn
 from alembic import command
+from alembic.config import Config
+# App-specific includes
+from common import config
+from common.constants import mercure_defs
+from decoRouter import Router as decoRouter
+from sqlalchemy.dialects.postgresql import insert
+# Starlette-related includes
+from starlette.applications import Starlette
+from starlette.authentication import SimpleUser, requires
+from starlette.middleware.authentication import AuthenticationMiddleware
+from starlette.responses import JSONResponse, PlainTextResponse, Response
+from starlette_auth_toolkit.base.backends import BaseTokenAuth
 
 router = decoRouter()
 

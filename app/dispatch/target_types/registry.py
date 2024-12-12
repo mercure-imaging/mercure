@@ -1,7 +1,8 @@
 from typing import Callable, Dict, KeysView, Type, Union
-from common.types import Target
-from .base import TargetHandler
 
+from common.types import Target
+
+from .base import TargetHandler
 
 _registry: Dict[Type[Target], TargetHandler] = {}
 _registry_names: Dict[str, Type[Target]] = {}

@@ -4,24 +4,24 @@ rules.py
 Rules page for the graphical user interface of mercure.
 """
 
+import json
 # Standard python includes
 from typing import Any, Dict, Set
-import json
-
-# Starlette-related includes
-from starlette.applications import Starlette
-from starlette.responses import Response, PlainTextResponse, RedirectResponse
-from starlette.authentication import requires
 
 # App-specific includes
 import common.config as config
 import common.monitor as monitor
+import common.rule_evaluation as rule_evaluation
+import common.tagslist as tagslist
 from common.tags_rule_interface import TagNotFoundException
 from common.types import Rule
-import common.rule_evaluation as rule_evaluation
-from webinterface.common import templates
-import common.tagslist as tagslist
 from decoRouter import Router as decoRouter
+# Starlette-related includes
+from starlette.applications import Starlette
+from starlette.authentication import requires
+from starlette.responses import PlainTextResponse, RedirectResponse, Response
+from webinterface.common import templates
+
 router = decoRouter()
 
 

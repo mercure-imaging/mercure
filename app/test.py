@@ -1,9 +1,10 @@
 import logging
-from typing import List
-from starlette.testclient import TestClient
-from webgui import services, users, create_app, startup
 import time
+from typing import List
+
 import common.config as config
+from starlette.testclient import TestClient
+from webgui import create_app, services, startup, users
 
 services.read_services()
 config.read_config()

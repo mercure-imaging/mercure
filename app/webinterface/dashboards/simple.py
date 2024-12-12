@@ -1,9 +1,10 @@
-from .common import router
+import common.config as config
 from starlette.authentication import requires
-
 # App-specific includes
 from webinterface.common import templates
-import common.config as config
+
+from .common import router
+
 logger = config.get_logger()
 
 

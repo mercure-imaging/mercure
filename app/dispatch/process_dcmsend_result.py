@@ -3,6 +3,7 @@ import json
 import sys
 from pathlib import Path
 from typing import Dict
+
 from common import config
 
 logger = config.get_logger()

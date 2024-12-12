@@ -1,34 +1,32 @@
 
 
-from dataclasses import dataclass
 import dataclasses
-from pathlib import Path
 import shutil
-
 import subprocess
-from typing import Any, Dict, Generator, List, Optional, Union, cast
+import time
 import typing
+from dataclasses import dataclass
+# Standard python includes
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, Generator, List, Optional, Union, cast
 
+# App-specific includes
+import common.config as config
 import pyfakefs.fake_pathlib
-from redis import Redis
 import rq
-
-
 from common import helper
 from common.types import DicomTarget, DicomWebTarget
 from dispatch.target_types.base import ProgressInfo
 from dispatch.target_types.registry import get_handler
-# Standard python includes
-from datetime import datetime
-import time
+from redis import Redis
+from rq import Queue, get_current_job
+from rq.job import Dependency, Job, JobStatus
+from tests.getdcmtags import process_dicom
+from webinterface.common import redis, rq_fast_queue, rq_slow_queue
+
 # Starlette-related includes
 
-# App-specific includes
-import common.config as config
-from webinterface.common import redis, rq_fast_queue, rq_slow_queue
-from rq.job import Dependency, JobStatus, Job
-from rq import Queue, get_current_job
-from tests.getdcmtags import process_dicom
 
 logger = config.get_logger()
 

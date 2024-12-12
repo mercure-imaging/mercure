@@ -5,21 +5,20 @@ import uuid
 from collections.abc import Iterable
 from itertools import product
 from pathlib import Path
-from typing import Callable, Iterator, Dict, Any, List
+from typing import Any, Callable, Dict, Iterator, List
 from unittest.mock import call
 
 import pytest
-from common import notification
+from common import config, notification
 from common.constants import mercure_events
-from common.types import Module, Rule, Config
+from common.types import Config, Module, Rule
 from dispatch import dispatcher
 from docker.models.containers import ContainerCollection
 from process import processor
 from pytest_mock import MockerFixture
 from routing import router
-from testing_common import make_fake_processor, FakeDockerContainer, mock_incoming_uid
 from testing_common import *
-from common import config
+from testing_common import FakeDockerContainer, make_fake_processor, mock_incoming_uid
 
 logger = config.get_logger()
 

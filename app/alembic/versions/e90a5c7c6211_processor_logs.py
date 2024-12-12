@@ -6,10 +6,10 @@ Create Date: 2022-06-28 17:18:27.570620
 
 """
 from typing import Any, List
-from alembic import op
-import sqlalchemy as sa
-from sqlalchemy.engine.reflection import Inspector
 
+import sqlalchemy as sa
+from alembic import op
+from sqlalchemy.engine.reflection import Inspector
 
 # revision identifiers, used by Alembic.
 revision = "e90a5c7c6211"

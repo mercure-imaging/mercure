@@ -1,25 +1,15 @@
 import os
 import re
-from typing import Dict, Iterator, List
-from pynetdicom import (
-    AE,
-    QueryRetrievePresentationContexts,
-    build_role,
-    evt,
-    StoragePresentationContexts
-)
-from pynetdicom.sop_class import StudyRootQueryRetrieveInformationModelFind  # type: ignore
-from pynetdicom.sop_class import (  # type: ignore
-    PatientRootQueryRetrieveInformationModelGet,
-    StudyRootQueryRetrieveInformationModelGet,
-    PatientStudyOnlyQueryRetrieveInformationModelGet,
-    EncapsulatedSTLStorage,
-    EncapsulatedOBJStorage,
-    EncapsulatedMTLStorage,
-)
-from pydicom.uid import DeflatedExplicitVRLittleEndian
-from pydicom import Dataset
 import sys
+from typing import Dict, Iterator, List
+
+from pydicom import Dataset
+from pydicom.uid import DeflatedExplicitVRLittleEndian
+from pynetdicom import AE, QueryRetrievePresentationContexts, StoragePresentationContexts, build_role, evt
+from pynetdicom.sop_class import StudyRootQueryRetrieveInformationModelFind  # type: ignore
+from pynetdicom.sop_class import (EncapsulatedMTLStorage, EncapsulatedOBJStorage, EncapsulatedSTLStorage,  # type: ignore
+                                  PatientRootQueryRetrieveInformationModelGet,
+                                  PatientStudyOnlyQueryRetrieveInformationModelGet, StudyRootQueryRetrieveInformationModelGet)
 
 
 class DicomClientCouldNotAssociate(Exception):

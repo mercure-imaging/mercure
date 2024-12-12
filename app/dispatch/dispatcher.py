@@ -6,28 +6,26 @@ The dispatcher service of mercure that executes the DICOM transfer to the differ
 
 # Standard python includes
 import asyncio
-import logging
 import json
+import logging
 import os
 import signal
 import sys
-from pathlib import Path
-import graphyte
-import hupper
 from datetime import datetime
+from pathlib import Path
 
 # App-specific includes
 import common.config as config
 import common.helper as helper
-import common.monitor as monitor
-from common.constants import mercure_names
-from dispatch.status import is_ready_for_sending
-from dispatch.send import execute
-from common.constants import mercure_defs
 import common.influxdb
+import common.monitor as monitor
 import common.notification as notification
+import graphyte
+import hupper
+from common.constants import mercure_defs, mercure_names
 from common.types import Task
-
+from dispatch.send import execute
+from dispatch.status import is_ready_for_sending
 
 # Create local logger instance
 logger = config.get_logger()

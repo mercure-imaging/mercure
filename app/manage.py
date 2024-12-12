@@ -1,7 +1,8 @@
 #!/usr/bin/env python
+import test as mercure_test
+
 import click
 import webinterface.users as users
-import test as mercure_test
 
 
 @click.group()

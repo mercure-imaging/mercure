@@ -2,19 +2,6 @@
 testing_common.py
 =================
 """
-from tests.getdcmtags import process_dicom
-from pydicom.uid import generate_uid
-from pydicom.dataset import Dataset, FileDataset, FileMetaDataset
-from common.types import Config
-import pytest
-
-import routing  # noqa: F401
-import process  # noqa: F401
-import common   # noqa: F401
-
-import docker.errors
-import common.config as config
-from bookkeeping import bookkeeper
 import json
 import os
 import shutil
@@ -23,7 +10,18 @@ import uuid
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterator, Optional, Tuple
 
+import common  # noqa: F401
+import common.config as config
+import docker.errors
+import process  # noqa: F401
 import pydicom
+import pytest
+import routing  # noqa: F401
+from bookkeeping import bookkeeper
+from common.types import Config
+from pydicom.dataset import Dataset, FileDataset, FileMetaDataset
+from pydicom.uid import generate_uid
+from tests.getdcmtags import process_dicom
 
 pydicom.config.settings.reading_validation_mode = pydicom.config.IGNORE
 pydicom.config.settings.writing_validation_mode = pydicom.config.IGNORE

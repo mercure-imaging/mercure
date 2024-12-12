@@ -7,11 +7,10 @@ Handling of configuration setting for the bookkeeper service
 # Standard python includes
 import os
 from typing import Optional
-import daiquiri
 
+import daiquiri
 # Starlette-related includes
 from starlette.config import Config
-
 
 # Create local logger instance
 logger = daiquiri.getLogger("config")

@@ -7,18 +7,18 @@ Targets page for the graphical user interface of mercure.
 # Standard python includes
 from typing import Union
 
-# Starlette-related includes
-from starlette.applications import Starlette
-from starlette.responses import Response, PlainTextResponse, RedirectResponse
-from starlette.authentication import requires
-
 # App-specific includes
 import common.config as config
 import common.monitor as monitor
-from common.types import DicomTarget
-from webinterface.common import templates, get_user_information
 import dispatch.target_types as target_types
+from common.types import DicomTarget
 from decoRouter import Router as decoRouter
+# Starlette-related includes
+from starlette.applications import Starlette
+from starlette.authentication import requires
+from starlette.responses import PlainTextResponse, RedirectResponse, Response
+from webinterface.common import get_user_information, templates
+
 router = decoRouter()
 
 logger = config.get_logger()

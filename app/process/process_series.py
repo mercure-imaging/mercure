@@ -7,32 +7,27 @@ Helper functions for mercure's processor module
 # Standard python includes
 import json
 import os
-from pathlib import Path
-import sys
-from typing import Any, Dict, cast, Optional
 import shutil
+import sys
 from datetime import datetime
-import docker
+from pathlib import Path
+from typing import Any, Dict, Optional, cast
 
-import nomad
-from jinja2 import Template
-
+import common.config as config
+import common.helper as helper
+import common.log_helpers as log_helpers
 # App-specific includes
 import common.monitor as monitor
-import common.helper as helper
-import common.config as config
-
-from common.constants import mercure_names
-from common.types import Task, Module, TaskProcessing
 import common.notification as notification
-from common.version import mercure_version
-import common.log_helpers as log_helpers
-from common.constants import (
-    mercure_events,
-)
+from common.constants import mercure_events, mercure_names
 from common.event_types import FailStage
+from common.types import Module, Task, TaskProcessing
+from common.version import mercure_version
 from dispatch.send import update_fail_stage
+from jinja2 import Template
 
+import docker
+import nomad
 
 logger = config.get_logger()
 

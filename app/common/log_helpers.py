@@ -1,13 +1,13 @@
 import collections.abc
 import logging
+import os
 import re
 import sys
-import os
-from typing import Tuple
 import typing
+from typing import Tuple
+
 import daiquiri
-from common import helper
-from common import event_types, monitor
+from common import event_types, helper, monitor
 
 setup_complete = False
 

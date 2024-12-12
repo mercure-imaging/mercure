@@ -4,10 +4,10 @@ helper.py
 Helper functions for the bookkeeper service.
 """
 
-# Standard python includes
-from typing import Any
 import datetime
 import json
+# Standard python includes
+from typing import Any
 
 # Starlette-related includes
 from starlette.responses import JSONResponse

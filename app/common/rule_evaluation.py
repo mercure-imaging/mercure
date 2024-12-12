@@ -10,7 +10,7 @@ from typing import Any, Dict, Optional, Tuple
 # App-specific includes
 import common.monitor as monitor
 from common import config
-from common.tags_rule_interface import Tags, TagNotFoundException
+from common.tags_rule_interface import TagNotFoundException, Tags
 
 # Create local logger instance
 logger = config.get_logger()

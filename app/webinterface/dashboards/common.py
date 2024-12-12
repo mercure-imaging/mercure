@@ -1,5 +1,5 @@
 from decoRouter import Router as decoRouter
-from starlette.responses import RedirectResponse, JSONResponse
+from starlette.responses import JSONResponse, RedirectResponse
 
 router = decoRouter()
 

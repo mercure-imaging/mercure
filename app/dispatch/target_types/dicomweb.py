@@ -1,20 +1,19 @@
 import os
-from pathlib import Path
 import sqlite3
-from typing import Dict, Generator, List, Union
-from dicomweb_client import DICOMfileClient
-from requests.exceptions import HTTPError
 import time
-import pydicom
-from common.types import DicomWebTarget, TaskDispatch, Task
-from .base import ProgressInfo, TargetHandler
-from .registry import handler_for
-
-from dicomweb_client.api import DICOMwebClient
-from dicomweb_client.session_utils import create_session_from_user_pass
-
+from pathlib import Path
+from typing import Dict, Generator, List, Union
 
 import common.config as config
+import pydicom
+from common.types import DicomWebTarget, Task, TaskDispatch
+from dicomweb_client import DICOMfileClient
+from dicomweb_client.api import DICOMwebClient
+from dicomweb_client.session_utils import create_session_from_user_pass
+from requests.exceptions import HTTPError
+
+from .base import ProgressInfo, TargetHandler
+from .registry import handler_for
 
 logger = config.get_logger()
 

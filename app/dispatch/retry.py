@@ -1,11 +1,10 @@
-from typing import cast, Dict, Union
-
-from common.types import Task, TaskDispatch, TaskDispatchStatus, EmptyDict
 import json
 import time
 from pathlib import Path
+from typing import Dict, Union, cast
 
 from common.constants import mercure_names
+from common.types import EmptyDict, Task, TaskDispatch, TaskDispatchStatus
 
 
 def increase_retry(source_folder, retry_max, retry_delay) -> bool:

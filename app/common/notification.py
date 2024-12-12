@@ -4,30 +4,26 @@ notification.py
 Helper functions for triggering webhook calls.
 """
 
+import asyncio
 # Standard python includes
 import json
-import ssl
-from typing import Any, Dict, List, Optional
-import typing
-import aiohttp
-import asyncio
-import traceback
-
-import jinja2.utils
-
-from common import monitor
-from common.types import Rule, Task, TaskProcessing
-from .helper import loop
-import common.config as config
-from jinja2 import Template
 import smtplib
+import ssl
+import traceback
+import typing
 from email.message import EmailMessage
+from typing import Any, Dict, List, Optional
 
+import aiohttp
+import common.config as config
+import jinja2.utils
+from common import monitor
 # App-specific includes
-from common.constants import (
-    mercure_events,
-)
+from common.constants import mercure_events
+from common.types import Rule, Task, TaskProcessing
+from jinja2 import Template
 
+from .helper import loop
 
 # Create local logger instance
 logger = config.get_logger()

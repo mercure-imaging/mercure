@@ -7,6 +7,7 @@ Semantic version handling for mercure.
 # Standard python includes
 import os
 from pathlib import Path
+
 import common.log_helpers as log_helpers
 
 # Create local logger instance

@@ -7,28 +7,19 @@ which describe the job to be done and maintain a journal of the executed actions
 
 # Standard python includes
 import json
-from pathlib import Path
+import pprint
 import socket
 from datetime import datetime
-import pprint
-
-# from mypy_extensions import TypedDict
-from typing_extensions import Literal
-from typing import Dict, Optional, cast, Tuple, Union, List, Any
-from common.types import Task, TaskInfo, TaskDispatch, TaskDispatchStatus, TaskProcessing, TaskStudy, Rule, EmptyDict
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple, Union, cast
 
 # App-specific includes
 import common.config as config
 import common.monitor as monitor
-from common.constants import (
-    mercure_defs,
-    mercure_names,
-    mercure_rule,
-    mercure_options,
-    mercure_actions,
-)
+from common.constants import mercure_actions, mercure_defs, mercure_names, mercure_options, mercure_rule
 from common.helper import get_now_str
-
+from common.types import EmptyDict, Rule, Task, TaskDispatch, TaskDispatchStatus, TaskInfo, TaskProcessing, TaskStudy
+from typing_extensions import Literal
 
 # Create local logger instance
 logger = config.get_logger()

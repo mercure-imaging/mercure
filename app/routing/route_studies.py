@@ -4,37 +4,24 @@ route_studies.py
 Provides functions for routing and processing of studies (consisting of multiple series).
 """
 
+import json
 # Standard python includes
 import os
+import shutil
+import uuid
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, Union
-import uuid
-import json
-import shutil
-from datetime import datetime, timedelta
 
 # App-specific includes
 import common.config as config
-import common.rule_evaluation as rule_evaluation
-import common.monitor as monitor
-import common.notification as notification
 import common.helper as helper
 import common.log_helpers as log_helpers
+import common.monitor as monitor
+import common.notification as notification
+import common.rule_evaluation as rule_evaluation
+from common.constants import mercure_actions, mercure_events, mercure_names, mercure_rule
 from common.types import Task, TaskHasStudy, TaskInfo
-from common.constants import (
-    # mercure_defs,
-    mercure_names,
-    mercure_actions,
-    mercure_rule,
-    # mercure_config,
-    # mercure_options,
-    # mercure_folders,
-    # mercure_sections,
-    # mercure_study,
-    # mercure_info,
-    mercure_events,
-)
-
 
 # Create local logger instance
 logger = config.get_logger()

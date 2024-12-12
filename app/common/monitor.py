@@ -7,18 +7,17 @@ Helper functions and definitions for monitoring mercure's operations via the boo
 # Standard python includes
 import asyncio
 import asyncio.exceptions
-from json import JSONDecodeError
+import datetime
 import os
 import time
+from json import JSONDecodeError
 from typing import Any, Dict, Optional
+
 import aiohttp
 import daiquiri
-import datetime
-
+from common.event_types import m_events, severity, task_event, w_events
 # App-specific includes
 from common.types import Task, TaskProcessing
-from common.event_types import m_events, w_events, task_event, severity
-
 
 # Create local logger instance
 logger = daiquiri.getLogger("monitor")  # log_helpers.get_logger("monitor", True)

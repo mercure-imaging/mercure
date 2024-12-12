@@ -6,7 +6,6 @@ import json
 import os
 import unittest
 import uuid
-
 from pathlib import Path
 from typing import Tuple
 from unittest.mock import call
@@ -19,9 +18,7 @@ from dispatch import dispatcher
 from pyfakefs.fake_filesystem import FakeFilesystem
 from routing import router
 from testing_common import *
-from testing_common import mock_task_ids, generate_uid, mock_incoming_uid, process_dicom
-
-# import common.config as config
+from testing_common import generate_uid, mock_incoming_uid, mock_task_ids, process_dicom
 
 rules = {
     "rules": {

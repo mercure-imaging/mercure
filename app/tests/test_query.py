@@ -13,11 +13,11 @@ from fakeredis import FakeStrictRedis
 from pydicom.dataset import Dataset, FileMetaDataset
 from pydicom.uid import ExplicitVRLittleEndian, generate_uid
 from pynetdicom import AE, StoragePresentationContexts, evt
-from pynetdicom.sop_class import (CTImageStorage,  # type: ignore
-                                  PatientRootQueryRetrieveInformationModelGet,
-                                  StudyRootQueryRetrieveInformationModelFind,
-                                  StudyRootQueryRetrieveInformationModelGet,
-                                  Verification)
+from pynetdicom.sop_class import CTImageStorage  # type: ignore # mypy doesn't understand pynetdicom sop classes
+from pynetdicom.sop_class import PatientRootQueryRetrieveInformationModelGet  # type: ignore
+from pynetdicom.sop_class import StudyRootQueryRetrieveInformationModelFind  # type: ignore
+from pynetdicom.sop_class import StudyRootQueryRetrieveInformationModelGet  # type: ignore
+from pynetdicom.sop_class import Verification  # type: ignore
 from routing import router
 from rq import SimpleWorker
 from testing_common import bookkeeper_port, mercure_config, receiver_port  # noqa: F401

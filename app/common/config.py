@@ -8,17 +8,16 @@ mercure's configuration management, used by various mercure modules
 import json
 import os
 from pathlib import Path
-from typing_extensions import Literal
 from typing import Dict, cast
 
+import common.helper as helper
 # App-specific includes
 import common.monitor as monitor
-import common.helper as helper
-from common.constants import mercure_names
-from common.types import Config
-from common.log_helpers import get_logger
 import common.tagslist as tagslist
-
+from common.constants import mercure_names
+from common.log_helpers import get_logger
+from common.types import Config
+from typing_extensions import Literal
 
 # Create local logger instance
 logger = get_logger()

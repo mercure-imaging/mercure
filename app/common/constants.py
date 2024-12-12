@@ -6,6 +6,7 @@ mercure-wide constants, used for standardizing key names and extensions.
 
 # App-specific includes
 from enum import IntEnum
+
 from common.version import mercure_version
 
 

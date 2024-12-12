@@ -13,22 +13,20 @@ import os
 import signal
 import sys
 import time
-from datetime import timedelta, datetime
+from datetime import datetime, timedelta
 from pathlib import Path
-from shutil import rmtree, disk_usage
-import graphyte
-import hupper
+from shutil import disk_usage, rmtree
 
 # App-specific includes
 import common.config as config
-
 import common.helper as helper
-import common.monitor as monitor
-from common.monitor import task_event
-from common.constants import mercure_defs
 import common.influxdb
+import common.monitor as monitor
 import common.notification as notification
-
+import graphyte
+import hupper
+from common.constants import mercure_defs
+from common.monitor import task_event
 
 # Setup daiquiri logger
 logger = config.get_logger()

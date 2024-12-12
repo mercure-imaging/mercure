@@ -4,17 +4,16 @@ api.py
 API backend functions for AJAX querying from the web frontend.
 """
 
-# Standard python includes
-import daiquiri
-
-# Starlette-related includes
-from starlette.applications import Starlette
-from starlette.responses import JSONResponse
-from starlette.authentication import requires
-
 # App-specific includes
 import common.monitor as monitor
+# Standard python includes
+import daiquiri
 from decoRouter import Router as decoRouter
+# Starlette-related includes
+from starlette.applications import Starlette
+from starlette.authentication import requires
+from starlette.responses import JSONResponse
+
 router = decoRouter()
 
 logger = daiquiri.getLogger("api")

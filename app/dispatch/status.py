@@ -9,11 +9,10 @@ import json
 from pathlib import Path
 from typing import Optional
 
+from common import config
 # App-specific includes
 from common.constants import mercure_names
 from common.types import Task
-
-from common import config
 
 logger = config.get_logger()
 

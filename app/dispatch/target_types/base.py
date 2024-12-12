@@ -1,14 +1,13 @@
-from dataclasses import dataclass
-
-from pydicom import Dataset
-from common.types import Task, TaskDispatch
-import common.config as config
-from subprocess import CalledProcessError, check_output
-from typing import Any, Dict, Generator, List, TypeVar, Generic
-from pydicom.datadict import tag_for_keyword
-
-from pathlib import Path
 import subprocess
+from dataclasses import dataclass
+from pathlib import Path
+from subprocess import CalledProcessError, check_output
+from typing import Any, Dict, Generator, Generic, List, TypeVar
+
+import common.config as config
+from common.types import Task, TaskDispatch
+from pydicom import Dataset
+from pydicom.datadict import tag_for_keyword
 
 logger = config.get_logger()
 

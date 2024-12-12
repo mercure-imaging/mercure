@@ -144,3 +144,5 @@ build-getdcmtags-Desktop_Qt_5_13_0_GCC_64bit-Debug/Makefile
 
 # ignore temporary file with custom dicom tags to be read
 dcm_extra_tags
+
+.pytest_cache/

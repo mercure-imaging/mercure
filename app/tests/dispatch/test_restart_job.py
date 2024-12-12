@@ -4,23 +4,21 @@ import time
 import unittest
 import uuid
 from pathlib import Path
-from typing import Callable, Tuple, Dict, List
+from typing import Callable, Dict, List, Tuple
 
 import common.config as config
 import pytest
 import routing
 import routing.generate_taskfile
 from common.constants import mercure_actions, mercure_names
-from common.types import Module, Rule, Config
+from common.types import Config, Module, Rule
 from dispatch.send import execute
 from docker.models.containers import ContainerCollection
-# import processor
 from process import processor
 from pytest_mock import MockerFixture
 from routing import router
-from tests.testing_common import (FakeDockerContainer, bookkeeper_port,  # noqa: F401
-                                  make_fake_processor, mercure_config,  # noqa: F401
-                                  mock_incoming_uid, mock_task_ids, mocked)  # noqa: F401
+from tests.testing_common import (FakeDockerContainer, bookkeeper_port, make_fake_processor, mercure_config,  # noqa: F401
+                                  mock_incoming_uid, mock_task_ids, mocked)
 from webinterface.queue import RestartTaskErrors, restart_dispatch
 
 logger = config.get_logger()

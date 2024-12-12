@@ -6,26 +6,26 @@ mercure's central router module that evaluates the routing rules and decides whi
 
 # Standard python includes
 import asyncio
-import time
-import signal
 import os
+import signal
 import sys
+import time
 import typing
-import graphyte
-import hupper
+from dataclasses import dataclass, field
 from typing import Dict
 
+import common.config as config
+import common.helper as helper
+import common.influxdb
+import common.monitor as monitor
+import common.notification as notification
+import graphyte
+import hupper
 # App-specific includes
 from common.constants import mercure_defs
-import common.helper as helper
-import common.config as config
-import common.monitor as monitor
-from routing.route_series import route_series, route_error_files
+from routing.common import SeriesItem, generate_task_id
+from routing.route_series import route_error_files, route_series
 from routing.route_studies import route_studies
-from routing.common import generate_task_id, SeriesItem
-import common.influxdb
-import common.notification as notification
-from dataclasses import dataclass, field
 
 
 @dataclass

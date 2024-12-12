@@ -1,12 +1,12 @@
+import shutil
+import uuid
 from pathlib import Path
 
-import shutil
-from common.types import FolderTarget, TaskDispatch, Task
+import common.config as config
+from common.types import FolderTarget, Task, TaskDispatch
+
 from .base import TargetHandler
 from .registry import handler_for
-import uuid
-
-import common.config as config
 
 logger = config.get_logger()
 

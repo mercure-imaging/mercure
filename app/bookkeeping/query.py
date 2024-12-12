@@ -4,22 +4,22 @@ query.py
 Entry functions of the bookkeeper for querying processing information.
 """
 
+import datetime
+from pathlib import Path
 # Standard python includes
 from typing import Dict
-from pathlib import Path
-import datetime
-import sqlalchemy
-
-# Starlette-related includes
-from starlette.applications import Starlette
-from starlette.responses import JSONResponse
-from starlette.authentication import requires
 
 # App-specific includes
 import bookkeeping.database as db
-from bookkeeping.helper import json, CustomJSONResponse
+import sqlalchemy
+from bookkeeping.helper import CustomJSONResponse, json
 from common import config
 from decoRouter import Router as decoRouter
+# Starlette-related includes
+from starlette.applications import Starlette
+from starlette.authentication import requires
+from starlette.responses import JSONResponse
+
 router = decoRouter()
 
 tz_conversion = ""

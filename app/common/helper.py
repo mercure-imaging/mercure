@@ -5,17 +5,18 @@ Various internal helper functions for mercure.
 """
 # Standard python includes
 import asyncio
-from datetime import datetime
-from datetime import time as _time
 import inspect
-from pathlib import Path
+import os
 import re
 import threading
+from datetime import datetime
+from datetime import time as _time
+from pathlib import Path
 from typing import Callable, Optional, Tuple
+
+import common.influxdb
 import dateutil
 import graphyte
-import os
-import common.influxdb
 
 # Global variable to broadcast when the process should terminate
 terminate = False

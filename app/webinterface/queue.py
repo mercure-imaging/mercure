@@ -4,26 +4,26 @@ queue.py
 Queue page for the graphical user interface of mercure.
 """
 
+import collections
+import json
+import os
+import shutil
 # Standard python includes
 from enum import Enum
-import os
 from pathlib import Path
-import json
 from typing import Dict
-import collections
-import shutil
-
-# Starlette-related includes
-from starlette.applications import Starlette
-from starlette.responses import PlainTextResponse, JSONResponse
-from starlette.authentication import requires
 
 # App-specific includes
 import common.config as config
-from common.constants import mercure_names, mercure_actions
-from webinterface.common import templates
+from common.constants import mercure_actions, mercure_names
 from common.types import Task
 from decoRouter import Router as decoRouter
+# Starlette-related includes
+from starlette.applications import Starlette
+from starlette.authentication import requires
+from starlette.responses import JSONResponse, PlainTextResponse
+from webinterface.common import templates
+
 router = decoRouter()
 
 logger = config.get_logger()

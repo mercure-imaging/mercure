@@ -4,18 +4,18 @@ database.py
 Database functions needed for the bookkeeper service.
 """
 
+import bookkeeping.config as bk_config
+# App-specific includes
+import common.monitor as monitor
+import databases
 # Standard python includes
 import sqlalchemy
+from common import config
 from sqlalchemy.sql import func
-import databases
 
 # Starlette-related includes
 
-# App-specific includes
-import common.monitor as monitor
-import bookkeeping.config as bk_config
 
-from common import config
 logger = config.get_logger()
 
 ###################################################################################

@@ -4,33 +4,26 @@ route_series.py
 Provides functions for routing/processing of series. For study-level processing, series will be pushed into study folders.
 """
 
+import json
 # Standard python includes
 import os
+import shutil
+import typing
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Tuple, Union
-import typing
-from typing_extensions import Literal
-import json
-import shutil
 
 # App-specific includes
 import common.config as config
-import common.rule_evaluation as rule_evaluation
-import common.monitor as monitor
 import common.helper as helper
-import common.notification as notification
 import common.log_helpers as log_helpers
+import common.monitor as monitor
+import common.notification as notification
+import common.rule_evaluation as rule_evaluation
+from common.constants import mercure_actions, mercure_defs, mercure_events, mercure_names, mercure_options, mercure_rule
 from common.types import Rule
-from common.constants import (
-    mercure_defs,
-    mercure_names,
-    mercure_actions,
-    mercure_rule,
-    mercure_options,
-    mercure_events,
-)
-from routing.generate_taskfile import create_series_task, create_study_task, update_study_task
 from routing.common import generate_task_id
+from routing.generate_taskfile import create_series_task, create_study_task, update_study_task
+from typing_extensions import Literal
 
 # Create local logger instance
 logger = config.get_logger()
