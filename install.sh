@@ -55,7 +55,7 @@ MERCURE_BASE=/opt/mercure
 DATA_PATH=$MERCURE_BASE/data
 CONFIG_PATH=$MERCURE_BASE/config
 DB_PATH=$MERCURE_BASE/db
-MERCURE_SRC=.
+MERCURE_SRC=$(readlink -f .)
 
 if [ -f "$CONFIG_PATH"/db.env ]; then 
   sudo chown $USER "$CONFIG_PATH"/db.env 
@@ -68,7 +68,7 @@ echo "mercure installation folder: $MERCURE_BASE"
 echo "Data folder: $DATA_PATH"
 echo "Config folder: $CONFIG_PATH"
 echo "Database folder: $DB_PATH"
-echo "mercure source directory: $(readlink -f $MERCURE_SRC)"
+echo "mercure source directory: $MERCURE_SRC"
 echo ""
 
 create_user () {
@@ -348,6 +348,26 @@ link_binaries() {
 
 install_app_files() {
   local overwrite=${1:-false}
+  if [ $DO_DEV_INSTALL = true ]; then 
+    if [ -e "$MERCURE_BASE"/app ]; then # app already exists
+      if [ -L "$MERCURE_BASE"/app ]; then # it's already linked somewhere
+        sudo unlink "$MERCURE_BASE"/app
+      else
+        read -p "App directory $MERCURE_BASE/app already exists. Delete and link to $MERCURE_SRC/app? " ANS
+        if [ "$ANS" != "y" ]; then
+          echo "Update aborted."
+          exit 1
+        fi
+        sudo rm -rf "$MERCURE_BASE"/app
+      fi
+    fi
+    echo "## Linking app files..."
+    sudo ln -s "$MERCURE_SRC/app" "$MERCURE_BASE"
+    link_binaries
+    sudo chown -R $OWNER:$OWNER "$MERCURE_SRC/app"
+    sudo usermod -aG $OWNER $USER
+    return
+  fi
 
   if [ "$overwrite" = true ] || [ ! -e "$MERCURE_BASE"/app ]; then
     echo "## Installing app files..."
@@ -411,13 +431,13 @@ systemd_install () {
   create_folders
   install_configuration
   sudo cp -n "$MERCURE_SRC"/installation/sudoers/* /etc/sudoers.d/
-  install_packages
-  install_docker
+  # install_packages
+  # install_docker
   install_app_files
-  install_dependencies
-  install_postgres
+  # install_dependencies
+  # install_postgres
   sudo chown -R mercure:mercure "$MERCURE_BASE"
-  install_services
+  # install_services
 }
 
 docker_install () {
@@ -430,7 +450,7 @@ docker_install () {
     build_docker
   fi
   setup_docker
-  if [ $DOCKER_DEV = true ]; then
+  if [ $DO_DEV_INSTALL = true ]; then
     setup_docker_dev
   fi
   start_docker
@@ -451,14 +471,15 @@ systemd_update () {
     exit 1
   fi
   local OLD_VERSION=`cat $MERCURE_BASE/app/VERSION`
-  echo "Update mercure from $OLD_VERSION to $VERSION (y/n)?"
-  read -p "WARNING: Server may require manual fixes after update. Taking backups beforehand is recommended. " ANS
-  if [ "$ANS" = "y" ]; then
-    echo "Updating mercure..."
-  else
-    echo "Update aborted."
-    exit 0
+  if [ $FORCE_INSTALL != "y" ]; then
+    echo "Update mercure from $OLD_VERSION to $VERSION (y/n)?"
+    read -p "WARNING: Server may require manual fixes after update. Taking backups beforehand is recommended. " ANS
+    if [ "$ANS" != "y" ]; then
+      echo "Update aborted."
+      exit 0
+    fi
   fi
+  echo "Updating mercure..."
   local services=("ui" "receiver" "bookkeeper" "dispatcher" "cleaner" "bookkeeper" )
   for service in "${services[@]}"; do
     if systemctl is-active --quiet mercure_$service.service; then
@@ -482,13 +503,15 @@ while getopts ":hy" opt; do
     h )
       echo "Usage:"
       echo "    install.sh -h                     Display this help message."
-      echo "    install.sh [-y] docker [OPTIONS]  Install with docker-compose."
-      echo "    install.sh [-y] systemd           Install as systemd service."
+      echo "    install.sh [-y] docker [-dbu]  Install with docker-compose."
+      echo "    install.sh [-y] systemd [-d]      Install as systemd service."
       echo "    install.sh [-y] nomad             Install as nomad job."
 
       echo "    Options:   "
+      echo "                      -d              Development mode"
+      echo "              systemd:"
+      echo "                      -u              Update"
       echo "              docker:"
-      echo "                      -d              Development mode "
       echo "                      -b              Build containers"
       exit 0
       ;;
@@ -510,28 +533,37 @@ OPTIND=1
 INSTALL_TYPE="${1:-docker}"
 if [[ $# > 0 ]];  then shift; fi
 
-if [ $INSTALL_TYPE = "systemd_update" ]; then 
+
+DO_DEV_INSTALL=false
+DOCKER_BUILD=false
+DO_OPERATION="install"
+while getopts ":dbu" opt; do
+  case ${opt} in
+    u )
+      if [ $INSTALL_TYPE != "systemd" ]; then 
+        echo "Invalid option for \"$INSTALL_TYPE\": -u" 1>&2
+      fi
+      INSTALL_TYPE="systemd_update"
+      ;;
+    d )
+      DO_DEV_INSTALL=true
+      ;;
+    b )
+      if [ $INSTALL_TYPE != "docker" ]; then 
+        echo "Invalid option for \"$INSTALL_TYPE\": -b" 1>&2
+      fi
+      DOCKER_BUILD=true
+      ;;
+    \? )
+      echo "Invalid Option for \"docker\": -$OPTARG" 1>&2
+      exit 1
+      ;;
+  esac
+done
+
+if [ $INSTALL_TYPE == "systemd_update" ]; then 
   systemd_update
   exit 0
-fi
-if [ $INSTALL_TYPE = "docker" ]; then
-  DOCKER_DEV=false
-  DOCKER_BUILD=false
-  while getopts ":db" opt; do
-    case ${opt} in
-      d )
-        DOCKER_DEV=true
-        ;;
-      b )
-        DOCKER_BUILD=true
-        ;;
-      \? )
-        echo "Invalid Option for \"docker\": -$OPTARG" 1>&2
-        exit 1
-        ;;
-    esac
-  done
-  shift $((OPTIND -1))
 fi
 
 if [ $FORCE_INSTALL = "y" ]; then
