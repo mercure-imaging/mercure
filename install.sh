@@ -17,7 +17,7 @@ if [ $UBUNTU_VERSION != "20.04" ] && [ $UBUNTU_VERSION != "22.04" ] && [ $UBUNTU
   exit 1
 fi
 
-if [ ! -f "VERSION" ]; then
+if [ ! -f "app/VERSION" ]; then
     echo "Error: VERSION file missing. Unable to proceed."
     exit 1
 fi
