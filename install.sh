@@ -431,13 +431,13 @@ systemd_install () {
   create_folders
   install_configuration
   sudo cp -n "$MERCURE_SRC"/installation/sudoers/* /etc/sudoers.d/
-  # install_packages
-  # install_docker
+  install_packages
+  install_docker
   install_app_files
-  # install_dependencies
-  # install_postgres
+  install_dependencies
+  install_postgres
   sudo chown -R mercure:mercure "$MERCURE_BASE"
-  # install_services
+  install_services
 }
 
 docker_install () {
