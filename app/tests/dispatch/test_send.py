@@ -4,6 +4,7 @@ from pathlib import Path
 from subprocess import CalledProcessError
 from unittest.mock import call
 
+import common
 from common.constants import mercure_names
 from common.monitor import m_events, severity, task_event
 from dispatch.send import execute, is_ready_for_sending

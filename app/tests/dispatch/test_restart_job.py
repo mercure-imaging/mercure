@@ -4,14 +4,14 @@ import time
 import unittest
 import uuid
 from pathlib import Path
-from typing import Callable, Tuple, Dict
+from typing import Callable, Tuple, Dict, List
 
 import common.config as config
 import pytest
 import routing
 import routing.generate_taskfile
 from common.constants import mercure_actions, mercure_names
-from common.types import *
+from common.types import Module, Rule, Config
 from dispatch.send import execute
 from docker.models.containers import ContainerCollection
 # import processor
