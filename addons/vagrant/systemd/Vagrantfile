@@ -16,6 +16,7 @@ opts = GetoptLong.new(
   [ '--dev', GetoptLong::OPTIONAL_ARGUMENT ],
   [ '--smaller-disk', GetoptLong::OPTIONAL_ARGUMENT ],
   [ '--docker', GetoptLong::OPTIONAL_ARGUMENT ],
+  [ '--systemd', GetoptLong::OPTIONAL_ARGUMENT ],
   [ '--dev-tag', GetoptLong::OPTIONAL_ARGUMENT ],
   [ '--no-provision', GetoptLong::OPTIONAL_ARGUMENT ]
 )
