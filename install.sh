@@ -367,8 +367,8 @@ install_app_files() {
     link_binaries
     sudo chown -R $OWNER:$OWNER "$MERCURE_SRC/app"
     # the mercure user and running user will be in each other's groups
-    sudo usermod -aG $OWNER $USER
-    sudo usermod -aG $USER $OWNER
+    sudo usermod -aG $OWNER $(logname)
+    sudo usermod -aG $(logname) $OWNER
     return
   fi
 
