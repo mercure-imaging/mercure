@@ -22,7 +22,7 @@ if [ ! -f "app/VERSION" ]; then
     exit 1
 fi
 VERSION=`cat app/VERSION`
-IMAGE_TAG=":$VERSION"
+IMAGE_TAG=":${MERCURE_TAG:-$VERSION}"
 VER_LENGTH=${#VERSION}+28
 echo ""
 echo "mercure Installer - Version $VERSION"
@@ -327,6 +327,11 @@ setup_docker_dev () {
     echo "## Copying docker-compose.override.yml..."
     sudo cp $MERCURE_SRC/docker/docker-compose.override.yml $MERCURE_BASE
     sudo sed -i -e "s;MERCURE_SRC;$(readlink -f $MERCURE_SRC)/app;" "$MERCURE_BASE"/docker-compose.override.yml
+    if [[ -v MERCURE_TAG ]]; then # a custom tag was provided
+      sudo sed -i "s/\\\${IMAGE_TAG}/\:$MERCURE_TAG/g" $MERCURE_BASE/docker-compose.override.yml
+    else # no custom tag was provided, use latest
+      sudo sed -i "s/\\\${IMAGE_TAG}/\:latest/g" $MERCURE_BASE/docker-compose.override.yml
+    fi
     sudo chown $OWNER:$OWNER "$MERCURE_BASE"/docker-compose.override.yml
   fi
 }
@@ -366,6 +371,7 @@ install_app_files() {
     sudo chown -h $OWNER:$OWNER ./app
     link_binaries
     sudo chown -R $OWNER:$OWNER "$MERCURE_SRC/app"
+    sudo chmod g+w "$MERCURE_SRC/app"
     # the mercure user and running user will be in each other's groups
     sudo usermod -aG $OWNER $(logname)
     sudo usermod -aG $(logname) $OWNER

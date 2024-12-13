@@ -22,42 +22,42 @@ x-volumes-docker: &volumes-docker
 
 services:
   receiver:
-    image: mercureimaging/mercure-receiver:latest
+    image: mercureimaging/mercure-receiver${IMAGE_TAG}
     <<: *env
     <<: *volumes
 
   ui:
-    image: mercureimaging/mercure-ui:latest
+    image: mercureimaging/mercure-ui${IMAGE_TAG}
     <<: *env
     <<: *volumes-docker
 
   cleaner:
-    image: mercureimaging/mercure-cleaner:latest
+    image: mercureimaging/mercure-cleaner${IMAGE_TAG}
     <<: *env
     <<: *volumes
 
   dispatcher:
-    image: mercureimaging/mercure-dispatcher:latest
+    image: mercureimaging/mercure-dispatcher${IMAGE_TAG}
     <<: *env
     <<: *volumes
       
   processor:
-    image: mercureimaging/mercure-processor:latest
+    image: mercureimaging/mercure-processor${IMAGE_TAG}
     <<: *env  
     <<: *volumes-docker
 
   router:
-    image: mercureimaging/mercure-router:latest
+    image: mercureimaging/mercure-router${IMAGE_TAG}
     <<: *env
     <<: *volumes
 
   bookkeeper:
-    image: mercureimaging/mercure-bookkeeper:latest
+    image: mercureimaging/mercure-bookkeeper${IMAGE_TAG}
     <<: *env
     <<: *volumes
 
   worker_fast:
-    image: mercureimaging/mercure-worker:latest
+    image: mercureimaging/mercure-worker${IMAGE_TAG}
     restart: always
     depends_on:
       - redis
@@ -69,7 +69,7 @@ services:
     <<: *volumes
 
   worker_slow:
-    image: mercureimaging/mercure-worker:latest
+    image: mercureimaging/mercure-worker${IMAGE_TAG}
     restart: always
     depends_on:
       - redis
