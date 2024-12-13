@@ -310,14 +310,19 @@ install_docker () {
 }
 
 setup_docker () {
-  if [ ! -f "$MERCURE_BASE"/docker-compose.yml ]; then
+  local overwrite=${1:-false}
+  if [ "$overwrite" = true ] || [ ! -f "$MERCURE_BASE"/docker-compose.yml ]; then
     echo "## Copying docker-compose.yml..."
     sudo cp $MERCURE_SRC/docker/docker-compose.yml $MERCURE_BASE
     sudo sed -i -e "s/\\\${DOCKER_GID}/$(getent group docker | cut -d: -f3)/g" $MERCURE_BASE/docker-compose.yml
     sudo sed -i -e "s/\\\${UID}/$(getent passwd mercure | cut -d: -f3)/g" $MERCURE_BASE/docker-compose.yml
     sudo sed -i -e "s/\\\${GID}/$(getent passwd mercure | cut -d: -f4)/g" $MERCURE_BASE/docker-compose.yml
 
-    sudo sed -i "s/\\\${IMAGE_TAG}/$IMAGE_TAG/g" $MERCURE_BASE/docker-compose.yml
+    if [[ -v MERCURE_TAG ]]; then # a custom tag was provided
+      sudo sed -i "s/\\\${IMAGE_TAG}/\:$MERCURE_TAG/g" $MERCURE_BASE/docker-compose.yml
+    else
+      sudo sed -i "s/\\\${IMAGE_TAG}/$IMAGE_TAG/g" $MERCURE_BASE/docker-compose.yml
+    fi
     sudo chown $OWNER:$OWNER "$MERCURE_BASE"/docker-compose.yml
   fi
 }
@@ -343,8 +348,9 @@ build_docker () {
 
 start_docker () {
   echo "## Starting docker compose..."  
-  cd /opt/mercure
+  pushd $MERCURE_BASE
   sudo docker-compose up -d
+  popd
 }
 
 link_binaries() {
@@ -505,6 +511,30 @@ systemd_update () {
   echo "Update complete."
 }
 
+docker_update () {
+  if [ ! -f $MERCURE_BASE/docker-compose.yml ]; then
+    echo "ERROR: $MERCURE_BASE/docker-compose.yml does not exist; is Mercure installed?"
+    exit 1
+  fi
+  if [ -f $MERCURE_BASE/docker-compose.override.yml ]; then
+    echo "ERROR: $MERCURE_BASE/docker-compose.override.yml exists. Updating a dev install is not supported."
+    exit 1  
+  fi
+  if [ $FORCE_INSTALL != "y" ]; then
+    echo "Update mercure to ${MERCURE_TAG:-VERSION} (y/n)?"
+    read -p "WARNING: Server may require manual fixes after update. Taking backups beforehand is recommended. " ANS
+    if [ "$ANS" != "y" ]; then
+      echo "Update aborted."
+      exit 0
+    fi
+  fi
+  # sudo sed -E "s/(image\: mercureimaging.*?\:).*/\1foo/g" docker-compose.yml 
+  pushd $MERCURE_BASE
+  sudo docker-compose down || true
+  popd
+  setup_docker true
+  start_docker
+}
 FORCE_INSTALL="n"
 
 while getopts ":hy" opt; do
@@ -553,10 +583,7 @@ while getopts ":dbuo" opt; do
       INSTALL_ORTHANC=true
       ;;
     u )
-      if [ $INSTALL_TYPE != "systemd" ]; then 
-        echo "Invalid option for \"$INSTALL_TYPE\": -u" 1>&2
-      fi
-      INSTALL_TYPE="systemd_update"
+      DO_OPERATION="update"
       ;;
     d )
       DO_DEV_INSTALL=true
@@ -574,8 +601,16 @@ while getopts ":dbuo" opt; do
   esac
 done
 
-if [ $INSTALL_TYPE == "systemd_update" ]; then 
+if [ $DO_DEV_INSTALL == true ] && [ $DO_OPERATION == "update" ]; then 
+  echo "Invalid option: cannot update a dev installation" 1>&2
+  exit 1
+fi
+
+if [ $INSTALL_TYPE == "systemd" ] && [ $DO_OPERATION == "update" ]; then 
   systemd_update
+  exit 0
+elif [ $INSTALL_TYPE == "docker" ] && [ $DO_OPERATION == "update" ]; then 
+  docker_update
   exit 0
 fi
 
@@ -608,9 +643,9 @@ case "$INSTALL_TYPE" in
 esac
 if [ $INSTALL_ORTHANC == true ]; then 
   echo "Installing Orthanc..."
-  cd addons/orthanc
+  pushd addons/orthanc
   sudo docker network create mercure_default || true
   sudo docker-compose up -d
-  cd -
+  popd
 fi
 echo "Installation complete"

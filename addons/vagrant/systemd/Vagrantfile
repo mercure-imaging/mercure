@@ -2,21 +2,37 @@
 # vi: set ft=ruby :
 require 'getoptlong'
 
-orthanc=''
+orthanc=false
+depth='--depth 1'
 branch='--branch latest-stable'
+tag=''
 use_default_disk=false
+dev_mode=false
+
+install_type = "systemd"
 
 opts = GetoptLong.new(
   [ '--orthanc', GetoptLong::OPTIONAL_ARGUMENT ],
   [ '--dev', GetoptLong::OPTIONAL_ARGUMENT ],
-  [ '--smaller-disk', GetoptLong::OPTIONAL_ARGUMENT ]
+  [ '--smaller-disk', GetoptLong::OPTIONAL_ARGUMENT ],
+  [ '--docker', GetoptLong::OPTIONAL_ARGUMENT ],
+  [ '--dev-tag', GetoptLong::OPTIONAL_ARGUMENT ],
+  [ '--no-provision', GetoptLong::OPTIONAL_ARGUMENT ]
 )
 opts.each do |opt, arg|
   case opt
     when '--orthanc'
-      orthanc='yes'
+      orthanc=true
+    when '--dev-tag'
+      tag='export MERCURE_TAG=dev '
     when '--dev'
       branch=''
+      depth=''
+      dev_mode=true
+    when '--docker'
+      install_type = 'docker'
+    when '--systemd'
+      install_type = 'systemd'
     when '--smaller-disk'
       use_default_disk=true
   end
@@ -29,42 +45,34 @@ if !use_default_disk then
 end
 
 $script = <<-SCRIPT
-echo "#### mercure installation in systemd mode"
+echo "#### mercure installation in #{install_type} mode"
 echo Cloning mercure and calling install script...
 cd ~
-git clone --depth 1 #{branch} https://github.com/mercure-imaging/mercure.git
-cd mercure
-./install.sh -y systemd
-SCRIPT
-
-$script_orthanc = <<-SCRIPT
-echo "#### mercure installation in systemd mode with Orthanc"
-echo Cloning mercure and calling install script...
-cd ~
-git clone --depth 1 #{branch} https://github.com/mercure-imaging/mercure.git
-cd mercure
-./install.sh -y systemd
-cd addons/orthanc
-docker network create mercure_default
-docker-compose up -d
+git clone #{depth} #{branch} https://github.com/mercure-imaging/mercure.git && cd mercure
+#{tag}
+./install.sh -y #{install_type} $@
 SCRIPT
 
 Vagrant.configure(2) do |config|
-  config.vm.box = "bento/ubuntu-22.04" # 20.04 LTS
+  config.vm.box = "bento/ubuntu-22.04" # 22.04 LTS
   config.vm.network "forwarded_port", guest: 8000, host: 8000, auto_correct: true, host_ip: "127.0.0.1"
   config.vm.network "forwarded_port", guest: 11112, host: 11112, auto_correct: true, host_ip: "127.0.0.1"
 
   if use_default_disk == false then
     config.disksize.size = "70GB"
   end
-  if orthanc == "yes" then
+  if dev_mode == true then
+    args = [ "-d" ]
+  else 
+    args = []
+  end
+  if orthanc == true then
     config.vm.network "forwarded_port", guest: 8008, host: 8008, auto_correct: true, host_ip: "127.0.0.1"
     config.vm.network "forwarded_port", guest: 8042, host: 8042, auto_correct: true, host_ip: "127.0.0.1"
-    config.vm.network "forwarded_port", guest: 4242, host: 4242, auto_correct: true, host_ip: "127.0.0.1"	
-    config.vm.provision "shell", inline: $script_orthanc
-  else
-    config.vm.provision "shell", inline: $script
+    config.vm.network "forwarded_port", guest: 4242, host: 4242, auto_correct: true, host_ip: "127.0.0.1"
+    args = args + [ "-o" ]
   end
+  config.vm.provision "shell", inline: $script, privileged: false, args: args
 
   # Increase memory for Parallels Desktop
   config.vm.provider "parallels" do |p, o|
@@ -73,7 +81,7 @@ Vagrant.configure(2) do |config|
 
   # Increase memory for Virtualbox
   config.vm.provider "virtualbox" do |vb|
-        vb.memory = "4096"
+    vb.memory = "4096"
   end
 
   # Increase memory for VMware

@@ -1,3 +1,5 @@
+#!/bin/bash
+set -euo pipefail
 # Read the version of the mercure source, which will be used for
 # tagging the Docker images, unless a tag has been provided 
 # through the environment variable MERCURE_TAG
