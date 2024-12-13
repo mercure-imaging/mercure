@@ -31,6 +31,7 @@ docker push mercureimaging/mercure-ui:$TAG
 docker push mercureimaging/alpine-sshd:latest
 docker push mercureimaging/processing-step:$TAG
 docker push mercureimaging/mercure-dummy-processor:$TAG
+docker push mercureimaging/mercure-worker:$TAG
 
 if [ "$ANS_LATEST" = "y" ]; then
 echo "Now pushing images as 'latest'..."
@@ -44,6 +45,7 @@ docker push mercureimaging/mercure-cleaner:latest
 docker push mercureimaging/mercure-ui:latest
 docker push mercureimaging/processing-step:latest
 docker push mercureimaging/mercure-dummy-processor:latest
+docker push mercureimaging/mercure-worker:latest
 fi
 
 echo ""
