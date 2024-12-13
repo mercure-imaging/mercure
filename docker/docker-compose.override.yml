@@ -56,6 +56,31 @@ services:
     <<: *env
     <<: *volumes
 
+  worker_fast:
+    image: mercureimaging/mercure-worker:latest
+    restart: always
+    depends_on:
+      - redis
+    deploy:
+      replicas: 2
+    environment:
+      WORKER_QUEUE: mercure_fast
+      REDIS_URL: redis://redis:6379/0
+    <<: *volumes
+
+  worker_slow:
+    image: mercureimaging/mercure-worker:latest
+    restart: always
+    depends_on:
+      - redis
+    deploy:
+      replicas: 2
+    environment:
+      WORKER_QUEUE: mercure_slow
+      REDIS_URL: redis://redis:6379/0
+    <<: *volumes
+
+
 volumes:
   db-data:
     driver: local
