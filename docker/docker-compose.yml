@@ -169,5 +169,5 @@ volumes:
       type: 'none'
       o: 'bind'
       device: '/opt/mercure/config'
-  cache:
+  redis-cache:
     driver: local
