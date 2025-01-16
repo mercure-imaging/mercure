@@ -8,12 +8,14 @@ branch='--branch latest-stable'
 tag=''
 use_default_disk=false
 dev_mode=false
+metabase=false
 
 install_type = "systemd"
 
 opts = GetoptLong.new(
   [ '--orthanc', GetoptLong::OPTIONAL_ARGUMENT ],
   [ '--dev', GetoptLong::OPTIONAL_ARGUMENT ],
+  [ '--metabase', GetoptLong::OPTIONAL_ARGUMENT ],
   [ '--smaller-disk', GetoptLong::OPTIONAL_ARGUMENT ],
   [ '--docker', GetoptLong::OPTIONAL_ARGUMENT ],
   [ '--systemd', GetoptLong::OPTIONAL_ARGUMENT ],
@@ -30,6 +32,8 @@ opts.each do |opt, arg|
       branch=''
       depth=''
       dev_mode=true
+    when '--metabase'
+      metabase=true
     when '--docker'
       install_type = 'docker'
     when '--systemd'
@@ -72,6 +76,11 @@ Vagrant.configure(2) do |config|
     config.vm.network "forwarded_port", guest: 8042, host: 8042, auto_correct: true, host_ip: "127.0.0.1"
     config.vm.network "forwarded_port", guest: 4242, host: 4242, auto_correct: true, host_ip: "127.0.0.1"
     args = args + [ "-o" ]
+  end
+  if metabase == true then
+    config.vm.network "forwarded_port", guest: 5432, host: 5432, auto_correct: true, host_ip: "127.0.0.1"
+    config.vm.network "forwarded_port", guest: 3000, host: 3000, auto_correct: true, host_ip: "127.0.0.1"
+    args = args + [ "-m" ]
   end
   config.vm.provision "shell", inline: $script, privileged: false, args: args
 

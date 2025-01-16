@@ -576,10 +576,14 @@ DO_DEV_INSTALL=false
 DOCKER_BUILD=false
 DO_OPERATION="install"
 INSTALL_ORTHANC=false
+INSTALL_METABASE=false
 while getopts ":dbuo" opt; do
   case ${opt} in
     o ) 
       INSTALL_ORTHANC=true
+      ;;
+    m )
+      INSTALL_METABASE=true
       ;;
     u )
       DO_OPERATION="update"
@@ -648,3 +652,10 @@ if [ $INSTALL_ORTHANC == true ]; then
   popd
 fi
 echo "Installation complete"
+
+if [ $INSTALL_METABASE == true ]; then
+  echo "Initializing Metabase setup..."
+  pushd addons/metabase
+  ./metabase_install.sh
+  popd
+fi

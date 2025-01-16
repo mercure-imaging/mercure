@@ -23,7 +23,7 @@ EOM
 echo "Read-only user $DB_USER created and permissions granted."
 echo "DB_METABASE_USER_PASSWORD='$DB_PASSWORD'" > "/opt/mercure/config/metabase.env"
 
-echo "## Insalling Metabase..."
+echo "## Installing Metabase..."
 sudo docker pull metabase/metabase:v0.49.7
 sudo docker run -d -p 3000:3000 --name metabase --network="host" metabase/metabase:v0.49.7
 
@@ -90,7 +90,7 @@ if [ "$SESSION_TOKEN" == "" ]; then
     echo "Authentication failed. Check your credentials."
     exit 1
 fi
-echo "Session token obtained: $SESSION_TOKEN"
+echo "Session token obtained."
 
 # Create a new API token
 API_TOKEN=$(curl -s -X POST "127.0.0.1:3000/api/api-key" \
