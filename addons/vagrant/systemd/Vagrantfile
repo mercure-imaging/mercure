@@ -33,6 +33,8 @@ opts.each do |opt, arg|
       depth=''
       dev_mode=true
     when '--metabase'
+      # TODO: change back to default before merge
+      branch='--branch dashboard'
       metabase=true
     when '--docker'
       install_type = 'docker'

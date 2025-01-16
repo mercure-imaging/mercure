@@ -577,7 +577,7 @@ DOCKER_BUILD=false
 DO_OPERATION="install"
 INSTALL_ORTHANC=false
 INSTALL_METABASE=false
-while getopts ":dbuo" opt; do
+while getopts ":dbuom" opt; do
   case ${opt} in
     o ) 
       INSTALL_ORTHANC=true
