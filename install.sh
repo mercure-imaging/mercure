@@ -656,6 +656,6 @@ echo "Installation complete"
 if [ $INSTALL_METABASE == true ]; then
   echo "Initializing Metabase setup..."
   pushd addons/metabase
-  ./metabase_install.sh
+  sudo ./metabase_install.sh
   popd
 fi
