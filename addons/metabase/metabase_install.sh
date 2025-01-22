@@ -73,6 +73,7 @@ curl -s -X POST "http://localhost:3000/api/setup" -H "Content-Type: application/
 echo "Metabase initial setup and database connection completed."
 echo -e "\n\e[1;34m=================================================== \n"
 echo "Your Metabase instance is now running at http://127.0.0.1:3000"
+echo "(Check port forwarding using 'vagrant port' if using Vagrant and port occupied.)"
 echo "Login with the following credentials:"
 echo "Email: $MB_EMAIL"
 echo "Password: $MB_PASSWORD"
@@ -110,3 +111,12 @@ echo "API_TOKEN='$API_TOKEN'" >> "/opt/mercure/config/metabase.env"
 # echo "Verifying the API token..."
 # RESPONSE=$(curl -s -H 'x-api-key: '$API_TOKEN'' -X GET 'http://localhost:3000/api/permissions/group')
 # echo $RESPONSE
+
+echo "Importing Mercure Metabase dashboard..."
+
+git clone --depth 1 -b fix https://github.com/mercure-imaging/metabase_export_import.git
+/opt/mercure/env/bin/python3 metabase_export_import/metabase_import.py \
+"http://127.0.0.1:3000/api/" $MB_EMAIL $MB_PASSWORD \
+"Mercure Database" exported_dashboard "Mercure Collection"
+
+echo "Metabase dashboard imported successfully."

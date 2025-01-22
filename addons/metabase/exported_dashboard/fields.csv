@@ -1,0 +1,124 @@
+table_name,field_name,description,semantic_type,foreign_table,foreign_field,visibility_type,has_field_values,custom_position,effective_type,base_type,database_type
+alembic_version,version_num,,type/PK,,,normal,search,,type/Text,type/Text,varchar
+dicom_files,file_uid,,type/Category,,,normal,list,,type/Text,type/Text,varchar
+dicom_files,filename,,,,,normal,list,,type/Text,type/Text,varchar
+dicom_files,id,,type/PK,,,normal,none,,type/Integer,type/Integer,serial
+dicom_files,series_uid,,type/Category,,,normal,list,,type/Text,type/Text,varchar
+dicom_files,time,,,,,normal,none,,type/DateTime,type/DateTime,timestamp
+dicom_series,id,,type/PK,,,normal,none,,type/Integer,type/Integer,serial
+dicom_series,series_uid,,type/Category,,,normal,list,,type/Text,type/Text,varchar
+dicom_series,study_uid,,type/Category,,,normal,list,,type/Text,type/Text,varchar
+dicom_series,tag_accessionnumber,,type/Category,,,normal,list,,type/Text,type/Text,varchar
+dicom_series,tag_acquisitiondate,,type/Category,,,normal,list,,type/Text,type/Text,varchar
+dicom_series,tag_acquisitiontime,,type/Category,,,normal,list,,type/Text,type/Text,varchar
+dicom_series,tag_bodypartexamined,,type/Category,,,normal,list,,type/Text,type/Text,varchar
+dicom_series,tag_codemeaning,,type/Category,,,normal,list,,type/Text,type/Text,varchar
+dicom_series,tag_codevalue,,type/Category,,,normal,list,,type/Text,type/Text,varchar
+dicom_series,tag_contrastbolusagent,,type/Category,,,normal,list,,type/Text,type/Text,varchar
+dicom_series,tag_deviceserialnumber,,type/Category,,,normal,list,,type/Text,type/Text,varchar
+dicom_series,tag_magneticfieldstrength,,type/Category,,,normal,list,,type/Text,type/Text,varchar
+dicom_series,tag_manufacturer,,type/Category,,,normal,list,,type/Text,type/Text,varchar
+dicom_series,tag_manufacturermodelname,,type/Category,,,normal,list,,type/Text,type/Text,varchar
+dicom_series,tag_modality,,type/Category,,,normal,list,,type/Text,type/Text,varchar
+dicom_series,tag_patientbirthdate,,type/Category,,,normal,list,,type/Text,type/Text,varchar
+dicom_series,tag_patientid,,type/Category,,,normal,list,,type/Text,type/Text,varchar
+dicom_series,tag_patientname,,type/Category,,,normal,list,,type/Text,type/Text,varchar
+dicom_series,tag_patientsex,,type/Category,,,normal,list,,type/Text,type/Text,varchar
+dicom_series,tag_protocolname,,type/Category,,,normal,list,,type/Text,type/Text,varchar
+dicom_series,tag_referringphysicianname,,type/Category,,,normal,list,,type/Text,type/Text,varchar
+dicom_series,tag_scanningsequence,,type/Category,,,normal,list,,type/Text,type/Text,varchar
+dicom_series,tag_sequencename,,type/Category,,,normal,list,,type/Text,type/Text,varchar
+dicom_series,tag_sequencevariant,,type/Category,,,normal,list,,type/Text,type/Text,varchar
+dicom_series,tag_seriesdescription,,type/Description,,,normal,list,,type/Text,type/Text,varchar
+dicom_series,tag_seriesnumber,,type/Category,,,normal,list,,type/Text,type/Text,varchar
+dicom_series,tag_slicethickness,,type/Category,,,normal,list,,type/Text,type/Text,varchar
+dicom_series,tag_softwareversions,,type/Category,,,normal,list,,type/Text,type/Text,varchar
+dicom_series,tag_stationname,,type/Category,,,normal,list,,type/Text,type/Text,varchar
+dicom_series,tag_studydescription,,type/Description,,,normal,list,,type/Text,type/Text,varchar
+dicom_series,tag_studyid,,type/Category,,,normal,list,,type/Text,type/Text,varchar
+dicom_series,time,,,,,normal,none,,type/DateTime,type/DateTime,timestamp
+dicom_series_map,id_file,,type/PK,,,normal,none,,type/Integer,type/Integer,serial
+dicom_series_map,id_series,,,,,normal,none,,type/Integer,type/Integer,int4
+file_events,dicom_file,,,,,normal,none,,type/Integer,type/Integer,int4
+file_events,event,,,,,normal,none,,type/Integer,type/Integer,int4
+file_events,id,,type/PK,,,normal,none,,type/Integer,type/Integer,serial
+file_events,time,,,,,normal,none,,type/DateTime,type/DateTime,timestamp
+mercure_events,description,,type/Description,,,normal,list,,type/Text,type/Text,varchar
+mercure_events,event,,type/Category,,,normal,list,,type/Text,type/Text,varchar
+mercure_events,id,,type/PK,,,normal,none,,type/Integer,type/Integer,serial
+mercure_events,sender,,type/Category,,,normal,list,,type/Text,type/Text,varchar
+mercure_events,severity,,type/Category,,,normal,list,,type/Integer,type/Integer,int4
+mercure_events,time,,,,,normal,none,,type/DateTime,type/DateTime,timestamp
+processor_logs,id,,type/PK,,,normal,none,,type/Integer,type/Integer,serial
+processor_logs,logs,,,,,normal,search,,type/Text,type/Text,varchar
+processor_logs,module_name,,,,,normal,search,,type/Text,type/Text,varchar
+processor_logs,task_id,,type/FK,tasks,id,normal,search,,type/Text,type/Text,varchar
+processor_logs,time,,,,,normal,none,,type/DateTime,type/DateTime,timestamp
+processor_outputs,id,,type/PK,,,normal,none,,type/Integer,type/Integer,serial
+processor_outputs,index,,,,,normal,none,,type/Integer,type/Integer,int4
+processor_outputs,module,,,,,normal,search,,type/Text,type/Text,varchar
+processor_outputs,output,,type/SerializedJSON,,,details-only,search,,type/JSON,type/JSON,jsonb
+processor_outputs,settings,,type/SerializedJSON,,,details-only,search,,type/JSON,type/JSON,jsonb
+processor_outputs,task_acc,,,,,normal,search,,type/Text,type/Text,varchar
+processor_outputs,task_id,,type/FK,tasks,id,normal,search,,type/Text,type/Text,varchar
+processor_outputs,task_mrn,,,,,normal,search,,type/Text,type/Text,varchar
+processor_outputs,time,,,,,normal,none,,type/DateTimeWithLocalTZ,type/DateTimeWithLocalTZ,timestamptz
+series_sequence_data,data,,type/SerializedJSON,,,details-only,search,,type/JSON,type/JSON,json
+series_sequence_data,uid,,type/PK,,,normal,search,,type/Text,type/Text,varchar
+task_events,client_timestamp,,,,,normal,none,,type/Float,type/Float,float8
+task_events,event,,type/Category,,,normal,list,,type/Text,type/Text,varchar
+task_events,file_count,,type/Quantity,,,normal,list,,type/Integer,type/Integer,int4
+task_events,id,,type/PK,,,normal,none,,type/Integer,type/Integer,serial
+task_events,info,,type/Category,,,normal,list,,type/Text,type/Text,varchar
+task_events,sender,,type/Category,,,normal,list,,type/Text,type/Text,varchar
+task_events,series_uid,,,,,normal,list,,type/Text,type/Text,varchar
+task_events,target,,,,,normal,list,,type/Text,type/Text,varchar
+task_events,task_id,,,,,normal,list,,type/Text,type/Text,varchar
+task_events,time,,,,,normal,none,,type/DateTime,type/DateTime,timestamp
+tasks,data,,type/SerializedJSON,,,details-only,search,,type/JSON,type/JSON,jsonb
+tasks,data → dispatch → status → testTarget → state,,type/Category,,,normal,list,,type/Text,type/Text,text
+tasks,data → dispatch → status → testTarget → time,,type/Category,,,normal,list,,type/Text,type/Text,text
+tasks,data → dispatch → target_name,,,,,normal,none,,type/Array,type/Array,text
+tasks,data → id,,type/Category,,,normal,list,,type/Text,type/Text,text
+tasks,data → info → acc,,type/Category,,,normal,list,,type/Text,type/Text,text
+tasks,data → info → action,,type/Category,,,normal,list,,type/Text,type/Text,text
+tasks,data → info → applied_rule,,type/Category,,,normal,list,,type/Text,type/Text,text
+tasks,data → info → device_serial_number,,type/Category,,,normal,list,,type/Text,type/Text,text
+tasks,data → info → mercure_appliance,,type/Category,,,normal,list,,type/Text,type/Text,text
+tasks,data → info → mercure_server,,type/Category,,,normal,list,,type/Text,type/Text,text
+tasks,data → info → mercure_version,,type/Category,,,normal,list,,type/Text,type/Text,text
+tasks,data → info → mrn,,type/Category,,,normal,list,,type/Text,type/Text,text
+tasks,data → info → patient_name,,type/Category,,,normal,list,,type/Text,type/Text,text
+tasks,data → info → sender_address,,type/Category,,,normal,list,,type/Text,type/Text,text
+tasks,data → info → triggered_rules → testStudyRule,,type/Category,,,normal,list,,type/Boolean,type/Boolean,boolean
+tasks,data → info → uid,,type/Category,,,normal,list,,type/Text,type/Text,text
+tasks,data → info → uid_type,,type/Category,,,normal,list,,type/Text,type/Text,text
+tasks,data → process,,,,,normal,search,,type/Structured,type/Structured,text
+tasks,data → study → complete_force,,type/Category,,,normal,list,,type/Boolean,type/Boolean,boolean
+tasks,data → study → complete_force_action,,type/Category,,,normal,list,,type/Text,type/Text,text
+tasks,data → study → complete_required_series,,type/Category,,,normal,list,,type/Text,type/Text,text
+tasks,data → study → complete_trigger,,type/Category,,,normal,list,,type/Text,type/Text,text
+tasks,data → study → creation_time,,type/Category,,,normal,list,,type/Text,type/Text,text
+tasks,data → study → last_receive_time,,type/Category,,,normal,list,,type/Text,type/Text,text
+tasks,data → study → received_series,,,,,normal,none,,type/Array,type/Array,text
+tasks,data → study → received_series_uid,,,,,normal,none,,type/Array,type/Array,text
+tasks,data → study → study_uid,,type/Category,,,normal,list,,type/Text,type/Text,text
+tasks,id,,type/PK,,,normal,search,,type/Text,type/Text,varchar
+tasks,parent_id,,,,,normal,list,,type/Text,type/Text,varchar
+tasks,series_uid,,type/Category,,,normal,list,,type/Text,type/Text,varchar
+tasks,study_uid,,type/Category,,,normal,list,,type/Text,type/Text,varchar
+tasks,time,,,,,normal,none,,type/DateTime,type/DateTime,timestamp
+tests,data,,type/SerializedJSON,,,details-only,search,,type/JSON,type/JSON,jsonb
+tests,id,,type/PK,,,normal,search,,type/Text,type/Text,varchar
+tests,rule_type,,,,,normal,search,,type/Text,type/Text,varchar
+tests,status,,,,,normal,search,,type/Text,type/Text,varchar
+tests,task_id,,,,,normal,search,,type/Text,type/Text,varchar
+tests,time_begin,,,,,normal,none,,type/DateTime,type/DateTime,timestamp
+tests,time_end,,,,,normal,none,,type/DateTime,type/DateTime,timestamp
+tests,type,,,,,normal,search,,type/Text,type/Text,varchar
+webgui_events,description,,type/Description,,,normal,list,,type/Text,type/Text,varchar
+webgui_events,event,,type/Category,,,normal,list,,type/Text,type/Text,varchar
+webgui_events,id,,type/PK,,,normal,none,,type/Integer,type/Integer,serial
+webgui_events,sender,,type/Category,,,normal,list,,type/Text,type/Text,varchar
+webgui_events,time,,,,,normal,none,,type/DateTime,type/DateTime,timestamp
+webgui_events,user,,type/Category,,,normal,list,,type/Text,type/Text,varchar

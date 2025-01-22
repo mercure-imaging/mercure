@@ -1,0 +1,105 @@
+{
+  "archived": false,
+  "cache_ttl": null,
+  "collection_name": "%collection_id%",
+  "collection_position": null,
+  "collection_preview": true,
+  "database_name": "%database_id%",
+  "dataset": false,
+  "dataset_query": {
+    "database_name": "%database%",
+    "native": {
+      "query": "select\r\ntime as Time,\r\nsender as Sender,\r\nevent as Event,\r\nseverity as Severity,\r\ndescription as Description\r\nfrom\r\nmercure_events\r\nwhere severity > 0\r\norder by time desc\r\nlimit 1000;",
+      "template-tags": {}
+    },
+    "type": "native"
+  },
+  "description": null,
+  "display": "table",
+  "embedding_params": null,
+  "enable_embedding": false,
+  "entity_id": "CYmCa9tJeYRKqL02AL1ob",
+  "initially_published_at": null,
+  "metabase_version": "v0.49.7 (f0ff786)",
+  "name": "System Errors",
+  "parameter_mappings": [],
+  "parameters": [],
+  "query_type": "native",
+  "result_metadata": [
+    {
+      "base_type": "type/DateTime",
+      "display_name": "time",
+      "effective_type": "type/DateTime",
+      "field_ref": [
+        "field",
+        "time",
+        {
+          "base-type": "type/DateTime"
+        }
+      ],
+      "name": "time",
+      "semantic_type": null
+    },
+    {
+      "base_type": "type/Text",
+      "display_name": "sender",
+      "effective_type": "type/Text",
+      "field_ref": [
+        "field",
+        "sender",
+        {
+          "base-type": "type/Text"
+        }
+      ],
+      "name": "sender",
+      "semantic_type": null
+    },
+    {
+      "base_type": "type/Text",
+      "display_name": "event",
+      "effective_type": "type/Text",
+      "field_ref": [
+        "field",
+        "event",
+        {
+          "base-type": "type/Text"
+        }
+      ],
+      "name": "event",
+      "semantic_type": null
+    },
+    {
+      "base_type": "type/Integer",
+      "display_name": "severity",
+      "effective_type": "type/Integer",
+      "field_ref": [
+        "field",
+        "severity",
+        {
+          "base-type": "type/Integer"
+        }
+      ],
+      "name": "severity",
+      "semantic_type": null
+    },
+    {
+      "base_type": "type/Text",
+      "display_name": "description",
+      "effective_type": "type/Text",
+      "field_ref": [
+        "field",
+        "description",
+        {
+          "base-type": "type/Text"
+        }
+      ],
+      "name": "description",
+      "semantic_type": "type/Description"
+    }
+  ],
+  "type": "question",
+  "visualization_settings": {
+    "table.cell_column": "severity",
+    "table.pivot_column": "event"
+  }
+}

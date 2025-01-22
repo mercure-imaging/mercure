@@ -551,6 +551,8 @@ while getopts ":hy" opt; do
       echo "                      -u              Update"
       echo "              docker:"
       echo "                      -b              Build containers"
+      echo "              metabase:"
+      echo "                      -m              Install Metabase"
       exit 0
       ;;
     y )
