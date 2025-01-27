@@ -25,7 +25,7 @@ echo "DB_METABASE_USER_PASSWORD='$DB_PASSWORD'" > "/opt/mercure/config/metabase.
 
 echo "## Installing Metabase..."
 sudo docker pull metabase/metabase:v0.49.7
-sudo docker run -d -p 3000:3000 --name metabase --network="host" metabase/metabase:v0.49.7
+sudo docker run --restart=always -d -p 3000:3000 --name metabase --network="host" metabase/metabase:v0.49.7
 
 # Retrieving metabase setup token
 echo "Waiting for Metabase to start..."
@@ -43,7 +43,7 @@ done
 SETUP_TOKEN=$(curl -s -X GET "http://127.0.0.1:3000/api/session/properties" | jq -r '.["setup-token"]')
 
 # Setting up metabase
-MB_EMAIL="user@user.com"
+MB_EMAIL="admin@mercure.local"
 MB_PASSWORD=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1 || true)
 curl -s -X POST "http://localhost:3000/api/setup" -H "Content-Type: application/json" -d '{ 
 	"token": "'$SETUP_TOKEN'",
