@@ -11,7 +11,7 @@ DB_PORT="5432"
 # Connect and create the read-only user. Update the password if the user already exists.
 sudo -u postgres -s <<- EOM
     psql
-    \c mercure
+    \c $DB_NAME
     CREATE USER $DB_USER with encrypted password '$DB_PASSWORD';
 	ALTER USER $DB_USER WITH PASSWORD '$DB_PASSWORD';
     GRANT CONNECT ON DATABASE $DB_NAME TO $DB_USER;
@@ -22,6 +22,17 @@ sudo -u postgres -s <<- EOM
 EOM
 echo "Read-only user $DB_USER created and permissions granted."
 echo "DB_METABASE_USER_PASSWORD='$DB_PASSWORD'" > "/opt/mercure/config/metabase.env"
+
+# verify the created user has access to the tables
+export PGPASSWORD="$DB_PASSWORD"
+set +e
+psql -U $DB_USER -h localhost $DB_NAME -c "SELECT * from tests;" > /dev/null 2>&1
+if [ $? -ne 0 ]; then
+  echo "CREATED USER DOES NOT HAVE READ PERMISSION. ABORTING!"
+  exit 1
+fi
+set -e
+unset PGPASSWORD
 
 echo "## Installing Metabase..."
 sudo docker pull metabase/metabase:v0.49.7
@@ -61,9 +72,9 @@ curl -s -X POST "http://localhost:3000/api/setup" -H "Content-Type: application/
 		"engine": "postgres",
 		"name": "Mercure Database",
 		"details": {
-			"host": "127.0.0.1",
-			"port": 5432,
-			"dbname": "mercure",
+			"host": "'$DB_HOST'",
+			"port": "'$DB_PORT'",
+			"dbname": "'$DB_NAME'",
 			"user": "'$DB_USER'",
 			"password": "'$DB_PASSWORD'",
 			"ssl": false
