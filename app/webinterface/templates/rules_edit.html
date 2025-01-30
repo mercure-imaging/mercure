@@ -153,7 +153,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="field">
+                    <div class="field" style="margin-top: 40px;">
                         <label class="label">Trigger</label>
                         <div class="select">
                             <div class="control">
@@ -169,7 +169,7 @@
                         </div>
                     </div>
                     <div class="field" id="study_trigger_field">
-                        <label class="label">Completion Criteria</label>
+                        <label class="label">Completion Condition</label>
                         <div class="field has-addons">
                             <div class="select">
                                 <select name="study_trigger_condition" id="study_trigger_condition">
@@ -196,13 +196,13 @@
                         </div>
                     </div>
                     <div class="field" id="force_study_completion_field">
-                        <label class="label">Force Completion Action</label>
+                        <label class="label">Action for Incomplete Studies</label>
                         <div class="select">
                             <div class="control">
                                 <select name="study_force_completion_action" id="study_force_completion_action">
                                     <option value="discard" {% if
                                         rules[rule]['study_force_completion_action']=='discard' %}selected{% endif%}>
-                                        Discard
+                                        Discard Study
                                     </option>
                                     <option value="proceed" {% if
                                         rules[rule]['study_force_completion_action']=='proceed' %}selected{% endif%}>
@@ -216,7 +216,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="field">
+                    <div class="field" style="margin-top: 40px;">
                         <label class="label">Priority</label>
                         <div class="select">
                             <div class="control">
