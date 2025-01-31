@@ -5,6 +5,8 @@
 <script type="text/javascript" src="{{ url_for('static', path='/js/bulma-quickview.min.js') }}"></script>
 <script type="text/javascript" src="{{ url_for('static', path='/js/dicomParser.min.js') }}"></script>
 <script type="text/javascript" src="{{ url_for('static', path='/js/dataDictionary.js') }}"></script>
+<script type="text/javascript" src="{{ url_for('static', path='/js/choices.js') }}"></script>
+<link href="{{ url_for('static', path='/css/choices.css') }}" rel="stylesheet">
 
 {% endblock %}
 {% block content %}
@@ -262,7 +264,7 @@
                     <div class="field" id="modules_list">
                         <label class="label">Processing Steps</label>
                         <div class="control process_list" style="min-height: 40px;">                            
-                            <input id="processing_module_list" name="processing_module_list" class="input" type="tags" placeholder="Add module"
+                            <input id="processing_module_list" name="processing_module_list" class="input" type="tags" placeholder="Add module using controls on the right"
                             value="{{rules[rule]['processing_module']|join(',') if (rules[rule]['processing_module'].pop) else rules[rule]['processing_module']}}"
                             style="">
                         </div>
@@ -309,33 +311,17 @@
                 </div>
                 <div class="panel" data-content="routing">
                     <div class="field">
-                        <label class="label">Targets</label>
+                        <label class="label">Target(s)</label>
                         <div class="select is-multiple" id="target_control" style="width: 100%;">
                             <div class="control">
                                 <select class="target_select" multiple id="target" name="target" size="{{ [targets|length,16]|min }}">
                                     {% for t in targets %}
-                                    <option value="{{t}}" {% if t in rules[rule]['target'] %}selected{% endif%}>{{ t }}
-                                    </option>
+                                    <option value="{{t}}" {% if t in rules[rule]['target'] %}selected{% endif%}>{{ t }}</option>
                                     {% endfor %}
                                 </select>
                             </div>
                         </div>
-                        <p class="help" style="color: #CCC; margin-top: 4px; text-align: right;">Hold CTRL key and click to select multiple targets.</p>
-                        <!--                        
-                        <a class="button is-frameless has-tooltip-right has-tooltip-success" data-tooltip="Remove target">
-                            <span class="icon is-small">
-                            <i class="fas fa-times"></i>
-                            </span>
-                        </a>
-                        -->
                     </div>
-                    <!--
-                    <a class="button has-tooltip-right has-tooltip-success" data-tooltip="Add extra target">
-                        <span class="icon is-small">
-                            <i class="fas fa-plus"></i>
-                        </span>
-                    </a>
-                    -->
                 </div>
                 <div class="panel" data-content="notification" style="margin-top: 30px;">
                     {% if phi_notifications %}
@@ -669,6 +655,15 @@
     */
 
     $(document).ready(function () {
+
+        var targetSelector = new Choices('#target', {
+          removeItemButton: true, searchEnabled: true,
+          placeholder: true,
+          placeholderValue: "Click to select target(s)",          
+          noResultsText: 'No matching targets found',
+          noChoicesText: 'No other targets to choose from',          
+        });        
+
         var quickviews = bulmaQuickview.attach();
 
         $('#rule').outerHeight($('#rule').prop('scrollHeight') + 1);
