@@ -1,6 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
+INSTALL_TYPE=$1
+
 echo "## Create a read-only user for Mercure..."
 DB_NAME="mercure"
 DB_USER="metabase_read_user"
@@ -8,25 +10,49 @@ DB_PASSWORD=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1 || 
 DB_HOST="127.0.0.1"
 DB_PORT="5432"
 
+if [ "$INSTALL_TYPE" == "docker" ]; then
+	DB_PORT="15432"
+fi
+
 # Connect and create the read-only user. Update the password if the user already exists.
-sudo -u postgres -s <<- EOM
-    psql
-    \c $DB_NAME
-    CREATE USER $DB_USER with encrypted password '$DB_PASSWORD';
-	ALTER USER $DB_USER WITH PASSWORD '$DB_PASSWORD';
-    GRANT CONNECT ON DATABASE $DB_NAME TO $DB_USER;
-    GRANT USAGE ON SCHEMA public TO $DB_USER;
-    GRANT SELECT ON ALL TABLES IN SCHEMA public TO $DB_USER;
-    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO $DB_USER;
-    \q
-EOM
+if [ "$INSTALL_TYPE" == "systemd" ]; then
+	sudo -u postgres -s <<- EOM
+		psql
+		\c $DB_NAME
+		CREATE USER $DB_USER with encrypted password '$DB_PASSWORD';
+		ALTER USER $DB_USER WITH PASSWORD '$DB_PASSWORD';
+		GRANT CONNECT ON DATABASE $DB_NAME TO $DB_USER;
+		GRANT USAGE ON SCHEMA public TO $DB_USER;
+		GRANT SELECT ON ALL TABLES IN SCHEMA public TO $DB_USER;
+		ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO $DB_USER;
+		\q
+	EOM
+elif [ "$INSTALL_TYPE" == "docker" ]; then
+	sudo docker exec -i mercure_db_1 bash <<- EOM
+		psql -U mercure -h localhost
+		\c $DB_NAME
+		CREATE USER $DB_USER with encrypted password '$DB_PASSWORD';
+		ALTER USER $DB_USER WITH PASSWORD '$DB_PASSWORD';
+		GRANT CONNECT ON DATABASE $DB_NAME TO $DB_USER;
+		GRANT USAGE ON SCHEMA public TO $DB_USER;
+		GRANT SELECT ON ALL TABLES IN SCHEMA public TO $DB_USER;
+		ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO $DB_USER;
+		\q
+	EOM
+fi
 echo "Read-only user $DB_USER created and permissions granted."
 echo "DB_METABASE_USER_PASSWORD='$DB_PASSWORD'" > "/opt/mercure/config/metabase.env"
 
 # verify the created user has access to the tables
 export PGPASSWORD="$DB_PASSWORD"
 set +e
-psql -U $DB_USER -h localhost $DB_NAME -c "SELECT * from tests;" > /dev/null 2>&1
+
+if [ "$INSTALL_TYPE" == "systemd" ]; then
+	psql -U $DB_USER -h localhost $DB_NAME -c "SELECT * from tests;" > /dev/null 2>&1
+elif [ "$INSTALL_TYPE" == "docker" ]; then
+	sudo docker exec mercure_db_1 psql -U $DB_USER -h localhost $DB_NAME -c "SELECT * from tests;" > /dev/null 2>&1
+fi
+
 if [ $? -ne 0 ]; then
   echo "CREATED USER DOES NOT HAVE READ PERMISSION. ABORTING!"
   exit 1
@@ -98,7 +124,7 @@ SESSION_TOKEN=$(curl -s -X POST "127.0.0.1:3000/api/session" \
 	-d '{"username": "'"$MB_EMAIL"'", "password": "'"$MB_PASSWORD"'"}' | jq -r '.id')
 
 # Check if authentication was successful
-if [ "$SESSION_TOKEN" == "" ]; then
+if [ "$SESSION_TOKEN" == "" ] || [ "$SESSION_TOKEN" == "null" ]; then
     echo "Authentication failed. Check your credentials."
     exit 1
 fi
@@ -110,7 +136,7 @@ API_TOKEN=$(curl -s -X POST "127.0.0.1:3000/api/api-key" \
 	-d '{"name": "API Token", "permissions": "all", "group_id": 2}' | jq -r '.unmasked_key')
 
 # Check if token creation was successful
-if [ "$API_TOKEN" == "" ]; then
+if [ "$API_TOKEN" == "" ] || [ "$API_TOKEN" == "null" ]; then
     echo "Failed to create API token."
     exit 1
 fi

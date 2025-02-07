@@ -656,8 +656,9 @@ fi
 echo "Installation complete"
 
 if [ $INSTALL_METABASE == true ]; then
+  sudo apt-get install -y jq
   echo "Initializing Metabase setup..."
   pushd addons/metabase
-  sudo ./metabase_install.sh
+  sudo ./metabase_install.sh $INSTALL_TYPE
   popd
 fi
