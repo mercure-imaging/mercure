@@ -106,6 +106,7 @@
                     </table>
                     <div class="buttons is-right">
                         {% if is_admin %}
+                        <a class="button" onclick="showDuplicateModal('{{rule_name}}')"><i class="fas fa-copy"></i>&nbsp;Duplicate</a>
                         <a class="button is-success" href="/rules/edit/{{rule_name}}"><i class="fas fa-pen"></i>&nbsp;Edit</a>
                         <button class="button is-danger" id="confirm-me" value="{{rule_name}}"
                             onclick="confirmDelete(this.value)"><i class="fas fa-trash-alt"></i>&nbsp;Delete</button>
@@ -165,6 +166,32 @@
             </section>
         </div>
     </div>
+
+    <div class="modal" id="duplicate-modal">
+        <div class="modal-background"></div>
+        <div class="modal-card">
+            <header class="modal-card-head">
+                <p class="modal-card-title">Duplicate rule "<span id="duplicate-name"></span>"</p>
+            </header>
+            <section class="modal-card-body">
+`                <form method="post" action="duplicate/">
+                   <input type="hidden" name="old_name" id="duplicate-name-input">
+                    <div class="field">
+                        <p class="control">
+                            <input class="input" id="duplicate-newname" type="text" required pattern="[0-9a-zA-Z_\-]+"
+                                placeholder="Name of new rule" name="new_name" autofocus>
+                        </p>
+                    </div>
+                    <div class="field">
+                        <p class="control" style="margin-top: 20px;">
+                            <button id="confirm-duplicate-modal" class="button is-success">Create</button>
+                            <a onclick="$('#duplicate-modal').removeClass('is-active')" class="button">Cancel</a>
+                        </p>
+                    </div>
+                </form>
+            </section>
+        </div>
+    </div>
 </main>
 
 <script>
@@ -184,6 +211,13 @@
         $("#addnewname").focus();
     }
 
+    function showDuplicateModal(val) {
+        $("#duplicate-newname").val("");
+        $("#duplicate-modal").addClass("is-active");
+        $("#duplicate-newname").focus();
+        $("#duplicate-name").text(val);
+        $("#duplicate-name-input").val(val);
+    }
     var ruleToDelete = "";
 
     function confirmDelete(val) {

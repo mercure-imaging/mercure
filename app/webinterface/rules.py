@@ -50,6 +50,26 @@ async def rules(request) -> Response:
     return templates.TemplateResponse(template, context)
 
 
+@router.post("/duplicate")
+@requires(["authenticated", "admin"], redirect="login")
+async def duplicate_rule(request) -> Response:
+    """Duplicates an existing routing rule."""
+    try:
+        config.read_config()
+    except Exception:
+        return PlainTextResponse("Configuration is being updated. Try again in a minute.")
+    form = await request.form()
+    new_name = form.get("new_name", "")
+    old_name = form.get("old_name", "")
+    if not old_name or not new_name or old_name == new_name or new_name in config.mercure.rules:
+        return PlainTextResponse("Invalid input or duplicate name.")
+
+    config.mercure.rules[new_name] = Rule(**config.mercure.rules[old_name].__dict__)
+
+    # return RedirectResponse(url="/rules", status_code=303)
+    return RedirectResponse(url="/rules/edit/" + new_name, status_code=303)
+
+
 @router.post("/")
 @requires(["authenticated", "admin"], redirect="login")
 async def add_rule(request) -> Response:
