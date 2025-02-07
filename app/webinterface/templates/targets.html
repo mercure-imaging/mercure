@@ -54,7 +54,7 @@
                         {% if is_admin %}
                         <a class="button is-success" href="/targets/edit/{{target_name}}"><i class="fas fa-pen"></i>&nbsp;Edit</a>
                         <button class="button is-danger" id="confirm-me" value="{{target_name}}"
-                            onclick="confirmDelete(this.value)" {% if x in used_targets%}disabled
+                            onclick="confirmDelete(this.value)" {% if target_name in used_targets%}disabled
                             title="Cannot delete because target is used by rule '{{ used_targets[target_name] }}'" {% endif %}><i
                                 class="fas fa-trash-alt"></i>&nbsp;Delete</button>
                         {% endif %}
