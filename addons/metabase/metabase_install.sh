@@ -152,8 +152,15 @@ echo "API_TOKEN='$API_TOKEN'" >> "/opt/mercure/config/metabase.env"
 echo "Importing Mercure Metabase dashboard..."
 
 git clone --depth 1 -b fix https://github.com/mercure-imaging/metabase_export_import.git
-/opt/mercure/env/bin/python3 metabase_export_import/metabase_import.py \
-"http://127.0.0.1:3000/api/" $MB_EMAIL $MB_PASSWORD \
-"Mercure Database" exported_dashboard "Mercure Collection"
+
+if [ "$INSTALL_TYPE" == "systemd" ]; then
+	/opt/mercure/env/bin/python3 metabase_export_import/metabase_import.py \
+	"http://127.0.0.1:3000/api/" $MB_EMAIL $MB_PASSWORD \
+	"Mercure Database" exported_dashboard "Mercure Collection"
+elif [ "$INSTALL_TYPE" == "docker" ]; then
+	python3 metabase_export_import/metabase_import.py \
+	"http://127.0.0.1:3000/api/" $MB_EMAIL $MB_PASSWORD \
+	"Mercure Database" exported_dashboard "Mercure Collection"
+fi
 
 echo "Metabase dashboard imported successfully."

@@ -80,7 +80,6 @@ Vagrant.configure(2) do |config|
     args = args + [ "-o" ]
   end
   if metabase == true then
-    config.vm.network "forwarded_port", guest: 5432, host: 5432, auto_correct: true, host_ip: "127.0.0.1"
     config.vm.network "forwarded_port", guest: 3000, host: 3000, auto_correct: true, host_ip: "127.0.0.1"
     args = args + [ "-m" ]
   end
