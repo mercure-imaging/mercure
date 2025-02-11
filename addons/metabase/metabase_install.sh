@@ -15,50 +15,52 @@ if [ "$INSTALL_TYPE" == "docker" ]; then
 fi
 
 # Connect and create the read-only user. Update the password if the user already exists.
-if [ "$INSTALL_TYPE" == "systemd" ]; then
-	sudo -u postgres -s <<- EOM
-		psql
-		\c $DB_NAME
+create_db_user() {
+	PSQL_COMMANDS="
+	\\c $DB_NAME
 		CREATE USER $DB_USER with encrypted password '$DB_PASSWORD';
 		ALTER USER $DB_USER WITH PASSWORD '$DB_PASSWORD';
 		GRANT CONNECT ON DATABASE $DB_NAME TO $DB_USER;
 		GRANT USAGE ON SCHEMA public TO $DB_USER;
 		GRANT SELECT ON ALL TABLES IN SCHEMA public TO $DB_USER;
 		ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO $DB_USER;
-		\q
-	EOM
-elif [ "$INSTALL_TYPE" == "docker" ]; then
-	sudo docker exec -i mercure_db_1 bash <<- EOM
-		psql -U mercure -h localhost
-		\c $DB_NAME
-		CREATE USER $DB_USER with encrypted password '$DB_PASSWORD';
-		ALTER USER $DB_USER WITH PASSWORD '$DB_PASSWORD';
-		GRANT CONNECT ON DATABASE $DB_NAME TO $DB_USER;
-		GRANT USAGE ON SCHEMA public TO $DB_USER;
-		GRANT SELECT ON ALL TABLES IN SCHEMA public TO $DB_USER;
-		ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO $DB_USER;
-		\q
-	EOM
-fi
-echo "Read-only user $DB_USER created and permissions granted."
-echo "DB_METABASE_USER_PASSWORD='$DB_PASSWORD'" > "/opt/mercure/config/metabase.env"
+	\\q"
+	if [ "$INSTALL_TYPE" == "systemd" ]; then
+		sudo -u postgres -s <<< "psql $PSQL_COMMANDS"
+	elif [ "$INSTALL_TYPE" == "docker" ]; then
+		sudo docker exec -i mercure_db_1 bash <<< "psql -U mercure -h localhost $PSQL_COMMANDS"
+	fi
+}
+create_db_user
 
 # verify the created user has access to the tables
 export PGPASSWORD="$DB_PASSWORD"
 set +e
-
-if [ "$INSTALL_TYPE" == "systemd" ]; then
-	psql -U $DB_USER -h localhost $DB_NAME -c "SELECT * from tests;" > /dev/null 2>&1
-elif [ "$INSTALL_TYPE" == "docker" ]; then
-	sudo docker exec mercure_db_1 psql -U $DB_USER -h localhost $DB_NAME -c "SELECT * from tests;" > /dev/null 2>&1
-fi
-
-if [ $? -ne 0 ]; then
-  echo "CREATED USER DOES NOT HAVE READ PERMISSION. ABORTING!"
-  exit 1
-fi
+counter=0
+while true; do
+	if [ "$INSTALL_TYPE" == "systemd" ]; then
+		psql -U $DB_USER -h localhost $DB_NAME -c "SELECT * from tests;" > /dev/null 2>&1
+	elif [ "$INSTALL_TYPE" == "docker" ]; then
+		sudo docker exec mercure_db_1 psql -U $DB_USER -h localhost $DB_NAME -c "SELECT * from tests;" > /dev/null 2>&1
+	fi
+	if [ $? -eq 0 ]; then
+		break
+	fi
+	if [ $counter -eq 4 ]; then
+		echo "CREATED USER DOES NOT HAVE READ PERMISSION. ABORTING!"
+		exit 1
+	else
+		echo "CREATED USER DOES NOT HAVE READ PERMISSION. RETRYING..."
+		sleep 5
+		create_db_user
+	fi
+	((counter++))
+done
 set -e
 unset PGPASSWORD
+
+echo "Read-only user $DB_USER created and permissions granted."
+echo "DB_METABASE_USER_PASSWORD='$DB_PASSWORD'" > "/opt/mercure/config/metabase.env"
 
 echo "## Installing Metabase..."
 sudo docker pull metabase/metabase:v0.49.7
