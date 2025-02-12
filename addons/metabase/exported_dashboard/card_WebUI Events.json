@@ -1,0 +1,91 @@
+{
+  "archived": false,
+  "cache_ttl": null,
+  "collection_name": "%collection_id%",
+  "collection_position": null,
+  "collection_preview": true,
+  "database_name": "%database_id%",
+  "dataset": false,
+  "dataset_query": {
+    "database_name": "%database%",
+    "native": {
+      "query": "select\r\ntime as Time,\r\nwebgui_events.user as User,\r\nevent as Event,\r\ndescription as Description\r\nfrom webgui_events\r\norder by time desc;",
+      "template-tags": {}
+    },
+    "type": "native"
+  },
+  "description": null,
+  "display": "table",
+  "embedding_params": null,
+  "enable_embedding": false,
+  "entity_id": "-lLvSLMRqRXVarJR0Jwg5",
+  "initially_published_at": null,
+  "metabase_version": "v0.49.7 (f0ff786)",
+  "name": "WebUI Events",
+  "parameter_mappings": [],
+  "parameters": [],
+  "query_type": "native",
+  "result_metadata": [
+    {
+      "base_type": "type/DateTime",
+      "display_name": "time",
+      "effective_type": "type/DateTime",
+      "field_ref": [
+        "field",
+        "time",
+        {
+          "base-type": "type/DateTime"
+        }
+      ],
+      "name": "time",
+      "semantic_type": null
+    },
+    {
+      "base_type": "type/Text",
+      "display_name": "user",
+      "effective_type": "type/Text",
+      "field_ref": [
+        "field",
+        "user",
+        {
+          "base-type": "type/Text"
+        }
+      ],
+      "name": "user",
+      "semantic_type": null
+    },
+    {
+      "base_type": "type/Text",
+      "display_name": "event",
+      "effective_type": "type/Text",
+      "field_ref": [
+        "field",
+        "event",
+        {
+          "base-type": "type/Text"
+        }
+      ],
+      "name": "event",
+      "semantic_type": null
+    },
+    {
+      "base_type": "type/Text",
+      "display_name": "description",
+      "effective_type": "type/Text",
+      "field_ref": [
+        "field",
+        "description",
+        {
+          "base-type": "type/Text"
+        }
+      ],
+      "name": "description",
+      "semantic_type": "type/Description"
+    }
+  ],
+  "type": "question",
+  "visualization_settings": {
+    "table.cell_column": "description",
+    "table.pivot_column": "user"
+  }
+}

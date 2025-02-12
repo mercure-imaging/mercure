@@ -551,6 +551,8 @@ while getopts ":hy" opt; do
       echo "                      -u              Update"
       echo "              docker:"
       echo "                      -b              Build containers"
+      echo "              metabase:"
+      echo "                      -m              Install Metabase"
       exit 0
       ;;
     y )
@@ -576,10 +578,14 @@ DO_DEV_INSTALL=false
 DOCKER_BUILD=false
 DO_OPERATION="install"
 INSTALL_ORTHANC=false
-while getopts ":dbuo" opt; do
+INSTALL_METABASE=false
+while getopts ":dbuom" opt; do
   case ${opt} in
     o ) 
       INSTALL_ORTHANC=true
+      ;;
+    m )
+      INSTALL_METABASE=true
       ;;
     u )
       DO_OPERATION="update"
@@ -648,3 +654,11 @@ if [ $INSTALL_ORTHANC == true ]; then
   popd
 fi
 echo "Installation complete"
+
+if [ $INSTALL_METABASE == true ]; then
+  sudo apt-get install -y jq
+  echo "Initializing Metabase setup..."
+  pushd addons/metabase
+  sudo ./metabase_install.sh $INSTALL_TYPE
+  popd
+fi

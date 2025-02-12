@@ -1,0 +1,82 @@
+{
+  "archived": false,
+  "cache_ttl": null,
+  "collection_name": "%collection_id%",
+  "collection_position": null,
+  "collection_preview": true,
+  "database_name": "%database_id%",
+  "dataset": false,
+  "dataset_query": {
+    "database_name": "%database%",
+    "native": {
+      "query": "select\r\ntask_events.time,\r\n-- dicom_series.tag_patientname as Patient,\r\n-- dicom_series.tag_seriesdescription as Series,\r\ntask_events.file_count as Files,\r\ntask_events.info as Info\r\n-- '<a href=\"/dashboard/series-events_1?p_series_uid=' || task_events.series_uid ||'\" target=\"_blank\" class=\"btn btn-primary btn-xs\">View</a>' as Info\r\nfrom task_events\r\n-- join dicom_series on dicom_series.series_uid=task_events.series_uid\r\nwhere\r\ntask_events.event='DISPATCH_COMPLETE'\r\n-- and\r\n-- task_events.target='03544daa-a862-11ef-862e-b178553d6430'\r\nand\r\ntask_events.time >= 'November 20, 2024, 4:42 PM'\r\nand\r\ntask_events.time <= 'December 17, 2024, 2:35 AM'\r\norder by task_events.time desc\r\nlimit 1000;",
+      "template-tags": {}
+    },
+    "type": "native"
+  },
+  "description": null,
+  "display": "bar",
+  "embedding_params": null,
+  "enable_embedding": false,
+  "entity_id": "cTSyf_AR4tww-Huivw7AY",
+  "initially_published_at": null,
+  "metabase_version": "v0.49.7 (f0ff786)",
+  "name": "Dispatch Times",
+  "parameter_mappings": [],
+  "parameters": [],
+  "query_type": "native",
+  "result_metadata": [
+    {
+      "base_type": "type/DateTime",
+      "display_name": "time",
+      "effective_type": "type/DateTime",
+      "field_ref": [
+        "field",
+        "time",
+        {
+          "base-type": "type/DateTime"
+        }
+      ],
+      "name": "time",
+      "semantic_type": null
+    },
+    {
+      "base_type": "type/Integer",
+      "display_name": "files",
+      "effective_type": "type/Integer",
+      "field_ref": [
+        "field",
+        "files",
+        {
+          "base-type": "type/Integer"
+        }
+      ],
+      "name": "files",
+      "semantic_type": null
+    },
+    {
+      "base_type": "type/Text",
+      "display_name": "info",
+      "effective_type": "type/Text",
+      "field_ref": [
+        "field",
+        "info",
+        {
+          "base-type": "type/Text"
+        }
+      ],
+      "name": "info",
+      "semantic_type": null
+    }
+  ],
+  "type": "question",
+  "visualization_settings": {
+    "graph.dimensions": [
+      "time",
+      "info"
+    ],
+    "graph.metrics": [
+      "files"
+    ]
+  }
+}

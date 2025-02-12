@@ -1,0 +1,113 @@
+{
+  "archived": false,
+  "auto_apply_filters": true,
+  "cache_ttl": null,
+  "can_write": true,
+  "caveats": null,
+  "collection_authority_level": null,
+  "collection_name": "%collection_id%",
+  "collection_position": null,
+  "dashcards": [
+    {
+      "action_id": null,
+      "col": 0,
+      "collection_authority_level": null,
+      "dashboard_name": "%dashboard_id%Mercure Dashboard",
+      "dashboard_tab_id": null,
+      "entity_id": "ePj5zNe3QAL4eFdRFfLLH",
+      "parameter_mappings": [],
+      "row": 0,
+      "series": [],
+      "size_x": 24,
+      "size_y": 1,
+      "visualization_settings": {
+        "dashcard.background": false,
+        "text": "System Status",
+        "virtual_card": {
+          "archived": false,
+          "dataset_query": {},
+          "display": "heading",
+          "name": null,
+          "visualization_settings": {}
+        }
+      }
+    },
+    {
+      "action_id": null,
+      "card_name": "%card_id%System Events",
+      "col": 0,
+      "collection_authority_level": null,
+      "dashboard_name": "%dashboard_id%Mercure Dashboard",
+      "dashboard_tab_id": null,
+      "entity_id": "QZeMmqhwg6kZdregAzE_b",
+      "parameter_mappings": [],
+      "row": 1,
+      "series": [],
+      "size_x": 13,
+      "size_y": 11,
+      "visualization_settings": {}
+    },
+    {
+      "action_id": null,
+      "card_name": "%card_id%WebUI Events",
+      "col": 13,
+      "collection_authority_level": null,
+      "dashboard_name": "%dashboard_id%Mercure Dashboard",
+      "dashboard_tab_id": null,
+      "entity_id": "BG-5jrUGQGfG0zEFkqxBn",
+      "parameter_mappings": [],
+      "row": 1,
+      "series": [],
+      "size_x": 11,
+      "size_y": 11,
+      "visualization_settings": {}
+    },
+    {
+      "action_id": null,
+      "card_name": "%card_id%Dispatch Times",
+      "col": 0,
+      "collection_authority_level": null,
+      "dashboard_name": "%dashboard_id%Mercure Dashboard",
+      "dashboard_tab_id": null,
+      "entity_id": "RWxz0K5lbQmi3-OiicgNh",
+      "parameter_mappings": [],
+      "row": 12,
+      "series": [],
+      "size_x": 12,
+      "size_y": 7,
+      "visualization_settings": {}
+    },
+    {
+      "action_id": null,
+      "card_name": "%card_id%Last Series Received",
+      "col": 12,
+      "collection_authority_level": null,
+      "dashboard_name": "%dashboard_id%Mercure Dashboard",
+      "dashboard_tab_id": null,
+      "entity_id": "Tl6o8sX5os8-efiWJswFN",
+      "parameter_mappings": [],
+      "row": 12,
+      "series": [],
+      "size_x": 12,
+      "size_y": 7,
+      "visualization_settings": {
+        "graph.show_values": false,
+        "table.cell_column": "Last Transfer",
+        "table.pivot_column": "Scanner"
+      }
+    }
+  ],
+  "description": null,
+  "embedding_params": null,
+  "enable_embedding": false,
+  "entity_id": "ND5MZad78XR9eF-epa30U",
+  "initially_published_at": null,
+  "name": "Mercure Dashboard",
+  "param_fields": null,
+  "parameters": [],
+  "points_of_interest": null,
+  "position": null,
+  "show_in_getting_started": false,
+  "tabs": [],
+  "width": "fixed"
+}
