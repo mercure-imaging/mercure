@@ -47,10 +47,16 @@ while true; do
 		break
 	fi
 	if [ $counter -eq 4 ]; then
-		echo "CREATED USER DOES NOT HAVE READ PERMISSION. ABORTING!"
+		echo "COULD NOT SET CORRECT PERMISSION FOR METABASE DB USER. ABORTING!"
+		echo "Try setting the permissions manually in the psql shell and run metabase_install.sh again:"
+		echo "
+		GRANT CONNECT ON DATABASE $DB_NAME TO $DB_USER;
+		GRANT USAGE ON SCHEMA public TO $DB_USER;
+		GRANT SELECT ON ALL TABLES IN SCHEMA public TO $DB_USER;
+		ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO $DB_USER;"
 		exit 1
 	else
-		echo "CREATED USER DOES NOT HAVE READ PERMISSION. RETRYING..."
+		echo "METABASE DB USER DOES NOT HAVE CORRECT PERMISSION. RETRYING..."
 		sleep 5
 		create_db_user
 	fi
