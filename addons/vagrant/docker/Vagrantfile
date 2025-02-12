@@ -35,6 +35,7 @@ opts.each do |opt, arg|
     when '--metabase'
       branch=''
       metabase=true
+      dev_mode=true
     when '--docker'
       install_type = 'docker'
     when '--systemd'
