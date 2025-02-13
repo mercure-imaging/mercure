@@ -1,0 +1,301 @@
+{% extends "dashboards/dashboards.html" %}
+
+{% block extra_head %}
+<script type="text/javascript" src="https://unpkg.com/dicomweb-client"></script>
+<style>
+.upload-box {
+    border: 2px dashed #dbdbdb;
+    border-radius: 4px;
+    padding: 2rem;
+    text-align: center;
+    margin-bottom: 1rem;
+}
+
+.upload-box.is-dragover {
+    border-color: #00d1b2;
+    background: rgba(0,209,178,0.1);
+}
+
+.progress-container {
+    margin: 2rem 0;
+    display: none;
+}
+
+.upload-status {
+    margin-top: 1rem;
+    text-align: center;
+    display: none;
+}
+</style>
+{% endblock %}
+
+{% block dashboard_content %}
+<div class="container">
+    <h2 class="title is-4">DICOM Upload</h2>
+
+    <div class="columns">
+        <div class="column is-8">
+            <div id="upload-box" class="upload-box">
+                <div class="file has-name is-boxed is-centered">
+                    <label class="file-label">
+                        <input class="file-input" type="file" id="file-input" multiple accept=".dcm">
+                        <span class="file-cta">
+                            <span class="file-icon">
+                                <i class="fas fa-upload"></i>
+                            </span>
+                            <span class="file-label">
+                                Choose files or drag here...
+                            </span>
+                        </span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="progress-container">
+                <progress class="progress is-primary" id="upload-progress" value="0" max="100"></progress>
+                <p class="has-text-centered" id="progress-text">Uploading files...</p>
+            </div>
+
+            <div class="upload-status" id="upload-status">
+                <span class="icon is-large">
+                    <i class="fas fa-2x"></i>
+                </span>
+                <p class="is-size-5 mt-2"></p>
+            </div>
+
+            <div class="field is-grouped" style="margin-top: 1rem;">
+                <div class="control">
+                    <button class="button is-primary" id="upload-btn" disabled>
+                        <span class="icon">
+                            <i class="fas fa-upload"></i>
+                        </span>
+                        <span>Upload Files</span>
+                    </button>
+                </div>
+                <div class="control">
+                    <button class="button is-light" id="clear-btn" disabled>
+                        <span class="icon">
+                            <i class="fas fa-times"></i>
+                        </span>
+                        <span>Clear</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="column">
+            <div class="notification is-info is-light">
+                <h4 class="title is-5">Upload Information</h4>
+                <p>Selected files: <strong id="file-count">0</strong></p>
+                <p>Total size: <strong id="total-size">0 KB</strong></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+$(document).ready(function() {
+    const MAX_RETRIES = 0;
+    const RETRY_DELAY = 2000; // 2 seconds
+
+    const uploadBox = $('#upload-box');
+    const fileInput = $('#file-input');
+    const uploadBtn = $('#upload-btn');
+    const clearBtn = $('#clear-btn');
+    const fileCount = $('#file-count');
+    const totalSize = $('#total-size');
+    const progressBar = $('#upload-progress');
+    const progressText = $('#progress-text');
+    const progressContainer = $('.progress-container');
+    const uploadStatus = $('#upload-status');
+
+    let files = new Map();
+
+    // Drag and drop handling
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        uploadBox.on(eventName, preventDefaults);
+    });
+
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        uploadBox.on(eventName, () => uploadBox.addClass('is-dragover'));
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        uploadBox.on(eventName, () => uploadBox.removeClass('is-dragover'));
+    });
+
+    uploadBox.on('drop', handleDrop);
+    fileInput.on('change', handleFiles);
+
+    function handleDrop(e) {
+        const dt = e.originalEvent.dataTransfer;
+        const droppedFiles = dt.files;
+        handleFiles({ target: { files: droppedFiles } });
+    }
+
+    function handleFiles(e) {
+        files.clear();
+        Array.from(e.target.files).forEach(file => {
+            files.set(file.name, {
+                file: file,
+                status: 'Pending'
+            });
+        });
+        updateStats();
+        updateButtons();
+        hideStatus();
+    }
+
+    function updateStats() {
+        fileCount.text(files.size);
+        const total = Array.from(files.values()).reduce((acc, curr) => acc + curr.file.size, 0);
+        totalSize.text(formatSize(total));
+    }
+
+    function updateButtons() {
+        uploadBtn.prop('disabled', files.size === 0);
+        clearBtn.prop('disabled', files.size === 0);
+    }
+
+    function formatSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+async function uploadWithRetry(files, retries = 0) {
+    try {
+        const client = new DICOMwebClient.api.DICOMwebClient({url:'/tools/dicomweb'});
+        const request = new XMLHttpRequest();
+        const progressCallback = evt => {
+            if (!evt.lengthComputable) {
+                $('#upload-progress').removeAttr('value');
+            }
+            const percentComplete = Math.round((100 * evt.loaded) / evt.total);
+            $('#upload-progress').val(percentComplete);
+        };
+
+        // Add the progress callback as a listener to the request upload object.
+        request.upload.addEventListener('progress', progressCallback);
+
+        result = await client.storeInstances({datasets: Array.from(files.values()).map(f => f.binary), request:request});
+        // // Create FormData with proper DICOM content
+        // const formData = new FormData();
+        // const boundary = `myboundary-${Date.now()}`;
+
+        // // Convert each file to blob with DICOM mime type
+        // const blobs = Array.from(files.values()).map(fileData => {
+        //     return new Blob([fileData.binary], { type: 'application/dicom' });
+        // });
+
+        // // Build multipart body with proper headers
+        // blobs.forEach((blob, index) => {
+        //     formData.append('file', blob, `file${index}.dcm`);
+        // });
+
+        // const response = await fetch('/tools/dicomweb/studies', {
+        //     method: 'POST',
+        //     headers: {
+        //         'Content-Type': `multipart/related; type="application/dicom"; boundary=${boundary}`,
+        //         'Accept': 'application/json'
+        //     },
+        //     body: formData
+        // });
+
+        // if (!response.ok) {
+        //     const errorData = await response.json();
+        //     throw new Error(errorData.error || 'Upload failed');
+        // }
+
+        // return true;
+    } catch (error) {
+        if (retries < MAX_RETRIES) {
+            await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+            return uploadWithRetry(files, retries + 1);
+        }
+        throw error;
+    }
+}
+
+    function showStatus(success, message) {
+        uploadStatus.find('i')
+            .removeClass('fa-check-circle fa-times-circle has-text-success has-text-danger')
+            .addClass(success ? 'fa-check-circle has-text-success' : 'fa-times-circle has-text-danger');
+        uploadStatus.find('p').text(message);
+        uploadStatus.show();
+    }
+
+    function hideStatus() {
+        uploadStatus.hide();
+    }
+
+    uploadBtn.click(async function() {
+        uploadBtn.addClass('is-loading').prop('disabled', true);
+        clearBtn.prop('disabled', true);
+        progressContainer.show();
+        hideStatus();
+
+        try {
+            progressBar.val('');
+            progressText.text('Preparing files for upload...');
+            progressBar.val(0);
+
+            // Create array of promises for reading files
+            const fileReadPromises = Array.from(files.values()).map(fileData => {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result);
+                    reader.onerror = () => reject(reader.error);
+                    reader.readAsArrayBuffer(fileData.file);
+                });
+            });
+
+            // Wait for all files to be read
+            const fileContents = await Promise.all(fileReadPromises);
+            
+            // Update files map with binary content
+            let i = 0;
+            for (const [fileName, fileData] of files) {
+                fileData.binary = fileContents[i++];
+            }
+
+            progressText.text('Uploading files...');
+            await uploadWithRetry(files);
+            
+            // Success handling
+            showStatus(true, 'All files uploaded successfully!');
+            files.clear();
+            updateStats();
+            progressBar.val(100);
+
+        } catch (error) {
+            showStatus(false, `Upload failed: ${error.message}`);
+            console.error('Upload error:', error);
+        } finally {
+            progressContainer.hide();
+            uploadBtn.removeClass('is-loading');
+            updateButtons();
+        }
+    });
+
+
+
+
+    clearBtn.click(function() {
+        files.clear();
+        updateStats();
+        updateButtons();
+        hideStatus();
+        progressContainer.hide();
+        progressBar.val(0);
+    });
+});
+</script>
+{% endblock %}
