@@ -33,12 +33,31 @@
 <div class="container">
     <h2 class="title is-4">DICOM Upload</h2>
 
+    <div class="field is-horizontal">
+        <div class="field-label is-normal">
+          <label class="label">Force Rule</label>
+        </div>
+        <div class="field-body">
+          <div class="field">
+            <div class="control is-expanded">
+              <div class="select">
+                  <select id="force-rule-input" name="force_rule">
+                    <option value=""></option>
+                    {% for rule in rules %}
+                    <option>{{ rule }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+            </div>
+          </div>
+        </div>
+      </div>
     <div class="columns">
         <div class="column is-8">
             <div id="upload-box" class="upload-box">
                 <div class="file has-name is-boxed is-centered">
                     <label class="file-label">
-                        <input class="file-input" type="file" id="file-input" multiple accept=".dcm">
+                        <input class="file-input" type="file" id="file-input" multiple accept=".dcm,.zip">
                         <span class="file-cta">
                             <span class="file-icon">
                                 <i class="fas fa-upload"></i>
@@ -95,7 +114,7 @@
 
 <script>
 $(document).ready(function() {
-    const MAX_RETRIES = 0;
+    const MAX_RETRIES = 3;
     const RETRY_DELAY = 2000; // 2 seconds
 
     const uploadBox = $('#upload-box');
@@ -170,9 +189,93 @@ $(document).ready(function() {
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     }
 
+function guid() {
+  function s4() {
+    return Math.floor((1 + Math.random()) * 0x10000)
+      .toString(16)
+      .substring(1);
+  }
+  return `${s4() + s4()}-${s4()}-${s4()}-${s4()}-${s4()}${s4()}${s4()}`;
+}
+
+function multipartEncode(
+  datasets,
+  boundary = guid(),
+  contentType = 'application/dicom',
+) {
+  const contentTypeString = `Content-Type: ${contentType}`;
+  const header = `\r\n--${boundary}\r\n${contentTypeString}\r\n\r\n`;
+  const footer = `\r\n--${boundary}--`;
+  const headerArray = stringToUint8Array(header);
+  const footerArray = stringToUint8Array(footer);
+  const headerLength = headerArray.length;
+  const footerLength = footerArray.length;
+
+  let length = 0;
+
+  // Calculate the total length for the final array
+  const contentArrays = datasets.map(datasetBuffer => {
+    const contentArray = new Uint8Array(datasetBuffer);
+    const contentLength = contentArray.length;
+
+    length += headerLength + contentLength + footerLength;
+
+    return contentArray;
+  });
+
+  // Allocate the array
+  const multipartArray = new Uint8Array(length);
+
+  // Set the initial header
+  multipartArray.set(headerArray, 0);
+
+  // Write each dataset into the multipart array
+  let position = 0;
+  contentArrays.forEach(contentArray => {
+    multipartArray.set(headerArray, position);
+    multipartArray.set(contentArray, position + headerLength);
+
+    position += headerLength + contentArray.length;
+  });
+
+  multipartArray.set(footerArray, position);
+
+  return {
+    data: multipartArray.buffer,
+    boundary,
+  };
+}
+
+async function storeInstances(options) {
+    if (!('datasets' in options)) {
+      throw new Error('datasets are required for storing');
+    }
+
+    let url = `${this.stowURL}/studies`;
+    if ('studyInstanceUID' in options) {
+      url += `/${options.studyInstanceUID}`;
+    }
+
+    const { data, boundary } = multipartEncode(options.datasets);
+    const headers = {
+      'Content-Type': `multipart/related; type="application/dicom"; boundary="${boundary}"`,
+    };
+    const { withCredentials = false } = options;
+    return await fetch("/tools/dicomweb/studies", {
+                    method: 'POST',
+                    headers,
+                    body: data
+                });
+
+}
 async function uploadWithRetry(files, retries = 0) {
     try {
-        const client = new DICOMwebClient.api.DICOMwebClient({url:'/tools/dicomweb'});
+        const force_rule = $("#force-rule-input").val()
+        let url = "/tools/dicomweb";
+        if (force_rule !== "") {
+            url += "/force-rule/" + encodeURIComponent($("#force-rule-input").val());
+        }
+        const client = new DICOMwebClient.api.DICOMwebClient({url});
         const request = new XMLHttpRequest();
         const progressCallback = evt => {
             if (!evt.lengthComputable) {
@@ -184,37 +287,8 @@ async function uploadWithRetry(files, retries = 0) {
 
         // Add the progress callback as a listener to the request upload object.
         request.upload.addEventListener('progress', progressCallback);
-
+        // await 
         result = await client.storeInstances({datasets: Array.from(files.values()).map(f => f.binary), request:request});
-        // // Create FormData with proper DICOM content
-        // const formData = new FormData();
-        // const boundary = `myboundary-${Date.now()}`;
-
-        // // Convert each file to blob with DICOM mime type
-        // const blobs = Array.from(files.values()).map(fileData => {
-        //     return new Blob([fileData.binary], { type: 'application/dicom' });
-        // });
-
-        // // Build multipart body with proper headers
-        // blobs.forEach((blob, index) => {
-        //     formData.append('file', blob, `file${index}.dcm`);
-        // });
-
-        // const response = await fetch('/tools/dicomweb/studies', {
-        //     method: 'POST',
-        //     headers: {
-        //         'Content-Type': `multipart/related; type="application/dicom"; boundary=${boundary}`,
-        //         'Accept': 'application/json'
-        //     },
-        //     body: formData
-        // });
-
-        // if (!response.ok) {
-        //     const errorData = await response.json();
-        //     throw new Error(errorData.error || 'Upload failed');
-        // }
-
-        // return true;
     } catch (error) {
         if (retries < MAX_RETRIES) {
             await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));

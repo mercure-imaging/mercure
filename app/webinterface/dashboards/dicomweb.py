@@ -5,11 +5,14 @@ DICOMweb interface for handling DICOM uploads via STOW-RS protocol.
 """
 
 import hashlib
+import io
 import os
+import shutil
 import tempfile
-from dataclasses import dataclass
+import zipfile
+from collections import defaultdict
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Optional, Tuple
 
 import common.config as config
 import common.monitor as monitor
@@ -19,8 +22,6 @@ import daiquiri
 import pydicom
 # App-specific includes
 from decoRouter import Router as decoRouter
-from pydicom.dataset import Dataset
-from pydicom.errors import InvalidDicomError
 # Starlette-related includes
 from starlette.applications import Starlette
 from starlette.authentication import requires
@@ -183,9 +184,20 @@ async def index(request) -> Response:
     return JSONResponse({"ok": True})
 
 
+@router.post("/force-rule/{force_rule}/studies")
+@requires(["authenticated"])
+async def studies_force(request: Request) -> Response:
+    return await stow_rs(request, request.path_params['force_rule'])
+
+
 @router.post("/studies")
 @requires(["authenticated"])
-async def stow_rs(request: Request) -> Response:
+async def studies(request: Request) -> Response:
+    return await stow_rs(request, None)
+
+
+@requires(["authenticated"])
+async def stow_rs(request: Request, force_rule: Optional[str]) -> Response:
     """
     Handle STOW-RS requests for uploading DICOM instances
     """
@@ -215,6 +227,7 @@ async def stow_rs(request: Request) -> Response:
         # logger.info(f"Split on {split_on}")
         # logger.info(f"{len(parts)} parts received")
         dicom_parts = []
+        zip_parts = []
         # Process each part
         for part in parts[1:-1]:
             # Split headers from content
@@ -225,45 +238,76 @@ async def stow_rs(request: Request) -> Response:
                 # logger.info(f"Headers: {headers}")
                 headers = dict(line.split(b': ') for line in headers.splitlines() if line)
                 # logger.info(f"Headers dict: {headers}")
+                if any(map(content.startswith, [b'PK\x03\x04', b'PK\x05\x06', b'PK\x07\x08'])):
+                    zip_parts.append(content)
+                    continue
                 if headers.get(b'Content-Type') == b'application/dicom':
                     dicom_parts.append(content)
+                elif headers.get(b'Content-Type') == b'application/zip':
+                    zip_parts.append(content)
             except ValueError:
                 logger.exception("Invalid part format")
                 continue
 
-        if not dicom_parts:
+        if not dicom_parts and not zip_parts:
             logger.error("No DICOM instances found in request")
             return JSONResponse(
                 {"error": "No DICOM instances found in request"},
                 status_code=400
             )
+        logger.info(f"Found {len(dicom_parts)} DICOM parts and {len(zip_parts)} ZIP parts")
 
-        with tempfile.TemporaryDirectory() as tempdir:
-            for i, dicom_part in enumerate(dicom_parts):
-                path = tempdir / f"dicom_{i}"
+        with tempfile.TemporaryDirectory(prefix="route-tmp") as route_dir:
+            if zip_files := [zipfile.ZipFile(io.BytesIO(part)) for part in zip_parts]:
+                # Process each ZIP file separately
+                for i, zip_file in enumerate(zip_files):
+                    with tempfile.TemporaryDirectory(prefix=f"zip-{i}-") as zip_extract_dir, tempfile.TemporaryDirectory(prefix=f"zip-extracted-{i}-") as tempdir:
+                        # If the size is less than 132 bytes, it's not a DICOM file
+                        files_to_extract = [k for k in zip_file.filelist if k.file_size > 128+4]
+                        logger.info(f"Extracting {files_to_extract} files from ZIP")
+                        zip_file.extractall(zip_extract_dir, files_to_extract)  # Extract the ZIP file to a temporary directory
+                        dupes = defaultdict(lambda: 1)
+                        for file in Path(zip_extract_dir).rglob('*'):
+                            if not file.is_file():  # Skip directories
+                                continue
+
+                            # Skip files that are not DICOM files
+                            with file.open('rb') as f:
+                                f.seek(128)
+                                if f.read(4) != b'DICM':
+                                    continue
+
+                            dest_file_name = Path(tempdir) / file.name
+                            while dest_file_name.exists():
+                                dest_file_name = Path(tempdir) / f"{file.stem}_{dupes[dupes[file.name]]}{file.suffix}"
+                                dupes[dest_file_name] += 1
+
+                            file.rename(dest_file_name)
+                            logger.info(f"Renamed {file} to {dest_file_name}")
+                            invoke_getdcmtags(dest_file_name, None, force_rule)
+
+                        for p in Path(tempdir).iterdir():
+                            if p.is_dir():
+                                shutil.move(p, Path(route_dir) / p.name)
+            # ------------/
+
+            # ------------\
+            i = 0
+            for dicom_part in dicom_parts:
+                while (path := Path(route_dir) / f"dicom_{i}").exists():
+                    i += 1
+                logger.info(path)
                 with path.open('wb') as f:
                     f.write(dicom_part)
+                invoke_getdcmtags(path, None, force_rule)
+                i += 1
 
-                invoke_getdcmtags(path, None, None)
-            for p in tempdir.iterdir():
+            for p in list(Path(route_dir).iterdir()):
+                logger.info(f"????? {p}")
                 if p.is_dir():
-                    p.rename(Path(config.mercure.incoming_folder) / p.name)
-
-            # Process and validate files
-        # valid_files, errors = await process_dicom_upload(dicom_parts)
-
-        # if not valid_files:
-        #     logger.error("No valid DICOM files found")
-        #     return JSONResponse({
-        #         "error": "No valid DICOM files found",
-        #         "validation_errors": errors
-        #     }, status_code=400)
-
-        # Queue files for processing
-        # for dicom_file in valid_files:
-        #     # TODO: Add to processing queue
-        #     logger.info(f"Queuing DICOM file {dicom_file.file_hash} "
-        #                 f"for study {dicom_file.study_uid}")
+                    logger.info(f"Moving {p} to {config.mercure.incoming_folder}")
+                    shutil.move(p, Path(config.mercure.incoming_folder) / p.name)
+                logger.info(list(Path(config.mercure.incoming_folder).rglob('*')))
 
         return JSONResponse({
             "success": True,
@@ -271,7 +315,7 @@ async def stow_rs(request: Request) -> Response:
         })
 
     except Exception as e:
-        logger.error(f"Error processing STOW-RS request: {str(e)}")
+        logger.exception(f"Error processing STOW-RS request: {str(e)}")
         return JSONResponse(
             {"error": str(e)},
             status_code=500

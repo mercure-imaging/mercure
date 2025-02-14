@@ -27,6 +27,7 @@ async def upload(request):
     context = {
         "request": request,
         "page": "tools",
+        "rules": [name for name, _ in config.mercure.rules.items()],
         "tab": "upload",
     }
     return templates.TemplateResponse(template, context)

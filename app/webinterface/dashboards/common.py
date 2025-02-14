@@ -60,6 +60,7 @@ def invoke_getdcmtags(file: Path, node: Union[DicomTarget, DicomWebTarget, None]
                 invoke_with.extend(["--set-tag", f"mercureForceRule={force_rule}"])
             subprocess.check_output(invoke_with)
         except subprocess.CalledProcessError as e:
+            logger.warning("Failed to invoke getdcmtags")
             logger.warning(e.output.decode() if e.output else "No stdout")
             logger.warning(e.stderr.decode() if e.stderr else "No stderr")
             raise
