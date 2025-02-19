@@ -15,6 +15,7 @@ import sqlalchemy
 from bookkeeping.helper import CustomJSONResponse, json
 from common import config
 from decoRouter import Router as decoRouter
+from sqlalchemy import select
 # Starlette-related includes
 from starlette.applications import Starlette
 from starlette.authentication import requires
@@ -212,6 +213,7 @@ async def find_task(request) -> JSONResponse:
     if study_filter == "true":
         study_filter_term = "and tasks.study_uid is not null"
 
+    # ----------
     # query_string = f"""select max(a.acc) as acc, max(a.mrn) as mrn,
     #                   max(a.task_id) as task_id, max(a.scope) as scope, max(a.time) as time,
     #                string_agg(b.data->'info'->>'applied_rule', ', ' order by b.id) as rule,
@@ -317,47 +319,55 @@ async def get_task_info(request) -> JSONResponse:
         return CustomJSONResponse(response)
 
     # First, get general information about the series/study
-    info_query = sqlalchemy.text(
-        f"""select
-        dicom_series.tag_patientname as patientname,
-        dicom_series.tag_patientbirthdate as birthdate,
-        dicom_series.tag_patientsex as gender,
-        dicom_series.tag_modality as modality,
-        dicom_series.tag_acquisitiondate as acquisitiondate,
-        dicom_series.tag_acquisitiontime as acquisitiontime,
-        dicom_series.tag_bodypartexamined as bodypartexamined,
-        dicom_series.tag_studydescription as studydescription,
-        dicom_series.tag_protocolname as protocolname,
-        dicom_series.tag_manufacturer as manufacturer,
-        dicom_series.tag_manufacturermodelname as manufacturermodelname,
-        dicom_series.tag_deviceserialnumber as deviceserialnumber,
-        dicom_series.tag_magneticfieldstrength as magneticfieldstrength
-        from tasks
-        left join dicom_series on dicom_series.series_uid = tasks.series_uid
-        where (tasks.id = '{task_id}') and (tasks.parent_id is null)
-        limit 1"""
-    )  # TODO: use sqlalchemy interpolation
+    query = (
+        select(db.dicom_series)
+        .select_from(db.tasks_table)
+        .join(db.dicom_series, db.dicom_series.c.series_uid == db.tasks_table.c.series_uid, isouter=True)
+        .where(
+            db.tasks_table.c.id == task_id,
+            db.tasks_table.c.parent_id.is_(None)
+        )
+        .limit(1)
+    )
 
-    info_rows = await db.database.fetch_all(info_query)
-    info_results = [dict(row) for row in info_rows]
-
-    if info_results:
-        response["information"] = {
-            "patient_name": info_results[0]["patientname"],
-            "patient_birthdate": info_results[0]["birthdate"],
-            "patient_sex": info_results[0]["gender"],
-            "acquisition_date": info_results[0]["acquisitiondate"],
-            "acquisition_time": info_results[0]["acquisitiontime"],
-            "modality": info_results[0]["modality"],
-            "bodypart_examined": info_results[0]["bodypartexamined"],
-            "study_description": info_results[0]["studydescription"],
-            "protocol_name": info_results[0]["protocolname"],
-            "manufacturer": info_results[0]["manufacturer"],
-            "manufacturer_modelname": info_results[0]["manufacturermodelname"],
-            "device_serialnumber": info_results[0]["deviceserialnumber"],
-            "magnetic_fieldstrength": info_results[0]["magneticfieldstrength"],
+    result = await db.database.fetch_one(query)
+    # info_rows = await db.database.fetch_all(info_query)
+    if result:
+        result_dict = dict(result)
+        rename = {
+            "series_uid": "SeriesUID",
+            "study_uid": "StudyUID",
+            "tag_patientname": "PatientName",
+            "tag_patientid": "PatientID",
+            "tag_accessionnumber": "AccessionNumber",
+            "tag_seriesnumber": "SeriesNumber",
+            "tag_studyid": "StudyID",
+            "tag_patientbirthdate": "PatientBirthDate",
+            "tag_patientsex": "PatientSex",
+            "tag_acquisitiondate": "AcquisitionDate",
+            "tag_acquisitiontime": "AcquisitionTime",
+            "tag_modality": "Modality",
+            "tag_bodypartexamined": "BodyPartExamined",
+            "tag_studydescription": "StudyDescription",
+            "tag_seriesdescription": "SeriesDescription",
+            "tag_protocolname": "ProtocolName",
+            "tag_codevalue": "CodeValue",
+            "tag_codemeaning": "CodeMeaning",
+            "tag_sequencename": "SequenceName",
+            "tag_scanningsequence": "ScanningSequence",
+            "tag_sequencevariant": "SequenceVariant",
+            "tag_slicethickness": "SliceThickness",
+            "tag_contrastbolusagent": "ContrastBolusAgent",
+            "tag_referringphysicianname": "ReferringPhysicianName",
+            "tag_manufacturer": "Manufacturer",
+            "tag_manufacturermodelname": "ManufacturerModelName",
+            "tag_magneticfieldstrength": "MagneticFieldStrength",
+            "tag_deviceserialnumber": "DeviceSerialNumber",
+            "tag_softwareversions": "SoftwareVersions",
+            "tag_stationname": "StationName",
         }
 
+        response["information"] = {rename.get(x, x): result_dict.get(x) for x in result.keys() if x not in ('id', 'time')}
     # Now, get the task files embedded into the task or its subtasks
     query = (
         db.tasks_table.select()
