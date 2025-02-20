@@ -22,7 +22,7 @@ from starlette.authentication import requires
 from starlette.responses import JSONResponse
 
 router = decoRouter()
-
+logger = config.get_logger()
 tz_conversion = ""
 
 
@@ -205,9 +205,9 @@ async def find_task(request) -> JSONResponse:
     study_filter = request.query_params.get("study_filter", "false")
     filter_term = ""
     if search_term:
-        filter_term = (f"""and ((tag_accessionnumber ilike '{search_term}%') """
-                       + f"""or (tag_patientid ilike '{search_term}%') """
-                       + f"""or (tag_patientname ilike '%{search_term}%'))""")
+        filter_term = (f"""and ((tag_accessionnumber ilike :search_term || '%') """
+                       + f"""or (tag_patientid ilike :search_term || '%') """
+                       + f"""or (tag_patientname ilike '%' || :search_term || '%'))""")
 
     study_filter_term = ""
     if study_filter == "true":
@@ -260,10 +260,9 @@ async def find_task(request) -> JSONResponse:
                        ORDER BY MAX(a.time) DESC;
                    """
     # print(query_string)
-    query = sqlalchemy.text(query_string)
-
     response: Dict = {}
-    result_rows = await db.database.fetch_all(query)
+    logger.info(query_string)
+    result_rows = await db.database.fetch_all(query_string, {"search_term": search_term} if search_term else None)
     results = [dict(row) for row in result_rows]
 
     for item in results:
