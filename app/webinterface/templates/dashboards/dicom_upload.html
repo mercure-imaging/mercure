@@ -347,31 +347,45 @@ function objectToURLSearchParams(obj) {
   }
   return params;
 }
-async function storeInstances(datasets, options) {
+
+function uploadData(url, data, contentType, callback) {
+    return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+
+        // Convert data to appropriate format if needed
+
+        // Upload progress event
+        xhr.upload.addEventListener('progress', callback);
+        xhr.upload.addEventListener('error', () => reject('Upload error'));
+        xhr.addEventListener('load', () => resolve(xhr.response));
+        xhr.addEventListener('error', () => reject(xhr.statusText));
+
+        xhr.open('POST', url, true);
+        xhr.setRequestHeader('Content-Type', contentType);
+        xhr.send(data);
+    });
+}
+
+async function storeInstances(datasets, options, progressCallback) {
     datasets.push(objectToURLSearchParams(options))
     const { data, boundary } = multipartEncode(datasets);
-    console.log(data);
-    const headers = {
-      'Content-Type': `multipart/related; type="application/dicom"; boundary="${boundary}"`,
-    };
     const url = "/tools/upload/store";
-    return await fetch(url, {
-                    method: 'POST',
-                    headers,
-                    body: data
-                });
-
+    return await uploadData(url, data, `multipart/related; type="application/dicom"; boundary="${boundary}"`, progressCallback)
 }
 function stringToUint8Array(str) {
   return Uint8Array.from(Array.from(text).map(letter => letter.charCodeAt(0)));
 }
 
 async function uploadWithRetry(files, retries = 0) {
-
     // Create FormData object
     const formData = new FormData(document.getElementById('dicom-upload-form'));
     const formObject = Object.fromEntries(formData);
-    console.log(formObject);
+    if (!retries) {
+        result = await fetch('/tools/dataset/'+encodeURIComponent(formObject.dataset_name), { method: 'GET' });
+        if (result.ok) {
+            throw new Error("A dataset with this name already exists. Please choose another name.");
+        }
+    }
     try {
         const force_rule = $("#force-rule-input").val()
 
@@ -385,11 +399,12 @@ async function uploadWithRetry(files, retries = 0) {
         };
 
         // Add the progress callback as a listener to the request upload object.
-        request.upload.addEventListener('progress', progressCallback);
         // await 
-        await storeInstances(Array.from(files.values()).map(f => f.binary), formObject);
+        await storeInstances(Array.from(files.values()).map(f => f.binary), formObject, progressCallback);
+        window.location.reload();
         // result = await client.storeInstances({datasets: Array.from(files.values()).map(f => f.binary), request:request});
     } catch (error) {
+        console.error(error);
         if (retries < MAX_RETRIES) {
             await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
             return uploadWithRetry(files, retries + 1);
