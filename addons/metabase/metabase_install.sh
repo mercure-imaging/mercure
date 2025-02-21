@@ -3,7 +3,7 @@ set -euo pipefail
 
 INSTALL_TYPE=$1
 
-echo "## Create a read-only user for Mercure..."
+echo "## Create a read-only user for mercure..."
 DB_NAME="mercure"
 DB_USER="metabase_read_user"
 DB_PASSWORD=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1 || true)
@@ -157,7 +157,7 @@ echo "API_TOKEN='$API_TOKEN'" >> "/opt/mercure/config/metabase.env"
 # RESPONSE=$(curl -s -H 'x-api-key: '$API_TOKEN'' -X GET 'http://localhost:3000/api/permissions/group')
 # echo $RESPONSE
 
-echo "Importing Mercure Metabase dashboard..."
+echo "Importing mercure Metabase dashboard..."
 
 git clone --depth 1 -b fix https://github.com/mercure-imaging/metabase_export_import.git
 

@@ -64,11 +64,11 @@ if [ -f "$CONFIG_PATH"/db.env ]; then
   DB_PWD=$POSTGRES_PASSWORD
 fi
 
-echo "mercure installation folder: $MERCURE_BASE"
-echo "Data folder: $DATA_PATH"
-echo "Config folder: $CONFIG_PATH"
-echo "Database folder: $DB_PATH"
-echo "mercure source directory: $MERCURE_SRC"
+echo "Installation folder:  $MERCURE_BASE"
+echo "Data folder:          $DATA_PATH"
+echo "Config folder:        $CONFIG_PATH"
+echo "Database folder:      $DB_PATH"
+echo "Source folder:        $MERCURE_SRC"
 echo ""
 
 create_user () {
@@ -540,19 +540,20 @@ while getopts ":hy" opt; do
   case ${opt} in
     h )
       echo "Usage:"
-      echo "    install.sh -h                     Display this help message."
-      echo "    install.sh [-y] docker [-dbu]  Install with docker-compose."
-      echo "    install.sh [-y] systemd [-d]      Install as systemd service."
-      echo "    install.sh [-y] nomad             Install as nomad job."
-
-      echo "    Options:   "
-      echo "                      -d              Development mode"
-      echo "              systemd:"
-      echo "                      -u              Update"
-      echo "              docker:"
-      echo "                      -b              Build containers"
-      echo "              metabase:"
-      echo "                      -m              Install Metabase"
+      echo ""
+      echo "    install.sh -h                      Display this help message."
+      echo "    install.sh [-y] systemd [-dmbu]    Install as systemd service."
+      echo "    install.sh [-y] docker  [-dm]      Install with docker-compose."
+      echo "    install.sh [-y] nomad              Install as nomad job."
+      echo ""
+      echo "Options:   "
+      echo "                      -d               Development mode."
+      echo "                      -m               Install Metabase for reporting."
+      echo "only for systemd:"
+      echo "                      -u               Update installation."
+      echo "only for docker:"
+      echo "                      -b               Build containers."
+      echo ""      
       exit 0
       ;;
     y )
