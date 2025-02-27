@@ -4,17 +4,21 @@ query.py
 Entry functions of the bookkeeper for querying processing information.
 """
 
+import ast
 import datetime
+import json
 from pathlib import Path
 # Standard python includes
 from typing import Dict
 
 # App-specific includes
 import bookkeeping.database as db
+import pydicom
 import sqlalchemy
 from bookkeeping.helper import CustomJSONResponse, json
 from common import config
 from decoRouter import Router as decoRouter
+from pydicom.datadict import keyword_for_tag
 from sqlalchemy import select
 # Starlette-related includes
 from starlette.applications import Starlette
@@ -278,6 +282,104 @@ ORDER BY parent_tasks.time DESC, parent_tasks.id DESC
     return CustomJSONResponse(response)
 
 
+def convert_key(tag_key):
+    # Remove any leading/trailing whitespace and parentheses
+    tag_key = tag_key.strip('()')
+
+    # Convert tag string to integer tuple format
+    try:
+        # Get human-readable keyword
+        keyword = keyword_for_tag(tag_key)
+        return keyword if keyword else tag_key
+    except:
+        logger.exception(f"Error converting tag {tag_key} to keyword")
+        return tag_key
+
+
+def humanize_dicom_json(dicom_json):
+    """
+    Convert DICOM JSON keys from tag format to human-readable strings and simplify values
+
+    Args:
+        dicom_json (dict): DICOM data in JSON format with tags as keys
+
+    Returns:
+        dict: Simplified DICOM data with human-readable keys and direct values
+    """
+
+    def simplify_value(value_dict):
+        # Handle cases where there's no Value key
+        if not isinstance(value_dict, dict) or 'Value' not in value_dict:
+            return value_dict
+
+        # Extract the Value
+        value = value_dict['Value']
+
+        # If Value is a list with one item, return just that item
+        if isinstance(value, list) and len(value) == 1:
+            return value[0]
+
+        return value
+
+    def process_dict(d):
+        new_dict = {}
+        for key, value in d.items():
+            # Convert the key to human-readable format
+            new_key = convert_key(key)
+
+            # Simplify the value structure
+            simplified_value = simplify_value(value)
+
+            # Process nested dictionaries
+            if isinstance(simplified_value, dict):
+                new_dict[new_key] = process_dict(simplified_value)
+            else:
+                new_dict[new_key] = simplified_value
+
+        return new_dict
+
+    return process_dict(dicom_json)
+
+
+def dicom_to_readable_json(ds):
+    """
+    Converts a DICOM file to a human-readable JSON format.
+
+    Args:
+        file_path (str): Path to the DICOM file.
+        output_file_path (str): Path to save the JSON output.
+    """
+    try:
+        # Convert to JSON with indentation for readability
+        result = json.dumps(ds, default=convert_to_serializable)
+        logger.info(result)
+        # return json.loads(result)
+        # return {convert_key(str(int(k, 16))): v for k, v in json.loads(result).items()}
+        return json.loads(result)
+    except Exception as e:
+        logger.exception(f"Error converting DICOM to readable JSON: {e}")
+        return {}
+
+
+def convert_to_serializable(obj):
+    """
+    Converts non-serializable objects to serializable types.
+    """
+    if isinstance(obj, pydicom.dataset.Dataset):
+        return {keyword_for_tag(el.tag) or el.tag.json_key[:4]+","+el.tag.json_key[4:]: obj[el.tag] for el in obj.elements()}
+    if isinstance(obj, pydicom.dataelem.DataElement):
+        try:
+            obj.maxBytesToDisplay = 500
+            obj.descripWidth = 500
+            # see if the representation of this element can be converted to JSON
+            # this will convert eg lists to python lists, numbers to python numbers, etc
+            json.dumps(evaled := ast.literal_eval(obj.repval))
+            return evaled
+        except:
+            return obj.repval
+    raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
+
+
 @router.get("/get_task_info")
 @requires("authenticated")
 async def get_task_info(request) -> JSONResponse:
@@ -288,7 +390,7 @@ async def get_task_info(request) -> JSONResponse:
         return CustomJSONResponse(response)
     # First, get general information about the series/study
     query = (
-        select(db.dicom_series)
+        select(db.dicom_series, db.tasks_table.c.data)
         .select_from(db.tasks_table)
         .join(db.dicom_series, db.dicom_series.c.series_uid == db.tasks_table.c.series_uid, isouter=True)
         .where(
@@ -300,7 +402,11 @@ async def get_task_info(request) -> JSONResponse:
     result = await db.database.fetch_one(query)
     # info_rows = await db.database.fetch_all(info_query)
     if result:
+
+        #     result_dict = dict(result)
+        #     del result_dict["data"]
         result_dict = dict(result)
+        # result_dict["tags"] = tags
         rename = {
             "series_uid": "SeriesUID",
             "study_uid": "StudyUID",
@@ -334,7 +440,16 @@ async def get_task_info(request) -> JSONResponse:
             "tag_stationname": "StationName",
         }
 
-        response["information"] = {rename.get(x, x): result_dict.get(x) for x in result.keys() if x not in ('id', 'time')}
+        response["information"] = {rename.get(x, x): result_dict.get(x)
+                                   for x in result.keys() if x not in ('id', 'time', 'data')}
+        try:
+            tags = dict(json.loads(result.data))["tags"]
+            ds = pydicom.Dataset.from_json(tags)
+            logger.info(ds)
+            response["sample_tags_received"] = dicom_to_readable_json(ds)
+        except:
+            logger.exception("Error parsing data")
+
     # Now, get the task files embedded into the task or its subtasks
     query = (
         db.tasks_table.select()
@@ -343,21 +458,30 @@ async def get_task_info(request) -> JSONResponse:
     )
     result_rows = await db.database.fetch_all(query)
     results = [dict(row) for row in result_rows]
-
+    logger.info(results)
     for item in results:
-        if item["data"]:
+        if item["data"] and set(item["data"].keys()) != {"id", "tags"}:
             task_id = "task " + item["id"]
             response[task_id] = item["data"]
+        #     if "sample_tags" in item["data"]:
+        #         continue
 
-        if not response.get("tags") and (task_folder := Path(config.mercure.success_folder) / item["id"]).exists():
-            try:
-                tags_file = next(task_folder.rglob("*.tags"))
-                tags = json.loads(tags_file.read_text())
-                if task_id not in response:
-                    response[task_id] = {}
-                response[task_id]["sample_tags"] = tags
-            except (StopIteration, json.JSONDecodeError):
-                pass
+        task_folder = None
+        for k in [Path(config.mercure.success_folder), Path(config.mercure.error_folder)]:
+            if (found_folder := k / item["id"]).exists():
+                task_folder = found_folder
+                break
+        else:
+            continue
+
+        try:
+            sample_file = next(task_folder.rglob("*.dcm"))
+            tags = dicom_to_readable_json(pydicom.dcmread(sample_file, stop_before_pixels=True))
+            if task_id not in response:
+                response[task_id] = {}
+            response[task_id]["sample_tags_result"] = tags
+        except (StopIteration, json.JSONDecodeError):
+            pass
 
     return CustomJSONResponse(response)
 

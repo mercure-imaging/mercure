@@ -193,6 +193,13 @@ def send_update_task(task: Task) -> None:
     post("update-task", json=task_dict)
 
 
+def send_update_task_tags(id, info_dict) -> None:
+    """ 
+    
+    """
+    post("update-task", json={"id": id, "tags": info_dict})
+
+
 def send_processor_output(task: Task, task_processing: TaskProcessing, index: int, output: dict) -> None:
     post("store-processor-output",
          json=dict(task_id=task.id, task_acc=task.info.acc, task_mrn=task.info.mrn,

@@ -305,7 +305,7 @@ class Config(BaseModel, Compat):
     server_time: str = "UTC"
     local_time: str = "UTC"
     dicom_retrieve: DicomRetrieveConfig = DicomRetrieveConfig()
-
+    store_sample_dicom_tags: bool = False
 
 class TaskInfo(BaseModel, Compat):
     action: Literal["route", "both", "process", "discard", "notification"]

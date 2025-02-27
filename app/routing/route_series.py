@@ -21,6 +21,7 @@ import common.notification as notification
 import common.rule_evaluation as rule_evaluation
 from common.constants import mercure_actions, mercure_defs, mercure_events, mercure_names, mercure_options, mercure_rule
 from common.types import Rule
+from pydicom import dcmread
 from routing.common import generate_task_id
 from routing.generate_taskfile import create_series_task, create_study_task, update_study_task
 from typing_extensions import Literal
@@ -77,6 +78,18 @@ def route_series(task_id: str, series_UID: str, files: typing.List[Path] = []) -
         logger.error(f"No tags files found for series {series_UID}", task_id)  # handle_error
         lock.free()
         return
+
+    if config.mercure.store_sample_dicom_tags:
+        example_dcm = base_dir / (fileList[0] + ".dcm")
+        if not example_dcm.exists():
+            example_dcm = base_dir / (fileList[0])
+            if not example_dcm.exists():
+                example_dcm = None
+        if example_dcm:
+            try:
+                monitor.send_update_task_tags(task_id, dcmread(example_dcm, stop_before_pixels=True).to_json_dict())
+            except:
+                logger.exception("Error reading example DICOM file", task_id)
 
     # Use the tags file from the first slice for evaluating the routing rules
     tagsMasterFile = base_dir / (fileList[0] + mercure_names.TAGS)
