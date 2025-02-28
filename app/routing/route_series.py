@@ -10,7 +10,7 @@ import os
 import shutil
 import typing
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 # App-specific includes
 import common.config as config
@@ -80,8 +80,8 @@ def route_series(task_id: str, series_UID: str, files: typing.List[Path] = []) -
         return
 
     if config.mercure.store_sample_dicom_tags:
-        example_dcm = base_dir / (fileList[0] + ".dcm")
-        if not example_dcm.exists():
+        example_dcm: Optional[Path] = base_dir / (fileList[0] + ".dcm")
+        if not example_dcm or not example_dcm.exists():
             example_dcm = base_dir / (fileList[0])
             if not example_dcm.exists():
                 example_dcm = None

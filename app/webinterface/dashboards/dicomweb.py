@@ -12,7 +12,7 @@ import tempfile
 import zipfile
 from collections import defaultdict
 from pathlib import Path
-from typing import List
+from typing import Dict, List, Optional, Union
 from urllib.parse import parse_qs
 
 import common.config as config
@@ -46,29 +46,24 @@ class MultipartData:
     zips:  List[bytes]
     form_data: List[bytes]
 
-    def __init__(self, dicoms, zips, form_data):
+    def __init__(self, dicoms, zips, form_data) -> None:
         self.dicoms = dicoms
         self.zips = zips
         self.form_data = form_data
 
 
-async def parse_multipart_data(request: Request):
+async def parse_multipart_data(request: Request) -> MultipartData:
     # Validate content type
     content_type = request.headers.get("content-type", "")
     if not content_type.startswith("multipart/related"):
-        return JSONResponse(
-            {"error": "Invalid content type - must be multipart/related"},
-            status_code=415
-        )
+        raise Exception("Invalid content type - must be multipart/related")
 
     # Extract boundary
     try:
         boundary = content_type.split("boundary=")[1].strip().strip('"')
     except IndexError:
-        return JSONResponse(
-            {"error": "Missing boundary in content-type"},
-            status_code=400
-        )
+        raise Exception("Missing boundary in content-type")
+
     # Process multipart DICOM data
     body = await request.body()
 
@@ -84,11 +79,11 @@ async def parse_multipart_data(request: Request):
     for part in parts[1:-1]:
         # Split headers from content
         try:
-            headers, content = part.split(b'\r\n\r\n', 1)
+            headers_bytes, content = part.split(b'\r\n\r\n', 1)
             if content[-2:] == b'\r\n':
                 content = content[:-2]
             # logger.info(f"Headers: {headers}")
-            headers = dict(line.split(b': ') for line in headers.splitlines() if line)
+            headers = dict(line.split(b': ') for line in headers_bytes.splitlines() if line)
             # logger.info(f"Headers dict: {headers}")
             if any(map(content.startswith, [b'PK\x03\x04', b'PK\x05\x06', b'PK\x07\x08'])):
                 zip_parts.append(content)
@@ -108,14 +103,14 @@ async def parse_multipart_data(request: Request):
     return MultipartData(dicom_parts, zip_parts, form_data_parts)
 
 
-def extract_zip(zip_file, extract_to, force_rule):
+def extract_zip(zip_file: zipfile.ZipFile, extract_to: str, force_rule: Optional[str]) -> int:
     n_extracted = 0
     with tempfile.TemporaryDirectory(prefix=f"zip-") as zip_extract_dir, tempfile.TemporaryDirectory(prefix=f"zip-extracted-") as tempdir:
         # If the size is less than 132 bytes, it's not a DICOM file
         files_to_extract = [k for k in zip_file.filelist if k.file_size > 128+4]
         logger.info(f"Extracting {files_to_extract} files from ZIP")
         zip_file.extractall(zip_extract_dir, files_to_extract)  # Extract the ZIP file to a temporary directory
-        dupes = defaultdict(lambda: 1)
+        dupes: Dict[str, int] = defaultdict(lambda: 1)
         for file in Path(zip_extract_dir).rglob('*'):
             if not file.is_file():  # Skip directories
                 continue
@@ -128,8 +123,8 @@ def extract_zip(zip_file, extract_to, force_rule):
 
             dest_file_name = Path(tempdir) / file.name
             while dest_file_name.exists():
-                dest_file_name = Path(tempdir) / f"{file.stem}_{dupes[dupes[file.name]]}{file.suffix}"
-                dupes[dest_file_name] += 1
+                dest_file_name = Path(tempdir) / f"{file.stem}_{dupes[file.name]}{file.suffix}"
+                dupes[file.name] += 1
 
             file.rename(dest_file_name)
             logger.info(f"Renamed {file} to {dest_file_name}")
@@ -138,7 +133,7 @@ def extract_zip(zip_file, extract_to, force_rule):
 
         for p in Path(tempdir).iterdir():
             if p.is_dir():
-                shutil.move(p, Path(extract_to) / p.name)
+                shutil.move(str(p), Path(extract_to) / p.name)
     return n_extracted
 
 
@@ -185,7 +180,7 @@ async def dataset_operation(request: Request):
         for p in list(Path(folder).iterdir()):
             if p.is_dir():
                 logger.info(f"Moving {p} to {config.mercure.incoming_folder}")
-                shutil.move(p, Path(config.mercure.incoming_folder) / p.name)
+                shutil.move(str(p), Path(config.mercure.incoming_folder) / p.name)
         return JSONResponse({"status": "success"})
     else:
         return JSONResponse({"error": "Method not allowed"}, status_code=405)
@@ -207,18 +202,19 @@ async def stow_rs(request: Request) -> Response:
                 {"error": "No DICOM instances found in request"},
                 status_code=400
             )
-        form_data = {}
+        form_data: Dict[str, Union[str, List[str]]] = {}
         for f in multipart_data.form_data:
             form_data.update({
-                key.decode(): values[0].decode() if len(values) == 1 else map(lambda x: x.decode(), values)
+                key.decode(): list(map(lambda x: x.decode(), values))
                 for key, values in parse_qs(f).items()
             })
             # decode the form data and add it to the request
 
-        force_rule = form_data.get("force_rule", None)
-        save_dataset = form_data.get("save_dataset", "false").lower() == "true"
-        save_dataset_as = form_data.get("dataset_name", None)
-
+        force_rule = form_data.get("force_rule", [None])[0]
+        save_dataset = form_data.get("save_dataset", ["false"])[0].lower() == "true"
+        save_dataset_as = form_data.get("dataset_name", [None])[0]
+        if save_dataset and not save_dataset_as:
+            raise Exception("A dataset name is required.")
         logger.info(f"Form data: {form_data}")
 
         with tempfile.TemporaryDirectory(prefix="route-tmp") as route_dir:
@@ -235,20 +231,21 @@ async def stow_rs(request: Request) -> Response:
                 while (path := Path(route_dir) / f"dicom_{i}").exists():
                     i += 1
                 logger.info(path)
-                with path.open('wb') as f:
-                    f.write(dicom_part)
+                with path.open('wb') as dicom_file:
+                    dicom_file.write(dicom_part)
                 invoke_getdcmtags(path, None, force_rule)
                 n_dicoms += 1
                 i += 1
 
             if save_dataset:
+                assert save_dataset_as
                 basedir = config.mercure.jobs_folder + f"/uploaded_datasets/{request.user.display_name}"
                 os.makedirs(basedir, exist_ok=True)
                 shutil.copytree(route_dir, basedir + "/" + save_dataset_as)
             for p in list(Path(route_dir).iterdir()):
                 if p.is_dir():
                     logger.info(f"Moving {p} to {config.mercure.incoming_folder}")
-                    shutil.move(p, Path(config.mercure.incoming_folder) / p.name)
+                    shutil.move(str(p), Path(config.mercure.incoming_folder) / p.name)
 
         return JSONResponse({
             "success": True,

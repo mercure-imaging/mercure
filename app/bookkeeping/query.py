@@ -296,52 +296,7 @@ def convert_key(tag_key):
         return tag_key
 
 
-def humanize_dicom_json(dicom_json):
-    """
-    Convert DICOM JSON keys from tag format to human-readable strings and simplify values
-
-    Args:
-        dicom_json (dict): DICOM data in JSON format with tags as keys
-
-    Returns:
-        dict: Simplified DICOM data with human-readable keys and direct values
-    """
-
-    def simplify_value(value_dict):
-        # Handle cases where there's no Value key
-        if not isinstance(value_dict, dict) or 'Value' not in value_dict:
-            return value_dict
-
-        # Extract the Value
-        value = value_dict['Value']
-
-        # If Value is a list with one item, return just that item
-        if isinstance(value, list) and len(value) == 1:
-            return value[0]
-
-        return value
-
-    def process_dict(d):
-        new_dict = {}
-        for key, value in d.items():
-            # Convert the key to human-readable format
-            new_key = convert_key(key)
-
-            # Simplify the value structure
-            simplified_value = simplify_value(value)
-
-            # Process nested dictionaries
-            if isinstance(simplified_value, dict):
-                new_dict[new_key] = process_dict(simplified_value)
-            else:
-                new_dict[new_key] = simplified_value
-
-        return new_dict
-
-    return process_dict(dicom_json)
-
-
-def dicom_to_readable_json(ds):
+def dicom_to_readable_json(ds: pydicom.Dataset):
     """
     Converts a DICOM file to a human-readable JSON format.
 
@@ -402,11 +357,7 @@ async def get_task_info(request) -> JSONResponse:
     result = await db.database.fetch_one(query)
     # info_rows = await db.database.fetch_all(info_query)
     if result:
-
-        #     result_dict = dict(result)
-        #     del result_dict["data"]
         result_dict = dict(result)
-        # result_dict["tags"] = tags
         rename = {
             "series_uid": "SeriesUID",
             "study_uid": "StudyUID",
@@ -440,12 +391,13 @@ async def get_task_info(request) -> JSONResponse:
             "tag_stationname": "StationName",
         }
 
-        response["information"] = {rename.get(x, x): result_dict.get(x)
-                                   for x in result.keys() if x not in ('id', 'time', 'data')}
+        response["information"] = {
+            rename.get(x, x): result_dict.get(x)
+            for x in result_dict.keys() if x not in ('id', 'time', 'data')
+        }
         try:
-            tags = dict(json.loads(result.data))["tags"]
+            tags = dict(json.loads(result_dict.get('data', '{}')))["tags"]
             ds = pydicom.Dataset.from_json(tags)
-            logger.info(ds)
             response["sample_tags_received"] = dicom_to_readable_json(ds)
         except:
             logger.exception("Error parsing data")
@@ -458,13 +410,10 @@ async def get_task_info(request) -> JSONResponse:
     )
     result_rows = await db.database.fetch_all(query)
     results = [dict(row) for row in result_rows]
-    logger.info(results)
     for item in results:
         if item["data"] and set(item["data"].keys()) != {"id", "tags"}:
             task_id = "task " + item["id"]
             response[task_id] = item["data"]
-        #     if "sample_tags" in item["data"]:
-        #         continue
 
         task_folder = None
         for k in [Path(config.mercure.success_folder), Path(config.mercure.error_folder)]:
