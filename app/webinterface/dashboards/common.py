@@ -1,4 +1,5 @@
 import dataclasses
+import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -14,6 +15,8 @@ from rq.job import Dependency, Job, JobStatus
 from starlette.responses import JSONResponse, RedirectResponse
 from tests.getdcmtags import process_dicom
 from webinterface.common import redis
+
+from app.common import helper
 
 router = decoRouter()
 logger = daiquiri.getLogger("dashboards")
@@ -102,3 +105,41 @@ class ClassBasedRQTask():
 
     def execute(self, *args, **kwargs) -> Any:
         pass
+
+    @staticmethod
+    def move_to_destination(path: str, destination: Optional[str], job_id: str,
+                            node: Union[DicomTarget, DicomWebTarget], force_rule: Optional[str] = None) -> None:
+        if destination is not None:
+            dest_folder: Path = Path(destination) / job_id
+            dest_folder.mkdir(exist_ok=True)
+            logger.info(f"moving {path} to {dest_folder}")
+            lock = helper.FileLock(dest_folder / ".mercure-sending")
+            shutil.move(path, dest_folder)
+            (dest_folder / ".complete").touch()
+            lock.free()
+            return
+
+        config.read_config()
+        moved_files = []
+        try:
+            for p in Path(path).glob("**/*"):
+                if not p.is_file():
+                    continue
+                # if p.suffix == ".dcm":
+                #     name = p.stem
+                # else:
+                #     name = p.name
+                logger.debug(f"Moving {p} to {config.mercure.incoming_folder}/{p.name}")
+                dest_name = Path(config.mercure.incoming_folder) / p.name
+                shutil.move(str(p), dest_name)  # Move the file to incoming folder
+                moved_files.append(dest_name)
+                invoke_getdcmtags(Path(config.mercure.incoming_folder) / p.name, node, force_rule)
+        except Exception:
+            for file in moved_files:
+                try:
+                    file.unlink()
+                except Exception:
+                    pass
+            raise
+        # tree(config.mercure.incoming_folder)
+        shutil.rmtree(path)
