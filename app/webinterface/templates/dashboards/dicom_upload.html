@@ -26,131 +26,208 @@
     text-align: center;
     display: none;
 }
+
+.tabs-content {
+    padding-top: 1rem;
+}
+
+.tabs-content > div {
+    display: none;
+}
+
+.tabs-content > div.is-active {
+    display: block;
+}
+
+.selected-row {
+    background-color: #effaf5;
+}
+
+.form-section {
+    padding-bottom: 1.5rem;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid #eee;
+}
 </style>
 {% endblock %}
 
 {% block dashboard_content %}
 <div class="container">
     <h2 class="title is-4">DICOM Upload</h2>
-    <form id="dicom-upload-form">
-    <div class="field is-horizontal">
-        <div class="field-label is-normal">
-          <label class="label">Force Rule</label>
-        </div>
-        <div class="field-body">
-          <div class="field">
-            <div class="control is-expanded">
-              <div class="select">
-                  <select id="force-rule-input" name="force_rule" >
-                    <option value=""></option>
-                    {% for rule in rules %}
-                    <option>{{ rule }}</option>
-                    {% endfor %}
-                  </select>
+    
+    <!-- Form section - always visible -->
+    <div class="form-section">
+        <form id="dicom-upload-form">
+            <div class="field is-horizontal">
+                <div class="field-label is-normal">
+                    <label class="label">Force Rule</label>
                 </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-    <!-- input checkbox for save_dataset -->
-      <div class="field is-horizontal"> 
-        <div class="field-label is-normal">
-          <label class="label">Save Dataset</label>
-        </div>
-        <div class="field-body">
-          <div class="field">
-            <div class="control">
-                <!-- Onchange handler to disable/enable dataset-name input -->
-              <input id="save_dataset" name="save_dataset" type="checkbox" value="true" onchange="$('#dataset-name').attr('disabled', !this.checked)">
-            </div>
-          </div>
-        </div>
-      </div>
-
-     <div class="field is-horizontal">
-        <div class="field-label is-normal">
-          <label class="label">Dataset Name</label>
-        </div>
-        <div class="field-body">
-          <div class="field">
-            <div class="control is-expanded">
-              <input id="dataset-name" name="dataset_name" type="text" placeholder="Enter dataset name" class="input" disabled>
-            </div>
-          </div>
-        </div>
-      </div>
-    </form>
-    <div class="columns">
-        <div class="column is-8">
-            <div id="upload-box" class="upload-box">
-                <div class="file has-name is-boxed is-centered">
-                    <label class="file-label">
-                        <input class="file-input" type="file" id="file-input" multiple accept=".dcm,.zip">
-                        <span class="file-cta">
-                            <span class="file-icon">
-                                <i class="fas fa-upload"></i>
-                            </span>
-                            <span class="file-label">
-                                Choose files or drag here...
-                            </span>
-                        </span>
-                    </label>
+                <div class="field-body">
+                    <div class="field">
+                        <div class="control is-expanded">
+                            <div class="select">
+                                <select id="force-rule-input" name="force_rule">
+                                    <option value=""></option>
+                                    {% for rule in rules %}
+                                    <option>{{ rule }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div class="progress-container">
-                <progress class="progress is-primary" id="upload-progress" value="0" max="100"></progress>
-                <p class="has-text-centered" id="progress-text">Uploading files...</p>
-            </div>
-
-            <!-- <div class="upload-status" id="upload-status">
-                <span class="icon is-large">
-                    <i class="fas fa-2x"></i>
-                </span>
-                <p class="is-size-5 mt-2"></p>
-            </div>
- -->
-            <div class="field is-grouped" style="margin-top: 1rem;">
-                <div class="control">
-                    <button class="button is-primary" id="upload-btn" disabled>
-                        <span class="icon">
-                            <i class="fas fa-upload"></i>
-                        </span>
-                        <span>Upload Files</span>
-                    </button>
+            <div class="field is-horizontal"> 
+                <div class="field-label is-normal">
+                    <label class="label">Save Dataset</label>
                 </div>
-                <div class="control">
-                    <button class="button is-light" id="clear-btn" disabled>
-                        <span class="icon">
-                            <i class="fas fa-times"></i>
-                        </span>
-                        <span>Clear</span>
-                    </button>
+                <div class="field-body">
+                    <div class="field">
+                        <div class="control">
+                            <input id="save-dataset" name="save_dataset" type="checkbox" value="true" onchange="$('#dataset-name').attr('disabled', !this.checked)">
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <div class="column">
-            <div class="notification is-info is-light">
-                <h4 class="title is-5">Upload Information</h4>
-                <p>Selected files: <strong id="file-count">0</strong></p>
-                <p>Total size: <strong id="total-size">0 KB</strong></p>
+            <div class="field is-horizontal">
+                <div class="field-label is-normal">
+                    <label class="label">Save Dataset As</label>
+                </div>
+                <div class="field-body">
+                    <div class="field">
+                        <div class="control is-expanded">
+                            <input id="dataset-name" name="dataset_name" type="text" placeholder="Enter dataset name" class="input" disabled>
+                        </div>
+                    </div>
+                </div>
             </div>
-        </div>
+            
+            <div class="field is-horizontal">
+                <div class="field-label is-normal">
+                    <label class="label">Selected Dataset</label>
+                </div>
+                <div class="field-body">
+                    <div class="field has-addons">
+                        <div class="control is-expanded">
+                            <input class="input" type="text" id="selected-dataset-display" placeholder="No dataset selected" readonly>
+                            <input type="hidden" id="selected-dataset" name="selected_dataset" value="">
+                        </div>
+                        <div class="control">
+                            <button type="button" class="button is-light" id="clear-selection-btn">
+                                <span class="icon is-small">
+                                    <i class="fas fa-times"></i>
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="field is-horizontal">
+                <div class="field-label">
+                    <!-- Left empty for spacing -->
+                </div>
+                <div class="field-body">
+                    <div class="field">
+                        <div class="control">
+                            <button type="button" class="button is-primary" id="upload-btn" disabled>
+                                <span class="icon">
+                                    <i class="fas fa-upload"></i>
+                                </span>
+                                <span>Submit</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
     </div>
-    <div class="columns">
-        <div class="column is-full">
-            <!-- Table of datasets with actions-->
-               
+    
+    <!-- Tabs Navigation -->
+    <div class="tabs">
+        <ul>
+            <li class="is-active" data-tab="upload-tab"><a>Upload Files</a></li>
+            <li data-tab="datasets-tab"><a>Manage Datasets</a></li>
+        </ul>
+    </div>
+    
+    <!-- Tabs Content -->
+    <div class="tabs-content">
+        <!-- Upload Tab -->
+        <div id="upload-tab" class="is-active">
+            <div class="columns">
+                <div class="column is-8">
+                    <div id="upload-box" class="upload-box">
+                        <div class="file has-name is-boxed is-centered">
+                            <label class="file-label">
+                                <input class="file-input" type="file" id="file-input" multiple accept=".dcm,.zip">
+                                <span class="file-cta">
+                                    <span class="file-icon">
+                                        <i class="fas fa-upload"></i>
+                                    </span>
+                                    <span class="file-label">
+                                        Choose files or drag here...
+                                    </span>
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="progress-container">
+                        <progress class="progress is-primary" id="upload-progress" value="0" max="100"></progress>
+                        <p class="has-text-centered" id="progress-text">Uploading files...</p>
+                    </div>
+
+                    <div class="field is-grouped" style="margin-top: 1rem;">
+                        <div class="control">
+                            <button class="button is-light" id="clear-btn" disabled>
+                                <span class="icon">
+                                    <i class="fas fa-times"></i>
+                                </span>
+                                <span>Clear Files</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="column">
+                    <div class="notification is-info is-light">
+                        <h4 class="title is-5">Upload Information</h4>
+                        <p>Selected files: <strong id="file-count">0</strong></p>
+                        <p>Total size: <strong id="total-size">0 KB</strong></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Datasets Tab -->
+        <div id="datasets-tab">
+            <div class="notification is-warning is-light">
+                <p><span class="icon"><i class="fas fa-info-circle"></i></span> 
+                Select a dataset from the list below to submit it with the form above.</p>
+            </div>
             <table class="table is-fullwidth">
+                <thead>
+                    <tr>
+                        <th>Dataset Name</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
                 <tbody>
                     {% for dataset in datasets %}
-                    <tr>
+                    <tr data-dataset-name="{{ dataset }}">
                         <td>{{ dataset }}</td>
                         <td>
-                            <button class="button is-small is-info" onclick="window.submitDataset('{{ dataset }}')">Submit</button>
-                            <button class="button is-small is-danger" onclick="window.deleteDataset('{{ dataset }}')">Delete</button>
+                            <button class="button is-small is-info select-dataset-btn" data-dataset="{{ dataset }}">
+                                <span class="icon is-small"><i class="fas fa-check"></i></span>
+                                <span>Select</span>
+                            </button>
+                            <button class="button is-small is-danger" onclick="window.deleteDataset('{{ dataset }}')">
+                                <span class="icon is-small"><i class="fas fa-trash"></i></span>
+                                <span>Delete</span>
+                            </button>
                         </td>
                     </tr>
                     {% endfor %}
@@ -158,17 +235,20 @@
             </table>
         </div>
     </div>
-
 </div>
 
 <script>
-async function submitDataset(dataset) {
+async function submitDataset(dataset, formData) {
     if (!confirm("Submit dataset " + dataset + "?")) {
         return;
     }
-    // urelencode dataset
 
-    result = await fetch('/tools/dataset/'+encodeURIComponent(dataset), { method: 'POST' });
+    result = await fetch('/tools/dataset/'+encodeURIComponent(dataset), 
+                    {
+                        method: 'post',
+                        body: formData
+                    }
+                );
     if (result.ok) {
         alert("Dataset " + dataset + " submitted successfully!");
         location.reload();
@@ -176,6 +256,7 @@ async function submitDataset(dataset) {
         alert("Failed to submit dataset " + dataset);
     }
 }
+
 async function deleteDataset(dataset) {
     if (!confirm("Delete dataset " + dataset + "?")) {
         return;
@@ -188,7 +269,43 @@ async function deleteDataset(dataset) {
         alert("Failed to delete dataset " + dataset);
     }
 }
+
 $(document).ready(function() {
+    // Tab functionality
+    $('.tabs li').on('click', function() {
+        const tabId = $(this).data('tab');
+        
+        $('.tabs li').removeClass('is-active');
+        $(this).addClass('is-active');
+        
+        $('.tabs-content > div').removeClass('is-active');
+        $('#' + tabId).addClass('is-active');
+    });
+    
+    // Dataset selection
+    $('.select-dataset-btn').on('click', function() {
+        const datasetName = $(this).data('dataset');
+        $('#selected-dataset').val(datasetName);
+        $('#selected-dataset-display').val(datasetName);
+        
+        // Highlight the selected row
+        $('table tr').removeClass('selected-row');
+        $(this).closest('tr').addClass('selected-row');
+        
+        // Enable the upload button
+        $('#upload-btn').prop('disabled', false);
+        updateButtons()
+    });
+    
+    // Clear dataset selection
+    $('#clear-selection-btn').on('click', function() {
+        $('#selected-dataset').val('');
+        $('#selected-dataset-display').val('');
+        $('table tr').removeClass('selected-row');
+        // Update the upload button status
+        updateButtons();
+    });
+
     const MAX_RETRIES = 3;
     const RETRY_DELAY = 2000; // 2 seconds
 
@@ -240,9 +357,12 @@ $(document).ready(function() {
                 status: 'Pending'
             });
         });
+        $('#selected-dataset').val('');
+        $('#selected-dataset-display').val('');
+        $('clear-selection-btn').click()
+        $('table tr').removeClass('selected-row');
         updateStats();
         updateButtons();
-        hideStatus();
     }
 
     function updateStats() {
@@ -252,8 +372,16 @@ $(document).ready(function() {
     }
 
     function updateButtons() {
-        uploadBtn.prop('disabled', files.size === 0);
-        clearBtn.prop('disabled', files.size === 0);
+        // Enable upload button if files are selected OR a dataset is selected
+        const hasFiles = files.size > 0;
+        const hasSelectedDataset = $('#selected-dataset').val() !== '';
+        uploadBtn.prop('disabled', !(hasFiles || hasSelectedDataset));
+        clearBtn.prop('disabled', !hasFiles);
+        $('#save-dataset').prop('disabled', hasSelectedDataset)
+        $('#dataset-name').prop('disabled', hasSelectedDataset)
+        if (hasSelectedDataset) {
+            $('#save-dataset').prop('checked', false)
+        }
     }
 
     function formatSize(bytes) {
@@ -278,11 +406,9 @@ function multipartEncode(
   boundary = guid(),
   contentType = 'application/dicom',
 ) {
-//   const contentTypeString = `Content-Type: ${contentType}`;
   const header = (dataContentType) => 
     `\r\n--${boundary}\r\nContent-Type: ${dataContentType}\r\n\r\n`;
 
-//   const header = `\r\n--${boundary}\r\n${contentTypeString}\r\n\r\n`;
   const footer = `\r\n--${boundary}--`;
   const encoder = new TextEncoder()
   const footerArray = encoder.encode(footer);
@@ -333,159 +459,157 @@ function multipartEncode(
 
   multipartArray.set(footerArray, position);
 
-  return {
-    data: multipartArray.buffer,
-    boundary,
-  };
+return {
+  data: multipartArray.buffer,
+  boundary,
+};
 }
 function objectToURLSearchParams(obj) {
-  const params = new URLSearchParams();
-  for (const [key, value] of Object.entries(obj)) {
-    if (value !== undefined && value !== null) {
-      params.append(key, value.toString());
-    }
+const params = new URLSearchParams();
+for (const [key, value] of Object.entries(obj)) {
+  if (value !== undefined && value !== null) {
+    params.append(key, value.toString());
   }
-  return params;
+}
+return params;
 }
 
 function uploadData(url, data, contentType, callback) {
-    return new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
+  return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
 
-        // Convert data to appropriate format if needed
+      // Upload progress event
+      xhr.upload.addEventListener('progress', callback);
+      xhr.upload.addEventListener('error', () => reject('Upload error'));
+      xhr.addEventListener('load', () => resolve(xhr.response));
+      xhr.addEventListener('error', () => reject(xhr.statusText));
 
-        // Upload progress event
-        xhr.upload.addEventListener('progress', callback);
-        xhr.upload.addEventListener('error', () => reject('Upload error'));
-        xhr.addEventListener('load', () => resolve(xhr.response));
-        xhr.addEventListener('error', () => reject(xhr.statusText));
-
-        xhr.open('POST', url, true);
-        xhr.setRequestHeader('Content-Type', contentType);
-        xhr.send(data);
-    });
+      xhr.open('POST', url, true);
+      xhr.setRequestHeader('Content-Type', contentType);
+      xhr.send(data);
+  });
 }
 
 async function storeInstances(datasets, options, progressCallback) {
-    datasets.push(objectToURLSearchParams(options))
-    const { data, boundary } = multipartEncode(datasets);
-    const url = "/tools/upload/store";
-    return await uploadData(url, data, `multipart/related; type="application/dicom"; boundary="${boundary}"`, progressCallback)
+  datasets.push(objectToURLSearchParams(options))
+  const { data, boundary } = multipartEncode(datasets);
+  const url = "/tools/upload/store";
+  return await uploadData(url, data, `multipart/related; type="application/dicom"; boundary="${boundary}"`, progressCallback)
 }
+
 function stringToUint8Array(str) {
-  return Uint8Array.from(Array.from(text).map(letter => letter.charCodeAt(0)));
+return Uint8Array.from(Array.from(text).map(letter => letter.charCodeAt(0)));
 }
 
 async function uploadWithRetry(files, retries = 0) {
-    // Create FormData object
-    const formData = new FormData(document.getElementById('dicom-upload-form'));
-    const formObject = Object.fromEntries(formData);
-    if (!retries) {
-        result = await fetch('/tools/dataset/'+encodeURIComponent(formObject.dataset_name), { method: 'GET' });
-        if (result.ok) {
-            throw new Error("A dataset with this name already exists. Please choose another name.");
-        }
-    }
-    try {
-        const force_rule = $("#force-rule-input").val()
+  // Create FormData object
+  const formData = new FormData(document.getElementById('dicom-upload-form'));
+  const formObject = Object.fromEntries(formData);
+  
+  // If uploading a new dataset
+  if (formObject.save_dataset && formObject.dataset_name && !retries) {
+      result = await fetch('/tools/dataset/'+encodeURIComponent(formObject.dataset_name), { method: 'GET' });
+      if (result.ok) {
+          throw new Error("A dataset with this name already exists. Please choose another name.");
+      }
+  }
+  
+  try {
+      const force_rule = $("#force-rule-input").val()
 
-        const request = new XMLHttpRequest();
-        const progressCallback = evt => {
-            if (!evt.lengthComputable) {
-                $('#upload-progress').removeAttr('value');
-            }
-            const percentComplete = Math.round((100 * evt.loaded) / evt.total);
-            $('#upload-progress').val(percentComplete);
-        };
+      const request = new XMLHttpRequest();
+      const progressCallback = evt => {
+          if (!evt.lengthComputable) {
+              $('#upload-progress').removeAttr('value');
+          }
+          const percentComplete = Math.round((100 * evt.loaded) / evt.total);
+          $('#upload-progress').val(percentComplete);
+      };
 
-        // Add the progress callback as a listener to the request upload object.
-        // await 
-        await storeInstances(Array.from(files.values()).map(f => f.binary), formObject, progressCallback);
-        window.location.reload();
-        // result = await client.storeInstances({datasets: Array.from(files.values()).map(f => f.binary), request:request});
-    } catch (error) {
-        console.error(error);
-        if (retries < MAX_RETRIES) {
-            await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
-            return uploadWithRetry(files, retries + 1);
-        }
-        throw error;
-    }
+
+      await storeInstances(Array.from(files.values()).map(f => f.binary), formObject, progressCallback);
+      window.location.reload();
+  } catch (error) {
+      console.error(error);
+      if (retries < MAX_RETRIES) {
+          await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+          return uploadWithRetry(files, retries + 1);
+      }
+      throw error;
+  }
 }
 
-    function showStatus(success, message) {
-        // uploadStatus.find('i')
-        //     .removeClass('fa-check-circle fa-times-circle has-text-success has-text-danger')
-        //     .addClass(success ? 'fa-check-circle has-text-success' : 'fa-times-circle has-text-danger');
-        uploadStatus.find('p').text(message);
-        uploadStatus.show();
-    }
+  uploadBtn.click(async function() {
+      uploadBtn.addClass('is-loading').prop('disabled', true);
+      
+      // Check if we're submitting a selected dataset or uploading files
+      const selectedDataset = $("#selected-dataset").val();
+      
+      if (selectedDataset) {
+          try {
+              const formData = new FormData(document.getElementById('dicom-upload-form'));
+              await submitDataset(selectedDataset,formData);
+          } catch (error) {
+              console.error('Dataset submission error:', error);
+              alert('Dataset submission failed: ' + error.message);
+          } finally {
+              uploadBtn.removeClass('is-loading');
+              updateButtons();
+          }
+          return;
+      }
+      
+      clearBtn.prop('disabled', true);
+      progressContainer.show();
+      
+      try {
+          progressBar.val('');
+          progressText.text('Preparing files for upload...');
+          progressBar.val(0);
 
-    function hideStatus() {
-        uploadStatus.hide();
-    }
+          // Create array of promises for reading files
+          const fileReadPromises = Array.from(files.values()).map(fileData => {
+              return new Promise((resolve, reject) => {
+                  const reader = new FileReader();
+                  reader.onload = () => resolve(reader.result);
+                  reader.onerror = () => reject(reader.error);
+                  reader.readAsArrayBuffer(fileData.file);
+              });
+          });
 
-    uploadBtn.click(async function() {
-        uploadBtn.addClass('is-loading').prop('disabled', true);
-        clearBtn.prop('disabled', true);
-        progressContainer.show();
-        hideStatus();
+          // Wait for all files to be read
+          const fileContents = await Promise.all(fileReadPromises);
+          
+          // Update files map with binary content
+          let i = 0;
+          for (const [fileName, fileData] of files) {
+              fileData.binary = fileContents[i++];
+          }
 
-        try {
-            progressBar.val('');
-            progressText.text('Preparing files for upload...');
-            progressBar.val(0);
+          progressText.text('Uploading files...');
+          await uploadWithRetry(files);
+          
+          files.clear();
+          updateStats();
+          progressBar.val(100);
 
-            // Create array of promises for reading files
-            const fileReadPromises = Array.from(files.values()).map(fileData => {
-                return new Promise((resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.onload = () => resolve(reader.result);
-                    reader.onerror = () => reject(reader.error);
-                    reader.readAsArrayBuffer(fileData.file);
-                });
-            });
+      } catch (error) {
+          console.error('Upload error:', error);
+          alert('Upload failed: ' + error.message);
+      } finally {
+          progressContainer.hide();
+          uploadBtn.removeClass('is-loading');
+          updateButtons();
+      }
+  });
 
-            // Wait for all files to be read
-            const fileContents = await Promise.all(fileReadPromises);
-            
-            // Update files map with binary content
-            let i = 0;
-            for (const [fileName, fileData] of files) {
-                fileData.binary = fileContents[i++];
-            }
-
-            progressText.text('Uploading files...');
-            await uploadWithRetry(files);
-            
-            // Success handling
-            showStatus(true, 'All files uploaded successfully!');
-            files.clear();
-            updateStats();
-            progressBar.val(100);
-
-        } catch (error) {
-            showStatus(false, `Upload failed: ${error.message}`);
-            console.error('Upload error:', error);
-            alert('Upload failed: ' + error.message);
-        } finally {
-            progressContainer.hide();
-            uploadBtn.removeClass('is-loading');
-            updateButtons();
-        }
-    });
-
-
-
-
-    clearBtn.click(function() {
-        files.clear();
-        updateStats();
-        updateButtons();
-        hideStatus();
-        progressContainer.hide();
-        progressBar.val(0);
-    });
+  clearBtn.click(function() {
+      files.clear();
+      updateStats();
+      updateButtons();
+      progressContainer.hide();
+      progressBar.val(0);
+  });
 });
 </script>
 {% endblock %}

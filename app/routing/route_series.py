@@ -273,7 +273,7 @@ def push_series_studylevel(
     tags_list: Dict[str, str],
 ) -> None:
     """
-    Prepeares study-level routing for the current series.
+    Prepares study-level routing for the current series.
     """
     # Move series into individual study-level folder for every rule
     for current_rule in triggered_rules:
@@ -339,7 +339,7 @@ def push_series_serieslevel(
     tags_list: Dict[str, str],
 ) -> None:
     """
-    Prepeares all series-level routings for the current series.
+    Prepares all series-level routings for the current series.
     """
     push_serieslevel_routing(task_id, triggered_rules, file_list, series_UID, tags_list)
     push_serieslevel_processing(task_id, triggered_rules, file_list, series_UID, tags_list)

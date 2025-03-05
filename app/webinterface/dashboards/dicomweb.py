@@ -36,7 +36,7 @@ from .common import router
 logger = daiquiri.getLogger("dicomweb")
 
 
-@router.get("/")
+@router.get("/test")
 async def index(request) -> Response:
     return JSONResponse({"ok": True})
 
@@ -69,6 +69,9 @@ async def parse_multipart_data(request: Request) -> MultipartData:
 
     # Split on boundary
     split_on = f"--{boundary}".encode()
+    if not split_on in body:
+        logger.info(body)
+        raise Exception(f"Boundary {split_on} not found in body.")
     parts = body.split(split_on)
     # logger.info(f"Split on {split_on}")
     # logger.info(f"{len(parts)} parts received")
@@ -99,7 +102,7 @@ async def parse_multipart_data(request: Request) -> MultipartData:
             continue
 
     logger.info(f"Found {len(dicom_parts)} DICOM parts and {len(zip_parts)} ZIP parts")
-
+    # logger.info(body)
     return MultipartData(dicom_parts, zip_parts, form_data_parts)
 
 
@@ -128,7 +131,6 @@ def extract_zip(zip_file: zipfile.ZipFile, extract_to: str, force_rule: Optional
 
             file.rename(dest_file_name)
             logger.info(f"Renamed {file} to {dest_file_name}")
-            invoke_getdcmtags(dest_file_name, None, force_rule)
             n_extracted += 1
 
         for p in Path(tempdir).iterdir():
@@ -158,6 +160,9 @@ async def upload(request):
 @requires("authenticated", redirect="login")
 async def dataset_operation(request: Request):
     dataset_id = request.path_params["dataset_id"]
+    form_data = await request.form()
+    # logger.info(form_data)
+    force_rule = form_data.get('force_rule', None)
     folder = (Path(config.mercure.jobs_folder) / "uploaded_datasets" / request.user.display_name / dataset_id).resolve()
     # check that folder is really a subdirectory of config.mercure.jobs_folder
     if not Path(config.mercure.jobs_folder).resolve() in folder.parents:
@@ -172,15 +177,23 @@ async def dataset_operation(request: Request):
     elif request.method == "GET":
         dataset = {
             "id": dataset_id,
-            "series_count": [f.name for f in folder.iterdir() if f.is_dir()]
         }
         return JSONResponse(dataset)
     elif request.method == "POST":
         # Handle POST request to resubmit the dataset
-        for p in list(Path(folder).iterdir()):
-            if p.is_dir():
-                logger.info(f"Moving {p} to {config.mercure.incoming_folder}")
-                shutil.move(str(p), Path(config.mercure.incoming_folder) / p.name)
+
+        with tempfile.TemporaryDirectory(prefix="dataset-tmp") as dir:
+            for p in Path(folder).glob('*'):
+                shutil.copy(str(p), dir)
+
+            for p in Path(dir).glob('*'):
+                invoke_getdcmtags(p, None, force_rule)
+
+            for p in list(Path(dir).iterdir()):
+                if p.is_dir():
+                    logger.info(f"Moving {p} to {config.mercure.incoming_folder}")
+                    shutil.move(str(p), Path(config.mercure.incoming_folder) / p.name)
+
         return JSONResponse({"status": "success"})
     else:
         return JSONResponse({"error": "Method not allowed"}, status_code=405)
@@ -228,20 +241,23 @@ async def stow_rs(request: Request) -> Response:
             # ------------\
             i = 0
             for dicom_part in multipart_data.dicoms:
-                while (path := Path(route_dir) / f"dicom_{i}").exists():
+                while (path := Path(route_dir) / f"dicom_{i}.dcm").exists():
                     i += 1
-                logger.info(path)
+                # logger.info(f"wrote {path}")
                 with path.open('wb') as dicom_file:
                     dicom_file.write(dicom_part)
-                invoke_getdcmtags(path, None, force_rule)
                 n_dicoms += 1
                 i += 1
-
             if save_dataset:
                 assert save_dataset_as
                 basedir = config.mercure.jobs_folder + f"/uploaded_datasets/{request.user.display_name}"
                 os.makedirs(basedir, exist_ok=True)
                 shutil.copytree(route_dir, basedir + "/" + save_dataset_as)
+
+            for p in list(Path(route_dir).glob('*')):
+                if not p.is_dir():
+                    invoke_getdcmtags(p, None, force_rule)
+
             for p in list(Path(route_dir).iterdir()):
                 if p.is_dir():
                     logger.info(f"Moving {p} to {config.mercure.incoming_folder}")

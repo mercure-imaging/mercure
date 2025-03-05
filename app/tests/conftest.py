@@ -96,8 +96,8 @@ HOST=0.0.0.0
 DATABASE_URL={config.mercure.bookkeeper}"""
     fs.create_file(bookkeeper.bk_config.config_filename, contents=bookkeeper_env)
 
-    fs.add_real_directory(os.path.abspath(os.path.dirname(os.path.realpath(__file__)) + '/../alembic'))
-    fs.add_real_file(os.path.abspath(os.path.dirname(os.path.realpath(__file__)) + '/../alembic.ini'), read_only=True)
+    fs.add_real_directory(os.path.abspath(os.path.dirname(os.path.realpath(__file__)) + '/..'))
+    # fs.add_real_file(os.path.abspath(os.path.dirname(os.path.realpath(__file__)) + '/..'), read_only=True)
     return set_config
 
 

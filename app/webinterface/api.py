@@ -23,6 +23,10 @@ logger = daiquiri.getLogger("api")
 # API endpoints
 ###################################################################################
 
+@router.get("/")
+async def test(request):
+    return JSONResponse({"ok": True})
+
 
 @router.get("/get-task-events")
 @requires(["authenticated"])
@@ -98,7 +102,7 @@ async def task_process_results(request):
 @requires(["authenticated"])
 async def get_task_info(request):
     task_id = request.query_params.get("task_id", "")
-    
+
     try:
         return JSONResponse(await monitor.get_task_info(task_id))
     except monitor.MonitorHTTPError as e:

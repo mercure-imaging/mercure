@@ -7,16 +7,14 @@ from typing import Any, Optional, Union
 
 import daiquiri
 import pyfakefs
-from common import config
+from common import config, helper
 from common.types import DicomTarget, DicomWebTarget
 from decoRouter import Router as decoRouter
 from rq import Queue, get_current_job
-from rq.job import Dependency, Job, JobStatus
+from rq.job import Job
 from starlette.responses import JSONResponse, RedirectResponse
 from tests.getdcmtags import process_dicom
 from webinterface.common import redis
-
-from app.common import helper
 
 router = decoRouter()
 logger = daiquiri.getLogger("dashboards")
@@ -33,6 +31,10 @@ class JSONErrorResponse(JSONResponse):
 
 
 def invoke_getdcmtags(file: Path, node: Union[DicomTarget, DicomWebTarget, None], force_rule: Optional[str] = None):
+    if not file.exists():
+        raise FileNotFoundError(f"{file} does not exist")
+    if not file.is_file():
+        raise FileNotFoundError(f"{file} is not a file.")
     if isinstance(node, DicomTarget):
         sender_address = node.ip
         sender_aet = node.aet_target

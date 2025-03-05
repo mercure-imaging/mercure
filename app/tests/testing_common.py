@@ -3,6 +3,7 @@ testing_common.py
 =================
 """
 import json
+import os
 import shutil
 import uuid
 from pathlib import Path
@@ -116,6 +117,9 @@ def create_minimal_dicom(output_filename, series_uid, additional_tags=None) -> D
     :param additional_tags: A dictionary of additional DICOM tags and their values
     :return: None
     """
+    if output_filename:
+        os.makedirs(os.path.dirname(output_filename), exist_ok=True)
+
     if not series_uid:
         series_uid = generate_uid()
     # Create a new DICOM dataset
