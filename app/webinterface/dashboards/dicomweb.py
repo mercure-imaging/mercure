@@ -134,8 +134,8 @@ def extract_zip(zip_file: zipfile.ZipFile, extract_to: str, force_rule: Optional
             n_extracted += 1
 
         for p in Path(tempdir).iterdir():
-            if p.is_dir():
-                shutil.move(str(p), Path(extract_to) / p.name)
+            shutil.move(str(p), Path(extract_to) / p.name)
+            logger.info(f"Moved {p} to {Path(extract_to) / p.name}")
     return n_extracted
 
 
@@ -150,7 +150,6 @@ async def upload(request):
         "datasets": [p.name for p in Path(config.mercure.jobs_folder + f"/uploaded_datasets/{request.user.display_name}").iterdir()],
         "tab": "upload",
     }
-    logger.info(context)
     return templates.TemplateResponse(template, context)
 
 
@@ -235,7 +234,7 @@ async def stow_rs(request: Request) -> Response:
             if zip_files := [zipfile.ZipFile(io.BytesIO(part)) for part in multipart_data.zips]:
                 for zip_file in zip_files:
                     n_dicoms += extract_zip(zip_file, route_dir, force_rule)
-
+            logger.info("Extracted zips.")
             # ------------/
 
             # ------------\
@@ -248,17 +247,23 @@ async def stow_rs(request: Request) -> Response:
                     dicom_file.write(dicom_part)
                 n_dicoms += 1
                 i += 1
+            logger.info("Wrote dicoms.")
+
             if save_dataset:
                 assert save_dataset_as
                 basedir = config.mercure.jobs_folder + f"/uploaded_datasets/{request.user.display_name}"
                 os.makedirs(basedir, exist_ok=True)
                 shutil.copytree(route_dir, basedir + "/" + save_dataset_as)
+                logger.info("Saved dataset.")
 
+            logger.info("---- invoke getdcmtags ----")
             for p in list(Path(route_dir).glob('*')):
+                logger.info(p)
                 if not p.is_dir():
                     invoke_getdcmtags(p, None, force_rule)
-
+            logger.info("---- moving ---")
             for p in list(Path(route_dir).iterdir()):
+                logger.info(p)
                 if p.is_dir():
                     logger.info(f"Moving {p} to {config.mercure.incoming_folder}")
                     shutil.move(str(p), Path(config.mercure.incoming_folder) / p.name)

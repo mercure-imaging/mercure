@@ -154,8 +154,9 @@ def test_stow_rs_with_dicom_part(test_client, fs, mercure_config):
     assert json.load(open(out_tags))["mercureForceRule"] == "test_rule"
 
 
-def test_stow_rs_with_zip_part(test_client, fs):
+def test_stow_rs_with_zip_part(test_client, fs, mercure_config):
     """Test uploading a zip file with DICOM files via STOW-RS."""
+    config = mercure_config()
 
     # Create test ZIP file
     zip_content = create_test_zip("/tmp/test.zip")
@@ -170,6 +171,9 @@ def test_stow_rs_with_zip_part(test_client, fs):
     assert response.status_code == 200
     assert response.json()["success"] is True
     assert response.json()["file_count"] == 3  # We created 3 DICOM files in the ZIP
+
+    out_tags = config.incoming_folder+"/1.2.3.4/1.2.3.4#file_0.tags"
+    assert os.path.exists(out_tags)
 
 
 def test_dataset_operations(test_client, fs, mercure_config):
