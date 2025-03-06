@@ -159,7 +159,7 @@ def test_stow_rs_with_zip_part(test_client, fs, mercure_config):
     config = mercure_config()
 
     # Create test ZIP file
-    zip_content = create_test_zip("/tmp/test.zip")
+    zip_content = create_test_zip("/tmp/test.zip", num_files=3)
 
     response = multipart_upload(
         test_client, {
@@ -172,7 +172,8 @@ def test_stow_rs_with_zip_part(test_client, fs, mercure_config):
     assert response.json()["success"] is True
     assert response.json()["file_count"] == 3  # We created 3 DICOM files in the ZIP
 
-    out_tags = config.incoming_folder+"/1.2.3.4/1.2.3.4#file_0.tags"
+    for k in range(3):
+        out_tags = config.incoming_folder+f"/1.2.3.4/1.2.3.4#file_{k}.tags"
     assert os.path.exists(out_tags)
 
 
@@ -261,10 +262,6 @@ def test_stow_rs_error_handling(test_client):
 
     assert response.status_code == 400
     assert "No DICOM instances found" in response.json().get("error", "")
-
-
-def test_stow_rs_save_dataset_validation(test_client, fs):
-    """Test validation for saving datasets."""
 
     # Create test DICOM file
     dcm_path = "/tmp/test.dcm"
