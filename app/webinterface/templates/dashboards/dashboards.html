@@ -7,6 +7,8 @@
   <div class="tabs logtabs" style="margin-top: 20px;">
     <ul>
       <li class="{% if tab == 'query' %}is-active{% endif %}"><a href="query">DICOM Query</a></li>
+      <li class="{% if tab == 'upload' %}is-active{% endif %}"><a href="upload">DICOM Upload</a></li>
+
       {% if is_admin %}
       <li class="{% if tab == 'tests' %}is-active{% endif %}"><a href="tests">Self-Test</a></li>
       {% endif %}

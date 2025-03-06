@@ -4,24 +4,29 @@ query.py
 Entry functions of the bookkeeper for querying processing information.
 """
 
+import ast
 import datetime
+import json
 from pathlib import Path
 # Standard python includes
 from typing import Dict
 
 # App-specific includes
 import bookkeeping.database as db
+import pydicom
 import sqlalchemy
 from bookkeeping.helper import CustomJSONResponse, json
 from common import config
 from decoRouter import Router as decoRouter
+from pydicom.datadict import keyword_for_tag
+from sqlalchemy import select
 # Starlette-related includes
 from starlette.applications import Starlette
 from starlette.authentication import requires
 from starlette.responses import JSONResponse
 
 router = decoRouter()
-
+logger = config.get_logger()
 tz_conversion = ""
 
 
@@ -204,64 +209,34 @@ async def find_task(request) -> JSONResponse:
     study_filter = request.query_params.get("study_filter", "false")
     filter_term = ""
     if search_term:
-        filter_term = (f"""and ((tag_accessionnumber ilike '{search_term}%') """
-                       + f"""or (tag_patientid ilike '{search_term}%') """
-                       + f"""or (tag_patientname ilike '%{search_term}%'))""")
+        filter_term = (f"""and ((tag_accessionnumber ilike :search_term || '%') """
+                       + f"""or (tag_patientid ilike :search_term || '%') """
+                       + f"""or (tag_patientname ilike '%' || :search_term || '%'))""")
 
     study_filter_term = ""
     if study_filter == "true":
         study_filter_term = "and tasks.study_uid is not null"
 
-    # query_string = f"""select max(a.acc) as acc, max(a.mrn) as mrn,
-    #                   max(a.task_id) as task_id, max(a.scope) as scope, max(a.time) as time,
-    #                string_agg(b.data->'info'->>'applied_rule', ', ' order by b.id) as rule,
-    #                string_agg(b.data->'info'->>'triggered_rules', ',' order by b.id) as triggered_rules
-    #                from (select tasks.id as task_id,
-    #                tag_accessionnumber as acc,
-    #                tag_patientid as mrn,
-    #                data->'info'->>'uid_type' as scope,
-    #                tasks.time::timestamp {tz_conversion} as time
-    #                from tasks
-    #                left join dicom_series on dicom_series.series_uid = tasks.series_uid
-    #                where parent_id is null {filter_term} {study_filter_term}
-    #                order by date_trunc('second', tasks.time) desc, tasks.id desc
-    #                limit 512) a
-    #                left join tasks b on (b.parent_id = a.task_id or b.id = a.task_id)
-    #                group by a.task_id
-    #                order by max(a.time) desc
-    #                """
-
-    query_string = f"""WITH task_data AS (
-                           SELECT
-                               tasks.id AS task_id,
-                               tag_accessionnumber AS acc,
-                               tag_patientid AS mrn,
-                               data->'info'->>'uid_type' AS scope,
-                               tasks.time::timestamp {tz_conversion} AS time
-                           FROM tasks
-                           LEFT JOIN dicom_series ON dicom_series.series_uid = tasks.series_uid
-                           WHERE parent_id IS NULL {filter_term} {study_filter_term}
-                           ORDER BY tasks.time DESC, tasks.id DESC
-                           LIMIT 512
-                       )
-                       SELECT
-                           MAX(a.acc) AS acc,
-                           MAX(a.mrn) AS mrn,
-                           MAX(a.task_id) AS task_id,
-                           MAX(a.scope) AS scope,
-                           MAX(a.time) AS time,
-                           STRING_AGG(b.data->'info'->>'applied_rule', ', ' ORDER BY b.id) AS rule,
-                           STRING_AGG(b.data->'info'->>'triggered_rules', ',' ORDER BY b.id) AS triggered_rules
-                       FROM task_data a
-                       LEFT JOIN tasks b ON (b.parent_id = a.task_id OR b.id = a.task_id)
-                       GROUP BY a.task_id
-                       ORDER BY MAX(a.time) DESC;
-                   """
+    query_string = f"""
+SELECT
+    tag_accessionnumber AS acc,
+    tag_patientid AS mrn,
+    parent_tasks.id AS task_id,
+    parent_tasks.data->'info'->>'uid_type' AS scope,
+    parent_tasks.time::timestamp AS time,
+    STRING_AGG(child_tasks.data->'info'->>'applied_rule', ', ' ORDER BY child_tasks.id) AS rule,
+    STRING_AGG(child_tasks.data->'info'->>'triggered_rules', ',' ORDER BY child_tasks.id) AS triggered_rules
+FROM (select * from tasks limit 512) as parent_tasks
+    LEFT JOIN dicom_series ON dicom_series.series_uid = parent_tasks.series_uid
+    LEFT JOIN tasks as child_tasks ON (child_tasks.parent_id = parent_tasks.id)
+WHERE parent_tasks.parent_id IS NULL {filter_term} {study_filter_term}
+GROUP BY 1,2,3,4,5
+ORDER BY parent_tasks.time DESC, parent_tasks.id DESC
+"""
     # print(query_string)
-    query = sqlalchemy.text(query_string)
-
     response: Dict = {}
-    result_rows = await db.database.fetch_all(query)
+    logger.info(query_string)
+    result_rows = await db.database.fetch_all(query_string, {"search_term": search_term} if search_term else None)
     results = [dict(row) for row in result_rows]
 
     for item in results:
@@ -307,6 +282,59 @@ async def find_task(request) -> JSONResponse:
     return CustomJSONResponse(response)
 
 
+def convert_key(tag_key):
+    # Remove any leading/trailing whitespace and parentheses
+    tag_key = tag_key.strip('()')
+
+    # Convert tag string to integer tuple format
+    try:
+        # Get human-readable keyword
+        keyword = keyword_for_tag(tag_key)
+        return keyword if keyword else tag_key
+    except:
+        logger.exception(f"Error converting tag {tag_key} to keyword")
+        return tag_key
+
+
+def dicom_to_readable_json(ds: pydicom.Dataset):
+    """
+    Converts a DICOM file to a human-readable JSON format.
+
+    Args:
+        file_path (str): Path to the DICOM file.
+        output_file_path (str): Path to save the JSON output.
+    """
+    try:
+        # Convert to JSON with indentation for readability
+        result = json.dumps(ds, default=convert_to_serializable)
+        logger.info(result)
+        # return json.loads(result)
+        # return {convert_key(str(int(k, 16))): v for k, v in json.loads(result).items()}
+        return json.loads(result)
+    except Exception as e:
+        logger.exception(f"Error converting DICOM to readable JSON: {e}")
+        return {}
+
+
+def convert_to_serializable(obj):
+    """
+    Converts non-serializable objects to serializable types.
+    """
+    if isinstance(obj, pydicom.dataset.Dataset):
+        return {keyword_for_tag(el.tag) or el.tag.json_key[:4]+","+el.tag.json_key[4:]: obj[el.tag] for el in obj.elements()}
+    if isinstance(obj, pydicom.dataelem.DataElement):
+        try:
+            obj.maxBytesToDisplay = 500
+            obj.descripWidth = 500
+            # see if the representation of this element can be converted to JSON
+            # this will convert eg lists to python lists, numbers to python numbers, etc
+            json.dumps(evaled := ast.literal_eval(obj.repval))
+            return evaled
+        except:
+            return obj.repval
+    raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
+
+
 @router.get("/get_task_info")
 @requires("authenticated")
 async def get_task_info(request) -> JSONResponse:
@@ -315,48 +343,64 @@ async def get_task_info(request) -> JSONResponse:
     task_id = request.query_params.get("task_id", "")
     if not task_id:
         return CustomJSONResponse(response)
-
     # First, get general information about the series/study
-    info_query = sqlalchemy.text(
-        f"""select
-        dicom_series.tag_patientname as patientname,
-        dicom_series.tag_patientbirthdate as birthdate,
-        dicom_series.tag_patientsex as gender,
-        dicom_series.tag_modality as modality,
-        dicom_series.tag_acquisitiondate as acquisitiondate,
-        dicom_series.tag_acquisitiontime as acquisitiontime,
-        dicom_series.tag_bodypartexamined as bodypartexamined,
-        dicom_series.tag_studydescription as studydescription,
-        dicom_series.tag_protocolname as protocolname,
-        dicom_series.tag_manufacturer as manufacturer,
-        dicom_series.tag_manufacturermodelname as manufacturermodelname,
-        dicom_series.tag_deviceserialnumber as deviceserialnumber,
-        dicom_series.tag_magneticfieldstrength as magneticfieldstrength
-        from tasks
-        left join dicom_series on dicom_series.series_uid = tasks.series_uid
-        where (tasks.id = '{task_id}') and (tasks.parent_id is null)
-        limit 1"""
-    )  # TODO: use sqlalchemy interpolation
-
-    info_rows = await db.database.fetch_all(info_query)
-    info_results = [dict(row) for row in info_rows]
-
-    if info_results:
-        response["information"] = {
-            "patient_name": info_results[0]["patientname"],
-            "patient_birthdate": info_results[0]["birthdate"],
-            "patient_sex": info_results[0]["gender"],
-            "acquisition_date": info_results[0]["acquisitiondate"],
-            "acquisition_time": info_results[0]["acquisitiontime"],
-            "modality": info_results[0]["modality"],
-            "bodypart_examined": info_results[0]["bodypartexamined"],
-            "study_description": info_results[0]["studydescription"],
-            "protocol_name": info_results[0]["protocolname"],
-            "manufacturer": info_results[0]["manufacturer"],
-            "manufacturer_modelname": info_results[0]["manufacturermodelname"],
-            "device_serialnumber": info_results[0]["deviceserialnumber"],
-            "magnetic_fieldstrength": info_results[0]["magneticfieldstrength"],
+    query = (
+        select(db.dicom_series, db.tasks_table.c.data)
+        .select_from(db.tasks_table)
+        .join(db.dicom_series, db.dicom_series.c.series_uid == db.tasks_table.c.series_uid, isouter=True)
+        .where(
+            db.tasks_table.c.id == task_id,
+            db.tasks_table.c.parent_id.is_(None)
+        )
+        .limit(1)
+    )
+    result = await db.database.fetch_one(query)
+    # info_rows = await db.database.fetch_all(info_query)
+    if result:
+        result_dict = dict(result)
+        rename = {
+            "series_uid": "SeriesUID",
+            "study_uid": "StudyUID",
+            "tag_patientname": "PatientName",
+            "tag_patientid": "PatientID",
+            "tag_accessionnumber": "AccessionNumber",
+            "tag_seriesnumber": "SeriesNumber",
+            "tag_studyid": "StudyID",
+            "tag_patientbirthdate": "PatientBirthDate",
+            "tag_patientsex": "PatientSex",
+            "tag_acquisitiondate": "AcquisitionDate",
+            "tag_acquisitiontime": "AcquisitionTime",
+            "tag_modality": "Modality",
+            "tag_bodypartexamined": "BodyPartExamined",
+            "tag_studydescription": "StudyDescription",
+            "tag_seriesdescription": "SeriesDescription",
+            "tag_protocolname": "ProtocolName",
+            "tag_codevalue": "CodeValue",
+            "tag_codemeaning": "CodeMeaning",
+            "tag_sequencename": "SequenceName",
+            "tag_scanningsequence": "ScanningSequence",
+            "tag_sequencevariant": "SequenceVariant",
+            "tag_slicethickness": "SliceThickness",
+            "tag_contrastbolusagent": "ContrastBolusAgent",
+            "tag_referringphysicianname": "ReferringPhysicianName",
+            "tag_manufacturer": "Manufacturer",
+            "tag_manufacturermodelname": "ManufacturerModelName",
+            "tag_magneticfieldstrength": "MagneticFieldStrength",
+            "tag_deviceserialnumber": "DeviceSerialNumber",
+            "tag_softwareversions": "SoftwareVersions",
+            "tag_stationname": "StationName",
         }
+
+        response["information"] = {
+            rename.get(x, x): result_dict.get(x)
+            for x in result_dict.keys() if x not in ('id', 'time', 'data')
+        }
+        try:
+            tags = dict(json.loads(result_dict.get('data', '{}')))["tags"]
+            ds = pydicom.Dataset.from_json(tags)
+            response["sample_tags_received"] = dicom_to_readable_json(ds)
+        except:
+            logger.exception("Error parsing data")
 
     # Now, get the task files embedded into the task or its subtasks
     query = (
@@ -366,11 +410,27 @@ async def get_task_info(request) -> JSONResponse:
     )
     result_rows = await db.database.fetch_all(query)
     results = [dict(row) for row in result_rows]
-
     for item in results:
-        if item["data"]:
+        if item["data"] and set(item["data"].keys()) != {"id", "tags"}:
             task_id = "task " + item["id"]
             response[task_id] = item["data"]
+
+        task_folder = None
+        for k in [Path(config.mercure.success_folder), Path(config.mercure.error_folder)]:
+            if (found_folder := k / item["id"]).exists():
+                task_folder = found_folder
+                break
+        else:
+            continue
+
+        try:
+            sample_file = next(task_folder.rglob("*.dcm"))
+            tags = dicom_to_readable_json(pydicom.dcmread(sample_file, stop_before_pixels=True))
+            if task_id not in response:
+                response[task_id] = {}
+            response[task_id]["sample_tags_result"] = tags
+        except (StopIteration, json.JSONDecodeError):
+            pass
 
     return CustomJSONResponse(response)
 

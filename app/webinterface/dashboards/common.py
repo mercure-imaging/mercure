@@ -33,6 +33,10 @@ class JSONErrorResponse(JSONResponse):
 
 
 def invoke_getdcmtags(file: Path, node: Union[DicomTarget, DicomWebTarget, None], force_rule: Optional[str] = None):
+    if not file.exists():
+        raise FileNotFoundError(f"{file} does not exist")
+    if not file.is_file():
+        raise FileNotFoundError(f"{file} is not a file.")
     if isinstance(node, DicomTarget):
         sender_address = node.ip
         sender_aet = node.aet_target

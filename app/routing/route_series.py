@@ -10,7 +10,7 @@ import os
 import shutil
 import typing
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 # App-specific includes
 import common.config as config
@@ -21,6 +21,7 @@ import common.notification as notification
 import common.rule_evaluation as rule_evaluation
 from common.constants import mercure_actions, mercure_defs, mercure_events, mercure_names, mercure_options, mercure_rule
 from common.types import Rule
+from pydicom import dcmread
 from routing.common import generate_task_id
 from routing.generate_taskfile import create_series_task, create_study_task, update_study_task
 from typing_extensions import Literal
@@ -77,6 +78,18 @@ def route_series(task_id: str, series_UID: str, files: typing.List[Path] = []) -
         logger.error(f"No tags files found for series {series_UID}", task_id)  # handle_error
         lock.free()
         return
+
+    if config.mercure.store_sample_dicom_tags:
+        example_dcm: Optional[Path] = base_dir / (fileList[0] + ".dcm")
+        if not example_dcm or not example_dcm.exists():
+            example_dcm = base_dir / (fileList[0])
+            if not example_dcm.exists():
+                example_dcm = None
+        if example_dcm:
+            try:
+                monitor.send_update_task_tags(task_id, dcmread(example_dcm, stop_before_pixels=True).to_json_dict())
+            except:
+                logger.exception("Error reading example DICOM file", task_id)
 
     # Use the tags file from the first slice for evaluating the routing rules
     tagsMasterFile = base_dir / (fileList[0] + mercure_names.TAGS)
@@ -260,7 +273,7 @@ def push_series_studylevel(
     tags_list: Dict[str, str],
 ) -> None:
     """
-    Prepeares study-level routing for the current series.
+    Prepares study-level routing for the current series.
     """
     # Move series into individual study-level folder for every rule
     for current_rule in triggered_rules:
@@ -326,7 +339,7 @@ def push_series_serieslevel(
     tags_list: Dict[str, str],
 ) -> None:
     """
-    Prepeares all series-level routings for the current series.
+    Prepares all series-level routings for the current series.
     """
     push_serieslevel_routing(task_id, triggered_rules, file_list, series_UID, tags_list)
     push_serieslevel_processing(task_id, triggered_rules, file_list, series_UID, tags_list)

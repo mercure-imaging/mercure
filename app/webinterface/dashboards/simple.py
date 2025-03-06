@@ -20,6 +20,7 @@ async def tasks(request):
     return templates.TemplateResponse(template, context)
 
 
+
 @router.get("/tests")
 @requires(["authenticated", "admin"], redirect="login")
 async def tests(request):
