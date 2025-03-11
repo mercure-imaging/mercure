@@ -7,16 +7,14 @@ from typing import Any, Optional, Union
 
 import daiquiri
 import pyfakefs
-from common import config
+from common import config, helper
 from common.types import DicomTarget, DicomWebTarget
 from decoRouter import Router as decoRouter
 from rq import Queue, get_current_job
 from rq.job import Job
 from starlette.responses import JSONResponse, RedirectResponse
+from tests.getdcmtags import process_dicom
 from webinterface.common import redis
-
-from app.common import helper
-from app.tests.getdcmtags import process_dicom
 
 router = decoRouter()
 logger = daiquiri.getLogger("dashboards")

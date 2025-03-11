@@ -56,8 +56,8 @@
     <h2 class="title is-4">DICOM Upload</h2>
     
     <!-- Form section - always visible -->
-    <div class="form-section">
-        <form id="dicom-upload-form">
+    <div class="form-section" style="border-bottom: none;">
+        <form id="dicom-upload-form" class="box">
             <div class="field is-horizontal">
                 <div class="field-label is-normal">
                     <label class="label">Force Rule</label>
@@ -82,18 +82,19 @@
                 <div class="field-label is-normal">
                     <label class="label">Save Dataset</label>
                 </div>
-                <div class="field-body">
+                <div class="field-body">                  
                     <div class="field">
-                        <div class="control">
-                            <input id="save-dataset" name="save_dataset" type="checkbox" value="true" onchange="$('#dataset-name').attr('disabled', !this.checked)">
+                        <div class="control is-expanded" style="padding-top: .375em;">
+                            <input type="checkbox" id="save-dataset" name="save-dataset" value="true" class="switch is-dark is-rounded" onchange="$('#dataset-name').attr('disabled', !this.checked); if (!this.checked) { $('#dataset-name-field').hide(); } else {  $('#dataset-name-field').show(); }">
+                            <label for="save-dataset"></label>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="field is-horizontal">
+            <div class="field is-horizontal" id="dataset-name-field" style="display: none;">
                 <div class="field-label is-normal">
-                    <label class="label">Save Dataset As</label>
+                    <label class="label" id="dataset_label">Dataset Name</label>
                 </div>
                 <div class="field-body">
                     <div class="field">
@@ -132,9 +133,9 @@
                 <div class="field-body">
                     <div class="field">
                         <div class="control">
-                            <button type="button" class="button is-primary" id="upload-btn" disabled>
+                            <button type="button" class="button is-success" id="upload-btn" disabled>
                                 <span class="icon">
-                                    <i class="fas fa-upload"></i>
+                                    <i class="fas fa-play"></i>
                                 </span>
                                 <span>Submit</span>
                             </button>
@@ -149,7 +150,7 @@
     <div class="tabs">
         <ul>
             <li class="is-active" data-tab="upload-tab"><a>Upload Files</a></li>
-            <li data-tab="datasets-tab"><a>Manage Datasets</a></li>
+            <li data-tab="datasets-tab"><a>Saved Datasets</a></li>
         </ul>
     </div>
     
@@ -157,56 +158,58 @@
     <div class="tabs-content">
         <!-- Upload Tab -->
         <div id="upload-tab" class="is-active">
-            <div class="columns">
-                <div class="column is-8">
-                    <div id="upload-box" class="upload-box">
-                        <div class="file has-name is-boxed is-centered">
-                            <label class="file-label">
-                                <input class="file-input" type="file" id="file-input" multiple accept=".dcm,.zip">
-                                <span class="file-cta">
-                                    <span class="file-icon">
-                                        <i class="fas fa-upload"></i>
+            <div class ="row">
+                <div class="columns">
+                    <div class="column is-8">
+                        <div id="upload-box" class="upload-box" style="margin-bottom: 0px;">
+                            <div class="file has-name is-boxed is-centered">
+                                <label class="file-label">
+                                    <input class="file-input" type="file" id="file-input" multiple accept=".dcm,.zip">
+                                    <span class="file-cta">
+                                        <span class="file-icon">
+                                            <i class="fas fa-upload"></i>
+                                        </span>
+                                        <span class="file-label">
+                                            Choose files or drag here...
+                                        </span>
                                     </span>
-                                    <span class="file-label">
-                                        Choose files or drag here...
-                                    </span>
-                                </span>
-                            </label>
+                                </label>
+                            </div>
                         </div>
                     </div>
-
-                    <div class="progress-container">
-                        <progress class="progress is-primary" id="upload-progress" value="0" max="100"></progress>
-                        <p class="has-text-centered" id="progress-text">Uploading files...</p>
-                    </div>
-
-                    <div class="field is-grouped" style="margin-top: 1rem;">
-                        <div class="control">
-                            <button class="button is-light" id="clear-btn" disabled>
-                                <span class="icon">
-                                    <i class="fas fa-times"></i>
-                                </span>
-                                <span>Clear Files</span>
-                            </button>
+                    <div class="column">
+                        <div class="notification is-link" style="height: 100%;">
+                            <h4 class="title is-5">Upload Information</h4>
+                            <p>Selected files: <strong id="file-count">0</strong></p>
+                            <p>Total size: <strong id="total-size">0 KB</strong></p>
                         </div>
-                    </div>
-                </div>
-
-                <div class="column">
-                    <div class="notification is-info is-light">
-                        <h4 class="title is-5">Upload Information</h4>
-                        <p>Selected files: <strong id="file-count">0</strong></p>
-                        <p>Total size: <strong id="total-size">0 KB</strong></p>
                     </div>
                 </div>
             </div>
+            <div class ="row">
+                <div class="progress-container">
+                    <progress class="progress is-success" id="upload-progress" value="0" max="100"></progress>
+                    <p class="has-text-centered" id="progress-text">Uploading files...</p>
+                </div>
+
+                <div class="field is-grouped" style="margin-top: 1rem;">
+                    <div class="control">
+                        <button class="button is-light" id="clear-btn" disabled>
+                            <span class="icon">
+                                <i class="fas fa-times"></i>
+                            </span>
+                            <span>Clear Files</span>
+                        </button>
+                    </div>
+                </div>
+            </div>  
         </div>
         
         <!-- Datasets Tab -->
         <div id="datasets-tab">
-            <div class="notification is-warning is-light">
+            <div class="notification is-info is-light">
                 <p><span class="icon"><i class="fas fa-info-circle"></i></span> 
-                Select a dataset from the list below to submit it with the form above.</p>
+                Select a dataset from the list below to submit it with the settings above.</p>
             </div>
             <table class="table is-fullwidth">
                 <thead>

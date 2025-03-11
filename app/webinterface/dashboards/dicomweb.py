@@ -143,11 +143,16 @@ def extract_zip(zip_file: zipfile.ZipFile, extract_to: str, force_rule: Optional
 @requires("authenticated", redirect="login")
 async def upload(request):
     template = "dashboards/dicom_upload.html"
+
+    existing_datasets = []
+    if Path(config.mercure.jobs_folder + f"/uploaded_datasets/{request.user.display_name}").exists():
+        existing_datasets = [p.name for p in Path(config.mercure.jobs_folder + f"/uploaded_datasets/{request.user.display_name}").iterdir()]
+
     context = {
         "request": request,
         "page": "tools",
         "rules": [name for name, _ in config.mercure.rules.items()],
-        "datasets": [p.name for p in Path(config.mercure.jobs_folder + f"/uploaded_datasets/{request.user.display_name}").iterdir()],
+        "datasets": existing_datasets,
         "tab": "upload",
     }
     return templates.TemplateResponse(template, context)
