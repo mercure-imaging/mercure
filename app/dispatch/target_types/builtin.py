@@ -48,6 +48,10 @@ class DicomTargetHandler(SubprocessTargetHandler[DicomTarget]):
         target_port = target.port or 104
         target_aet_target = target.aet_target or ""
         target_aet_source = target.aet_source or ""
+
+        if target.pass_aet:
+            target_aet_source = task.info.sender_aet
+
         dcmsend_status_file = str(Path(source_folder) / mercure_names.SENDLOG)
         command = split(
             (f"""dcmsend {target_ip} {target_port} +sd {source_folder} -aet {target_aet_source} """

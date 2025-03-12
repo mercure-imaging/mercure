@@ -63,7 +63,9 @@ expected_task_info = {
     "mercure_server": socket.gethostname(),
     "device_serial_number": None,
     "sender_address": "0.0.0.0",
-    "fail_stage": None
+    "fail_stage": None,
+    "receiver_aet": "mercure",
+    "sender_aet": "mercure",
 }
 
 

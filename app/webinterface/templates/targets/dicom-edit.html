@@ -29,3 +29,10 @@
             pattern="[0-9a-zA-Z_\-]+">
     </div>
 </div>
+<div class="field">
+    <div class="control">
+        <input id="pass_aet" type="checkbox" name="pass_aet" class="switch is-rounded is-dark" value="True"
+            {% if targets[edittarget]["pass_aet"]==True %} checked="checked" {% endif%}>
+        <label for="pass_aet">Pass Sender AET</label>
+    </div>
+</div>

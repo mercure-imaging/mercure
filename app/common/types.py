@@ -66,6 +66,7 @@ class DicomTarget(Target):
     port: str
     aet_target: str
     aet_source: Optional[str] = ""
+    pass_aet: Optional[bool] = False
 
     @property
     def short_description(self) -> str:
@@ -322,6 +323,8 @@ class TaskInfo(BaseModel, Compat):
     mercure_server: str
     device_serial_number: Optional[str] = None
     fail_stage: Optional[FailStage] = None
+    sender_aet: str = "MISSING"
+    receiver_aet: str = "MISSING"
 
 
 class TaskDispatchStatus(BaseModel, Compat):

@@ -237,6 +237,8 @@ def add_info(
         mrn=tags_list.get("PatientID", mercure_options.MISSING),
         acc=tags_list.get("AccessionNumber", mercure_options.MISSING),
         sender_address=tags_list.get("SenderAddress", mercure_options.MISSING),
+        sender_aet=tags_list.get("SenderAET", mercure_options.MISSING),
+        receiver_aet=tags_list.get("ReceiverAET", mercure_options.MISSING),
         device_serial_number=tags_list.get("DeviceSerialNumber"),
         mercure_version=mercure_defs.VERSION,
         mercure_appliance=config.mercure.appliance_name,
