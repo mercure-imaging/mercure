@@ -22,6 +22,13 @@
     </div>
 </div>
 <div class="field">
+    <div class="control">
+        <input id="pass_receiver_aet" type="checkbox" name="pass_receiver_aet" class="switch is-rounded is-dark" value="True"
+            {% if targets[edittarget]["pass_receiver_aet"]==True %} checked="checked" {% endif%}>
+        <label for="pass_receiver_aet">Pass Incoming Receiver AET</label>
+    </div>
+</div>
+<div class="field">
     <label class="label">AET Source</label>
     <div class="control">
         <input name="aet_source" class="input" required='true' autocomplete='off' type="text"
@@ -31,8 +38,8 @@
 </div>
 <div class="field">
     <div class="control">
-        <input id="pass_aet" type="checkbox" name="pass_aet" class="switch is-rounded is-dark" value="True"
-            {% if targets[edittarget]["pass_aet"]==True %} checked="checked" {% endif%}>
-        <label for="pass_aet">Pass Sender AET</label>
+        <input id="pass_sender_aet" type="checkbox" name="pass_sender_aet" class="switch is-rounded is-dark" value="True"
+            {% if targets[edittarget]["pass_sender_aet"]==True %} checked="checked" {% endif%}>
+        <label for="pass_sender_aet">Pass Incoming Sender AET</label>
     </div>
 </div>

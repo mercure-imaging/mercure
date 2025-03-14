@@ -12,13 +12,9 @@
 </tr>
 <tr>
     <td>AET Target:</td>
-    <td>{{ target.aet_target }}</td>
+    <td>{% if target.pass_receiver_aet %}<i>Incoming Receiver AET</i>{% else %}{{ target.aet_target }}{% endif %}</td>
 </tr>
 <tr>
     <td>AET Source:</td>
-    <td>{{ target.aet_source }}</td>
-</tr>
-<tr>
-    <td>Pass Sender AET:</td>
-    <td>{{ target.pass_aet }}</td>
+    <td>{% if target.pass_sender_aet %}<i>Incoming Sender AET</i>{% else %}{{ target.aet_source }}{% endif %}</td>
 </tr>

@@ -49,8 +49,10 @@ class DicomTargetHandler(SubprocessTargetHandler[DicomTarget]):
         target_aet_target = target.aet_target or ""
         target_aet_source = target.aet_source or ""
 
-        if target.pass_aet:
+        if target.pass_sender_aet:
             target_aet_source = task.info.sender_aet
+        if target.pass_receiver_aet:
+            target_aet_target = task.info.receiver_aet
 
         dcmsend_status_file = str(Path(source_folder) / mercure_names.SENDLOG)
         command = split(

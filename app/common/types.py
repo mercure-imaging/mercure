@@ -66,7 +66,8 @@ class DicomTarget(Target):
     port: str
     aet_target: str
     aet_source: Optional[str] = ""
-    pass_aet: Optional[bool] = False
+    pass_sender_aet: Optional[bool] = False
+    pass_receiver_aet: Optional[bool] = False
 
     @property
     def short_description(self) -> str:
