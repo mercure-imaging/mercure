@@ -80,6 +80,8 @@ class DicomTLSTarget(Target):
     port: str
     aet_target: str
     aet_source: Optional[str] = ""
+    pass_sender_aet: Optional[bool] = False
+    pass_receiver_aet: Optional[bool] = False
     tls_key: str
     tls_cert: str
     ca_cert: str

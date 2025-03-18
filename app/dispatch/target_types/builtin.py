@@ -125,6 +125,11 @@ class DicomTLSTargetHandler(SubprocessTargetHandler[DicomTLSTarget]):
         target_aet_target = target.aet_target or ""
         target_aet_source = target.aet_source or ""
 
+        if target.pass_sender_aet:
+            target_aet_source = task.info.sender_aet
+        if target.pass_receiver_aet:
+            target_aet_target = task.info.receiver_aet
+
         command = split(
             f"""storescu +tls {target.tls_key} {target.tls_cert} +cf {target.ca_cert} {target_ip} {target_port} """
             f"""+sd {source_folder} -aet {target_aet_source} -aec {target_aet_target} +sp '*.dcm' -to 60"""
