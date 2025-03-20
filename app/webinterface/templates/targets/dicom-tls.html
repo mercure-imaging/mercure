@@ -12,11 +12,11 @@
 </tr>
 <tr>
     <td>AET Target:</td>
-    <td>{% if target.pass_receiver_aet %}<i>Incoming Receiver AET</i>{% else %}{{ target.aet_target }}{% endif %}</td>
+    <td>{% if target.pass_receiver_aet %}<span class="tag is-dark">Incoming Receiver AET</span>{% else %}{{ target.aet_target }}{% endif %}</td>
 </tr>
 <tr>
     <td>AET Source:</td>
-    <td>{% if target.pass_sender_aet %}<i>Incoming Sender AET</i>{% else %}{{ target.aet_source }}{% endif %}</td>
+    <td>{% if target.pass_sender_aet %}<span class="tag is-dark">Incoming Sender AET</span>{% else %}{{ target.aet_source }}{% endif %}</td>
 </tr>
 <tr>
     <td>TLS Key:</td>
