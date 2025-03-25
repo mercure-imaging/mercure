@@ -115,6 +115,7 @@ install_configuration () {
     echo "## Copying configuration files..."
     sudo chown $USER "$CONFIG_PATH" 
     cp "$MERCURE_SRC"/configuration/default_bookkeeper.env "$CONFIG_PATH"/bookkeeper.env
+    cp "$MERCURE_SRC"/configuration/default_receiver.env "$CONFIG_PATH"/receiver.env
     cp "$MERCURE_SRC"/configuration/default_mercure.json "$CONFIG_PATH"/mercure.json
     cp "$MERCURE_SRC"/configuration/default_services.json "$CONFIG_PATH"/services.json
     cp "$MERCURE_SRC"/configuration/default_webgui.env "$CONFIG_PATH"/webgui.env
