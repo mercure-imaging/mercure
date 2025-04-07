@@ -8,10 +8,11 @@ import collections
 import json
 import os
 import shutil
+import time
 # Standard python includes
 from enum import Enum
 from pathlib import Path
-from typing import Dict, List, Tuple, Union
+from typing import Dict
 
 # App-specific includes
 import common.config as config
@@ -20,7 +21,7 @@ import routing.generate_taskfile as generate_taskfile
 from common.constants import mercure_actions, mercure_names
 # App-specific includes
 from common.event_types import FailStage
-from common.types import Task, TaskProcessing
+from common.types import Task
 from decoRouter import Router as decoRouter
 # Starlette-related includes
 from starlette.applications import Starlette
@@ -290,48 +291,50 @@ async def show_jobs_fail(request):
     job_list: Dict = {}
 
     for entry in os.scandir(config.mercure.error_folder):
-        if entry.is_dir():
-            job_name: str = entry.name
-            timestamp: float = entry.stat().st_mtime
-            job_acc: str = ""
-            job_mrn: str = ""
-            job_scope: str = "Series"
-            job_failstage: str = "Unknown"
+        if not entry.is_dir():
+            continue
+        job_name: str = entry.name
+        timestamp: float = entry.stat().st_mtime
+        job_acc: str = ""
+        job_mrn: str = ""
+        job_scope: str = "Series"
+        job_failstage: str = "Unknown"
 
-            # keeping the manual way of getting the fail stage too for now
-            try:
-                job_failstage = get_fail_stage(Path(entry.path))
-            except Exception as e:
-                logger.exception(e)
+        # keeping the manual way of getting the fail stage too for now
+        try:
+            job_failstage = get_fail_stage(Path(entry.path))
+        except Exception as e:
+            logger.exception(e)
 
-            task_file = Path(entry.path) / mercure_names.TASKFILE
-            if not task_file.exists():
-                task_file = Path(entry.path) / "in" / mercure_names.TASKFILE
+        task_file = Path(entry.path) / mercure_names.TASKFILE
+        if not task_file.exists():
+            task_file = Path(entry.path) / "in" / mercure_names.TASKFILE
 
-            try:
-                with open(task_file, "r") as f:
-                    task: Task = Task(**json.load(f))
-                    job_acc = task.info.acc
-                    job_mrn = task.info.mrn
-                    if task.info.uid_type == "series":
-                        job_scope = "Series"
-                    else:
-                        job_scope = "Study"
-                    if (task.info.fail_stage):
-                        job_failstage = str(task.info.fail_stage).capitalize()
-            except Exception as e:
-                logger.exception(e)
-                job_acc = "Error"
-                job_mrn = "Error"
-                job_scope = "Error"
+        try:
+            with open(task_file, "r") as f:
+                task: Task = Task(**json.load(f))
+                job_acc = task.info.acc
+                job_mrn = task.info.mrn
+                if task.info.uid_type == "series":
+                    job_scope = "Series"
+                else:
+                    job_scope = "Study"
+                if (task.info.fail_stage):
+                    job_failstage = str(task.info.fail_stage).capitalize()
 
-            job_list[job_name] = {
-                "ACC": job_acc,
-                "MRN": job_mrn,
-                "Scope": job_scope,
-                "FailStage": job_failstage,
-                "CreationTime": timestamp,
-            }
+        except Exception as e:
+            logger.exception(e)
+            job_acc = "Error"
+            job_mrn = "Error"
+            job_scope = "Error"
+
+        job_list[job_name] = {
+            "ACC": job_acc,
+            "MRN": job_mrn,
+            "Scope": job_scope,
+            "FailStage": job_failstage,
+            "CreationTime": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(timestamp)),
+        }
     sorted_jobs = collections.OrderedDict(sorted(job_list.items(),  # type: ignore
                                                  key=lambda x: x[1]["CreationTime"],  # type: ignore
                                                  reverse=False))  # type: ignore

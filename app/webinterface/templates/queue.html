@@ -184,6 +184,7 @@
                                 <th>Scope</th>
                                 <th>Fail Stage</th>
                                 <th>ID</th>
+                                <th>Created</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -453,7 +454,7 @@
                     $('#erroralert').hide();
                     var jobtable = $('#jobs_fail').DataTable();
                     Object.keys(data).forEach(function (key) {
-                        jobtable.row.add( [ data[key]["ACC"], data[key]["MRN"], data[key]["Scope"], data[key]["FailStage"], key ] );
+                        jobtable.row.add( [ data[key]["ACC"], data[key]["MRN"], data[key]["Scope"], data[key]["FailStage"], key, data[key]["CreationTime"] ] );
                     })
                     jobtable.draw();
                 },
