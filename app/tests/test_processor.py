@@ -119,7 +119,6 @@ def create_and_route_priority(fs, mocked, task_id, config, uid="TESTFAKEUID") ->
 
 
 @pytest.mark.asyncio
-@pytest.mark.skip
 async def test_process_series_nomad(fs, mercure_config: Callable[[Dict], Config], mocked: MockerFixture):
     config = mercure_config(
         {"process_runner": "nomad", **config_partial},

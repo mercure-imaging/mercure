@@ -13,6 +13,10 @@ from app import common
 from app.common.event_types import FailStage
 from app.common.types import Module, Rule, Task, TaskInfo
 
+# from starlette.testclient import TestClient
+# from webinterface.queue import restart_processing_job
+
+
 logger = config.get_logger()
 
 test_config = {

@@ -170,6 +170,8 @@ async def search_folder(counter) -> bool:
         shutil.rmtree(in_folder)
         (p_folder / "nomad_job.json").unlink()
         (p_folder / ".processing").unlink()
+        shutil.rmtree(p_folder / "as_received", ignore_errors=True)
+        
         p_folder.rmdir()
         monitor.send_task_event(
             monitor.task_event.PROCESS_COMPLETE, task.id, file_count_complete, "", "Processing complete"
