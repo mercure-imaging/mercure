@@ -608,7 +608,8 @@ def move_out_folder(task_id: str, source_folder: Path, destination_folder: Path,
 
     target_folder = destination_folder / source_folder.name
     if target_folder.exists():
-        target_folder = destination_folder / (source_folder.name + "_" + datetime.now().isoformat())
+        new_name = source_folder.name.split("_")[0] + "_" + datetime.now().isoformat()
+        target_folder = destination_folder / new_name
 
     logger.debug(f"Moving {source_folder} to {target_folder}, move_all: {move_all}")
     logger.debug("--- source contents ---")

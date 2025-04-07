@@ -571,8 +571,7 @@ def restart_processing_task(task_id: str, source_folder: Path, is_error: bool = 
 
         # Create the processing folder structure
         processing_folder.mkdir(exist_ok=True)
-        # in_folder = processing_folder / "in"
-        # in_folder.mkdir(exist_ok=True)
+        (processing_folder / mercure_names.LOCK).touch()
 
         # Copy the as_received files to the input folder
         for file_path in as_received_folder.glob("*"):
@@ -590,6 +589,8 @@ def restart_processing_task(task_id: str, source_folder: Path, is_error: bool = 
         # Write the updated task file
         with open(processing_folder / mercure_names.TASKFILE, "w") as f:
             json.dump(task.dict(), f)
+        logger.info(task.dict())
+        (processing_folder / mercure_names.LOCK).unlink()
 
         # Log the restart action
         source_type = "error" if is_error else "success"
