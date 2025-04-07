@@ -372,7 +372,8 @@
                 timeout: 3000
             });
             $('#jobs_processing').DataTable().button(2).enable(false);
-            $('#jobs_processing').DataTable().button(3).enable(false);            
+            $('#jobs_processing').DataTable().button(3).enable(false);
+            $('#jobs_processing').DataTable().button(4).enable(false);
             return;
         }
 
@@ -610,6 +611,14 @@
                     }
                 },
                 {
+                    text: '<i class="fas fa-redo-alt"></i>',
+                    titleAttr: 'Restart processing with original files',
+                    action: function ( e, dt, node, config ) {
+                        var jid = $('#jobs_processing').DataTable().rows( { selected: true } ).data()[0][5];
+                        restartProcessingJob(jid);
+                    }
+                },
+                {
                     text: '<i class="fas fa-trash-alt"></i>',
                     titleAttr: 'Cancel job',
                     action: function ( e, dt, node, config ) {
@@ -626,6 +635,7 @@
             var selectedRows = $('#jobs_processing').DataTable().rows( { selected: true } ).count();
             $('#jobs_processing').DataTable().button(2).enable( selectedRows > 0 );
             $('#jobs_processing').DataTable().button(3).enable( selectedRows > 0 );
+            $('#jobs_processing').DataTable().button(4).enable( selectedRows > 0 );
         } );
 
         $('#jobs_routing').DataTable( {
@@ -1212,6 +1222,33 @@
             },
             timeout: 3000
         });
+    }
+
+    function restartProcessingJob(jobId) {
+        if (jobId === "") {
+            return;
+        }
+
+        if (confirm("Are you sure you want to restart processing for this job using the original input files?")) {
+            $.ajax({
+                type: 'GET',
+                url: '/queue/jobs/processing/restart-job',
+                data: {'task_id': jobId},
+                dataType: 'json',
+                error: function () {
+                    alert("Restart failed: unknown error.")
+                },
+                success: function (data) {
+                    if (data.hasOwnProperty("error")) {
+                        alert("Restart failed: " + data["error"])
+                    } else {
+                        alert("Job restarted with original input files")
+                    }
+                    update();
+                },
+                timeout: 3000
+            });
+        }
     }
 
     var updateTimer;

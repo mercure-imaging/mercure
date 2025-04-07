@@ -48,6 +48,31 @@ except Exception:
     nomad_connection = None
 
 
+def backup_input_images(task_folder: Path) -> None:
+    """
+    Creates a backup of input DICOM files in an 'as_received' subfolder within the task folder.
+    
+    Args:
+        task_folder: Path to the task folder
+    """
+    input_folder = task_folder / "in"
+    backup_folder = task_folder / "as_received"
+    
+    # Create the as_received folder if it doesn't exist
+    backup_folder.mkdir(exist_ok=True)
+    
+    # Copy all DICOM files from input folder to backup folder
+    for dcm_file in input_folder.glob(mercure_names.DCMFILTER):
+        shutil.copy2(dcm_file, backup_folder)
+    
+    # Also copy the task.json file for reference
+    task_file = input_folder / mercure_names.TASKFILE
+    if task_file.exists():
+        shutil.copy2(task_file, backup_folder / "task.json")
+    
+    logger.info(f"Backed up input files for task folder {task_folder.name} to {backup_folder}")
+
+
 async def search_folder(counter) -> bool:
     global processor_lockfile
     global processor_is_locked
@@ -193,6 +218,9 @@ async def search_folder(counter) -> bool:
     task_folder = selected_task_folder
 
     try:
+        # Backup input images before processing
+        backup_input_images(task_folder)
+        
         await process_series(task_folder)
         # Return true, so that the parent function will trigger another search of the folder
         return True

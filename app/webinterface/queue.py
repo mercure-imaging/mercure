@@ -23,6 +23,7 @@ from starlette.applications import Starlette
 from starlette.authentication import requires
 from starlette.responses import JSONResponse, PlainTextResponse
 from webinterface.common import templates
+import common.monitor as monitor
 
 router = decoRouter()
 
@@ -480,6 +481,92 @@ async def restart_job(request):
     taskfile_folder: Path = Path(config.mercure.error_folder) / task_id
     response = restart_dispatch(taskfile_folder, Path(config.mercure.outgoing_folder))
     return JSONResponse(response)
+
+
+@router.get("/jobs/processing/restart-job")
+@requires("authenticated", redirect="login")
+async def restart_processing_job(request):
+    """
+    Restarts a processing job using the original input files from the as_received folder.
+    """
+    task_id = request.query_params.get("task_id", "")
+    if not task_id:
+        return JSONResponse({"error": "No task ID provided"})
+    
+    # Define paths
+    processing_folder = Path(config.mercure.processing_folder)
+    task_folder = processing_folder / task_id
+    
+    # Check if the task folder exists
+    if not task_folder.exists():
+        return JSONResponse({"error": "Task folder not found"})
+    
+    # Check if as_received folder exists
+    as_received_folder = task_folder / "as_received"
+    if not as_received_folder.exists():
+        return JSONResponse({"error": "No original files found for this task"})
+    
+    # Check if the task is currently being processed
+    if (task_folder / mercure_names.PROCESSING).exists():
+        return JSONResponse({"error": "Task is currently being processed"})
+    
+    try:
+        # Create or clear the input folder
+        in_folder = task_folder / "in"
+        if in_folder.exists():
+            shutil.rmtree(in_folder)
+        in_folder.mkdir(exist_ok=True)
+        
+        # Copy all files from as_received to in folder
+        for file_path in as_received_folder.glob("*"):
+            if file_path.is_file():
+                shutil.copy2(file_path, in_folder / file_path.name)
+        
+        # Remove any existing output folder
+        out_folder = task_folder / "out"
+        if out_folder.exists():
+            shutil.rmtree(out_folder)
+        
+        # Remove any processing flags or error indicators
+        for flag_file in [mercure_names.ERROR, mercure_names.LOCK]:
+            flag_path = task_folder / flag_file
+            if flag_path.exists():
+                flag_path.unlink()
+        
+        # Update the task.json to reset any processing state if needed
+        task_file = in_folder / mercure_names.TASKFILE
+        if task_file.exists():
+            with open(task_file, "r") as f:
+                task_data = json.load(f)
+            
+            # Reset any processing state if needed
+            if "process" in task_data:
+                if isinstance(task_data["process"], dict) and "status" in task_data["process"]:
+                    task_data["process"]["status"] = "pending"
+                elif isinstance(task_data["process"], list):
+                    for proc in task_data["process"]:
+                        if isinstance(proc, dict) and "status" in proc:
+                            proc["status"] = "pending"
+            
+            with open(task_file, "w") as f:
+                json.dump(task_data, f)
+        
+        # Log the restart action
+        logger.info(f"Processing job {task_id} restarted with original input files")
+        monitor.send_task_event(
+            monitor.task_event.PROCESS_RESTART, task_id, 0, "", "Processing restarted with original files"
+        )
+        
+        return JSONResponse({
+            "success": True,
+            "message": f"Processing job {task_id} has been restarted with original input files"
+        })
+    
+    except Exception as e:
+        logger.exception(f"Error restarting processing job {task_id}: {str(e)}")
+        return JSONResponse({
+            "error": f"Failed to restart processing job: {str(e)}"
+        })
 
 
 def restart_dispatch(taskfile_folder: Path, outgoing_folder: Path) -> dict:
