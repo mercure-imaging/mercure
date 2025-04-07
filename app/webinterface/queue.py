@@ -599,8 +599,8 @@ def restart_processing_task(task_id: str, source_folder: Path, is_error: bool = 
             return {"error": "No rule provided"}
         if task.info.applied_rule not in config.mercure.rules.keys():
             return {"error": f"Rule '{task.info.applied_rule}' not found in {config.mercure.rules.keys()}"}
-        if config.mercure.rules[task.info.applied_rule].action != "process":
-            return {"error": "Invalid rule action"}
+        if config.mercure.rules[task.info.applied_rule].action not in ("both", "process"):
+            return {"error": "Invalid rule action: this rule currently does not perform processing."}
         try:
             task.process = generate_taskfile.add_processing(task.info.applied_rule) or (cast(EmptyDict, {}))
             # task.dispatching = generate_taskfile.add_dispatching(task_id, uid, task.info.applied_rule, target) or cast(EmptyDict, {}),
