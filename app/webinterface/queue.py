@@ -11,7 +11,7 @@ import shutil
 # Standard python includes
 from enum import Enum
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Tuple, Union
 
 # App-specific includes
 import common.config as config
@@ -35,6 +35,8 @@ class RestartTaskErrors(str, Enum):
     NO_TASK_FILE = "no_task_file"
     WRONG_JOB_TYPE = "wrong_type"
     NO_DISPATCH_STATUS = "no_dispatch_status"
+    NO_AS_RECEIVED = "no_as_received"
+    CURRENTLY_PROCESSING = "currently_processing"
 
 ###################################################################################
 # Queue endpoints
@@ -477,38 +479,73 @@ async def get_jobinfo(request):
 @router.get("/jobs/fail/restart-job")
 @requires("authenticated", redirect="login")
 async def restart_job(request):
-    task_id = request.query_params.get("task_id", "")
-    taskfile_folder: Path = Path(config.mercure.error_folder) / task_id
-    response = restart_dispatch(taskfile_folder, Path(config.mercure.outgoing_folder))
-    return JSONResponse(response)
-
-
-@router.get("/jobs/processing/restart-job")
-@requires("authenticated", redirect="login")
-async def restart_processing_job(request):
     """
-    Restarts a processing job using the original input files from the as_received folder.
+    Restarts a failed job. This endpoint handles both dispatch and processing failures.
     """
     task_id = request.query_params.get("task_id", "")
     if not task_id:
         return JSONResponse({"error": "No task ID provided"})
     
-    # Define paths
+    # First check if this is a failed dispatch job
+    taskfile_folder = Path(config.mercure.error_folder) / task_id
+    if taskfile_folder.exists():
+        # Check if this is a dispatch failure
+        if is_dispatch_failure(taskfile_folder):
+            response = restart_dispatch(taskfile_folder, Path(config.mercure.outgoing_folder))
+            return JSONResponse(response)
+    
+    # If not a dispatch failure or folder doesn't exist in error folder,
+    # check if it's a processing job that needs to be restarted
     processing_folder = Path(config.mercure.processing_folder)
     task_folder = processing_folder / task_id
     
-    # Check if the task folder exists
-    if not task_folder.exists():
-        return JSONResponse({"error": "Task folder not found"})
+    if task_folder.exists():
+        result = restart_processing(task_id, task_folder)
+        return JSONResponse(result)
     
+    # If we get here, we couldn't find the task
+    return JSONResponse({"error": "Task not found"})
+
+
+def is_dispatch_failure(taskfile_folder: Path) -> bool:
+    """
+    Determines if a task in the error folder is a dispatch failure.
+    """
+    if not taskfile_folder.exists() or not (taskfile_folder / mercure_names.TASKFILE).exists():
+        return False
+    
+    try:
+        with open(taskfile_folder / mercure_names.TASKFILE, "r") as json_file:
+            loaded_task = json.load(json_file)
+        
+        action = loaded_task.get("info", {}).get("action", "")
+        if action and action in (mercure_actions.BOTH, mercure_actions.ROUTE):
+            return True
+    except Exception:
+        pass
+    
+    return False
+
+
+def restart_processing(task_id: str, task_folder: Path) -> Dict:
+    """
+    Restarts a processing job using the original input files from the as_received folder.
+    
+    Args:
+        task_id: The ID of the task to restart
+        task_folder: Path to the task folder
+        
+    Returns:
+        Dict with success or error information
+    """
     # Check if as_received folder exists
     as_received_folder = task_folder / "as_received"
     if not as_received_folder.exists():
-        return JSONResponse({"error": "No original files found for this task"})
+        return {"error": "No original files found for this task", "error_code": RestartTaskErrors.NO_AS_RECEIVED}
     
     # Check if the task is currently being processed
     if (task_folder / mercure_names.PROCESSING).exists():
-        return JSONResponse({"error": "Task is currently being processed"})
+        return {"error": "Task is currently being processed", "error_code": RestartTaskErrors.CURRENTLY_PROCESSING}
     
     try:
         # Create or clear the input folder
@@ -557,16 +594,16 @@ async def restart_processing_job(request):
             monitor.task_event.PROCESS_RESTART, task_id, 0, "", "Processing restarted with original files"
         )
         
-        return JSONResponse({
+        return {
             "success": True,
             "message": f"Processing job {task_id} has been restarted with original input files"
-        })
+        }
     
     except Exception as e:
         logger.exception(f"Error restarting processing job {task_id}: {str(e)}")
-        return JSONResponse({
+        return {
             "error": f"Failed to restart processing job: {str(e)}"
-        })
+        }
 
 
 def restart_dispatch(taskfile_folder: Path, outgoing_folder: Path) -> dict:
