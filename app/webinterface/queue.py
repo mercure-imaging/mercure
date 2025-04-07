@@ -12,7 +12,7 @@ import time
 # Standard python includes
 from enum import Enum
 from pathlib import Path
-from typing import Dict
+from typing import Dict, cast
 
 import common.config as config
 import common.monitor as monitor
@@ -20,7 +20,7 @@ import routing.generate_taskfile as generate_taskfile
 from common.constants import mercure_actions, mercure_names
 # App-specific includes
 from common.event_types import FailStage
-from common.types import Task
+from common.types import EmptyDict, Task
 from decoRouter import Router as decoRouter
 # Starlette-related includes
 from starlette.applications import Starlette
@@ -603,7 +603,7 @@ def restart_processing_task(task_id: str, source_folder: Path, is_error: bool = 
         if config.mercure.rules[task.info.applied_rule].action != "process":
             return {"error": "Invalid rule action"}
         try:
-            task.process = generate_taskfile.add_processing("", task.info.applied_rule, {})
+            task.process = generate_taskfile.add_processing("", task.info.applied_rule, {}) or (cast(EmptyDict, {}))
         except Exception as e:
             logger.exception("Failed to generate task file")
             return {"error": "Failed to generate task file"}
