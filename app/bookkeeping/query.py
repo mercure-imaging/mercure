@@ -228,9 +228,8 @@ async def find_task(request) -> JSONResponse:
     order_column = column_mapping.get(order_column_index, column_mapping["4"])
     order_sql = f"{order_column} {order_direction.upper()}, parent_tasks.id {order_direction.upper()}"
 
-    filter_term = (f"""(
-                    :search_term='' 
-                    or (tag_accessionnumber ilike :search_term || '%') 
+    having_term = (f"""HAVING (
+                    (tag_accessionnumber ilike :search_term || '%') 
                     or (tag_patientid ilike :search_term || '%')
                     or (tag_patientname ilike '%' || :search_term || '%')
                     or bool_or(child_tasks.data->'info'->>'applied_rule'::text ilike '%' || :search_term || '%') 
@@ -242,7 +241,7 @@ async def find_task(request) -> JSONResponse:
                         )::text ilike '%' || :search_term || '%'
                         )
                    )
-                   """)
+                   """) if search_term else ""
 
     study_filter_term = ""
     if study_filter == "true":
@@ -255,13 +254,12 @@ async def find_task(request) -> JSONResponse:
         parent_tasks.id AS task_id,
         tag_accessionnumber, tag_patientid, tag_patientname
        FROM
-        (select * from tasks where parent_id is null) as parent_tasks
+        tasks as parent_tasks
         LEFT JOIN dicom_series ON dicom_series.series_uid = parent_tasks.series_uid
         LEFT JOIN tasks as child_tasks ON (child_tasks.parent_id = parent_tasks.id)
-
-       WHERE true {study_filter_term}
+       WHERE parent_tasks.parent_id is null {study_filter_term}
        GROUP BY 1,2,3,4
-       HAVING {filter_term} 
+       {having_term} 
     )
     SELECT 
         COUNT(DISTINCT task_id) as total_count
@@ -280,21 +278,20 @@ async def find_task(request) -> JSONResponse:
         STRING_AGG(case when coalesce(child_tasks.data->'info'->>'applied_rule','') != '' then  array[child_tasks.data->'info'->>'applied_rule']::text else array(select jsonb_object_keys((child_tasks.data->'info'->'triggered_rules')))::text end, ', ' ORDER BY child_tasks.id)
         AS rule
     FROM 
-        (select * from tasks where parent_id is null) as parent_tasks
+        tasks as parent_tasks
         LEFT JOIN dicom_series ON dicom_series.series_uid = parent_tasks.series_uid
         LEFT JOIN tasks as child_tasks ON (child_tasks.parent_id = parent_tasks.id)
-    WHERE true {study_filter_term}
+    WHERE parent_tasks.parent_id is null {study_filter_term}
     GROUP BY 
         tag_accessionnumber, tag_patientid, tag_patientname, parent_tasks.id, scope, parent_tasks.time
-    HAVING {filter_term}
-
+    {having_term}
     ORDER BY 
         {order_sql}
     LIMIT :length OFFSET :start
-        """
-    logger.info(query_string)
+    """
     # Get total count before filtering
-    params = {"search_term": search_term}
+    params = {"search_term": search_term} if search_term else {}
+
     count_result = await db.database.fetch_one(count_query_string, params)
     total_count = count_result["total_count"] if count_result else 0
     filtered_count = total_count  # In this case, total and filtered are the same since we're not implementing separate filtering
@@ -338,7 +335,7 @@ async def find_task(request) -> JSONResponse:
             "ACC": acc,
             "MRN": mrn,
             "Scope": job_scope,
-            "Time": time.isoformat() if isinstance(time, datetime.datetime) else str(time),
+            "Time": time.isoformat(timespec='seconds') if isinstance(time, datetime.datetime) else str(time),
             "Rule": item.get("rule").replace("{", "").replace("}", ""),
             "task_id": task_id  # Include task_id for actions/links
         })
@@ -377,11 +374,7 @@ def dicom_to_readable_json(ds: pydicom.Dataset):
         output_file_path (str): Path to save the JSON output.
     """
     try:
-        # Convert to JSON with indentation for readability
         result = json.dumps(ds, default=convert_to_serializable)
-        logger.info(result)
-        # return json.loads(result)
-        # return {convert_key(str(int(k, 16))): v for k, v in json.loads(result).items()}
         return json.loads(result)
     except Exception as e:
         logger.exception(f"Error converting DICOM to readable JSON: {e}")
@@ -468,9 +461,13 @@ async def get_task_info(request) -> JSONResponse:
             for x in result_dict.keys() if x not in ('id', 'time', 'data')
         }
         try:
-            tags = dict(json.loads(result_dict.get('data', '{}')))["tags"]
-            ds = pydicom.Dataset.from_json(tags)
-            response["sample_tags_received"] = dicom_to_readable_json(ds)
+            if 'data' in result_dict and isinstance(result_dict['data'], str):
+                data = json.loads(result_dict.get('data', '{}'))
+                if data is not None:
+                    tags = dict(data).get("tags", None)
+                    if tags is not None:
+                        ds = pydicom.Dataset.from_json(tags)
+                        response["sample_tags_received"] = dicom_to_readable_json(ds)
         except:
             logger.exception("Error parsing data")
 
