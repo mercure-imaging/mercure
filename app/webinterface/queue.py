@@ -602,7 +602,8 @@ def restart_processing_task(task_id: str, source_folder: Path, is_error: bool = 
         if config.mercure.rules[task.info.applied_rule].action != "process":
             return {"error": "Invalid rule action"}
         try:
-            task.process = generate_taskfile.add_processing("", task.info.applied_rule, {}) or (cast(EmptyDict, {}))
+            task.process = generate_taskfile.add_processing(task.info.applied_rule) or (cast(EmptyDict, {}))
+            # task.dispatching = generate_taskfile.add_dispatching(task_id, uid, task.info.applied_rule, target) or cast(EmptyDict, {}),
         except Exception as e:
             logger.exception("Failed to generate task file")
             return {"error": "Failed to generate task file"}

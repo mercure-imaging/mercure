@@ -57,15 +57,12 @@ def backup_input_images(task_folder: Path) -> None:
     """
     input_folder = task_folder
     backup_folder = task_folder / "as_received"
-    backup_folder.mkdir()
+    backup_folder.mkdir(exist_ok=True)
 
     # Copy all DICOM files from input folder to backup folder
-    for dcm_file in input_folder.glob(mercure_names.DCMFILTER):
-        shutil.copy2(dcm_file, backup_folder)
-
-    # Also copy the task.json file for reference
-    task_file = input_folder / mercure_names.TASKFILE
-    shutil.copy2(task_file, backup_folder / mercure_names.TASKFILE)
+    for file in input_folder.glob('*'):
+        if file.is_file():
+            shutil.copy2(file, backup_folder)
 
     logger.info(f"Backed up input files for task folder {task_folder.name} to {backup_folder}")
 
@@ -171,7 +168,7 @@ async def search_folder(counter) -> bool:
         (p_folder / "nomad_job.json").unlink()
         (p_folder / ".processing").unlink()
         shutil.rmtree(p_folder / "as_received", ignore_errors=True)
-        
+
         p_folder.rmdir()
         monitor.send_task_event(
             monitor.task_event.PROCESS_COMPLETE, task.id, file_count_complete, "", "Processing complete"

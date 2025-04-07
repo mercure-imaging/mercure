@@ -44,9 +44,9 @@ def compose_task(
         # Add general information about the job
         info=add_info(uid, uid_type, triggered_rules, applied_rule, tags_list),
         # Add dispatch information -- completed only if the job includes a dispatching step
-        dispatch=add_dispatching(task_id, uid, applied_rule, tags_list, target) or cast(EmptyDict, {}),
+        dispatch=add_dispatching(task_id, uid, applied_rule, target) or cast(EmptyDict, {}),
         # Add processing information -- completed only if the job includes a processing step
-        process=add_processing(uid, applied_rule, tags_list) or cast(EmptyDict, {}),
+        process=add_processing(applied_rule) or cast(EmptyDict, {}),
         # Add information about the study, included all collected series
         study=add_study(uid, uid_type, applied_rule, tags_list) or cast(EmptyDict, {}),
     )
@@ -56,8 +56,7 @@ def compose_task(
     return task
 
 
-def add_processing(uid: str, applied_rule: str, tags_list: Dict[str, str]
-                   ) -> Optional[Union[TaskProcessing, List[TaskProcessing]]]:
+def add_processing(applied_rule: str) -> Optional[Union[TaskProcessing, List[TaskProcessing]]]:
     """
     Adds information about the desired processing step into the task file,
     which is evaluated by the processing module
@@ -144,7 +143,7 @@ def add_study(
 
 
 def add_dispatching(
-    task_id: str, uid: str, applied_rule: str, tags_list: Dict[str, str], target: Union[str, List[str]]
+    task_id: str, uid: str, applied_rule: str,  target: Union[str, List[str]]
 ) -> Optional[TaskDispatch]:
     """
     Adds information about the desired dispatching step into the task file, which is evaluated by the dispatcher.
