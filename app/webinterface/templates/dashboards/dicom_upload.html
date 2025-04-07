@@ -606,12 +606,12 @@ async function uploadWithRetry(files, retries = 0) {
 
   clearBtn.click(function(e) {
     e.preventDefault();
-      files.clear();
-      updateStats();
-      updateButtons();
-      progressContainer.hide();
-      progressBar.val(0);
-      $('#upload-information').hide();
+    files.clear();
+    updateStats();
+    updateButtons();
+    progressContainer.hide();
+    progressBar.val(0);
+    $('#upload-information').hide();
   });
 });
 </script>

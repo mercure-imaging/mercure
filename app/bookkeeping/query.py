@@ -336,7 +336,7 @@ async def find_task(request) -> JSONResponse:
             "MRN": mrn,
             "Scope": job_scope,
             "Time": time.isoformat(timespec='seconds') if isinstance(time, datetime.datetime) else str(time),
-            "Rule": item.get("rule").replace("{", "").replace("}", ""),
+            "Rule": item.get("rule", "").replace("{", "").replace("}", ""),
             "task_id": task_id  # Include task_id for actions/links
         })
 
