@@ -351,12 +351,12 @@ async def show_queues_status(request):
         return PlainTextResponse("Configuration is being updated. Try again in a minute.")
 
     processing_suspended = False
-    processing_halt_file = Path(config.mercure.processing_folder + "/" + mercure_names.HALT)
+    processing_halt_file = Path(config.mercure.processing_folder) / mercure_names.HALT
     if processing_halt_file.exists():
         processing_suspended = True
 
     routing_suspended = False
-    routing_halt_file = Path(config.mercure.outgoing_folder + "/" + mercure_names.HALT)
+    routing_halt_file = Path(config.mercure.outgoing_folder) / mercure_names.HALT
     if routing_halt_file.exists():
         routing_suspended = True
 
@@ -368,12 +368,12 @@ async def show_queues_status(request):
                 processing_active = True
                 break
 
-    routing_actvie = False
+    routing_active = False
     for entry in os.scandir(config.mercure.outgoing_folder):
         if entry.is_dir():
             processing_file = Path(entry.path) / mercure_names.PROCESSING
             if processing_file.exists():
-                routing_actvie = True
+                routing_active = True
                 break
 
     processing_status = "Idle"
@@ -388,12 +388,12 @@ async def show_queues_status(request):
 
     routing_status = "Idle"
     if routing_suspended:
-        if routing_actvie:
+        if routing_active:
             routing_status = "Suspending"
         else:
             routing_status = "Halted"
     else:
-        if routing_actvie:
+        if routing_active:
             routing_status = "Processing"
 
     queue_status = {
@@ -620,6 +620,10 @@ def restart_processing_task(task_id: str, source_folder: Path, is_error: bool = 
         monitor.send_task_event(
             monitor.task_event.PROCESS_RESTART, task_id, 0, "", f"Processing job restarted from {source_type} folder"
         )
+        try:
+            shutil.rmtree(source_folder)
+        except:
+            logger.exception("Failed to remove source folder")
         lock.free()
         return {
             "success": True,
