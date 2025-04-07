@@ -69,6 +69,7 @@ class task_event(StringEnum):
     REMOVE = auto()
     PROCESS_MODULE_BEGIN = auto()
     PROCESS_MODULE_COMPLETE = auto()
+    PROCESS_RESTART = auto()
 
 
 class severity(Enum):

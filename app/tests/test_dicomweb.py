@@ -17,7 +17,6 @@ import pydicom
 import pytest
 import webgui
 from requests_toolbelt.multipart.encoder import MultipartEncoder
-from starlette.testclient import TestClient
 from tests.testing_common import create_minimal_dicom
 
 
@@ -36,48 +35,6 @@ def multipart_upload(client, fields):
         },
         data=m.to_string()
     )
-
-
-@pytest.fixture
-def test_client(fs):
-    """Create a TestClient for the dicomweb app."""
-    # dicomweb_app.add_middleware(AuthenticationMiddleware, backend=webgui.SessionAuthBackend())
-    # dicomweb_app.add_middleware(SessionMiddleware, secret_key="asdfasdfasdf", session_cookie="mercure_session")
-    # print(dicomweb_app.router.routes)
-    webgui.DEBUG_MODE = True
-    webgui.SECRET_KEY = "asdfasdf"
-    app = webgui.create_app()
-
-    os.chdir(os.path.abspath(os.path.dirname(os.path.realpath(__file__)) + '/..'))
-
-    client = TestClient(app)
-    form_data = {
-        "username": "admin",
-        "password": "router"
-    }
-    response = client.post(
-        "/login",
-        data=form_data,
-        headers={'Content-Type': 'application/x-www-form-urlencoded'},
-        follow_redirects=False
-    )
-    assert response.status_code == 303
-
-    return client
-
-
-@pytest.fixture
-def temp_upload_dir(fs, mercure_config):
-    """Create a temporary directory structure for uploads."""
-    # config = mercure_config()
-    # upload_dir = Path(config.jobs_folder) / "uploaded_datasets"
-    # upload_dir.mkdir(exist_ok=True, parents=True)
-    # for user in ["test_user", "admin"]:
-    #     (upload_dir / user).mkdir(exist_ok=True)
-    #     # Create a test dataset
-    #     (upload_dir / user / "test_dataset").mkdir(exist_ok=True)
-
-    # return upload_dir
 
 
 def create_test_dicom(output_filename):
