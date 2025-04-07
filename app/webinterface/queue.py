@@ -498,14 +498,19 @@ async def restart_job(request):
     if not task_folder.exists():
         logger.info(f"Error folder for task {task_id} does not exist")
         return JSONResponse({"error": "Task not found in error folder"}, status_code=404)
+    if not (task_folder / "as_received").exists():
+        return JSONResponse({"error": "No original files found for this task"}, status_code=404)
 
     # Check if this is a processing failure based on fail_stage
     task_file = task_folder / mercure_names.TASKFILE
     if not task_file.exists():
         task_file = task_folder / "in" / mercure_names.TASKFILE
     if not task_file.exists():
+        task_file = task_folder / "as_received" / mercure_names.TASKFILE
+
+    if not task_file.exists():
         logger.info(f"Task file {task_file} does not exist")
-        return JSONResponse({"error": f"Task file does not exist"}, status_code=404)
+        return JSONResponse({"error": f"Task file {task_file} does not exist"}, status_code=404)
 
     logger.info(f"Task file for task {task_id} exists: {task_file}")
     try:
@@ -558,6 +563,8 @@ def restart_processing_task(task_id: str, source_folder: Path, is_error: bool = 
         task_file = source_folder / mercure_names.TASKFILE
         if not task_file.exists():
             task_file = source_folder / "in" / mercure_names.TASKFILE
+        if not task_file.exists():
+            task_file = source_folder / "as_received" / mercure_names.TASKFILE
 
         if not task_file.exists():
             return {"error": "No task file found", "error_code": RestartTaskErrors.NO_TASK_FILE}
@@ -570,7 +577,7 @@ def restart_processing_task(task_id: str, source_folder: Path, is_error: bool = 
         # Create a new folder in the processing directory
         processing_folder = Path(config.mercure.processing_folder) / task_id
         if processing_folder.exists():
-            return {"error": "Task ID already exists in processing folder", "error_code": RestartTaskErrors.TASK_NOT_READY}
+            return {"error": "Task is currently being processed", "error_code": RestartTaskErrors.TASK_NOT_READY}
 
         # Create the processing folder structure
         processing_folder.mkdir(exist_ok=True)
@@ -587,12 +594,24 @@ def restart_processing_task(task_id: str, source_folder: Path, is_error: bool = 
             task = Task(**task_data)
         # Clear the fail_stage
         task.info.fail_stage = None
+        if task.info.applied_rule is None:
+            return {"error": "No rule provided"}
+        if task.info.applied_rule not in config.mercure.rules.keys():
+            return {"error": f"Rule '{task.info.applied_rule}' not found in {config.mercure.rules.keys()}"}
+        if config.mercure.rules[task.info.applied_rule].action != "process":
+            return {"error": "Invalid rule action"}
+        try:
+            task.process = generate_taskfile.add_processing("", task.info.applied_rule, {})
+        except Exception as e:
+            logger.exception("Failed to generate task file")
+            return {"error": "Failed to generate task file"}
 
-        task.process = generate_taskfile.add_processing("", task.info.applied_rule, {})
+        if task.process is None:
+            return {"error": f"Failed to generate task file: error in rule"}
         # Write the updated task file
         with open(processing_folder / mercure_names.TASKFILE, "w") as f:
-            json.dump(task.dict(), f)
-        logger.info(task.dict())
+            f.write(task.json())
+        logger.info(task.json())
         (processing_folder / mercure_names.LOCK).unlink()
 
         # Log the restart action

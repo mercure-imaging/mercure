@@ -65,7 +65,7 @@ def backup_input_images(task_folder: Path) -> None:
 
     # Also copy the task.json file for reference
     task_file = input_folder / mercure_names.TASKFILE
-    shutil.copy2(input_folder / mercure_names.TASKFILE, backup_folder / mercure_names.TASKFILE)
+    shutil.copy2(task_file, backup_folder / mercure_names.TASKFILE)
 
     logger.info(f"Backed up input files for task folder {task_folder.name} to {backup_folder}")
 

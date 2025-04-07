@@ -369,8 +369,8 @@ async def process_series(folder: Path) -> None:
             raise e
 
         if not taskfile_path.exists():
-            logger.error("Task file does not exist")
-            raise Exception("Task file does not exist")
+            logger.error(f"Task file {taskfile_path} does not exist")
+            raise Exception(f"Task file {taskfile_path} does not exist")
 
         with open(taskfile_path, "r") as f:
             task = Task(**json.load(f))

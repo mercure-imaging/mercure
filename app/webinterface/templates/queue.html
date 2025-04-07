@@ -1236,7 +1236,7 @@
 
         if (confirm("Are you sure you want to restart processing for this job using the original input files?")) {
             $.ajax({
-                type: 'GET',
+                type: 'POST',
                 url: '/queue/jobs/processing/restart-job',
                 data: {'task_id': jobId},
                 dataType: 'json',

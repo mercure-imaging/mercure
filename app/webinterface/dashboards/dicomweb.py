@@ -162,6 +162,9 @@ async def dataset_operation(request: Request):
     form_data = await request.form()
     # logger.info(form_data)
     force_rule = form_data.get('force_rule', None)
+    if force_rule and force_rule not in config.mercure.rules:
+        return JSONResponse({"error": f"Rule {force_rule} not found"}, status_code=404)
+
     folder = (Path(config.mercure.jobs_folder) / "uploaded_datasets" / request.user.display_name / dataset_id).resolve()
     # check that folder is really a subdirectory of config.mercure.jobs_folder
     if not Path(config.mercure.jobs_folder).resolve() in folder.parents:
