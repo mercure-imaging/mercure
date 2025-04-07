@@ -203,7 +203,7 @@
                                         <span class="icon is-small"><i class="fas fa-check"></i></span>
                                         <span>Select</span>
                                     </button>
-                                    <button class="button is-small is-danger" onclick="window.deleteDataset('{{ dataset }}')">
+                                    <button class="button is-small is-danger" onclick="window.deleteDataset('{{ dataset }}'); return false;">
                                         <span class="icon is-small"><i class="fas fa-trash"></i></span>
                                         <span>Delete</span>
                                     </button>
@@ -282,7 +282,8 @@ $(document).ready(function() {
     });
     
     // Dataset selection
-    $('.select-dataset-btn').on('click', function() {
+    $('.select-dataset-btn').on('click', function(e) {
+        e.preventDefault();
         const datasetName = $(this).data('dataset');
         $('#selected-dataset').val(datasetName);
         $('#selected-dataset-display').val(datasetName);
@@ -603,12 +604,14 @@ async function uploadWithRetry(files, retries = 0) {
       }
   });
 
-  clearBtn.click(function() {
+  clearBtn.click(function(e) {
+    e.preventDefault();
       files.clear();
       updateStats();
       updateButtons();
       progressContainer.hide();
       progressBar.val(0);
+      $('#upload-information').hide();
   });
 });
 </script>
