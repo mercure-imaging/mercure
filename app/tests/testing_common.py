@@ -7,13 +7,14 @@ import os
 import shutil
 import uuid
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterator, Optional, Tuple
+from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple
 
 import common  # noqa: F401
 import docker.errors
 import process  # noqa: F401
 import pydicom
 import routing  # noqa: F401
+from docker.types import Mount
 from pydicom.dataset import Dataset, FileDataset, FileMetaDataset
 from pydicom.uid import generate_uid
 from tests.getdcmtags import process_dicom
@@ -84,16 +85,22 @@ class FakeImageContainer:
 
 
 def make_fake_processor(fs, mocked, fails) -> Callable:
-    def fake_processor(tag, environment: Optional[Dict] = None, volumes: Optional[Dict] = None, **kwargs):
+    def fake_processor(tag, *, environment: Optional[Dict] = None, volumes: Optional[Dict] = None, mounts: List[Mount] = [], **kwargs):
         global processor_path
         if "cat" in kwargs.get("command", ""):
             raise docker.errors.ContainerError(None, None, None, None, None)
         if tag == "busybox:stable-musl":
             return mocked.DEFAULT
-        if not volumes:
-            raise Exception()
-        in_ = Path(next((k for k in volumes.keys() if volumes[k]["bind"] == "/tmp/data")))
-        out_ = Path(next((k for k in volumes.keys() if volumes[k]["bind"] == "/tmp/output")))
+        if not volumes and not mounts:
+            raise Exception("No volume specified")
+        in_ = Path(next(m for m in mounts if m["Target"] == "/tmp/data")['Source'])
+        out_ = Path(next(m for m in mounts if m["Target"] == "/tmp/output")['Source'])
+
+        assert in_.exists()
+        assert out_.exists()
+
+        # in_ = Path(next((k for k in volumes.keys() if volumes[k]["bind"] == "/tmp/data")))
+        # out_ = Path(next((k for k in volumes.keys() if volumes[k]["bind"] == "/tmp/output")))
 
         # processor_path = in_.parent
         for child in in_.iterdir():

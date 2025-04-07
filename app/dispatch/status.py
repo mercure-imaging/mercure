@@ -47,8 +47,7 @@ def is_target_json_valid(folder) -> Optional[Task]:
     if not path.exists():
         return None
     try:
-        with open(path, "r") as f:
-            target = Task(**json.load(f))
+        target = Task.from_file(path)
     except Exception:
         logger.exception("task.json has invalid format", "unknown")
         return None

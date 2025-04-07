@@ -184,6 +184,7 @@
                                 <th>Scope</th>
                                 <th>Fail Stage</th>
                                 <th>ID</th>
+                                <th>Created</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -372,7 +373,8 @@
                 timeout: 3000
             });
             $('#jobs_processing').DataTable().button(2).enable(false);
-            $('#jobs_processing').DataTable().button(3).enable(false);            
+            $('#jobs_processing').DataTable().button(3).enable(false);
+            $('#jobs_processing').DataTable().button(4).enable(false);
             return;
         }
 
@@ -452,7 +454,7 @@
                     $('#erroralert').hide();
                     var jobtable = $('#jobs_fail').DataTable();
                     Object.keys(data).forEach(function (key) {
-                        jobtable.row.add( [ data[key]["ACC"], data[key]["MRN"], data[key]["Scope"], data[key]["FailStage"], key ] );
+                        jobtable.row.add( [ data[key]["ACC"], data[key]["MRN"], data[key]["Scope"], data[key]["FailStage"], key, data[key]["CreationTime"] ] );
                     })
                     jobtable.draw();
                 },
@@ -610,6 +612,14 @@
                     }
                 },
                 {
+                    text: '<i class="fas fa-redo-alt"></i>',
+                    titleAttr: 'Restart processing with original files',
+                    action: function ( e, dt, node, config ) {
+                        var jid = $('#jobs_processing').DataTable().rows( { selected: true } ).data()[0][5];
+                        restartProcessingJob(jid);
+                    }
+                },
+                {
                     text: '<i class="fas fa-trash-alt"></i>',
                     titleAttr: 'Cancel job',
                     action: function ( e, dt, node, config ) {
@@ -626,6 +636,7 @@
             var selectedRows = $('#jobs_processing').DataTable().rows( { selected: true } ).count();
             $('#jobs_processing').DataTable().button(2).enable( selectedRows > 0 );
             $('#jobs_processing').DataTable().button(3).enable( selectedRows > 0 );
+            $('#jobs_processing').DataTable().button(4).enable( selectedRows > 0 );
         } );
 
         $('#jobs_routing').DataTable( {
@@ -768,7 +779,7 @@
             "paging":   false,
             "ordering": false,
             "info": false,
-            "searching": false,
+            "searching": true,
             "select": true,
             "language": {
                 "emptyTable": "No failed jobs"
@@ -812,23 +823,39 @@
             $('#jobs_fail').DataTable().button(2).enable( selectedRows > 0 );
             if (selectedRows == 1) {
                 let failStage = $('#jobs_fail').DataTable().rows( { selected: true } ).data()[0][3];
-                $('#jobs_fail').DataTable().button(3).enable( failStage == "Dispatching" );
+                $('#jobs_fail').DataTable().button(3).enable( failStage == "Dispatching" || failStage == "Processing");
             } else {
                 $('#jobs_fail').DataTable().button(3).enable( false );
             }
         } );
 
         $('#jobs_archive').DataTable( {
-            "paging":   false,
+            "paging":   true,
             "ordering": true,
-            "info": false,
-            "searching": false,
+            // "info": false,
+            "searching": true,
             "select": true,
             "language": {
                 "emptyTable": "No jobs found"
             },
+            ajax: {
+                url: '/api/find-tasks',
+                data: function(d) {
+                    // Add the study filter parameter to the request
+                    d.study_filter = archiveFilterQueue;
+                }
+            },
+            columns: [
+                { data: 'ACC' },
+                { data: 'MRN' },
+                { data: 'Scope' },
+                { data: 'Rule' },
+                { data: 'Time' },
+                { data: 'task_id' },
+            ],
+            serverSide: true,
             autoWidth: false,
-            select: true,
+            // select: true,
             buttons: [
                 {
                     extend: 'collection',
@@ -844,7 +871,7 @@
                                 // Toggles class when pressed
                                 $(e.currentTarget).toggleClass("queueArchiveFilterButton-Checked");                       
                                 archiveFilterQueue = !archiveFilterQueue;
-                                archiveSearch();
+                                dt.ajax.reload();
                             }
                         }
                     ]
@@ -853,7 +880,7 @@
                     text: '<i class="fas fa-code"></i>',
                     titleAttr: 'Job information',
                     action: function ( e, dt, node, config ) {
-                        var jid = $('#jobs_archive').DataTable().rows( { selected: true } ).data()[0].slice(-1)[0];
+                        var jid = $('#jobs_archive').DataTable().rows( { selected: true } ).data()[0].task_id;
                         showArchiveJobInformation(jid);
                     }
                 },
@@ -861,7 +888,7 @@
                     text: '<i class="fas fa-list-ul"></i>',
                     titleAttr: 'Audit trail',
                     action: function ( e, dt, node, config ) {
-                        var jid = $('#jobs_archive').DataTable().rows( { selected: true } ).data()[0].slice(-1)[0];
+                        var jid = $('#jobs_archive').DataTable().rows( { selected: true } ).data()[0].task_id;
                         showAuditTrail(jid);
                     }
                 },
@@ -869,7 +896,7 @@
                     text: '<i class="fas fa-receipt"></i>',
                     titleAttr: 'Processing log',
                     action: function ( e, dt, node, config ) {
-                        var jid = $('#jobs_archive').DataTable().rows( { selected: true } ).data()[0].slice(-1)[0];
+                        var jid = $('#jobs_archive').DataTable().rows( { selected: true } ).data()[0].task_id;
                         showLogs(jid);
                     }
                 },
@@ -877,12 +904,12 @@
                     text: '<i class="fas fa-chart-bar"></i>',
                     titleAttr: 'Processing results',
                     action: function ( e, dt, node, config ) {
-                        var jid = $('#jobs_archive').DataTable().rows( { selected: true } ).data()[0].slice(-1)[0];
+                        var jid = $('#jobs_archive').DataTable().rows( { selected: true } ).data()[0].task_id;
                         showResults(jid);
                     }
                 }                
             ],
-            dom: 'Bfrtip',
+            dom: 'fBrtip',
             "scrollY": "740px",
             "scrollX": false,
             "scrollCollapse": true,
@@ -955,37 +982,10 @@
     function archiveSearch()
     {
         if ($("#tab_archive").hasClass("is-active")) {
-            $('#jobs_archive').DataTable().clear().draw();
+            $('#jobs_archive_filter').hide();
+            $('#jobs_archive_filter input').val($('#job_archive_search').val());
+            $('#jobs_archive_filter input').trigger(jQuery.Event("keyup", { which: 13 }));
             $('#jobs_archive_wrapper').show();
-            $('#loadingspinner').show();
-            searchTerm = $('#job_archive_search').val();
-            $.ajax({
-                type: 'GET',
-                url: '/api/find-tasks',
-                data: {'search_term': searchTerm, 'study_filter': archiveFilterQueue },
-                dataType: 'json',
-                error: function () {
-                    $('#erroralert').show();
-                },
-                success: function (data) {
-                    $('#erroralert').hide();
-                    var jobtable = $('#jobs_archive').DataTable();
-                    if (Object.keys(data).length) {
-                        Object.keys(data).forEach(function (key) {
-                            jobtable.row.add( [ data[key]["ACC"], data[key]["MRN"], data[key]["Scope"], data[key]["Rule"], data[key]["Time"], key ] );
-                        })
-                    }
-                    $('#jobs_archive').DataTable().button(1).enable(false);
-                    $('#jobs_archive').DataTable().button(2).enable(false);
-                    $('#jobs_archive').DataTable().button(3).enable(false);
-                    $('#jobs_archive').DataTable().button(4).enable(false);
-                    jobtable.draw();
-                },
-                complete: function (data) {
-                    $('#loadingspinner').hide();
-                },
-                timeout: 5000
-            });
             return;
         }
     }
@@ -1194,12 +1194,16 @@
         }
 
         $.ajax({
-            type: 'GET',
+            type: 'POST',
             url: '/queue/jobs/fail/restart-job',
             data: {'task_id': jobId},
             dataType: 'json',
-            error: function () {
-                alert("Restart failed: unknown error.")
+            error: function (data) {
+                if (data.responseJSON.hasOwnProperty("error")) {
+                    alert("Restart failed: " + data.responseJSON["error"])
+                } else {
+                    alert("Restart failed: unknown error.")
+                }
             },
             success: function (data) {
                 // check if error is a key in data
@@ -1212,6 +1216,33 @@
             },
             timeout: 3000
         });
+    }
+
+    function restartProcessingJob(jobId) {
+        if (jobId === "") {
+            return;
+        }
+
+        if (confirm("Are you sure you want to restart processing for this job using the original input files?")) {
+            $.ajax({
+                type: 'POST',
+                url: '/queue/jobs/processing/restart-job',
+                data: {'task_id': jobId},
+                dataType: 'json',
+                error: function () {
+                    alert("Restart failed: unknown error.")
+                },
+                success: function (data) {
+                    if (data.hasOwnProperty("error")) {
+                        alert("Restart failed: " + data["error"])
+                    } else {
+                        alert("Job restarted with original input files")
+                    }
+                    update();
+                },
+                timeout: 3000
+            });
+        }
     }
 
     var updateTimer;

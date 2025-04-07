@@ -11,6 +11,9 @@ import pytest
 import routing  # noqa: F401
 from bookkeeping import bookkeeper
 from common.types import Config
+from starlette.testclient import TestClient
+
+from app import webgui
 
 
 def spy_on(mocker, obj) -> None:
@@ -69,6 +72,34 @@ def bookkeeper_port():
 @pytest.fixture(scope="module")
 def receiver_port():
     return random_port()
+
+
+@pytest.fixture(scope="function")
+def test_client(fs):
+    """Create a TestClient for the dicomweb app."""
+    # dicomweb_app.add_middleware(AuthenticationMiddleware, backend=webgui.SessionAuthBackend())
+    # dicomweb_app.add_middleware(SessionMiddleware, secret_key="asdfasdfasdf", session_cookie="mercure_session")
+    # print(dicomweb_app.router.routes)
+    webgui.DEBUG_MODE = True
+    webgui.SECRET_KEY = "asdfasdf"
+    app = webgui.create_app()
+
+    os.chdir(os.path.abspath(os.path.dirname(os.path.realpath(__file__)) + '/..'))
+
+    client = TestClient(app)
+    form_data = {
+        "username": "admin",
+        "password": "router"
+    }
+    response = client.post(
+        "/login",
+        data=form_data,
+        headers={'Content-Type': 'application/x-www-form-urlencoded'},
+        follow_redirects=False
+    )
+    assert response.status_code == 303
+
+    return client
 
 
 @pytest.fixture(scope="function", autouse=True)

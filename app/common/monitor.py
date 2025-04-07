@@ -195,7 +195,7 @@ def send_update_task(task: Task) -> None:
 
 def send_update_task_tags(id, info_dict) -> None:
     """ 
-    
+
     """
     post("update-task", json={"id": id, "tags": info_dict})
 
@@ -262,8 +262,8 @@ async def get_tests() -> Any:
     return await get("query/tests")
 
 
-async def find_tasks(search_term="", study_filter="false") -> Any:
-    return await get("query/find_task", {"search_term": search_term, "study_filter": study_filter})
+async def find_tasks(request) -> Any:
+    return await get("query/find_task", {k: v for k, v in request.query_params.items()})
 
 
 async def task_process_logs(task_id="") -> Any:

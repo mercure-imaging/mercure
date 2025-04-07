@@ -125,7 +125,95 @@
                     </div>
                 </div>
             </div>
+                    
+            <!-- Tabs Navigation -->
+            <div id="upload_tabs" class="tabs" style="margin-bottom: 0;">
+                <ul>
+                    <li class="is-active" data-tab="upload-tab"><a>Upload Files</a></li>
+                    <li data-tab="datasets-tab"><a>Saved Datasets</a></li>
+                </ul>
+            </div>
             
+            <!-- Tabs Content -->
+            <div class="tabs-content">
+                <!-- Upload Tab -->
+                <div id="upload-tab" class="is-active">
+                    <div class ="row">
+                        <div class="columns">
+                            <div class="column is-8">
+                                <div id="upload-box" class="upload-box" style="margin-bottom: 0px;">
+                                    <div class="file has-name is-boxed is-centered">
+                                        <label class="file-label">
+                                            <input class="file-input" type="file" id="file-input" multiple accept=".dcm,.zip">
+                                            <span class="file-cta">
+                                                <span class="file-icon">
+                                                    <i class="fas fa-upload"></i>
+                                                </span>
+                                                <span class="file-label">
+                                                    Choose files or drag here...
+                                                </span>
+                                            </span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="column" id="upload-information">
+                                <div class="notification is-link" style="height: 100%;">
+                                    <h4 class="title is-5">Upload Information</h4>
+                                    <p>Selected files: <strong id="file-count">0</strong></p>
+                                    <p>Total size: <strong id="total-size">0 KB</strong></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class ="row">
+                        <div class="progress-container">
+                            <progress class="progress is-success" id="upload-progress" value="0" max="100"></progress>
+                            <p class="has-text-centered" id="progress-text">Uploading files...</p>
+                        </div>
+
+                        <div class="field is-grouped" style="margin-top: 1rem;">
+                            <div class="control">
+                                <button class="button is-light" id="clear-btn" disabled>
+                                    <span class="icon">
+                                        <i class="fas fa-times"></i>
+                                    </span>
+                                    <span>Clear Files</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>  
+                </div>
+                
+                <!-- Datasets Tab -->
+                <div id="datasets-tab">
+                    <table class="table is-fullwidth">
+                        <thead>
+                            <tr>
+                                <th>Dataset Name</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for dataset in datasets %}
+                            <tr data-dataset-name="{{ dataset }}">
+                                <td>{{ dataset }}</td>
+                                <td>
+                                    <button class="button is-small is-info select-dataset-btn" data-dataset="{{ dataset }}">
+                                        <span class="icon is-small"><i class="fas fa-check"></i></span>
+                                        <span>Select</span>
+                                    </button>
+                                    <button class="button is-small is-danger" onclick="window.deleteDataset('{{ dataset }}'); return false;">
+                                        <span class="icon is-small"><i class="fas fa-trash"></i></span>
+                                        <span>Delete</span>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
             <div class="field is-horizontal">
                 <div class="field-label">
                     <!-- Left empty for spacing -->
@@ -146,98 +234,6 @@
         </form>
     </div>
     
-    <!-- Tabs Navigation -->
-    <div class="tabs">
-        <ul>
-            <li class="is-active" data-tab="upload-tab"><a>Upload Files</a></li>
-            <li data-tab="datasets-tab"><a>Saved Datasets</a></li>
-        </ul>
-    </div>
-    
-    <!-- Tabs Content -->
-    <div class="tabs-content">
-        <!-- Upload Tab -->
-        <div id="upload-tab" class="is-active">
-            <div class ="row">
-                <div class="columns">
-                    <div class="column is-8">
-                        <div id="upload-box" class="upload-box" style="margin-bottom: 0px;">
-                            <div class="file has-name is-boxed is-centered">
-                                <label class="file-label">
-                                    <input class="file-input" type="file" id="file-input" multiple accept=".dcm,.zip">
-                                    <span class="file-cta">
-                                        <span class="file-icon">
-                                            <i class="fas fa-upload"></i>
-                                        </span>
-                                        <span class="file-label">
-                                            Choose files or drag here...
-                                        </span>
-                                    </span>
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="column">
-                        <div class="notification is-link" style="height: 100%;">
-                            <h4 class="title is-5">Upload Information</h4>
-                            <p>Selected files: <strong id="file-count">0</strong></p>
-                            <p>Total size: <strong id="total-size">0 KB</strong></p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class ="row">
-                <div class="progress-container">
-                    <progress class="progress is-success" id="upload-progress" value="0" max="100"></progress>
-                    <p class="has-text-centered" id="progress-text">Uploading files...</p>
-                </div>
-
-                <div class="field is-grouped" style="margin-top: 1rem;">
-                    <div class="control">
-                        <button class="button is-light" id="clear-btn" disabled>
-                            <span class="icon">
-                                <i class="fas fa-times"></i>
-                            </span>
-                            <span>Clear Files</span>
-                        </button>
-                    </div>
-                </div>
-            </div>  
-        </div>
-        
-        <!-- Datasets Tab -->
-        <div id="datasets-tab">
-            <div class="notification is-info is-light">
-                <p><span class="icon"><i class="fas fa-info-circle"></i></span> 
-                Select a dataset from the list below to submit it with the settings above.</p>
-            </div>
-            <table class="table is-fullwidth">
-                <thead>
-                    <tr>
-                        <th>Dataset Name</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for dataset in datasets %}
-                    <tr data-dataset-name="{{ dataset }}">
-                        <td>{{ dataset }}</td>
-                        <td>
-                            <button class="button is-small is-info select-dataset-btn" data-dataset="{{ dataset }}">
-                                <span class="icon is-small"><i class="fas fa-check"></i></span>
-                                <span>Select</span>
-                            </button>
-                            <button class="button is-small is-danger" onclick="window.deleteDataset('{{ dataset }}')">
-                                <span class="icon is-small"><i class="fas fa-trash"></i></span>
-                                <span>Delete</span>
-                            </button>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
 </div>
 
 <script>
@@ -275,10 +271,10 @@ async function deleteDataset(dataset) {
 
 $(document).ready(function() {
     // Tab functionality
-    $('.tabs li').on('click', function() {
+    $('#upload_tabs li').on('click', function() {
         const tabId = $(this).data('tab');
         
-        $('.tabs li').removeClass('is-active');
+        $('#upload_tabs.tabs li').removeClass('is-active');
         $(this).addClass('is-active');
         
         $('.tabs-content > div').removeClass('is-active');
@@ -286,7 +282,8 @@ $(document).ready(function() {
     });
     
     // Dataset selection
-    $('.select-dataset-btn').on('click', function() {
+    $('.select-dataset-btn').on('click', function(e) {
+        e.preventDefault();
         const datasetName = $(this).data('dataset');
         $('#selected-dataset').val(datasetName);
         $('#selected-dataset-display').val(datasetName);
@@ -324,7 +321,7 @@ $(document).ready(function() {
     const uploadStatus = $('#upload-status');
 
     let files = new Map();
-
+    $('#upload-information').hide();
     // Drag and drop handling
     ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
         uploadBox.on(eventName, preventDefaults);
@@ -369,6 +366,7 @@ $(document).ready(function() {
     }
 
     function updateStats() {
+        $('#upload-information').show();
         fileCount.text(files.size);
         const total = Array.from(files.values()).reduce((acc, curr) => acc + curr.file.size, 0);
         totalSize.text(formatSize(total));
@@ -606,12 +604,14 @@ async function uploadWithRetry(files, retries = 0) {
       }
   });
 
-  clearBtn.click(function() {
-      files.clear();
-      updateStats();
-      updateButtons();
-      progressContainer.hide();
-      progressBar.val(0);
+  clearBtn.click(function(e) {
+    e.preventDefault();
+    files.clear();
+    updateStats();
+    updateButtons();
+    progressContainer.hide();
+    progressBar.val(0);
+    $('#upload-information').hide();
   });
 });
 </script>
