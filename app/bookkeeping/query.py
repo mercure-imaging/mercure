@@ -215,7 +215,7 @@ async def find_task(request) -> JSONResponse:
 
     study_filter_term = ""
     if study_filter == "true":
-        study_filter_term = "and tasks.study_uid is not null"
+        study_filter_term = "and parent_tasks.study_uid is not null"
 
     query_string = f"""
 SELECT

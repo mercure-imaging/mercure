@@ -417,7 +417,6 @@ class Task(BaseModel, Compat):
         return cls(**json.loads(content))
 
     def to_file(self,  file_or_path: Union[PathLike, TextIOWrapper]) -> None:
-        print(f"Writing {self.__class__.__name__} to file or path: {file_or_path}")
         if isinstance(file_or_path, TextIOWrapper):
             json.dump(self.dict(), file_or_path)
         else:
@@ -425,5 +424,5 @@ class Task(BaseModel, Compat):
                 json.dump(self.dict(), f)
 
 
-class TaskHasStudy(Task):
+class TaskHasStudy(Task): 
     study: TaskStudy

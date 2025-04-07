@@ -717,3 +717,7 @@ tr.dt-hasChild td.dt-control:hover  {
 .has-no-choices, .has-no-results {
   color: #CCC;
 }
+
+.dataTables_wrapper td {
+  word-break: break-all;
+}
