@@ -8,7 +8,7 @@ import common.config as config
 import pytest
 from common.constants import mercure_names
 from process.processor import backup_input_images
-from pytest_mock import MockerFixture
+from starlette.testclient import TestClient
 from webinterface.queue import restart_processing_job
 
 logger = config.get_logger()
@@ -49,13 +49,16 @@ def test_backup_input_images(fs, mercure_config):
     assert (backup_folder / "task.json").read_text() == '{"id": "test-task"}'
 
 
-class MockRequest:
-    def __init__(self, query_params=None):
-        self.query_params = query_params or {}
+@pytest.fixture
+def test_client():
+    """Create a TestClient for the webinterface app."""
+    from webinterface.webgui import create_app
+    app = create_app()
+    return TestClient(app)
 
 
 @pytest.mark.asyncio
-async def test_restart_processing_job_success(fs, mercure_config):
+async def test_restart_processing_job_success(fs, mercure_config, test_client, mocked):
     """Test successful restart of a processing job"""
     # Setup test environment
     processing_folder = Path(mercure_config().processing_folder)
@@ -73,14 +76,12 @@ async def test_restart_processing_job_success(fs, mercure_config):
     fs.create_file(as_received_folder / mercure_names.TASKFILE,
                    contents='{"id": "test-task", "process": {"module_name": "test_module", "status": "completed"}}')
 
-    # Create a mock request with task_id
-    request = MockRequest(query_params={"task_id": task_id})
-
-    # Call the restart function
-    response = await restart_processing_job(request)
-    response_data = json.loads(response.body)
-
-    # Check that the function returned success
+    # Call the restart function via the API endpoint
+    response = test_client.get(f"/queue/jobs/processing/restart-job?task_id={task_id}")
+    
+    # Check that the response is successful
+    assert response.status_code == 200
+    response_data = response.json()
     assert response_data["success"] is True
 
     # Check that in folder was created with copied files
@@ -95,83 +96,60 @@ async def test_restart_processing_job_success(fs, mercure_config):
     assert task_data["process"]["status"] == "pending"
 
     # Check that monitor event was sent
-    mock_send_event.assert_called_once()
+    assert mocked.spy_called(common.monitor.send_task_event)
 
 
 @pytest.mark.asyncio
-async def test_restart_processing_job_no_task_id(fs, monkeypatch):
+async def test_restart_processing_job_no_task_id(test_client):
     """Test restart with missing task ID"""
-    # Mock the config.mercure.processing_folder
-    processing_folder = Path("/var/processing")
-    monkeypatch.setattr("common.config.mercure.processing_folder", str(processing_folder))
-
-    # Create a mock request with no task_id
-    request = MockRequest(query_params={})
-
-    # Call the restart function
-    response = await restart_processing_job(request)
-    response_data = json.loads(response.body)
-
-    # Check that the function returned error
+    # Call the restart function via the API endpoint with no task_id
+    response = test_client.get("/queue/jobs/processing/restart-job")
+    
+    # Check that the response contains an error
+    assert response.status_code == 200
+    response_data = response.json()
     assert "error" in response_data
     assert response_data["error"] == "No task ID provided"
 
 
 @pytest.mark.asyncio
-async def test_restart_processing_job_no_task_folder(fs, monkeypatch):
+async def test_restart_processing_job_no_task_folder(fs, mercure_config, test_client):
     """Test restart with non-existent task folder"""
-    # Mock the config.mercure.processing_folder
-    processing_folder = Path("/var/processing")
-    fs.create_dir(processing_folder)
-    monkeypatch.setattr("common.config.mercure.processing_folder", str(processing_folder))
-
-    # Create a mock request with task_id that doesn't exist
+    # Call the restart function via the API endpoint with a non-existent task_id
     task_id = str(uuid.uuid1())
-    request = MockRequest(query_params={"task_id": task_id})
-
-    # Call the restart function
-    response = await restart_processing_job(request)
-    response_data = json.loads(response.body)
-
-    # Check that the function returned error
+    response = test_client.get(f"/queue/jobs/processing/restart-job?task_id={task_id}")
+    
+    # Check that the response contains an error
+    assert response.status_code == 200
+    response_data = response.json()
     assert "error" in response_data
     assert response_data["error"] == "Task folder not found"
 
 
 @pytest.mark.asyncio
-async def test_restart_processing_job_no_as_received(fs, monkeypatch):
+async def test_restart_processing_job_no_as_received(fs, mercure_config, test_client):
     """Test restart with missing as_received folder"""
     # Setup test environment
-    processing_folder = Path("/var/processing")
-    fs.create_dir(processing_folder)
-
+    processing_folder = Path(mercure_config().processing_folder)
     task_id = str(uuid.uuid1())
     task_folder = processing_folder / task_id
-
     fs.create_dir(task_folder)
 
-    # Mock the config.mercure.processing_folder
-    monkeypatch.setattr("common.config.mercure.processing_folder", str(processing_folder))
-
-    # Create a mock request with task_id
-    request = MockRequest(query_params={"task_id": task_id})
-
-    # Call the restart function
-    response = await restart_processing_job(request)
-    response_data = json.loads(response.body)
-
-    # Check that the function returned error
+    # Call the restart function via the API endpoint
+    response = test_client.get(f"/queue/jobs/processing/restart-job?task_id={task_id}")
+    
+    # Check that the response contains an error
+    assert response.status_code == 200
+    response_data = response.json()
     assert "error" in response_data
     assert response_data["error"] == "No original files found for this task"
 
 
 @pytest.mark.asyncio
-async def test_restart_processing_job_currently_processing(fs, monkeypatch):
+async def test_restart_processing_job_currently_processing(fs, mercure_config, test_client):
     """Test restart when task is currently being processed"""
     # Setup test environment
-    processing_folder = Path("/var/processing")
-    fs.create_dir(processing_folder)
-
+    processing_folder = Path(mercure_config().processing_folder)
     task_id = str(uuid.uuid1())
     task_folder = processing_folder / task_id
     as_received_folder = task_folder / "as_received"
@@ -182,28 +160,21 @@ async def test_restart_processing_job_currently_processing(fs, monkeypatch):
     # Create processing flag
     fs.create_file(task_folder / mercure_names.PROCESSING)
 
-    # Mock the config.mercure.processing_folder
-    monkeypatch.setattr("common.config.mercure.processing_folder", str(processing_folder))
-
-    # Create a mock request with task_id
-    request = MockRequest(query_params={"task_id": task_id})
-
-    # Call the restart function
-    response = await restart_processing_job(request)
-    response_data = json.loads(response.body)
-
-    # Check that the function returned error
+    # Call the restart function via the API endpoint
+    response = test_client.get(f"/queue/jobs/processing/restart-job?task_id={task_id}")
+    
+    # Check that the response contains an error
+    assert response.status_code == 200
+    response_data = response.json()
     assert "error" in response_data
     assert response_data["error"] == "Task is currently being processed"
 
 
 @pytest.mark.asyncio
-async def test_restart_processing_job_list_processing(fs, monkeypatch):
+async def test_restart_processing_job_list_processing(fs, mercure_config, test_client, mocked):
     """Test restart with a list of processing modules"""
     # Setup test environment
-    processing_folder = Path("/var/processing")
-    fs.create_dir(processing_folder)
-
+    processing_folder = Path(mercure_config().processing_folder)
     task_id = str(uuid.uuid1())
     task_folder = processing_folder / task_id
     as_received_folder = task_folder / "as_received"
@@ -219,21 +190,12 @@ async def test_restart_processing_job_list_processing(fs, monkeypatch):
     task_json = {"id": "test-task", "process": process_list}
     fs.create_file(as_received_folder / mercure_names.TASKFILE, contents=json.dumps(task_json))
 
-    # Mock the monitor.send_task_event function
-    mock_send_event = pytest.mock.MagicMock()
-    monkeypatch.setattr("common.monitor.send_task_event", mock_send_event)
-
-    # Mock the config.mercure.processing_folder
-    monkeypatch.setattr("common.config.mercure.processing_folder", str(processing_folder))
-
-    # Create a mock request with task_id
-    request = MockRequest(query_params={"task_id": task_id})
-
-    # Call the restart function
-    response = await restart_processing_job(request)
-    response_data = json.loads(response.body)
-
-    # Check that the function returned success
+    # Call the restart function via the API endpoint
+    response = test_client.get(f"/queue/jobs/processing/restart-job?task_id={task_id}")
+    
+    # Check that the response is successful
+    assert response.status_code == 200
+    response_data = response.json()
     assert response_data["success"] is True
 
     # Check that in folder was created
@@ -245,3 +207,6 @@ async def test_restart_processing_job_list_processing(fs, monkeypatch):
     task_data = json.loads((in_folder / mercure_names.TASKFILE).read_text())
     assert task_data["process"][0]["status"] == "pending"
     assert task_data["process"][1]["status"] == "pending"
+    
+    # Check that monitor event was sent
+    assert mocked.spy_called(common.monitor.send_task_event)
