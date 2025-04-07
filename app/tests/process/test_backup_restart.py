@@ -8,8 +8,6 @@ import common.config as config
 import pytest
 from common.constants import mercure_names
 from process.processor import backup_input_images
-from starlette.testclient import TestClient
-from webinterface.queue import restart_processing_job
 
 from app import common
 

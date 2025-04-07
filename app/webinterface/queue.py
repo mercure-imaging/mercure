@@ -229,53 +229,53 @@ async def show_jobs_studies(request):
 
     job_list = {}
     for entry in os.scandir(config.mercure.studies_folder):
-        if entry.is_dir():
-            job_uid = ""
-            job_rule = ""
-            job_acc = ""
-            job_mrn = ""
-            job_completion = "Timeout"
-            job_created = ""
-            job_series = 0
+        if not entry.is_dir():
+            continue
+        job_uid = ""
+        job_rule = ""
+        job_acc = ""
+        job_mrn = ""
+        job_completion = "Timeout"
+        job_created = ""
+        job_series = 0
 
-            task_file = Path(entry.path) / mercure_names.TASKFILE
+        task_file = Path(entry.path) / mercure_names.TASKFILE
 
-            try:
-                with open(task_file, "r") as f:
-                    task: Task = Task(**json.load(f))
-                    if (not task.study) or (not task.info):
-                        raise Exception()
-                    job_uid = task.info.uid
-                    if task.info.applied_rule:
-                        job_rule = task.info.applied_rule
-                    job_acc = task.info.acc
-                    job_mrn = task.info.mrn
-                    if task.study.complete_force is True:
-                        job_completion = "Force"
-                    else:
-                        if task.study.complete_trigger == "received_series":
-                            job_completion = "Series"
-                    job_created = task.study.creation_time
-                    if task.study.received_series:
-                        job_series = len(task.study.received_series)
-            except Exception as e:
-                logger.exception(e)
-                job_uid = "Error"
-                job_rule = "Error"
-                job_acc = "Error"
-                job_mrn = "Error"
-                job_completion = "Error"
-                job_created = "Error"
+        try:
+            task = Task.from_file(task_file)
+            if (not task.study) or (not task.info):
+                raise Exception("Task file does not contain study information")
+            job_uid = task.info.uid
+            if task.info.applied_rule:
+                job_rule = task.info.applied_rule
+            job_acc = task.info.acc
+            job_mrn = task.info.mrn
+            if task.study.complete_force is True:
+                job_completion = "Force"
+            else:
+                if task.study.complete_trigger == "received_series":
+                    job_completion = "Series"
+            job_created = task.study.creation_time
+            if task.study.received_series:
+                job_series = len(task.study.received_series)
+        except Exception as e:
+            logger.exception(e)
+            job_uid = "Error"
+            job_rule = "Error"
+            job_acc = "Error"
+            job_mrn = "Error"
+            job_completion = "Error"
+            job_created = "Error"
 
-            job_list[entry.name] = {
-                "UID": job_uid,
-                "Rule": job_rule,
-                "ACC": job_acc,
-                "MRN": job_mrn,
-                "Completion": job_completion,
-                "Created": job_created,
-                "Series": job_series,
-            }
+        job_list[entry.name] = {
+            "UID": job_uid,
+            "Rule": job_rule,
+            "ACC": job_acc,
+            "MRN": job_mrn,
+            "Completion": job_completion,
+            "Created": job_created,
+            "Series": job_series,
+        }
 
     return JSONResponse(job_list)
 

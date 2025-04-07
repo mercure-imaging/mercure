@@ -12,15 +12,26 @@ import sys
 import uuid
 import zipfile
 from pathlib import Path
+from typing import Any
 
 import pydicom
 import pytest
 import webgui
+from common.types import Rule
 from requests_toolbelt.multipart.encoder import MultipartEncoder
+from starlette.testclient import TestClient
 from tests.testing_common import create_minimal_dicom
 
+rules = {
+    "rules": {
+        "test_rule": Rule(
+            rule="False", action="route", action_trigger="series"
+        ).dict(),
+    }
+}
 
-def multipart_upload(client, fields):
+
+def multipart_upload(test_client: TestClient, fields) -> Any:
 
     m = MultipartEncoder(
         fields=fields,
@@ -28,7 +39,7 @@ def multipart_upload(client, fields):
     )
 
     # Send request
-    return client.post(
+    return test_client.post(
         "/tools/upload/store",
         headers={
             "Content-Type": f"multipart/related; boundary={m.boundary_value}",
@@ -37,7 +48,7 @@ def multipart_upload(client, fields):
     )
 
 
-def create_test_dicom(output_filename):
+def create_test_dicom(output_filename) -> pydicom.Dataset:
     """Create a test DICOM file."""
     series_uid = "1.2.3.4"
     tags = {
@@ -50,7 +61,7 @@ def create_test_dicom(output_filename):
     return ds
 
 
-def create_test_zip(path, num_files=3):
+def create_test_zip(path, num_files=3) -> bytes:
     """Create a test ZIP file with DICOM files."""
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, 'w') as zip_file:
@@ -84,11 +95,11 @@ def test_dicomweb_index(test_client):
 #     assert response.headers["location"].startswith("http://testserver/login?")
 
 
-def test_stow_rs_with_dicom_part(test_client, fs, mercure_config):
+def test_stow_rs_with_dicom_part(test_client: TestClient, fs, mercure_config):
     """Test uploading DICOM files via STOW-RS with multipart data."""
 
     # Create test DICOM file
-    config = mercure_config()
+    config = mercure_config(rules)
     dcm_path = "/tmp/test/test.dcm"
     create_test_dicom(dcm_path)
 
@@ -111,9 +122,9 @@ def test_stow_rs_with_dicom_part(test_client, fs, mercure_config):
     assert json.load(open(out_tags))["mercureForceRule"] == "test_rule"
 
 
-def test_stow_rs_with_zip_part(test_client, fs, mercure_config):
+def test_stow_rs_with_zip_part(test_client: TestClient, fs, mercure_config):
     """Test uploading a zip file with DICOM files via STOW-RS."""
-    config = mercure_config()
+    config = mercure_config(rules)
 
     # Create test ZIP file
     zip_content = create_test_zip("/tmp/test.zip", num_files=3)
@@ -134,10 +145,10 @@ def test_stow_rs_with_zip_part(test_client, fs, mercure_config):
     assert os.path.exists(out_tags)
 
 
-def test_dataset_operations(test_client, fs, mercure_config):
+def test_dataset_operations(test_client: TestClient, fs, mercure_config):
     """Test operations on datasets."""
 
-    config = mercure_config()
+    config = mercure_config(rules)
     dataset_path = Path(config.jobs_folder) / "uploaded_datasets" / "admin" / "test_dataset"
     dataset_path.mkdir(exist_ok=True, parents=True)
     # Create a test DICOM file in the series folder
@@ -146,14 +157,14 @@ def test_dataset_operations(test_client, fs, mercure_config):
 
     # Test GET operation
     response = test_client.get("/tools/dataset/test_dataset")
-    assert response.status_code == 200
+    assert response.status_code == 200, f"Response: {response.json()}"
     assert response.json()["id"] == "test_dataset"
     # assert "series_1" in response.json()["series_count"]
 
     # Test POST operation (resubmit)
     response = test_client.post("/tools/dataset/test_dataset")
-    assert response.status_code == 200
-    assert response.json()["status"] == "success"
+    assert response.status_code == 200, f"Response: {response.json()}"
+    assert response.json()["status"] == "success", f"Response: {response.json()}"
 
     out_tags = config.incoming_folder+"/1.2.3.4/1.2.3.4#dicom_0.tags"
     assert "mercureForceRule" not in json.load(open(out_tags))
@@ -161,14 +172,17 @@ def test_dataset_operations(test_client, fs, mercure_config):
     shutil.rmtree(config.incoming_folder+"/1.2.3.4")
 
     response = test_client.post("/tools/dataset/test_dataset", data={"force_rule": "test_rule"})
-    assert response.status_code == 200
-    assert response.json()["status"] == "success"
+    assert response.status_code == 200, f"Response: {response.json()}"
+    assert response.json()["status"] == "success", f"Response: {response.json()}"
     assert json.load(open(out_tags))["mercureForceRule"] == "test_rule"
+
+    response = test_client.post("/tools/dataset/test_dataset", data={"force_rule": "nonexistent_rule"})
+    assert response.status_code == 404, f"Response: {response.json()}"
 
     # Test DELETE operation
     response = test_client.delete("/tools/dataset/test_dataset")
-    assert response.status_code == 200
-    assert response.json()["status"] == "success"
+    assert response.status_code == 200, f"Response: {response.json()}"
+    assert response.json()["status"] == "success", f"Response: {response.json()}"
     assert not dataset_path.exists()
 
 

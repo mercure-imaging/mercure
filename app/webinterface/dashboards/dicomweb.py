@@ -66,8 +66,7 @@ async def parse_multipart_data(request: Request) -> MultipartData:
     # Split on boundary
     split_on = f"--{boundary}".encode()
     if not split_on in body:
-        logger.info(body)
-        raise Exception(f"Boundary {split_on} not found in body.")
+        raise Exception(f"Boundary {split_on!r} not found in body.")
     parts = body.split(split_on)
     # logger.info(f"Split on {split_on}")
     # logger.info(f"{len(parts)} parts received")
