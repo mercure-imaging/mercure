@@ -212,24 +212,24 @@ def push_series_complete(
     # Define the source and target folder. Use UUID as name for the target folder in the
     # discard or success directory to avoid collisions
     if destination == "DISCARD":
-        destination_path = config.mercure.discard_folder + "/" + task_id
+        destination_path = Path(config.mercure.discard_folder) / task_id
     else:
-        destination_path = config.mercure.success_folder + "/" + task_id
+        destination_path = Path(config.mercure.success_folder) / task_id
 
     # Create subfolder in the discard directory and validate that is has been created
     try:
-        os.mkdir(destination_path)
+        destination_path.mkdir()
     except Exception:
         logger.error(f"Unable to create outgoing folder {destination_path}", task_id)  # handle_error
         return
 
-    if not Path(destination_path).exists():
+    if not destination_path.exists():
         logger.error(f"Creating discard folder not possible {destination_path}", task_id)  # handle_error
         return
 
     # Create lock file in destination folder (to prevent the cleaner module to work on the folder). Note that
     # the DICOM series in the incoming folder has already been locked in the parent function.
-    lock_file = Path(destination_path) / mercure_names.LOCK
+    lock_file = destination_path / mercure_names.LOCK
     try:
         lock = helper.FileLock(lock_file)
     except Exception:
@@ -255,7 +255,7 @@ def push_series_complete(
     operation_name = "MOVE"
     if copy_files:
         operation_name = "COPY"
-    monitor.send_task_event(monitor.task_event.MOVE, task_id, len(file_list), destination_path, operation_name)
+    monitor.send_task_event(monitor.task_event.MOVE, task_id, len(file_list), str(destination_path), operation_name)
 
     try:
         lock.free()
@@ -282,18 +282,17 @@ def push_series_studylevel(
 
             # Check if folder exists for buffering series until study completion. If not, create it
             study_UID = tags_list["StudyInstanceUID"]
-            folder_name = config.mercure.studies_folder + "/" + study_UID + mercure_defs.SEPARATOR + current_rule
-            target_folder = folder_name + "/"
+            target_folder = Path(config.mercure.studies_folder) / (study_UID + mercure_defs.SEPARATOR + current_rule)
 
-            if not os.path.exists(folder_name):
+            if not target_folder.exists():
                 try:
-                    os.mkdir(folder_name)
+                    target_folder.mkdir()
                     first_series = True
                 except Exception:
-                    logger.error(f"Unable to create study folder {folder_name}", task_id)  # handle_error
+                    logger.error(f"Unable to create study folder {target_folder}", task_id)  # handle_error
                     continue
 
-            lock_file = Path(folder_name) / mercure_names.LOCK
+            lock_file = target_folder / mercure_names.LOCK
             try:
                 lock = helper.FileLock(lock_file)
             except Exception:
@@ -327,7 +326,7 @@ def push_series_studylevel(
                 logger.error("Problem assigning series to study", task_id)
 
             # Copy (or move) the files into the study folder
-            push_files(task_id, series_UID, file_list, folder_name, (len(triggered_rules) > 1))
+            push_files(task_id, series_UID, file_list, target_folder, (len(triggered_rules) > 1))
             lock.free()
 
 
@@ -438,7 +437,7 @@ def push_serieslevel_processing(
                 else:
                     return False
 
-                if not push_files(task_id, series_UID, file_list, str(target_folder), copy_files):
+                if not push_files(task_id, series_UID, file_list, target_folder, copy_files):
                     logger.error(
                         f"Unable to push files into processing folder {target_folder}", task_id
                     )  # handle_error
@@ -581,7 +580,7 @@ def push_serieslevel_outgoing(
             return
 
 
-def push_files(task_id: str, series_uid: str, file_list: List[str], target_path: str, copy_files: bool) -> bool:
+def push_files(task_id: str, series_uid: str, file_list: List[str], target_folder: Path, copy_files: bool) -> bool:
     """
     Copies or moves the given files to the target path. If copy_files is True, files are copied, otherwise moved.
     Note that this function does not create a lock file (this needs to be done by the calling function).
@@ -593,7 +592,6 @@ def push_files(task_id: str, series_uid: str, file_list: List[str], target_path:
         operation = shutil.copy
 
     source_folder = Path(config.mercure.incoming_folder) / series_uid
-    target_folder = Path(target_path)
 
     for entry in file_list:
         try:
@@ -609,9 +607,9 @@ def push_files(task_id: str, series_uid: str, file_list: List[str], target_path:
             return False
 
     if copy_files is False:
-        monitor.send_task_event(monitor.task_event.MOVE, task_id, len(file_list), target_path, "Moved files")
+        monitor.send_task_event(monitor.task_event.MOVE, task_id, len(file_list), str(target_folder), "Moved files")
     else:
-        monitor.send_task_event(monitor.task_event.COPY, task_id, len(file_list), target_path, "Copied files")
+        monitor.send_task_event(monitor.task_event.COPY, task_id, len(file_list), str(target_folder), "Copied files")
 
     return True
 
@@ -620,11 +618,11 @@ def remove_series(task_id: str, file_list: List[str], series_UID: str) -> bool:
     """
     Deletes the given files from the incoming folder.
     """
-    source_folder = config.mercure.incoming_folder + "/" + series_UID + "/"
+    source_folder = Path(config.mercure.incoming_folder) / series_UID
     for entry in file_list:
         try:
-            os.remove(source_folder + entry + mercure_names.TAGS)
-            os.remove(source_folder + entry + mercure_names.DCM)
+            (source_folder / (entry + mercure_names.TAGS)).unlink()
+            (source_folder / (entry + mercure_names.DCM)).unlink()
         except Exception:
             logger.error(f"Error while removing file {entry}", task_id)  # handle_error
             return False

@@ -11,7 +11,7 @@ import shutil
 import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, Union
+from typing import Dict, Optional, Union
 
 # App-specific includes
 import common.config as config
@@ -21,7 +21,7 @@ import common.monitor as monitor
 import common.notification as notification
 import common.rule_evaluation as rule_evaluation
 from common.constants import mercure_actions, mercure_events, mercure_names, mercure_rule
-from common.types import Task, TaskHasStudy, TaskInfo
+from common.types import StudyTriggerCondition, Task, TaskHasStudy, TaskInfo
 
 # Create local logger instance
 logger = config.get_logger()
@@ -104,19 +104,18 @@ def is_study_complete(folder: str, pending_series: Dict[str, float]) -> bool:
         study = task.study
 
         # Check if processing of the study has been enforced (e.g., via UI selection)
-        complete_trigger = study.complete_trigger
-
-        if not complete_trigger:
+        if not study.complete_trigger:
             logger.error(f"Missing trigger condition in task file in study folder {folder}", task.id)  # handle_error
             return False
 
+        complete_trigger: StudyTriggerCondition = study.complete_trigger
         complete_required_series = study.get("complete_required_series", "")
 
         # If trigger condition is received series but list of required series is missing, then switch to timeout mode instead
-        if (complete_trigger == mercure_rule.STUDY_TRIGGER_CONDITION_RECEIVED_SERIES) and (
+        if (study.complete_trigger == mercure_rule.STUDY_TRIGGER_CONDITION_RECEIVED_SERIES) and (
             not complete_required_series
         ):
-            complete_trigger = mercure_rule.STUDY_TRIGGER_CONDITION_TIMEOUT
+            complete_trigger = mercure_rule.STUDY_TRIGGER_CONDITION_TIMEOUT  # type: ignore
             logger.warning(  # handle_error
                 f"Missing series for trigger condition in study folder {folder}. Using timeout instead", task.id
             )
@@ -248,8 +247,7 @@ def route_study(study) -> bool:
     except Exception:
         # Can't create lock file, so something must be seriously wrong
         try:
-            with open(Path(study_folder) / mercure_names.TASKFILE, "r") as json_file:
-                task: Task = Task(**json.load(json_file))
+            task = Task.from_file(Path(study_folder) / mercure_names.TASKFILE)
             logger.error(f"Unable to create study lock file {lock_file}", task.id)  # handle_error
         except Exception:
             logger.error(f"Unable to create study lock file {lock_file}", None)  # handle_error
@@ -257,8 +255,7 @@ def route_study(study) -> bool:
 
     try:
         # Read stored task file to determine completeness criteria
-        with open(Path(study_folder) / mercure_names.TASKFILE, "r") as json_file:
-            task = Task(**json.load(json_file))
+        task = Task.from_file(Path(study_folder) / mercure_names.TASKFILE)
     except Exception:
         try:
             with open(Path(study_folder) / mercure_names.TASKFILE, "r") as json_file:

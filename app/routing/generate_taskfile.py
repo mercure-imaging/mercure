@@ -277,7 +277,7 @@ def create_series_task(
 
 def create_study_task(
     task_id: str,
-    folder_name: str,
+    target_folder: Path,
     triggered_rules: Dict[str, Literal[True]],
     applied_rule: str,
     study_UID: str,
@@ -290,11 +290,10 @@ def create_study_task(
     task = compose_task(task_id, study_UID, "study", triggered_rules, applied_rule, tags_list, "")
     monitor.send_update_task(task)
 
-    task_filename = folder_name + mercure_names.TASKFILE
+    task_filename = target_folder / mercure_names.TASKFILE
     logger.debug(f"Writing study task file {task_filename}")
     try:
-        with open(task_filename, "w") as task_file:
-            json.dump(task.dict(), task_file)
+        task.to_file(task_filename)
     except Exception:
         logger.error(f"Unable to create study task file {task_filename}", task.id)  # handle_error
         return False
@@ -304,7 +303,7 @@ def create_study_task(
 
 def update_study_task(
     task_id: str,
-    folder_name: str,
+    folder: Path,
     triggered_rules: Dict[str, Literal[True]],
     applied_rule: str,
     study_UID: str,
@@ -315,12 +314,11 @@ def update_study_task(
     """
     series_description = tags_list.get("SeriesDescription", mercure_options.INVALID)
     series_uid = tags_list.get("SeriesInstanceUID", mercure_options.INVALID)
-    task_filename = folder_name + mercure_names.TASKFILE
+    task_filename = folder / mercure_names.TASKFILE
 
     # Load existing task file. Raise error if it does not exist
     try:
-        with open(task_filename, "r") as task_file:
-            task: Task = Task(**json.load(task_file))
+        task = Task.from_file(task_filename)
     except Exception:
         logger.error(f"Unable to open study task file {task_filename}", task_id)  # handle_error
         return False, ""
@@ -349,10 +347,9 @@ def update_study_task(
 
     # Safe the updated file back to disk
     try:
-        with open(task_filename, "w") as task_file:
-            json.dump(task.dict(), task_file)
+        task.to_file(task_filename)
     except Exception:
-        logger.error(f"Unable to write task file {task_filename}", task.id)  # handle_error
+        logger.exception(f"Unable to write task file {task_filename}", task.id)  # handle_error
         return False, ""
 
     monitor.send_update_task(task)

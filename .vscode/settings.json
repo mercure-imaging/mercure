@@ -5,6 +5,7 @@
         "dicomweb",
         "distro",
         "mercure",
+        "offpeak",
         "pydicom",
         "pynetdicom",
         "starlette",

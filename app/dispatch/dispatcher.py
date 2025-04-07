@@ -13,6 +13,7 @@ import signal
 import sys
 from datetime import datetime
 from pathlib import Path
+from typing import Literal
 
 # App-specific includes
 import common.config as config
@@ -73,29 +74,27 @@ def dispatch() -> None:
     retry_max = config.mercure.retry_max
     retry_delay = config.mercure.retry_delay
 
-    def get_priority(task_folder: Path) -> str:
+    def get_priority(task_folder: Path) -> Literal['normal', 'urgent', 'offpeak']:
         try:
-            taskfile_path = task_folder / mercure_names.TASKFILE
-            with open(taskfile_path, "r") as f:
-                task_instance = Task(**json.load(f))
+            task_instance = Task.from_file(task_folder / mercure_names.TASKFILE)
             applied_rule = config.mercure.rules.get(task_instance.info.get("applied_rule"))
-            if applied_rule is None:
-                triggered_rule_names = task_instance.info.get("triggered_rules")
-                # replace/return the priority if a rule with higher priority is found
-                priority = ""
-                for rule_name in triggered_rule_names:
-                    current_priority = config.mercure.get("rules", {}).get(rule_name, {}).get("priority")
-                    if current_priority == "urgent":
-                        return "urgent"
-                    elif current_priority == "normal":
-                        priority = "normal"
-                    elif current_priority == "offpeak" and priority == "":
-                        priority = "offpeak"
-                return priority
-            return applied_rule.priority
+            if applied_rule is not None:
+                return applied_rule.priority
+            triggered_rule_names = task_instance.info.get("triggered_rules")
+            # replace/return the priority if a rule with higher priority is found
+            for rule_name in triggered_rule_names:
+                current_priority = config.mercure.get("rules", {}).get(rule_name, {}).get("priority")
+                if current_priority == "urgent":
+                    return "urgent"
+                elif current_priority == "normal":
+                    return "normal"
+                elif current_priority == "offpeak" and priority == "":
+                    return "offpeak"
+            else:
+                return "normal"
         except Exception:
             logger.exception("Error while checking priority")
-            return ""
+            return "normal"
 
     try:
         items = Path(config.mercure.outgoing_folder).iterdir()
