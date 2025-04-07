@@ -51,25 +51,22 @@ except Exception:
 def backup_input_images(task_folder: Path) -> None:
     """
     Creates a backup of input DICOM files in an 'as_received' subfolder within the task folder.
-    
+
     Args:
         task_folder: Path to the task folder
     """
-    input_folder = task_folder / "in"
+    input_folder = task_folder
     backup_folder = task_folder / "as_received"
-    
-    # Create the as_received folder if it doesn't exist
-    backup_folder.mkdir(exist_ok=True)
-    
+    backup_folder.mkdir()
+
     # Copy all DICOM files from input folder to backup folder
     for dcm_file in input_folder.glob(mercure_names.DCMFILTER):
         shutil.copy2(dcm_file, backup_folder)
-    
+
     # Also copy the task.json file for reference
     task_file = input_folder / mercure_names.TASKFILE
-    if task_file.exists():
-        shutil.copy2(task_file, backup_folder / "task.json")
-    
+    shutil.copy2(input_folder / mercure_names.TASKFILE, backup_folder / mercure_names.TASKFILE)
+
     logger.info(f"Backed up input files for task folder {task_folder.name} to {backup_folder}")
 
 
@@ -121,7 +118,7 @@ async def search_folder(counter) -> bool:
                         logger.exception("Failed to retrieve process logs.")
 
                     if not config.mercure.processing_logs.discard_logs:
-                        task_path = Path(entry.path) / "in" / "task.json"
+                        task_path = Path(entry.path) / "in" / mercure_names.TASKFILE
                         task = Task(**json.loads(task_path.read_text()))
                         assert isinstance(task.process, TaskProcessing)
                         monitor.send_process_logs(task.id, task.process.module_name, "\n".join(logs))
@@ -143,7 +140,7 @@ async def search_folder(counter) -> bool:
         push_input_task(in_folder, out_folder)
 
         # Patch the nomad info into the task file.
-        task_path = out_folder / "task.json"
+        task_path = out_folder / mercure_names.TASKFILE
         task = Task(**json.loads(task_path.read_text()))
 
         with task_path.open("w") as f:
@@ -162,7 +159,7 @@ async def search_folder(counter) -> bool:
         handle_processor_output(task, task_processing, 0, p_folder)
 
         # If the only file is task.json, the processing failed
-        if [p.name for p in out_folder.rglob("*")] == ["task.json"]:
+        if [p.name for p in out_folder.rglob("*")] == [mercure_names.TASKFILE]:
             logger.error("Processing failed", task.id)
             move_results(task.id, p_folder, None, False, False)
             trigger_notification(task, mercure_events.ERROR)
@@ -220,12 +217,12 @@ async def search_folder(counter) -> bool:
     try:
         # Backup input images before processing
         backup_input_images(task_folder)
-        
+
         await process_series(task_folder)
         # Return true, so that the parent function will trigger another search of the folder
         return True
     except Exception:
-        for p in (task_folder / "out" / "task.json", task_folder / "in" / "task.json"):
+        for p in (task_folder / "out" / mercure_names.TASKFILE, task_folder / "in" / mercure_names.TASKFILE):
             try:
                 task_id = json.load(open(p))["id"]
                 logger.error("Exception while processing", task_id)  # handle_error

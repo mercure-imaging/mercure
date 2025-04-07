@@ -822,7 +822,7 @@
             $('#jobs_fail').DataTable().button(2).enable( selectedRows > 0 );
             if (selectedRows == 1) {
                 let failStage = $('#jobs_fail').DataTable().rows( { selected: true } ).data()[0][3];
-                $('#jobs_fail').DataTable().button(3).enable( failStage == "Dispatching" );
+                $('#jobs_fail').DataTable().button(3).enable( failStage == "Dispatching" || failStage == "Processing");
             } else {
                 $('#jobs_fail').DataTable().button(3).enable( false );
             }
@@ -1204,12 +1204,16 @@
         }
 
         $.ajax({
-            type: 'GET',
+            type: 'POST',
             url: '/queue/jobs/fail/restart-job',
             data: {'task_id': jobId},
             dataType: 'json',
-            error: function () {
-                alert("Restart failed: unknown error.")
+            error: function (data) {
+                if (data.responseJSON.hasOwnProperty("error")) {
+                    alert("Restart failed: " + data.responseJSON["error"])
+                } else {
+                    alert("Restart failed: unknown error.")
+                }
             },
             success: function (data) {
                 // check if error is a key in data

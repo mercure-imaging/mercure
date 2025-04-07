@@ -16,20 +16,16 @@ from typing import Dict, List, Optional, Union
 from urllib.parse import parse_qs
 
 import common.config as config
-import common.monitor as monitor
 # Standard python includes
 import daiquiri
 # DICOM-related includes
-import pydicom
-# App-specific includes
-from decoRouter import Router as decoRouter
 # Starlette-related includes
 from starlette.applications import Starlette
 from starlette.authentication import requires
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
-from webinterface.common import rq_fast_queue, templates
-from webinterface.dashboards.common import ClassBasedRQTask, invoke_getdcmtags
+from webinterface.common import templates
+from webinterface.dashboards.common import invoke_getdcmtags
 
 from .common import router
 

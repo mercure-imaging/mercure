@@ -11,19 +11,22 @@ import shutil
 # Standard python includes
 from enum import Enum
 from pathlib import Path
-from typing import Dict, Tuple, Union
+from typing import Dict, List, Tuple, Union
 
 # App-specific includes
 import common.config as config
+import common.monitor as monitor
+import routing.generate_taskfile as generate_taskfile
 from common.constants import mercure_actions, mercure_names
-from common.types import Task
+# App-specific includes
+from common.event_types import FailStage
+from common.types import Task, TaskProcessing
 from decoRouter import Router as decoRouter
 # Starlette-related includes
 from starlette.applications import Starlette
 from starlette.authentication import requires
 from starlette.responses import JSONResponse, PlainTextResponse
 from webinterface.common import templates
-import common.monitor as monitor
 
 router = decoRouter()
 
@@ -476,58 +479,74 @@ async def get_jobinfo(request):
         return PlainTextResponse("Task not found. Refresh view!")
 
 
-@router.get("/jobs/fail/restart-job")
+@router.post("/jobs/fail/restart-job")
 @requires("authenticated", redirect="login")
 async def restart_job(request):
     """
     Restarts a failed job. This endpoint handles both dispatch and processing failures.
     """
-    task_id = request.query_params.get("task_id", "")
-    if not task_id:
-        return JSONResponse({"error": "No task ID provided"})
-    
+    form = await request.form()
+    if not (task_id := form.get("task_id")):
+        return JSONResponse({"error": "No task ID provided"}, status_code=500)
+
     # First check if this is a failed task in the error folder
-    error_folder = Path(config.mercure.error_folder) / task_id
-    if error_folder.exists():
-        # Check if this is a processing failure based on fail_stage
-        task_file = error_folder / mercure_names.TASKFILE
-        if not task_file.exists():
-            task_file = error_folder / "in" / mercure_names.TASKFILE
-        
-        if task_file.exists():
-            try:
-                with open(task_file, "r") as f:
-                    task_data = json.load(f)
-                    fail_stage = task_data.get("info", {}).get("fail_stage")
-                    
-                    # If fail_stage is "processing", restart as processing task
-                    if fail_stage == "processing":
-                        return JSONResponse(restart_processing_task(task_id, error_folder, is_error=True))
-                    # If fail_stage is "dispatching", restart as dispatch task
-                    elif fail_stage == "dispatching":
-                        return JSONResponse(restart_dispatch(error_folder, Path(config.mercure.outgoing_folder)))
-            except Exception as e:
-                logger.exception(f"Error determining task type: {str(e)}")
-                return JSONResponse({"error": f"Error determining task type: {str(e)}"})
-        
-        # If we couldn't determine from fail_stage, try the old method
-        if is_dispatch_failure(error_folder):
-            response = restart_dispatch(error_folder, Path(config.mercure.outgoing_folder))
-            return JSONResponse(response)
-    
+    task_folder = Path(config.mercure.error_folder) / task_id
+    logger.info(f"Checking if error folder for task {task_id} exists: {task_folder}")
+    if not task_folder.exists():
+        logger.info(f"Error folder for task {task_id} does not exist")
+        return JSONResponse({"error": "Task not found in error folder"}, status_code=404)
+
+    # Check if this is a processing failure based on fail_stage
+    task_file = task_folder / mercure_names.TASKFILE
+    if not task_file.exists():
+        task_file = task_folder / "in" / mercure_names.TASKFILE
+    if not task_file.exists():
+        logger.info(f"Task file {task_file} does not exist")
+        return JSONResponse({"error": f"Task file does not exist"}, status_code=404)
+
+    logger.info(f"Task file for task {task_id} exists: {task_file}")
+    try:
+        with open(task_file, "r") as f:
+            task_data = Task(**json.load(f))
+            fail_stage = task_data.info.fail_stage
+
+        if not fail_stage:
+            logger.warning("No fail stage information found in the task file")
+            return JSONResponse({"error": "No fail stage information found in the task file"}, status_code=400)
+
+        # If fail_stage is "processing", restart as processing task
+        if fail_stage == FailStage.PROCESSING:
+            logger.info(f"Task {task_id} failed during processing, restarting as processing task")
+            return JSONResponse(restart_processing_task(task_id, task_folder, is_error=True))
+        # If fail_stage is "dispatching", restart as dispatch task
+        elif fail_stage == FailStage.DISPATCHING:
+            logger.info(f"Task {task_id} failed during dispatching, restarting as dispatch task")
+            return JSONResponse(restart_dispatch(task_folder, Path(config.mercure.outgoing_folder)))
+        else:
+            logger.warning(f"Unknown fail stage: {fail_stage}")
+            return JSONResponse({"error": f"Unknown fail stage {fail_stage}"}, status_code=400)
+    except Exception as e:
+        logger.exception(f"Error determining task type: {str(e)}")
+        return JSONResponse({"error": f"Error determining task type: {str(e)}"}, status_code=500)
+
+    # # If we couldn't determine from fail_stage, try the old method
+    # if is_dispatch_failure(error_folder):
+    #     response = restart_dispatch(error_folder, Path(config.mercure.outgoing_folder))
+    #     return JSONResponse(response)
+
     # If we get here, we couldn't find the task
-    return JSONResponse({"error": "Task not found"})
+    return JSONResponse({"error": "Unexpected error"}, status_code=404)
 
 
 def restart_processing_task(task_id: str, source_folder: Path, is_error: bool = False) -> Dict:
     """
     Restarts a processing task by moving it from the source folder (error or success) to the processing folder.
-    
+
     Args:
         task_id: The ID of the task to restart
         source_folder: Path to the task folder in the source directory (error or success)
         is_error: Whether the source folder is the error folder (True) or success folder (False)
-        
+
     Returns:
         Dict with success or error information
     """
@@ -536,70 +555,54 @@ def restart_processing_task(task_id: str, source_folder: Path, is_error: bool = 
         task_file = source_folder / mercure_names.TASKFILE
         if not task_file.exists():
             task_file = source_folder / "in" / mercure_names.TASKFILE
-            
+
         if not task_file.exists():
             return {"error": "No task file found", "error_code": RestartTaskErrors.NO_TASK_FILE}
-            
+
         # Check if as_received folder exists
         as_received_folder = source_folder / "as_received"
         if not as_received_folder.exists():
             return {"error": "No original files found for this task", "error_code": RestartTaskErrors.NO_AS_RECEIVED}
-            
+
         # Create a new folder in the processing directory
         processing_folder = Path(config.mercure.processing_folder) / task_id
         if processing_folder.exists():
             return {"error": "Task ID already exists in processing folder", "error_code": RestartTaskErrors.TASK_NOT_READY}
-            
+
         # Create the processing folder structure
         processing_folder.mkdir(exist_ok=True)
-        in_folder = processing_folder / "in"
-        in_folder.mkdir(exist_ok=True)
-        
+        # in_folder = processing_folder / "in"
+        # in_folder.mkdir(exist_ok=True)
+
         # Copy the as_received files to the input folder
         for file_path in as_received_folder.glob("*"):
             if file_path.is_file():
-                shutil.copy2(file_path, in_folder / file_path.name)
-                
+                shutil.copy2(file_path, processing_folder / file_path.name)
+
         # Copy and update the task.json file
         with open(task_file, "r") as f:
             task_data = json.load(f)
-            
+            task = Task(**task_data)
         # Clear the fail_stage
-        if "info" in task_data and "fail_stage" in task_data["info"]:
-            task_data["info"]["fail_stage"] = None
-            
-        # Reset any processing state
-        if "process" in task_data:
-            if isinstance(task_data["process"], dict) and "status" in task_data["process"]:
-                task_data["process"]["status"] = "pending"
-            elif isinstance(task_data["process"], list):
-                for proc in task_data["process"]:
-                    if isinstance(proc, dict) and "status" in proc:
-                        proc["status"] = "pending"
-                        
+        task.info.fail_stage = None
+
+        task.process = generate_taskfile.add_processing("", task.info.applied_rule, {})
         # Write the updated task file
-        with open(in_folder / mercure_names.TASKFILE, "w") as f:
-            json.dump(task_data, f)
-            
-        # Create as_received backup in the new location
-        new_as_received = processing_folder / "as_received"
-        new_as_received.mkdir(exist_ok=True)
-        for file_path in as_received_folder.glob("*"):
-            if file_path.is_file():
-                shutil.copy2(file_path, new_as_received / file_path.name)
-                
+        with open(processing_folder / mercure_names.TASKFILE, "w") as f:
+            json.dump(task.dict(), f)
+
         # Log the restart action
         source_type = "error" if is_error else "success"
         logger.info(f"Processing job {task_id} moved from {source_type} folder to processing folder")
         monitor.send_task_event(
             monitor.task_event.PROCESS_RESTART, task_id, 0, "", f"Processing job restarted from {source_type} folder"
         )
-        
+
         return {
             "success": True,
             "message": f"Processing job {task_id} has been moved from {source_type} folder to processing folder"
         }
-        
+
     except Exception as e:
         logger.exception(f"Error restarting processing job {task_id}: {str(e)}")
         return {
@@ -613,17 +616,17 @@ def is_dispatch_failure(taskfile_folder: Path) -> bool:
     """
     if not taskfile_folder.exists() or not (taskfile_folder / mercure_names.TASKFILE).exists():
         return False
-    
+
     try:
         with open(taskfile_folder / mercure_names.TASKFILE, "r") as json_file:
             loaded_task = json.load(json_file)
-        
+
         action = loaded_task.get("info", {}).get("action", "")
         if action and action in (mercure_actions.BOTH, mercure_actions.ROUTE):
             return True
     except Exception:
         pass
-    
+
     return False
 
 
@@ -654,11 +657,11 @@ def restart_dispatch(taskfile_folder: Path, outgoing_folder: Path) -> dict:
         dispatch = loaded_task["dispatch"]
         dispatch["retries"] = None
         dispatch["next_retry_at"] = None
-        
+
         # Clear fail_stage if it exists
         if "info" in loaded_task and "fail_stage" in loaded_task["info"]:
             loaded_task["info"]["fail_stage"] = None
-            
+
         with open(taskfile_path, "w") as json_file:
             json.dump(loaded_task, json_file)
         # Dispatcher will skip the completed targets we just need to copy the case to the outgoing folder
