@@ -20,6 +20,8 @@ import routing.generate_taskfile as generate_taskfile
 from common.constants import mercure_actions, mercure_names
 # App-specific includes
 from common.event_types import FailStage
+# App-specific includes
+from common.helper import FileLock
 from common.types import EmptyDict, Task
 from decoRouter import Router as decoRouter
 # Starlette-related includes
@@ -27,9 +29,6 @@ from starlette.applications import Starlette
 from starlette.authentication import requires
 from starlette.responses import JSONResponse, PlainTextResponse
 from webinterface.common import templates
-
-# App-specific includes
-from app.common.helper import FileLock
 
 router = decoRouter()
 

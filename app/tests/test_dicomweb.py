@@ -30,6 +30,9 @@ rules = {
     }
 }
 
+# Can't fix this from outside starlette.testclient
+pytestmark = pytest.mark.filterwarnings("ignore:Use 'content=<...>' to upload raw bytes/text content")
+
 
 def multipart_upload(test_client: TestClient, fields) -> Any:
 
