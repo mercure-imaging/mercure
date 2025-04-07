@@ -205,79 +205,151 @@ async def get_task_process_results(request) -> JSONResponse:
 @router.get("/find_task")
 @requires("authenticated")
 async def find_task(request) -> JSONResponse:
-    search_term = request.query_params.get("search_term", "")
+    # Extract DataTables parameters
+    draw = int(request.query_params.get("draw", "1"))
+    start = int(request.query_params.get("start", "0"))
+    length = int(request.query_params.get("length", "10"))
+    search_term = request.query_params.get("search[value]", "")  # Global search value
     study_filter = request.query_params.get("study_filter", "false")
-    filter_term = ""
-    if search_term:
-        filter_term = (f"""and ((tag_accessionnumber ilike :search_term || '%') """
-                       + f"""or (tag_patientid ilike :search_term || '%') """
-                       + f"""or (tag_patientname ilike '%' || :search_term || '%'))""")
+
+    # Extract ordering information
+    order_column_index = request.query_params.get("order[0][column]", "4")  # Default to time column (index 4)
+    order_direction = request.query_params.get("order[0][dir]", "desc")  # Default to descending
+
+    # Map datatable column index to database column
+    column_mapping = {
+        "0": "tag_accessionnumber",  # ACC
+        "1": "tag_patientid",        # MRN
+        "2": "parent_tasks.data->'info'->>'uid_type'",  # Scope
+        "3": "7",    # Rule
+        "4": "parent_tasks.time"     # Default fallback
+    }
+
+    order_column = column_mapping.get(order_column_index, column_mapping["4"])
+    order_sql = f"{order_column} {order_direction.upper()}, parent_tasks.id {order_direction.upper()}"
+
+    filter_term = (f"""(
+                    :search_term='' 
+                    or (tag_accessionnumber ilike :search_term || '%') 
+                    or (tag_patientid ilike :search_term || '%')
+                    or (tag_patientname ilike '%' || :search_term || '%')
+                    or bool_or(child_tasks.data->'info'->>'applied_rule'::text ilike '%' || :search_term || '%') 
+                    or bool_or(
+                        array(
+                            select jsonb_object_keys(   
+                                                    child_tasks.data->'info'->'triggered_rules'
+                                                    )
+                        )::text ilike '%' || :search_term || '%'
+                        )
+                   )
+                   """)
 
     study_filter_term = ""
     if study_filter == "true":
         study_filter_term = "and parent_tasks.study_uid is not null"
 
+    # Count query (for recordsTotal and recordsFiltered)
+    count_query_string = f"""
+    with base as (
+       SELECT
+        parent_tasks.id AS task_id,
+        tag_accessionnumber, tag_patientid, tag_patientname
+       FROM
+        (select * from tasks where parent_id is null) as parent_tasks
+        LEFT JOIN dicom_series ON dicom_series.series_uid = parent_tasks.series_uid
+        LEFT JOIN tasks as child_tasks ON (child_tasks.parent_id = parent_tasks.id)
+
+       WHERE true {study_filter_term}
+       GROUP BY 1,2,3,4
+       HAVING {filter_term} 
+    )
+    SELECT 
+        COUNT(DISTINCT task_id) as total_count
+    FROM base
+    """
+
+    # Main data query with pagination
     query_string = f"""
-SELECT
-    tag_accessionnumber AS acc,
-    tag_patientid AS mrn,
-    parent_tasks.id AS task_id,
-    parent_tasks.data->'info'->>'uid_type' AS scope,
-    parent_tasks.time::timestamp AS time,
-    STRING_AGG(child_tasks.data->'info'->>'applied_rule', ', ' ORDER BY child_tasks.id) AS rule,
-    STRING_AGG(child_tasks.data->'info'->>'triggered_rules', ',' ORDER BY child_tasks.id) AS triggered_rules
-FROM (select * from tasks limit 512) as parent_tasks
-    LEFT JOIN dicom_series ON dicom_series.series_uid = parent_tasks.series_uid
-    LEFT JOIN tasks as child_tasks ON (child_tasks.parent_id = parent_tasks.id)
-WHERE parent_tasks.parent_id IS NULL {filter_term} {study_filter_term}
-GROUP BY 1,2,3,4,5
-ORDER BY parent_tasks.time DESC, parent_tasks.id DESC
-"""
-    # print(query_string)
-    response: Dict = {}
+    SELECT
+        tag_accessionnumber AS acc,
+        tag_patientid AS mrn,
+        tag_patientname AS name,
+        parent_tasks.id AS task_id,
+        parent_tasks.data->'info'->>'uid_type' AS scope,
+        parent_tasks.time::timestamp AS time,
+        STRING_AGG(case when coalesce(child_tasks.data->'info'->>'applied_rule','') != '' then  array[child_tasks.data->'info'->>'applied_rule']::text else array(select jsonb_object_keys((child_tasks.data->'info'->'triggered_rules')))::text end, ', ' ORDER BY child_tasks.id)
+        AS rule
+    FROM 
+        (select * from tasks where parent_id is null) as parent_tasks
+        LEFT JOIN dicom_series ON dicom_series.series_uid = parent_tasks.series_uid
+        LEFT JOIN tasks as child_tasks ON (child_tasks.parent_id = parent_tasks.id)
+    WHERE true {study_filter_term}
+    GROUP BY 
+        tag_accessionnumber, tag_patientid, tag_patientname, parent_tasks.id, scope, parent_tasks.time
+    HAVING {filter_term}
+
+    ORDER BY 
+        {order_sql}
+    LIMIT :length OFFSET :start
+        """
     logger.info(query_string)
-    result_rows = await db.database.fetch_all(query_string, {"search_term": search_term} if search_term else None)
+    # Get total count before filtering
+    params = {"search_term": search_term}
+    count_result = await db.database.fetch_one(count_query_string, params)
+    total_count = count_result["total_count"] if count_result else 0
+    filtered_count = total_count  # In this case, total and filtered are the same since we're not implementing separate filtering
+
+    # Execute main query with pagination parameters
+    params.update({"start": start if start is not None else 0, "length": length if length > 0 else None})
+    result_rows = await db.database.fetch_all(query_string, params)
     results = [dict(row) for row in result_rows]
 
+    # Format data for DataTables
+    data = []
     for item in results:
         task_id = item["task_id"]
         time = item["time"]
-        acc = item["acc"]
-        mrn = item["mrn"]
+        acc = item["acc"] or ""
+        mrn = item["mrn"] or ""
 
-        if item["scope"] == "study":
-            job_scope = "STUDY"
-        else:
-            job_scope = "SERIES"
+        job_scope = "STUDY" if item.get("scope") == "study" else "SERIES"
 
-        if item["rule"]:
-            item["rule"] = item["rule"].strip()
-            if item["rule"] == ",":
-                item["rule"] = ""
+        # if item.get("rule"):
+        #     item["rule"] = item["rule"].strip()
+        #     if item["rule"] == ",":
+        #         item["rule"] = ""
 
-        rule_information = ""
-        if item["rule"]:
-            rule_information = item["rule"]
-        else:
-            if item["triggered_rules"]:
-                try:
-                    json_data = json.loads("[" + item["triggered_rules"] + "]")
-                    for entry in json_data:
-                        rule_information += ", ".join(list(entry.keys())) + ", "
-                    if rule_information:
-                        rule_information = rule_information[:-2]
-                except json.JSONDecodeError:
-                    rule_information = "ERROR"
-            else:
-                rule_information = ""
-
-        response[task_id] = {
+        # rule_information = ""
+        # if item.get("rule"):
+        #     rule_information = item["rule"]
+        # else:
+        #     if item.get("triggered_rules"):
+        #         try:
+        #             json_data = json.loads("[" + item["triggered_rules"] + "]")
+        #             for entry in json_data:
+        #                 rule_information += ", ".join(list(entry.keys())) + ", "
+        #             if rule_information:
+        #                 rule_information = rule_information[:-2]
+        #         except json.JSONDecodeError:
+        #             rule_information = "ERROR"
+        # Format row as an array for DataTables
+        data.append({
+            "DT_RowId": f"task_{task_id}",  # Add DataTables row identifier
             "ACC": acc,
             "MRN": mrn,
             "Scope": job_scope,
-            "Time": time,
-            "Rule": rule_information,
-        }
+            "Time": time.isoformat() if isinstance(time, datetime.datetime) else str(time),
+            "Rule": item.get("rule").replace("{", "").replace("}", ""),
+            "task_id": task_id  # Include task_id for actions/links
+        })
+
+    # Return response in DataTables expected format
+    response = {
+        "draw": draw,  # Echo back the draw parameter
+        "recordsTotal": total_count,  # Total records before filtering
+        "recordsFiltered": filtered_count,  # Total records after filtering
+        "data": data  # The data to be displayed
+    }
 
     return CustomJSONResponse(response)
 

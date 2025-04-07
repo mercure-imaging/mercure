@@ -830,16 +830,26 @@
         } );
 
         $('#jobs_archive').DataTable( {
-            "paging":   false,
+            "paging":   true,
             "ordering": true,
-            "info": false,
-            "searching": false,
+            // "info": false,
+            searching: true,
             "select": true,
             "language": {
                 "emptyTable": "No jobs found"
             },
+            ajax: '/api/find-tasks',
+            columns: [
+                { data: 'ACC' },
+                { data: 'MRN' },
+                { data: 'Scope' },
+                { data: 'Rule' },
+                { data: 'Time' },
+                { data: 'task_id' },
+            ],
+            serverSide: true,
             autoWidth: false,
-            select: true,
+            // select: true,
             buttons: [
                 {
                     extend: 'collection',
@@ -864,7 +874,7 @@
                     text: '<i class="fas fa-code"></i>',
                     titleAttr: 'Job information',
                     action: function ( e, dt, node, config ) {
-                        var jid = $('#jobs_archive').DataTable().rows( { selected: true } ).data()[0].slice(-1)[0];
+                        var jid = $('#jobs_archive').DataTable().rows( { selected: true } ).data()[0].task_id;
                         showArchiveJobInformation(jid);
                     }
                 },
@@ -872,7 +882,7 @@
                     text: '<i class="fas fa-list-ul"></i>',
                     titleAttr: 'Audit trail',
                     action: function ( e, dt, node, config ) {
-                        var jid = $('#jobs_archive').DataTable().rows( { selected: true } ).data()[0].slice(-1)[0];
+                        var jid = $('#jobs_archive').DataTable().rows( { selected: true } ).data()[0].task_id;
                         showAuditTrail(jid);
                     }
                 },
@@ -880,7 +890,7 @@
                     text: '<i class="fas fa-receipt"></i>',
                     titleAttr: 'Processing log',
                     action: function ( e, dt, node, config ) {
-                        var jid = $('#jobs_archive').DataTable().rows( { selected: true } ).data()[0].slice(-1)[0];
+                        var jid = $('#jobs_archive').DataTable().rows( { selected: true } ).data()[0].task_id;
                         showLogs(jid);
                     }
                 },
@@ -888,12 +898,12 @@
                     text: '<i class="fas fa-chart-bar"></i>',
                     titleAttr: 'Processing results',
                     action: function ( e, dt, node, config ) {
-                        var jid = $('#jobs_archive').DataTable().rows( { selected: true } ).data()[0].slice(-1)[0];
+                        var jid = $('#jobs_archive').DataTable().rows( { selected: true } ).data()[0].task_id;
                         showResults(jid);
                     }
                 }                
             ],
-            dom: 'Bfrtip',
+            dom: 'fBrtip',
             "scrollY": "740px",
             "scrollX": false,
             "scrollCollapse": true,
@@ -966,37 +976,41 @@
     function archiveSearch()
     {
         if ($("#tab_archive").hasClass("is-active")) {
-            $('#jobs_archive').DataTable().clear().draw();
+            $('#jobs_archive_filter').hide();
+            $('#jobs_archive_filter input').val($('#job_archive_search').val());
+            $('#jobs_archive_filter input').trigger(jQuery.Event("keyup", { which: 13 }));
+            // $('#jobs_archive').DataTable().clear().draw();
             $('#jobs_archive_wrapper').show();
-            $('#loadingspinner').show();
-            searchTerm = $('#job_archive_search').val();
-            $.ajax({
-                type: 'GET',
-                url: '/api/find-tasks',
-                data: {'search_term': searchTerm, 'study_filter': archiveFilterQueue },
-                dataType: 'json',
-                error: function () {
-                    $('#erroralert').show();
-                },
-                success: function (data) {
-                    $('#erroralert').hide();
-                    var jobtable = $('#jobs_archive').DataTable();
-                    if (Object.keys(data).length) {
-                        Object.keys(data).forEach(function (key) {
-                            jobtable.row.add( [ data[key]["ACC"], data[key]["MRN"], data[key]["Scope"], data[key]["Rule"], data[key]["Time"], key ] );
-                        })
-                    }
-                    $('#jobs_archive').DataTable().button(1).enable(false);
-                    $('#jobs_archive').DataTable().button(2).enable(false);
-                    $('#jobs_archive').DataTable().button(3).enable(false);
-                    $('#jobs_archive').DataTable().button(4).enable(false);
-                    jobtable.draw();
-                },
-                complete: function (data) {
-                    $('#loadingspinner').hide();
-                },
-                timeout: 5000
-            });
+
+            // // $('#loadingspinner').show();
+            // searchTerm = $('#job_archive_search').val();
+            // $.ajax({
+            //     type: 'GET',
+            //     url: '/api/find-tasks',
+            //     data: {'search_term': searchTerm, 'study_filter': archiveFilterQueue },
+            //     dataType: 'json',
+            //     error: function () {
+            //         $('#erroralert').show();
+            //     },
+            //     success: function (data) {
+            //         $('#erroralert').hide();
+            //         var jobtable = $('#jobs_archive').DataTable();
+            //         if (Object.keys(data).length) {
+            //             Object.keys(data).forEach(function (key) {
+            //                 jobtable.row.add( [ data[key]["ACC"], data[key]["MRN"], data[key]["Scope"], data[key]["Rule"], data[key]["Time"], key ] );
+            //             })
+            //         }
+            //         $('#jobs_archive').DataTable().button(1).enable(false);
+            //         $('#jobs_archive').DataTable().button(2).enable(false);
+            //         $('#jobs_archive').DataTable().button(3).enable(false);
+            //         $('#jobs_archive').DataTable().button(4).enable(false);
+            //         jobtable.draw();
+            //     },
+            //     complete: function (data) {
+            //         $('#loadingspinner').hide();
+            //     },
+            //     timeout: 5000
+            // });
             return;
         }
     }
