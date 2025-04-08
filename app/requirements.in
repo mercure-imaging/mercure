@@ -31,7 +31,7 @@ pytest-subprocess
 
 # user interface
 aiofiles
-jinja2>=3.1.5
+jinja2>=3.1.6
 types-Jinja2
 # 0.15.0 breaks session management; the next commit after 0.18 will include the fix
 starlette >= 0.40.0
