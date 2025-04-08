@@ -26,7 +26,7 @@ jobs:
         pip install pip-tools 
         pip-sync app/requirements.txt app/dev-requirements.txt
         sudo apt-get install -y build-essential dcmtk inetutils-ping libqt5core5a redis
-        pip install pytest pytest-asyncio flake8 
+        pip install flake8 pytest pytest-asyncio 
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefinedp names
@@ -39,8 +39,7 @@ jobs:
     - name: Test with pytest
       if: always()
       run: |
-        #python -m pytest -vvv
-        pytest -vvv
+        python -m pytest -vvv
     - name: Check getdcmtags version
       run: |
         cd getdcmtags && ./check_version.sh
