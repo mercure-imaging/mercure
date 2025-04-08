@@ -23,7 +23,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get install -y build-essential dcmtk inetutils-ping libqt5core5a redis
-        python -m pip install --upgrade pip
+        python -m pip install --upgrade pip setuptools wheel
         pip install pip-tools 
         pip install flake8 pytest pytest-asyncio 
         #pip-sync app/requirements.txt app/dev-requirements.txt
