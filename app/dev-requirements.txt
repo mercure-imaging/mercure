@@ -6,49 +6,71 @@
 #
 async-timeout==4.0.3
     # via
-    #   -c requirements.txt
+    #   -c /home/vagrant/mercure/app/requirements.txt
     #   redis
+certifi==2024.7.4
+    # via
+    #   -c /home/vagrant/mercure/app/requirements.txt
+    #   requests
+charset-normalizer==3.3.2
+    # via
+    #   -c /home/vagrant/mercure/app/requirements.txt
+    #   requests
 exceptiongroup==1.2.1
     # via
-    #   -c requirements.txt
+    #   -c /home/vagrant/mercure/app/requirements.txt
     #   pytest
 fakeredis==2.25.1
     # via -r dev-requirements.in
+idna==3.7
+    # via
+    #   -c /home/vagrant/mercure/app/requirements.txt
+    #   requests
 iniconfig==2.0.0
     # via
-    #   -c requirements.txt
+    #   -c /home/vagrant/mercure/app/requirements.txt
     #   pytest
 packaging==24.1
     # via
-    #   -c requirements.txt
+    #   -c /home/vagrant/mercure/app/requirements.txt
     #   pytest
 pluggy==1.5.0
     # via
-    #   -c requirements.txt
+    #   -c /home/vagrant/mercure/app/requirements.txt
     #   pytest
 pytest==8.2.2
     # via
-    #   -c requirements.txt
+    #   -c /home/vagrant/mercure/app/requirements.txt
     #   -r dev-requirements.in
     #   pytest-asyncio
 pytest-asyncio==0.24.0
     # via -r dev-requirements.in
 redis==5.0.4
     # via
-    #   -c requirements.txt
+    #   -c /home/vagrant/mercure/app/requirements.txt
     #   fakeredis
+requests==2.32.3
+    # via
+    #   -c /home/vagrant/mercure/app/requirements.txt
+    #   requests-toolbelt
+requests-toolbelt==1.0.0
+    # via -r dev-requirements.in
 sortedcontainers==2.4.0
     # via fakeredis
 supervisor==4.2.5
     # via -r dev-requirements.in
 tomli==2.0.1
     # via
-    #   -c requirements.txt
+    #   -c /home/vagrant/mercure/app/requirements.txt
     #   pytest
 typing-extensions==4.12.2
     # via
-    #   -c requirements.txt
+    #   -c /home/vagrant/mercure/app/requirements.txt
     #   fakeredis
+urllib3==2.2.2
+    # via
+    #   -c /home/vagrant/mercure/app/requirements.txt
+    #   requests
 
 # The following packages are considered to be unsafe in a requirements file:
 # setuptools
