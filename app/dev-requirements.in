@@ -3,3 +3,4 @@ supervisor
 fakeredis
 pytest
 pytest-asyncio
+requests-toolbelt
