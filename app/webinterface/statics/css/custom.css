@@ -721,3 +721,7 @@ tr.dt-hasChild td.dt-control:hover  {
 .dataTables_wrapper td {
   word-break: break-all;
 }
+
+#jobs_archive_info {
+  color: #dbdbdb;
+}
