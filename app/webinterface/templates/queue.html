@@ -245,7 +245,7 @@
                 </div>
             </section>
             <footer class="modal-card-foot buttons is-centered">
-                <button class="button" type="button" id="closejobinformation" onclick="closeJobInformation()"><i class="fas fa-check"></i>&nbsp;Close</button>
+                <button class="button" type="button" id="closejobinformation" onclick="closeJobInformation()"><span class="icon"><i class="fas fa-check"></i></span><span>Close</span></button>
             </footer>
         </div>
     </div>    
@@ -268,7 +268,7 @@
                 </div>
             </section>
             <footer class="modal-card-foot buttons is-centered">
-                <button class="button" type="button" id="closejobarchiveinformation" onclick="closeJobArchiveInformation()"><i class="fas fa-check"></i>&nbsp;Close</button>
+                <button class="button" type="button" id="closejobarchiveinformation" onclick="closeJobArchiveInformation()"><span class="icon"><i class="fas fa-check"></i></span><span>Close</span></button>
             </footer>
         </div>
     </div>        
@@ -297,7 +297,7 @@
                 </table>
             </section>
             <footer class="modal-card-foot buttons is-centered">
-                <button class="button" type="button" id="closejobaudittrail" onclick="closeJobAuditTrail()"><i class="fas fa-check"></i>&nbsp;Close</button>
+                <button class="button" type="button" id="closejobaudittrail" onclick="closeJobAuditTrail()"><span class="icon"><i class="fas fa-check"></i></span><span>Close</span></button>
             </footer>
         </div>
     </div> 
@@ -312,7 +312,7 @@
                 <pre id="process_logs_display" class="process-logs process-logs-output"></pre>
             </section>
             <footer class="modal-card-foot buttons is-centered">
-                <button class="button" type="button" id="closeprocesslogs" onclick="closeProcessLogs()"><i class="fas fa-check"></i>&nbsp;Close</button>
+                <button class="button" type="button" id="closeprocesslogs" onclick="closeProcessLogs()"><span class="icon"><i class="fas fa-check"></i></span><span>Close</span></button>
             </footer>
         </div>
     </div> 
@@ -327,7 +327,7 @@
                 <pre id="process_results_display" class="process-results process-results-output"></pre>
             </section>
             <footer class="modal-card-foot buttons is-centered">
-                <button class="button" type="button" id="closeprocessresults" onclick="closeProcessResults()"><i class="fas fa-check"></i>&nbsp;Close</button>
+                <button class="button" type="button" id="closeprocessresults" onclick="closeProcessResults()"><span class="icon"><i class="fas fa-check"></i></span><span>Close</span></button>
             </footer>
         </div>
     </div>     
@@ -813,7 +813,8 @@
                     }
                 }
             ],
-            dom: 'Bfrtip',
+            /*dom: 'Bfrtip',*/
+            dom: '<"columns"<"column"B><"column"f>><"columns"<"column queuetablepadding"rt>><"columns"<"column"i><"column"p>>',
             "scrollY": "740px",
             "scrollX": false,
             "scrollCollapse": true,            
@@ -836,7 +837,13 @@
             "searching": true,
             "select": true,
             "language": {
-                "emptyTable": "No jobs found"
+                "emptyTable": "No jobs found",
+                "paginate": {
+                    "first":      "First",
+                    "last":       "Last",
+                    "next":       "&gt;",
+                    "previous":   "&lt;"
+                },                
             },
             ajax: {
                 url: '/api/find-tasks',
@@ -909,7 +916,8 @@
                     }
                 }                
             ],
-            dom: 'fBrtip',
+            dom: '<"columns"<"column"B>><"columns"<"column queuetablepadding"rt>><"columns"<"column"i><"column"p>>',
+            /*dom: 'Brtip',*/
             "scrollY": "740px",
             "scrollX": false,
             "scrollCollapse": true,

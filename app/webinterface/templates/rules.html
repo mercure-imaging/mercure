@@ -22,7 +22,7 @@
             </div>
             {% if is_admin %}
             <div class="">
-                <button class="button is-success" onclick="showAddModal()"><i class="fas fa-plus"></i>&nbsp;Add</button>
+                <button class="button is-success" onclick="showAddModal()"><span class="icon"><i class="fas fa-plus"></i></span><span>Add</span></button>
             </div>
             {% endif %}
         </div>
@@ -106,10 +106,10 @@
                     </table>
                     <div class="buttons is-right">
                         {% if is_admin %}
-                        <a class="button" onclick="showDuplicateModal('{{rule_name}}')"><i class="fas fa-copy"></i>&nbsp;Duplicate</a>
-                        <a class="button is-success" href="/rules/edit/{{rule_name}}"><i class="fas fa-pen"></i>&nbsp;Edit</a>
+                        <a class="button" onclick="showDuplicateModal('{{rule_name}}')"><span class="icon"><i class="fas fa-copy"></i></span><span>Duplicate</span></a>
+                        <a class="button is-success" href="/rules/edit/{{rule_name}}"><span class="icon"><i class="fas fa-pen"></i></span><span>Edit</span></a>
                         <button class="button is-danger" id="confirm-me" value="{{rule_name}}"
-                            onclick="confirmDelete(this.value)"><i class="fas fa-trash-alt"></i>&nbsp;Delete</button>
+                            onclick="confirmDelete(this.value)"><span class="icon"><i class="fas fa-trash-alt"></i></span><span>Delete</span></button>
                         {% endif %}
                     </div>
                 </div>

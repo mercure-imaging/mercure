@@ -17,7 +17,7 @@
             </div>
             {% if is_admin %}
             <div class="">
-                <button class="button is-success" onclick="showAddModal()"><i class="fas fa-plus"></i>&nbsp;Add</button>
+                <button class="button is-success" onclick="showAddModal()"><span class="icon"><i class="fas fa-plus"></i></span><span>Add</span></button>
             </div>
             {% endif %}    
         </div>
@@ -53,10 +53,10 @@
                     </table>
                     <div class="buttons is-right">
                         {% if is_admin %}
-                        <a class="button is-success" href="/users/edit/{{user_name}}"><i class="fas fa-pen"></i>&nbsp;Edit</a>
+                        <a class="button is-success" href="/users/edit/{{user_name}}"><span class="icon"><i class="fas fa-pen"></i></span><span>Edit</span></a>
                         <button class="button is-danger" id="confirm-me" value="{{user_name}}"
                             onclick="confirmDelete(this.value)" {% if user==user_name %}disabled
-                            title="Cannot delete own account" {% endif %}><i class="fas fa-trash-alt"></i>&nbsp;Delete
+                            title="Cannot delete own account" {% endif %}><span class="icon"><i class="fas fa-trash-alt"></i></span><span>Delete</span>
                         </button>
                         {% endif %}
                     </div>

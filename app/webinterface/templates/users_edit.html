@@ -58,10 +58,10 @@
             <div class="field">
                 <p class="control buttons" style="margin-top: 40px;">
                     <button type="submit" class="button is-success" value="default action">
-                        <i class="fas fa-save"></i>&nbsp;Save
+                        <span class="icon"><i class="fas fa-save"></i></span><span>Save</span>
                     </button>
                     {% if not own_settings is defined %}
-                    <a class="button" href="/users"><i class="fas fa-ban"></i>&nbsp;Cancel</a>
+                    <a class="button" href="/users"><span class="icon"><i class="fas fa-ban"></i></span><span>Cancel</span></a>
                     {% endif %}
                 </p>
             </div>

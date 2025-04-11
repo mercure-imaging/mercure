@@ -1,7 +1,8 @@
 Service bookkeeper
 ==================
 
-.. automodule:: bookkeeper
-   :members:
-   :undoc-members:
-   :show-inheritance:
+.. automodule:: bookkeeping.bookkeeper
+.. automodule:: bookkeeping.config
+.. automodule:: bookkeeping.database
+.. automodule:: bookkeeping.helper
+.. automodule:: bookkeeping.query

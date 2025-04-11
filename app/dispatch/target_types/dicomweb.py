@@ -1,3 +1,8 @@
+"""
+dicomweb.py
+===========
+"""
+
 import os
 import sqlite3
 import time

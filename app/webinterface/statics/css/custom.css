@@ -725,3 +725,8 @@ tr.dt-hasChild td.dt-control:hover  {
 #jobs_archive_info {
   color: #dbdbdb;
 }
+
+.queuetablepadding {
+  padding-top: 0;
+  padding-bottom: 0.75rem;
+}

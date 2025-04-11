@@ -89,8 +89,8 @@
                                         </div>
                                         <div class="buttons">
                                             <button class="button is-dark" default autofocus id="evaltestrule" hx-post="/rules/test"
-                                                hx-include=".testinclude"  hx-target="#testresult"><i class="fas fa-play"></i>&nbsp;Run Test</button>
-                                            <button class="button" type="button" onclick="resetTestRule()"><i class="fas fa-undo-alt"></i>&nbsp;Reset</button>
+                                                hx-include=".testinclude"  hx-target="#testresult"><span class="icon"><i class="fas fa-play"></i></span><span>Run Test</span></button>
+                                            <button class="button" type="button" onclick="resetTestRule()"><span class="icon"><i class="fas fa-undo-alt"></i></span><span>Reset</span></button>
                                         </div>
     
                                         <div class="field">
@@ -109,7 +109,7 @@
                                                 <div class="tile is-parent is-vertical" id="dropZone">
                                                     <article class="tile is-child notification is-light ruletesterdashed">
                                                         <p class="title is-5" style="text-align: center; margin-bottom: 0.5em;"><i class="fas fa-file-upload"></i>&nbsp; Drag &amp; drop DICOM file here</p>
-                                                        <p id="dropStatus">&nbsp;</p>
+                                                        <p id="dropStatus" style="text-align: center">&nbsp;</p>
                                                     </article>
                                                 </div>
                                             </div>
@@ -131,7 +131,7 @@
                     <div class="field is-grouped is-grouped-right">
                         <button class="button" type="button" data-show="quickview" data-target="quickviewDefault"
                             style="margin: 0px;">
-                            <i class="fas fa-tags"></i>&nbsp;Available Tags
+                            <span class="icon"><i class="fas fa-tags"></i></span><span>Available Tags</span>
                         </button>
                     </div>
 
@@ -461,9 +461,9 @@
             <div class="field">
                 <div class="control buttons is-expanded" style="margin-top: 50px;">
                     <button type="submit" class="button is-success" value="default action" id="savebutton">
-                        <i class="fas fa-save"></i>&nbsp;Save
+                        <span class="icon"><i class="fas fa-save"></i></span><span>Save</span>
                     </button>
-                    <a class="button" href="/rules"><i class="fas fa-ban"></i>&nbsp;Cancel</a>
+                    <a class="button" href="/rules"><span class="icon"><i class="fas fa-ban"></i></span><span>Cancel</span></a>
                 </div>
             </div>
         </form>
