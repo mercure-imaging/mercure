@@ -76,7 +76,7 @@ jobs:
     needs: build-base-image
     strategy:
       matrix:
-        image: [ui, bookkeeper, receiver, router, processor, dispatcher, cleaner]
+        image: [ui, bookkeeper, receiver, router, processor, dispatcher, cleaner, worker]
     permissions:
       contents: read
       packages: write

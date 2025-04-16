@@ -264,7 +264,7 @@
                     <div class="field" id="modules_list">
                         <label class="label">Processing Steps</label>
                         <div class="control process_list" style="min-height: 40px;">                            
-                            <input id="processing_module_list" name="processing_module_list" class="input" type="tags" placeholder="Add module using controls on the right"
+                            <input id="processing_module_list" name="processing_module_list" class="input" type="tags" placeholder="Add module(s)"
                             value="{{rules[rule]['processing_module']|join(',') if (rules[rule]['processing_module'].pop) else rules[rule]['processing_module']}}"
                             style="">
                         </div>
@@ -287,7 +287,7 @@
                                 </div>
                             </div>
                             {% if process_runner == "docker" %}
-                                <a class="button" id="add-module" style="border-top-left-radius: 0px; border-bottom-left-radius: 0px;" title="Insert selected module"><i class="fas fa-plus"></i></a>
+                                <a class="button is-link" id="add-module" style="border-top-left-radius: 0px; border-bottom-left-radius: 0px;" title="Insert selected module"><i class="fas fa-plus"></i></a>
                             {% endif %}
                         </div>
                     </div>
