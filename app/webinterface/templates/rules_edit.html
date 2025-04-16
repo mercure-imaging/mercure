@@ -7,7 +7,7 @@
 <script type="text/javascript" src="{{ url_for('static', path='/js/dataDictionary.js') }}"></script>
 <script type="text/javascript" src="{{ url_for('static', path='/js/choices.js') }}"></script>
 <link href="{{ url_for('static', path='/css/choices.css') }}" rel="stylesheet">
-
+<link rel="stylesheet" href="{{ url_for('static', path='/css/bulma-tagsinput.min.css') }}">
 {% endblock %}
 {% block content %}
 <main role="main">
@@ -899,9 +899,29 @@
 </script>
 <script type="text/javascript" src="{{ url_for('static', path='/js/bulma-tagsinput.min.js') }}"></script>
 <script>
-    var bulmaTagsInstances = bulmaTagsinput.attach();
-    window.setTimeout(function(){$("#modules_list input").attr("readonly","true")},200)   
-    // bulmaTagsInstances[0].container.getElementsByTagName("input")[0].setAttribute("readonly",1)
+    document.addEventListener('DOMContentLoaded', function() {
+    var bulmaTagsInstances = null; // Initialize to null
+    try {
+        // Uppercase B based on v1.0.3 likely API
+        if (typeof BulmaTagsInput !== 'undefined') {
+             bulmaTagsInstances = BulmaTagsInput.attach();
+             console.log('Successfully attached using BulmaTagsInput (DOMContentLoaded)');
+        }
+
+        else {
+             console.error('CRITICAL (DOMContentLoaded): BulmaTagsInput not defined!');
+        }
+    } catch (err) {
+         console.error('Error occurred during .attach() call (DOMContentLoaded):', err);
+    }
+
+    if (bulmaTagsInstances) {
+        console.log('Setting readonly timeout...'); // Added log
+        window.setTimeout(function(){$("#modules_list input").attr("readonly","true")},200);
+    } else {
+        console.log('Skipping readonly timeout because bulmaTagsInstances is not set.'); // Added log
+    }
+});
 </script>
 
 {% endblock %}
