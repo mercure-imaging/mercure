@@ -337,6 +337,16 @@
 
     var archiveFilterQueue = false;
 
+    function escapeHtml(unsafe) {
+        if (typeof unsafe !== 'string') return unsafe; // Return non-strings untouched
+        return unsafe
+             .replace(/&/g, "&amp;")
+             .replace(/</g, "&lt;")
+             .replace(/>/g, "&gt;")
+             .replace(/"/g, "&quot;")
+             .replace(/'/g, "&#039;"); // Use &#039; for ' as &apos; is not supported in HTML4
+    }
+
     function update() {
         update_status();
         update_jobs();
@@ -630,7 +640,21 @@
             dom: 'Bfrtip',
             "scrollY": "740px",
             "scrollX": false,
-            "scrollCollapse": true,   
+            "scrollCollapse": true, 
+            "columnDefs": [
+                {
+                    // Target ACC, MRN, Module, ID columns (indices 0, 1, 3, 5)
+                    "targets": [0, 1, 3, 5],
+                    "render": function ( data, type, row ) {
+                        // Only escape HTML for the 'display' type rendering
+                        if (type === 'display') {
+                            return escapeHtml(data);
+                        }
+                        // Return raw data for other types (like sorting, filtering)
+                        return data;
+                    }
+                }
+            ]  
         } );        
         $('#jobs_processing').DataTable().on( 'select deselect', function () {
             var selectedRows = $('#jobs_processing').DataTable().rows( { selected: true } ).count();
@@ -678,7 +702,17 @@
             dom: 'Bfrtip',
             "scrollY": "740px",
             "scrollX": false,
-            "scrollCollapse": true,              
+            "scrollCollapse": true,   
+            "columnDefs": [
+                {
+                    // Target ACC, MRN, Target, ID columns (indices 0, 1, 3, 5)
+                    "targets": [0, 1, 3, 5],
+                    "render": function ( data, type, row ) {
+                        if (type === 'display') { return escapeHtml(data); }
+                        return data;
+                    }
+                }
+            ]           
         } );
         $('#jobs_routing').DataTable().on( 'select deselect', function () {
             var selectedRows = $('#jobs_routing').DataTable().rows( { selected: true } ).count();
@@ -696,7 +730,15 @@
                 "emptyTable": "No studies in reception"
             },
             "columnDefs": [
-                { "visible": false, "targets": 0 }
+                { "visible": false, "targets": 0 }, // Keep existing rule for Study ID (key)
+                {
+                    // Target Study ID(key), ACC, MRN, UID, Rule columns (indices 0, 1, 2, 3, 4)
+                    "targets": [0, 1, 2, 3, 4],
+                    "render": function ( data, type, row ) {
+                        if (type === 'display') { return escapeHtml(data); }
+                        return data;
+                    }
+                }
             ],
             select: true,
             buttons: [
@@ -817,7 +859,17 @@
             dom: '<"columns"<"column"B><"column"f>><"columns"<"column queuetablepadding"rt>><"columns"<"column"i><"column"p>>',
             "scrollY": "740px",
             "scrollX": false,
-            "scrollCollapse": true,            
+            "scrollCollapse": true,
+            "columnDefs": [
+                {
+                    // Target ACC, MRN, FailStage, ID(key) columns (indices 0, 1, 3, 4)
+                    "targets": [0, 1, 3, 4],
+                    "render": function ( data, type, row ) {
+                        if (type === 'display') { return escapeHtml(data); }
+                        return data;
+                    }
+                }
+            ]            
         } );
         $('#jobs_fail').DataTable().on( 'select deselect', function () {
             var selectedRows = $('#jobs_fail').DataTable().rows( { selected: true } ).count();
@@ -859,6 +911,16 @@
                 { data: 'Rule' },
                 { data: 'Time' },
                 { data: 'task_id' },
+            ],
+            "columnDefs": [
+                {
+                    // Target ACC, MRN, Rule, task_id columns (indices 0, 1, 3, 5)
+                    "targets": [0, 1, 3, 5],
+                    "render": function ( data, type, row ) {
+                        if (type === 'display') { return escapeHtml(data); }
+                        return data;
+                    }
+                }
             ],
             serverSide: true,
             autoWidth: false,
@@ -1141,11 +1203,22 @@
                 $('#jobinfo-renderer').jsonViewer(jsondata, {rootCollapsable: false, collapsed: true});
                 $("#jobinfo-renderer > ul > li:nth-child(1) > a").click();                
             },
+            // error: function (data, status) {
+            //     if (status === "parsererror") {                    
+            //         $("#jobinformationcontent").html(data.responseText);
+            //     } else {
+            //         $("#jobinformationcontent").html("ERROR: Unable to retrieve job information");
+            //     }
+            // },
             error: function (data, status) {
-                if (status === "parsererror") {                    
-                    $("#jobinformationcontent").html(data.responseText);
+                if (status === "parsererror") {
+                    // SAFE VERSION: Display raw response as text
+                    $("#jobinformationcontent").text("Failed to parse job information. Raw response:\n\n" + data.responseText);
+                    // Clear the jsonViewer in case it had old content
+                    $('#jobinfo-renderer').empty(); // Or jsonViewer({})
                 } else {
-                    $("#jobinformationcontent").html("ERROR: Unable to retrieve job information");
+                    $("#jobinformationcontent").text("ERROR: Unable to retrieve job information (" + status + ")");
+                    $('#jobinfo-renderer').empty(); // Or jsonViewer({})
                 }
             },
             complete: function (data) {
