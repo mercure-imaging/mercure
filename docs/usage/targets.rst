@@ -1,5 +1,12 @@
 Targets
-========
+=======
+
+.. contents::
+      :local:
+      :depth: 1
+
+Overview
+--------
 
 Targets define connections to external services. These are used to send and :doc:`retrieve </usage/query>` DICOMs. 
 
@@ -35,13 +42,20 @@ After choosing a unique name for the target, you can edit the target settings.
     =========== ======= ============
 
 Direction
----------
+`````````
 
 The default direction, "store", is available on all targets. This indicates that this target can be used at a routing target. 
 
 "Query" indicates that this target can only be used in the query interface. This should be used for services that cannot or should not be sent to, but can be queried. It is currently available on DICOM and DICOMWeb.
 
 "both" indicates that this target can be used in both situations.
+
+
+Information
+```````````
+
+On the "Information" tab, you can add information for documentation purpose, including a contact e-mail address (so that it can be looked up who should be contacted if problems with the target occur) and a description of the target.
+
 
 DICOM
 -----
@@ -84,9 +98,4 @@ For SFTP targets, enter the hostname or IP, target folder on the server, usernam
 .. tip:: It is recommended to create a restricted user account for the SFTP uploads. Never use the credentials of an account with access to sensitive information, as the SFTP credentials are stored in the configuration file.
 
 .. important:: Support for SFTP transfers is still experimental and should be used with care.
-
-Information
------------
-
-On the "Information" tab, you can add information for documentation purpose, including a contact e-mail address (so that it can be looked up who should be contacted if problems with the target occur) and a description of the target.
 

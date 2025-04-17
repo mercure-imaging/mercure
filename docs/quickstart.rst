@@ -1,7 +1,7 @@
 Quick Start
 ===========
 
-If you want to try out mercure or setup a development environment, you can easily install mercure on your computer via Vagrant, which is an open-source tool for automatically creating and provisioning virtual machines. First, install `VirtualBox <https://virtualbox.org/>`_ on your computer. Afterwards, download `Vagrant <https://vagrantup.com/>`_ and install it. This should work on Windows, Intel-based Mac, and Linux systems.
+If you want to try out mercure or setup a :doc:`development environment <../environment>`, you can easily install mercure on your computer via Vagrant, which is an open-source tool for automatically creating and provisioning virtual machines. First, install `VirtualBox <https://virtualbox.org/>`_ on your computer. Afterwards, download `Vagrant <https://vagrantup.com/>`_ and install it. This should work on Windows, Intel-based Mac, and Linux systems.
 
 .. important:: This way of installing mercure is only suited for testing or development purpose. If you want to install mercure for production use, follow the instructions in the Installation section.
 
@@ -47,7 +47,7 @@ If you want to shutdown or destroy this installation of mercure, call "vagrant h
 Including Orthanc and OHIF
 --------------------------
 
-When testing mercure or developing modules, it is helpful to use a local PACS as dummy target. Therefore, we included an option to automatically install the open-source Orthanc PACS and OHIF DICOM viewer alongside mercure if you call the Vagrant installation command with the following argument
+When testing mercure or developing modules, it is helpful to use a local PACS as dummy target. Therefore, we included an option to automatically install the open-source Orthanc PACS viewer alongside mercure if you call the Vagrant installation command with the following argument
 ::
 
     vagrant --orthanc up
@@ -56,12 +56,8 @@ The Orthanc PACS is now listening to DICOM connections at port 4242. You can now
 
 The user interface of Orthanc can be reached by opening 127.0.0.1:8042 in a web browser. Use the username "orthanc" and password "orthanc" if an authorization dialog appears.
 
-While Orthanc already comes with a built-in DICOM viewer, we also included the open-source OHIF viewer because it supports displaying DICOM SR annotations. It can be reached at address 127.0.0.1:8008 (username "orthanc", password "orthanc"). The OHIF viewer connects to the Orthanc PACS and will show the same studies.
-
-.. tip:: If the OHIF viewer only shows "Loading...", the authentication credentials might be missing. Try refreshing the page while precessing the SHIFT key. This will enforce that the authentication dialog gets displayed.
-
-.. important:: The Orthanc and OHIF installation described here is only intended for local testing and development purpose. Do not expose these ports to the general network, as the installation might not be fully secured.
-
+.. important:: The Orthanc installation described here is only intended for local testing and development purpose. Do not expose these ports to the general network, as the installation might not be fully secured.
+   
 
 First Steps
 -----------
@@ -71,10 +67,10 @@ After installing mercure and Orthanc using Vagrant, you can go through the follo
 .. note:: The prostate segmentation model used here has been developed for demonstration purpose only. It does not provide state-of-the-art segmentation performance.
 
 * Log into the mercure web interface running at 127.0.0.1:8000 (username = admin, initial password = router).
-* Go to the Targets page and click "Add New". Enter "Orthanc" as name for the target. Select DICOM as target type and enter the following connection parameters: Host/IP = 127.0.0.1, IP = 4242, AET Target = orthanc, AET Source = mercure. Click "Save".
+* Go to the Settings > Targets page and click "Add". Enter "Orthanc" as name for the target. Select DICOM as target type and enter the following connection parameters: Host/IP = 127.0.0.1, IP = 4242, AET Target = orthanc, AET Source = mercure. Click "Save".
 * Test that mercure can talk to Orthanc by clicking on the entry "Orthanc" in the target list and clicking "Test". Both the Ping and C-Echo test should show a green check mark.
-* Go to the Modules page and click "Install Module". Enter "ProstateSegmentation" as name. For the Docker tag, enter "mercureimaging/mercure-exampleinference", which is the name under which the demo prostate segmentation model has been published on  `Docker Hub <https://hub.docker.com/r/mercureimaging/mercure-exampleinference>`_. 
-* Go to the Rules page and click "Add New". Enter "ProstateSegmentation" as name and click "Create" to get to the Edit Rule page. For the Selection Rule, enter "True" (thus, any received DICOM series will activate this rule). Under Action, select "Processing & Routing". Go to the Processing tab and select the Module "ProstateSegmentation". Check "Retain Input Images" under Data Flow. Go to the Routing page and select the Target "Orthanc". Then click "Save".
+* Go to the Settings > Modules page and click "Add". Enter "ProstateSegmentation" as name. For the Docker tag, enter "mercureimaging/mercure-exampleinference", which is the name under which the demo prostate segmentation model has been published on  `Docker Hub <https://hub.docker.com/r/mercureimaging/mercure-exampleinference>`_. 
+* Go to the Settings > Rules page and click "Add". Enter "ProstateSegmentation" as name and click "Create" to get to the Edit Rule page. For the Selection Rule, enter "True" (thus, any received DICOM series will activate this rule). Under Action, select "Processing & Routing". Go to the Processing tab. Select and add the module "ProstateSegmentation" using the control on the right side. Check "Retain Input Images" under Data Flow. Go to the Routing page and select the Target "Orthanc". Then click "Save".
 * You are now ready to test the configured processing rule by sending cases to the mercure server. The segmentation model expects T1-weighted post-contrast MRI images with square size. If you don't have such images, visit the `GitHub page of the mercure-exampleinference module <https://github.com/mercure-imaging/mercure-exampleinference>`_ and go through the steps under "Sample Data", which will download a few publicly available datasets.
 * You can send cases to mercure using the "dcmsend" utility from the Offis DCMTK open-source package. If you don't have it installed, you can download it  `here <https://dicom.offis.de/download/dcmtk/dcmtk366/bin/>`_.
 * On your host computer, open a command shell and go to a folder with a test case. Send the images to mercure with the command |subst3|.

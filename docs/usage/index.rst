@@ -1,11 +1,19 @@
 Usage
 =====
+    
+.. toctree::
+   :maxdepth: 1
+   
+   targets      
+   modules
+   rules
+   queue
+   query
 
-  .. toctree::
-      :maxdepth: 1
-      :glob:
-      
-      *
+.. contents::
+      :local:
+      :depth: 1
+
 
 Web Interface 
 -------------
@@ -26,7 +34,7 @@ To end your session, use the menu on the top-right and select "Logout".
 User Management
 ---------------
 
-Users can be created, modified, and deleted on the "Users" page. There are two types of users: Normal users, who can view the configuration and status but not change any settings, and administrators, who have full access. Users with administration rights are indicated by an icon with a shield in the user list. Users can also be added to permission groups. Permission groups are not yet used for anything, but they will be used in future mercure versions to provide granular access control.
+Users can be created, modified, and deleted on the "Settings > Users" page. There are two types of users: Normal users, who can view the configuration and status but not change any settings, and administrators, who have full access. Users with administration rights are indicated by an icon with a shield in the user list. Users can also be added to permission groups. Permission groups are not yet used for anything, but they will be used in future mercure versions to provide granular access control.
 
 .. image:: /images/ui/users.png
    :width: 550px
@@ -61,3 +69,4 @@ You can start, stop, and restart services by clicking the "Service Control" butt
 
 .. tip:: If you don't want to use the web interface, you can also manually control the mercure services from the command line. For systemd-type installations, this can be done with the command "systemctl start -u mercure_router.service" (in this example for the routing service). You can find the names of the individual services in the file **/opt/mercure/config/services.json**.
 
+The configuraton of mercure can be reviewed by pressing the "Configuration" button. Settings can be changed by pression the "Edit" button on the Configuration page. The mercure service components automatically reload the settings when the configuration has been changed, with the exception of the Receiver service. Thus, if you make changes relevant to the Receiver service, you need to restart it for the changes to take effect.

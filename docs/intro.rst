@@ -5,7 +5,7 @@ What is mercure?
    :width: 550px
    :align: center
 
-mercure is a flexible platform for orchestrating medical images in the standard DICOM format. Orchestration hereby refers to routing image series or complete patient studies to different destinations, or to process image series with different algorithms upon study reception. The action performed when a series or study is received (processing/routing/notification) is defined by rules that can be configured using mercure's web-based user interface.
+mercure is a flexible platform for orchestrating medical images in the standard DICOM format. Orchestration hereby refers to routing image series (or complete patient studies) to different destinations, or to process image series with different algorithms or AI models upon study reception. The action performed when a series or study is received (processing/routing/notification) is defined by rules that can be configured using mercure's web-based user interface.
 
 There are numerous use-cases for such a "DICOM orchestrator" or "DICOM router":
 
@@ -17,13 +17,15 @@ There are numerous use-cases for such a "DICOM orchestrator" or "DICOM router":
 * Processing algorithms, for example AI-based CAD algorithms, should be integrated into the routine clinical workflow
 * Research studies should be tracked and notifications should be sent if specific exams have been performed
 
-mercure can automate all these tasks. While other commercial DICOM routing solutions exist (often with a hefty price tag), mercure provides unique features that make it attractive especially in research-focused environments:
+mercure can automate all these tasks. While other commercial DICOM routing solutions exist (often with a high price tag), mercure provides unique features that make it attractive especially in research-focused environments:
 
 * Powerful, yet intuitive language for defining orchestration rules
 * Easy-to-use interface with user accounts for managing rules, targets, and processing modules
-* Simple interface for integrating (and sharing) custom processing algorithms
+* Simple interface for integrating (and sharing) custom processing algorithms or AI models
 * Modularized architecture for high availability, reliability, and scalability
-* Extensive monitoring capabilities
+* Extensive monitoring, auditing, and alerting capabilities
+* Support for polling large study amounts from PACS systems and injecting them into the processing pipeline
+* Database-backed collection of processing results with optional dashboard generation
 * Completely free and customizable
 
 .. note:: mercure has been released as open-source package under the permissive `MIT license <https://choosealicense.com/licenses/mit>`_. This means that it can be installed and used without paying any charges to the authors. Moreover, the source code can be downloaded and modified if specific functionality is required. mercure has been written mostly in the Python language and is easily customizable.
@@ -48,7 +50,7 @@ mercure consists of multiple separated service modules that interact with each o
 
 .. topic:: Dispatcher
 
-    The dispatcher service sends the prepared series to the desired target nodes (via DICOM or SFTP transfer). If a target node is temporarily unavailable or if the transfer fails, it repeats the transfer after a configurable waiting period. After a configurable number of unsuccessful retries, the affected DICOM images are moved to an error folder and an alert will be triggered. The transfer can later be restarted.
+    The dispatcher service sends the prepared series to the desired target nodes (e.g., via DICOM or SFTP transfer). If a target node is temporarily unavailable or if the transfer fails, it repeats the transfer after a configurable waiting period. After a configurable number of unsuccessful retries, the affected DICOM images are moved to an error folder and an alert will be triggered. The transfer can later be restarted.
 
 .. topic:: Cleaner
 
@@ -56,9 +58,8 @@ mercure consists of multiple separated service modules that interact with each o
 
 .. topic:: Bookkeeper
 
-    The bookkeeper service acts as central monitoring instance for all system activity. It receives notifications from every mercure component and stores the data in a PostgreSQL database. This makes it possible to review the processing history of every image that passed through the router. The bookkeeper also stores extended information about received series (e.g., the used contrast agent), so that it can be used as source for data mining. Moreover, it records all errors or processing abnormalities. Automatic alerts can be triggered based on periodic database queries.
+    The bookkeeper service acts as central monitoring instance for all system activity. It receives notifications from every mercure component and stores the data in a PostgreSQL database. This makes it possible to review the processing history of every image that passed through the router. The bookkeeper also stores extended information about received series (e.g., the used contrast agent), so that it can be used as source for data mining. Moreover, it records all errors or processing abnormalities, as well as processing results (e.g., findings of AI models). Automatic alerts can be triggered based on periodic database queries.
 
 .. topic:: Webgui
 
     The webgui module provides a convenient web-based user interface that allows configuring new rules, targets, and processing modules, including a tool for testing rules prior to activation. It can be used to monitor the server status, check the processing queue, and review logs. It uses an authorization system with personal accounts, which can have full administrator rights or read-only rights. All relevant activities in the webgui are recorded by the bookkeeper, documenting which user made which configuration change. Moreover, all configuration items can be documented including assignment of an owner.
-
