@@ -6,7 +6,7 @@
 <main role="main">
     <div class="container">
         <h1 class="title">Configuration</h1>
-        <form method="post" onsubmit="return validate()">       
+        <form method="post">       
             <div class="columns">
                 <div class="column is-full">
                     <div id="jsoneditor" style="--jse-theme-color: #2f2f2f; --jse-theme-color-highlight: #687177;"></div>
@@ -33,7 +33,7 @@
         </form>
     </div>
 </main>
-<script>
+<script nonce="{{ csp_nonce }}">
     function validate() {
         $('#edit_field').val(window.editor.get().text || JSON.stringify(window.editor.get().json, undefined, 4));
         if (window.editor.validate() == null) {
@@ -43,11 +43,12 @@
             return false;
         }
     }
+    $('form').on('submit', validate);
 </script>
 
-<script type="text" id="config_content">{{ config_content|safe }}</script>
+<script nonce="{{ csp_nonce }}" type="text" id="config_content" nonce="{{ csp_nonce }}">{{ config_content|safe }}</script>
 
-<script type="module">
+<script nonce="{{ csp_nonce }}" type="module" nonce="{{ csp_nonce }}">
     let config_text = document.getElementById('config_content').textContent;
     import { JSONEditor } from "{{ url_for('static', path='/js/svelte-jsoneditor.js') }}"
 

@@ -82,9 +82,9 @@
     </div>
 </main>
 
-<script type="text/javascript" src="{{ url_for('static', path='/js/bulma-tagsinput.min.js') }}">
+<script nonce="{{ csp_nonce }}"  type="text/javascript" src="{{ url_for('static', path='/js/bulma-tagsinput.min.js') }}">
 </script>
-<script>
+<script nonce="{{ csp_nonce }}">
     bulmaTagsinput.attach();
 </script>
 

@@ -41,7 +41,7 @@
             </ul>
         </div>
 
-        <form method="post" onsubmit="return validate()">
+        <form method="post">
             <div id="tab-content">
                 <div class="panel is-active" data-content="docker">
                     <div class="field">
@@ -84,19 +84,18 @@
                                 data-json
                                 placeholder="See https://docker-py.readthedocs.io/en/stable/containers.html for parameters"
                                 name="docker_arguments"
-                                value="{{module['docker_arguments']}}"
-                                onkeypress="updateDockerArguments(this)" onkeydown="updateDockerArguments(this)" onchange="updateDockerArguments(this)" oninput="updateDockerArguments(this)">
+                                value="{{module['docker_arguments']}}">
                         </p>
                     </div>             
                     <div class="field" style="margin-top: 30px;">
                         <input id="gpu_support" name="gpu_support" type="checkbox"
-                            class="switch is-rounded is-dark" onclick="toggleGPUSupport(this);">
+                            class="switch is-rounded is-dark">
                         <label for="gpu_support" title="This setting requires that the NVIDIA Container Toolkit is installed">Enable NVIDIA GPU Support</label>
                     </div>
                     <div class="field" style="">
                         <input id="requires_root" type="checkbox" name="requires_root"
                             class="switch is-rounded is-dark" value="True" {% if
-                            module['requires_root']==True %}checked="checked" {% endif%} onclick="toggleRequiresRoot(this);">
+                            module['requires_root']==True %}checked="checked" {% endif%} >
                         <label for="requires_root" title="This setting is required for running MONAI applications">Requires Root User</label>
                         {% if support_root_modules != True %}
                         <div class="notification is-warning" id="warningroot" style="margin-top: 16px;">
@@ -170,7 +169,7 @@
 </main>
 
 
-<script>
+<script nonce="{{ csp_nonce }}">
 
     function toggleRequiresRoot(cb) {
         {% if support_root_modules != True %}
@@ -181,6 +180,7 @@
         }
         {% endif %}
     }
+    $('#requires_root').click((evt) => toggleRequiresRoot(evt.target));
 
     function toggleGPUSupport(cb) {        
         try {
@@ -205,7 +205,10 @@
         }      
     }
     
-    function updateDockerArguments(value) {  
+    $('#gpu_support').click((evt)=> toggleGPUSupport(evt.target))
+
+    function updateDockerArguments() {  
+        console.log("update docker arguments")
         try {        
             text_value = $( "#docker_arguments" ).val();
             if (text_value == "") {
@@ -222,8 +225,15 @@
                 $("#gpu_support").prop("checked", false);
             }
         } catch (e) {
+            console.error(e);
         }         
     }
+    $('#docker_arguments').on({
+        "keypress": updateDockerArguments,
+        "keydown": updateDockerArguments,
+        "change": updateDockerArguments,
+        "input": updateDockerArguments
+    })
 
     function validate() {
         var field = "";
@@ -282,7 +292,7 @@
         console.log("PASSED");
         return true;
     }
-
+    $('form').on('submit', validate);
     $(document).ready(function () {
 
         {% if module['requires_root']==True %}

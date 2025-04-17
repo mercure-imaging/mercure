@@ -17,7 +17,7 @@
             </div>
             {% if is_admin %}
             <div class="">
-                <button class="button is-success" onclick="showAddModal()"><span class="icon"><i class="fas fa-plus"></i></span><span>Add</span></button>
+                <button class="button is-success" id="showaddmodal"><span class="icon"><i class="fas fa-plus"></i></span><span>Add</span></button>
             </div>
             {% endif %}    
         </div>
@@ -54,8 +54,7 @@
                     <div class="buttons is-right">
                         {% if is_admin %}
                         <a class="button is-success" href="/users/edit/{{user_name}}"><span class="icon"><i class="fas fa-pen"></i></span><span>Edit</span></a>
-                        <button class="button is-danger" id="confirm-me" value="{{user_name}}"
-                            onclick="confirmDelete(this.value)" {% if user==user_name %}disabled
+                        <button class="button is-danger delete-button" value="{{user_name}}" {% if user==user_name %}disabled
                             title="Cannot delete own account" {% endif %}><span class="icon"><i class="fas fa-trash-alt"></i></span><span>Delete</span>
                         </button>
                         {% endif %}
@@ -125,7 +124,7 @@
 
 </main>
 
-<script>
+<script nonce="{{ csp_nonce }}">
     document.addEventListener('DOMContentLoaded', function () {
         let cardToggles = document.getElementsByClassName('card-toggle');
         for (let i = 0; i < cardToggles.length; i++) {
@@ -142,13 +141,14 @@
         $("#addmodal").addClass("is-active");
         $("#addnewname").focus();
     }
-
+    $("#showaddmodal").click(showAddModal);
     var userToDelete = "";
 
     function confirmDelete(val) {
         $("#deletemodal").addClass("is-active");
         userToDelete = val;
     }
+    $('.delete-button').click((evt) => confirmDelete(evt.target.value))
 
     $(function () {
         $('#closeaddmodal').click(function () {

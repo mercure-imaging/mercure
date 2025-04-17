@@ -3,7 +3,7 @@
 {% block title %}Self-Test{% endblock %}
 
 {% block extra_head %}
-    <script type="text/javascript" src="{{ url_for('static', path='DataTables/datatables.min.js') }}"></script>
+    <script nonce="{{ csp_nonce }}" type="text/javascript" src="{{ url_for('static', path='DataTables/datatables.min.js') }}"></script>
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', path='DataTables/datatables.min.css') }}"/>  
     <!-- <script src="https://unpkg.com/hyperscript.org@0.9.5"></script> -->
 {% endblock %}
@@ -77,7 +77,7 @@
                         </a>
                     </p>
                     <div class="control">
-                      <input name="receiver_port" onkeyup="this.value=this.value.replace(/[^\d]/,'')" class="input" type="text" placeholder="port" value="">
+                      <input name="receiver_port" id="receiver_port"  class="input" type="text" placeholder="port" value="">
                     </div>
                   </div>
 
@@ -98,7 +98,7 @@
                         </a>
                       </p>
                     <div class="control">
-                      <input name="webui_port" onkeyup="this.value=this.value.replace(/[^\d]/,'')" class="input" type="text" placeholder="port" value="">
+                      <input name="webui_port" id="webui_port" class="input" type="text" placeholder="port" value="">
                     </div>
                   </div>
 
@@ -169,7 +169,7 @@
             </div>
     </div>
 </main>
-<script>
+<script nonce="{{ csp_nonce }}">
 $(document).ready(function () {      
 
 $("#test-form").on('htmx:afterOnLoad', (event) => {
@@ -179,6 +179,14 @@ $("#test-form").on('htmx:afterOnLoad', (event) => {
         setTimeout(load_tests, 10000*n)
     }
 });
+
+function only_numbers(el) {
+  el.value=el.value.replace(/[^\d]/g,'')
+}
+$('#receiver_port').on('keyup', (evt) => only_numbers(evt.target))
+$('#webui_port').on('keyup', (evt) => only_numbers(evt.target))
+
+
 $('#task-events-table').DataTable( {
     "paging": false,
     "ordering": false,
@@ -190,8 +198,8 @@ $('#task-events-table').DataTable( {
    "scrollY": "740px",
    "scrollX": false,
    "scrollCollapse": true,   
-   "columnDefs": [
-            { "visible": false, "targets": 0 }
+   "columnDefs": [{ "targets": '_all', "render": DataTable.render.text() },
+            { "visible": false, "targets": 0, "render": DataTable.render.text() },
     ],
     "drawCallback": function (settings) {
             var api = this.api();
@@ -229,10 +237,9 @@ $('#test-table').DataTable( {
    "language": {
        "emptyTable": "No task data available."
    },
-   "columnDefs": [
-            { "visible": false, "targets": 0 },
-            { "visible": false, "targets": 1 }
-
+   "columnDefs": [{ "targets": '_all', "render": DataTable.render.text() },
+            { "visible": false, "targets": 0, "render": DataTable.render.text() },
+            { "visible": false, "targets": 1, "render": DataTable.render.text() }
     ],
    select: {
             style: 'single'
@@ -281,9 +288,6 @@ $.ajax({
     url: '/api/get-tests',
     data: {},
     dataType: 'json',
-    "columnDefs": [
-    { "visible": false, "targets": 0 }
-    ],
     error: function () {
         // $('#erroralert').show();
     },

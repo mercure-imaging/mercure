@@ -6,9 +6,9 @@ Rules page for the graphical user interface of mercure.
 
 import json
 # Standard python includes
+import re
 from typing import Any, Dict, Set
 
-# App-specific includes
 import common.config as config
 import common.monitor as monitor
 import common.rule_evaluation as rule_evaluation
@@ -20,7 +20,8 @@ from decoRouter import Router as decoRouter
 from starlette.applications import Starlette
 from starlette.authentication import requires
 from starlette.responses import PlainTextResponse, RedirectResponse, Response
-from webinterface.common import templates
+from webinterface.common import strip_untrusted, templates
+from webinterface.modules import BadRequestResponse
 
 router = decoRouter()
 
@@ -60,6 +61,9 @@ async def duplicate_rule(request) -> Response:
         return PlainTextResponse("Configuration is being updated. Try again in a minute.")
     form = await request.form()
     new_name = form.get("new_name", "")
+    if not re.fullmatch("[0-9a-zA-Z_\-]+", new_name):
+        return BadRequestResponse("Invalid rule name provided")
+
     old_name = form.get("old_name", "")
     if not old_name or not new_name or old_name == new_name or new_name in config.mercure.rules:
         return PlainTextResponse("Invalid input or duplicate name.")
@@ -82,6 +86,9 @@ async def add_rule(request) -> Response:
     form = dict(await request.form())
 
     newrule = form.get("name", "")
+    if not re.fullmatch("[0-9a-zA-Z_\-]+", newrule):
+        return BadRequestResponse("Invalid rule name provided")
+
     if newrule in config.mercure.rules:
         return PlainTextResponse("Rule already exists.")
 
@@ -157,15 +164,18 @@ async def rules_edit_post(request) -> Response:
         return PlainTextResponse("Configuration is being updated. Try again in a minute.")
 
     editrule = request.path_params["rule"]
+
     if editrule not in config.mercure.rules:
         return PlainTextResponse("Rule does not exist anymore.")
-
     try:
         form_data = await request.form()
         form = dict(form_data)
         target_list = form_data.getlist("target")
     except Exception:
         return PlainTextResponse("Invalid form data.")
+
+    if not re.fullmatch("[^<]+", form.get("tags", "")):
+        return PlainTextResponse("Invalid tag name provided")
 
     # Ensure that the processing settings are valid. Should happen on the client side too, but can't hurt
     # to check again
@@ -191,7 +201,7 @@ async def rules_edit_post(request) -> Response:
         fallback=form.get("status_fallback", "False"),
         contact=form.get("contact", ""),
         comment=form.get("comment", ""),
-        tags=form.get("tags", ""),
+        tags=strip_untrusted(form.get("tags", "")),
         action=form.get("action", "route"),
         action_trigger=form.get("action_trigger", "series"),
         study_trigger_condition=form.get("study_trigger_condition", "timeout"),

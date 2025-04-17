@@ -6,6 +6,7 @@ Modules page for the graphical user interface of mercure.
 
 # Standard python includes
 import json
+import re
 from typing import Dict
 
 # App-specific includes
@@ -17,7 +18,7 @@ from decoRouter import Router as decoRouter
 from starlette.applications import Starlette
 from starlette.authentication import requires
 from starlette.responses import PlainTextResponse, RedirectResponse
-from webinterface.common import templates
+from webinterface.common import strip_untrusted, templates
 
 import docker
 
@@ -46,19 +47,19 @@ async def save_module(form, name) -> None:
     """Save the settings for the module with the given name."""
 
     # Ensure that the module settings are valid. Should happen on the client side too, but can't hurt to check again.
+
     try:
         new_settings: Dict = json.loads(form.get("settings", "{}"))
     except Exception:
         new_settings = {}
-
     config.mercure.modules[name] = Module(
         docker_tag=form.get("docker_tag", "").strip(),
         additional_volumes=form.get("additional_volumes", ""),
         environment=form.get("environment", ""),
         docker_arguments=form.get("docker_arguments", ""),
         settings=new_settings,
-        contact=form.get("contact", ""),
-        comment=form.get("comment", ""),
+        contact=strip_untrusted(form.get("contact", "")),
+        comment=strip_untrusted(form.get("comment", "")),
         constraints=form.get("constraints", ""),
         resources=form.get("resources", ""),
         requires_root=form.get("requires_root", False)
@@ -117,11 +118,14 @@ async def add_module(request):
 
     form = dict(await request.form())
     name = form.get("name", "")
-    form["name"] = form["name"].strip()
+    form["name"] = name.strip()
     form["docker_tag"] = form["docker_tag"].strip()
 
-    if "/" in name:
+    if not re.fullmatch("[0-9a-zA-Z_\-]+", name):
         return BadRequestResponse("Invalid module name provided.")
+
+    if not re.fullmatch("[a-zA-Z0-9-:/_.@]+", form["docker_tag"]):
+        return BadRequestResponse("Invalid docker_tag provided.")
 
     if name in config.mercure.modules:
         return BadRequestResponse("A module with this name already exists.")
@@ -227,6 +231,12 @@ async def edit_module_POST(request):
     name = request.path_params["module"]
     if name not in config.mercure.modules:
         return PlainTextResponse("Invalid module name - perhaps it was deleted?")
+
+    if not re.fullmatch("[0-9a-zA-Z_\-]+", name):
+        return BadRequestResponse("Invalid module name provided.")
+
+    if not re.fullmatch("[a-zA-Z0-9-:/_.@]+", form["docker_tag"]):
+        return BadRequestResponse("Invalid docker_tag provided.")
 
     try:
         await save_module(form, name)

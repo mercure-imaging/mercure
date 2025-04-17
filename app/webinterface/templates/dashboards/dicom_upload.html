@@ -1,7 +1,7 @@
 {% extends "dashboards/dashboards.html" %}
 
 {% block extra_head %}
-<script type="text/javascript" src="https://unpkg.com/dicomweb-client"></script>
+<script nonce="{{ csp_nonce }}" type="text/javascript" src="https://unpkg.com/dicomweb-client"></script>
 <style>
 .upload-box {
     border: 2px dashed #dbdbdb;
@@ -85,7 +85,7 @@
                 <div class="field-body">                  
                     <div class="field">
                         <div class="control is-expanded" style="padding-top: .375em;">
-                            <input type="checkbox" id="save-dataset" name="save-dataset" value="true" class="switch is-dark is-rounded" onchange="$('#dataset-name').attr('disabled', !this.checked); if (!this.checked) { $('#dataset-name-field').hide(); } else {  $('#dataset-name-field').show(); }">
+                            <input type="checkbox" id="save-dataset" name="save-dataset" value="true" class="switch is-dark is-rounded" autocomplete="off">
                             <label for="save-dataset"></label>
                         </div>
                     </div>
@@ -99,7 +99,7 @@
                 <div class="field-body">
                     <div class="field">
                         <div class="control is-expanded">
-                            <input id="dataset-name" name="dataset_name" type="text" placeholder="Enter dataset name" class="input" disabled>
+                            <input id="dataset-name" name="dataset_name" type="text" placeholder="Enter dataset name" class="input" disabled autocomplete="off">
                         </div>
                     </div>
                 </div>
@@ -112,8 +112,8 @@
                 <div class="field-body">
                     <div class="field has-addons">
                         <div class="control is-expanded">
-                            <input class="input" type="text" id="selected-dataset-display" placeholder="No dataset selected" readonly>
-                            <input type="hidden" id="selected-dataset" name="selected_dataset" value="">
+                            <input class="input" type="text" id="selected-dataset-display" placeholder="No dataset selected" readonly autocomplete="off">
+                            <input type="hidden" id="selected-dataset" name="selected_dataset" value="" autocomplete="off">
                         </div>
                         <div class="control">
                             <button type="button" class="button is-light" id="clear-selection-btn">
@@ -203,7 +203,7 @@
                                         <span class="icon is-small"><i class="fas fa-check"></i></span>
                                         <span>Select</span>
                                     </button>
-                                    <button class="button is-small is-danger" onclick="window.deleteDataset('{{ dataset }}'); return false;">
+                                    <button class="button is-small is-danger delete-dataset-button" data-dataset="{{ dataset }}">
                                         <span class="icon is-small"><i class="fas fa-trash"></i></span>
                                         <span>Delete</span>
                                     </button>
@@ -233,7 +233,20 @@
     
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
+$('.delete-dataset-button').click( (evt) => {
+    window.deleteDataset($(evt.target).attr('data-dataset')); 
+    return false;
+});
+$('#save-dataset').change( (evt) => {
+        $('#dataset-name').attr('disabled', evt.target.checked); 
+        if (!evt.target.checked) { 
+            $('#dataset-name-field').hide(); 
+        } else {
+            $('#dataset-name-field').show(); 
+        }
+    }
+)
 async function submitDataset(dataset, formData) {
     if (!confirm("Submit dataset " + dataset + "?")) {
         return;

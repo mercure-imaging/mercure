@@ -90,7 +90,7 @@
     </div>
 </main>
 
-<script>
+<script nonce="{{ csp_nonce }}">
     $(document).ready(function () {
         update_form = function(value) {
             $('.target-form').addClass('is-hidden')
