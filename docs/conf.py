@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.abspath('../app'))
 # -- Project information -----------------------------------------------------
 
 project = 'mercure'
-copyright = '2019-2024 The "mercure" authors and contributors'
+copyright = '2019-2025 The "mercure" authors and contributors'
 author = ''
 def read_version() -> str:
     current_version = "0.0.0"
