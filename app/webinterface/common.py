@@ -9,7 +9,7 @@ import asyncio
 import os
 import random
 import string
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union, Any
 
 import bleach
 import common.config as config
@@ -43,15 +43,15 @@ def get_mercure_version(request) -> dict:
     return {"mercure_version": mercure_defs.VERSION}
 
 
-def get_csp_nonce(request=None):
+def get_csp_nonce(request=None) -> dict:
     """Returns the CSP nonce for the current request."""
     global csp_nonce
 
     return {"csp_nonce": csp_nonce}
 
 
-def strip_untrusted(input):
-    def clean(s): return bleach.clean(s, strip=True)
+def strip_untrusted(input: Union[str, list]) -> Any:
+    def clean(s) -> str: return bleach.clean(s, strip=True)
     if isinstance(input, str):
         return clean(input)
     elif isinstance(input, list):
