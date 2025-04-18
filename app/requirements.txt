@@ -275,6 +275,10 @@ tomli==2.0.1
     # via
     #   mypy
     #   pytest
+types-bleach==6.2.0.20241123
+    # via -r requirements.in
+types-html5lib==1.1.11.20241018
+    # via types-bleach
 types-jinja2==2.11.9
     # via -r requirements.in
 types-markupsafe==1.1.10
