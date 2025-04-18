@@ -174,7 +174,7 @@ async def rules_edit_post(request) -> Response:
     except Exception:
         return PlainTextResponse("Invalid form data.")
 
-    if not re.fullmatch("[^<]+", form.get("tags", "")):
+    if not re.fullmatch("[^<\n]+|", form.get("tags", "")):
         return PlainTextResponse("Invalid tag name provided")
 
     # Ensure that the processing settings are valid. Should happen on the client side too, but can't hurt
