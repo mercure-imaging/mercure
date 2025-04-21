@@ -18,6 +18,7 @@ import string
 import subprocess
 import sys
 import traceback
+import secrets
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
@@ -920,13 +921,16 @@ app = None
 
 
 class CSPMiddleware(BaseHTTPMiddleware):
+    async def __call__(self, scope, receive, send):
+        scope["csp_nonce"] = secrets.token_urlsafe()
+        await super().__call__(scope,receive,send)
 
     async def dispatch(self, request, call_next):
         response = await call_next(request)
 
         # Define your CSP policy here
         csp_policy = (
-            f"script-src 'nonce-{get_csp_nonce()['csp_nonce']}'; "
+            f"script-src 'nonce-{request.scope['csp_nonce']}'; "
             "img-src 'self'; "
             "font-src 'self'; "
             "connect-src 'self'; "
