@@ -11,7 +11,7 @@ After you have configured your targets and processing modules, you can define ru
 
 It is not necessary to stop mercure services while defining new rules. The mercure service modules will automatically reload the new configuration when a rule has been added or modified. Click the "Add" button to create a new rule, or click on any of the existing rules and select "Edit" to modify it.
 
-Filtering tab
+Filtering Tab
 ~~~~~~~~~~~~~
 
 All rules are evaluated whenever a new DICOM series has been received. The rules can use a set of DICOM tags extracted from the incoming DICOM files. To see the full list of DICOM tags available for writing rules, click the "Available Tags" button.
@@ -56,7 +56,7 @@ This would trigger for series called "CINE" or "cine". If you want to test for n
 Testing Rules
 ^^^^^^^^^^^^^
 
-To test a selection rule before activating it, click the icon with the cog wheels on the left side of input box. If you see a red icon in the dialog, the rule notation is invalid (the dialog will tell you why). If the rule is valid, the dialog will test if the rule would trigger if a DICOM series with the values shown in the lower part of the dialog would be received. You can modify these values and test if the rule reacts as expected.
+To test a selection rule before activating it, click the icon with the cog wheels on the left side of input box. If you see a red icon in the dialog, the rule notation is invalid (the dialog will tell you why). If the rule is valid, the dialog will test if the rule would trigger if a DICOM series with the values shown in the lower part of the dialog would be received. You can modify these values and test if the rule reacts as expected. You can also test the filter rule by dragging an existing DICOM file from your computer into the drag-and-drop area. This will update the test values with the DICOM tags from the file and check if the filter rule would trigger.
 
 .. image:: /images/ui/rules/test.png
    :width: 550px
@@ -87,7 +87,6 @@ Rule Triggers
 
 The Trigger control allows selecting when the action should be triggered. 
 
-
 If **Completed Series** is selected, mercure executes the action when a DICOM series has been received for which the rule evaluates to ``True``. If multiple series from a patient study are received, these series are evaluated separately, and may trigger the same, different, or no rules.
 
 If **Completed Study** is selected, all series for a given study are evaluated together. For example, an AI-based analysis algorithm might require multiple series with different contrast. On selection, an additional control **Completion Criteria** will appear, which allows selecting when the study should considered complete. Rules with this trigger are only evaluated when the study appears to be complete, and all the series will be routed or processed together.
@@ -97,7 +96,7 @@ If **Completed Study** is selected, all series for a given study are evaluated t
    :align: center
    :class: border
 
-If **List Series Received** is selected, Mercure evaluates whether the study is complete based on whether specific series have been received using the ``SeriesDescription`` dicom tag. Here is an example expression that will consider the study complete if it receives a series with a ``SeriesDescription`` which contains "Axial T2" and another series that has either "SAG T1 GRE" or "Sag T1 TSE":
+If **List Series Received** is selected, Mercure evaluates whether the study is complete based on whether specific series have been received using the ``SeriesDescription`` DICOM tag. Here is an example expression that will consider the study complete if it receives a series with a ``SeriesDescription`` which contains "Axial T2" and another series that has either "SAG T1 GRE" or "Sag T1 TSE":
 
 ::
 
@@ -114,7 +113,7 @@ If the Priority control is set to "Urgent", corresponding series or studies will
 
 Rules can be temporarily disabled by toggling the "Disable Rule" switch. In this case, the rule appears in grayed-out color in the rule list and it will be ignored during processing. By clicking the "Fallback Rule" switch, the current rule will be applied to all DICOM series for which no other rules have triggered. This allows defining a "default" rule.
 
-Processing tab
+Processing Tab
 ~~~~~~~~~~~~~~
 
 For rules involving processing, the "Processing" tab can be used to select one or multiple processing modules. To add a module, select it in the dropdown box and press the "+" button to add it to the end of the module list. Each module will be executed in order, left to right. Generally, the output of each module will be used as the input for the next. 
@@ -132,7 +131,7 @@ When selecting the "Retain input images" switch, the module chain will output bo
 
 .. important:: The "Retain input images" option must not be used with modules that should remove confidential information from the data, such as DICOM anonymization modules.
 
-Routing tab
+Routing Tab
 ~~~~~~~~~~~
 
 For rules with dispatching, the "Routing" tab can be used to select the target(s) to which the DICOMs should be dispatched after finishing any processing modules.
@@ -142,7 +141,7 @@ For rules with dispatching, the "Routing" tab can be used to select the target(s
    :align: center
    :class: border
 
-Notification tab
+Notification Tab
 ~~~~~~~~~~~~~~~~
 
 The "Notification" tab allows configuring webhook calls and emails that can be triggered at various points after a study has been received.
@@ -166,7 +165,7 @@ The "Email Body" works much the same way as the "Webhook Body". Select "HTML Con
 
 If either the email address or webhook url is blank, notifications will not be sent via that modality. 
 
-Information tab
+Information Tab
 ~~~~~~~~~~~~~~~
 
 The "Information" tab can be used to document the rule. The purpose of the rule can be written as free-text into the Comment field, and an email address can be written into the Contact field, so that it can be looked up at a later time why the rule was defined and who requested it. It is also possible to add tag attributes to the rule. These tags are not yet used for anything else, but might be used in future versions of mercure for filtering purpose and access control.
@@ -175,5 +174,3 @@ The "Information" tab can be used to document the rule. The purpose of the rule 
    :width: 550px
    :align: center
    :class: border
-
-
