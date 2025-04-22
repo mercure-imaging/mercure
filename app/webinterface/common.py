@@ -45,9 +45,7 @@ def get_mercure_version(request) -> dict:
 
 def get_csp_nonce(request=None) -> dict:
     """Returns the CSP nonce for the current request."""
-    global csp_nonce
-
-    return {"csp_nonce": csp_nonce}
+    return {"csp_nonce": request.scope["csp_nonce"]}
 
 
 def strip_untrusted(input: Union[str, list]) -> Any:
