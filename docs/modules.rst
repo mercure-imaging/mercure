@@ -23,6 +23,20 @@ Depending on whether the rule that triggers the processing is a series-level or 
 Thus, by splitting the filename at #, images belonging to the same series can be identified. The ordering of the images within one series needs to be taken from the DICOM tags. These can be either read from the DICOM files (e.g., using a library such as pydicom) or they can be read from the corresponding .tags file, which is a JSON file containing the most relevant DICOM tags extracted from each file.
 
 
+Returning Results
+-----------------
+
+Modules can return processing results, such as findings or measurements that an AI model has generated. Returned results are stored by mercure in its internal database and can be used for later statistical analysis or for triggering results-dependent notifications. 
+
+To return results, the module needs to write a JSON file named **result.json** into the output folder MERCURE_OUT_DIR. mercure will archive the content of this file in its database regardless of the JSON structure (thus, there is no predefined required structure). However, if the module would like to indicate that there is a finding worth notifying about, the following entry should be added to the JSON file (this will trigger a notification if configured in the rule):
+
+::
+
+    {
+        "__mercure_notification": {"text": "This is the text that should be shown as notification"}}
+    }
+
+
 Creating Annotations
 --------------------
 

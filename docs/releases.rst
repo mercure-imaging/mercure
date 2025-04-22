@@ -1,6 +1,12 @@
 Release History
 ===============
 
+Version 0.4.0-beta.4
+---------------------
+*Release date: 4/21/2025*
+
+* Hardening of the web interface against XSS attacks
+
 Version 0.4.0-beta.2
 ---------------------
 *Release date: 4/15/2025*
