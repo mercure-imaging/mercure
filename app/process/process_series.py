@@ -24,6 +24,7 @@ from common.event_types import FailStage
 from common.types import Module, Task, TaskProcessing
 from common.version import mercure_version
 from dispatch.send import update_fail_stage
+from docker.types import Mount
 from jinja2 import Template
 
 import docker
@@ -118,11 +119,10 @@ async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_p
 
     container_in_dir = "/tmp/data"
     container_out_dir = "/tmp/output"
-    default_volumes = {
-        str(real_folder / "in"): {"bind": container_in_dir, "mode": "rw"},
-        str(real_folder / "out"): {"bind": container_out_dir, "mode": "rw"},
-    }
-    logger.debug(default_volumes)
+    default_mounts = [Mount(source=str(real_folder/"in"), target=container_in_dir, type="bind"),
+                      Mount(source=str(real_folder/"out"), target=container_out_dir, type="bind")]
+
+    logger.debug(default_mounts)
 
     if module.docker_tag:
         docker_tag: str = module.docker_tag
@@ -162,7 +162,6 @@ async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_p
     module.requires_root = module.requires_root or image_is_monai_map
 
     # Merge the two dictionaries
-    merged_volumes = {**default_volumes, **additional_volumes}
 
     # Determine if Docker Hub should be checked for new module version (only once per hour)
     perform_image_update = True
@@ -198,7 +197,8 @@ async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_p
     try:
         logger.info("Now running container:")
         logger.info(
-            {"docker_tag": docker_tag, "volumes": merged_volumes, "environment": environment, "arguments": arguments}
+            {"docker_tag": docker_tag, "mounts": default_mounts, "volumes": additional_volumes,
+                "environment": environment, "arguments": arguments}
         )
 
         # nomad job dispatch -meta IMAGE_ID=alpine:3.11 -meta PATH=test  mercure-processor
@@ -242,7 +242,8 @@ async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_p
 
         container = docker_client.containers.run(
             docker_tag,
-            volumes=merged_volumes,
+            mounts=default_mounts,
+            volumes=additional_volumes,
             environment=environment,
             **runtime,
             **set_command,
@@ -289,7 +290,7 @@ async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_p
             set_usrns_mode = {}
         docker_client.containers.run(
             "busybox:stable-musl",
-            volumes=merged_volumes,
+            mounts=default_mounts,
             **set_usrns_mode,
             command=f"chown -R {os.getuid()}:{os.getegid()} {container_out_dir}",
             detach=True
@@ -368,8 +369,8 @@ async def process_series(folder: Path) -> None:
             raise e
 
         if not taskfile_path.exists():
-            logger.error("Task file does not exist")
-            raise Exception("Task file does not exist")
+            logger.error(f"Task file {taskfile_path} does not exist")
+            raise Exception(f"Task file {taskfile_path} does not exist")
 
         with open(taskfile_path, "r") as f:
             task = Task(**json.load(f))
@@ -607,7 +608,8 @@ def move_out_folder(task_id: str, source_folder: Path, destination_folder: Path,
 
     target_folder = destination_folder / source_folder.name
     if target_folder.exists():
-        target_folder = destination_folder / (source_folder.name + "_" + datetime.now().isoformat())
+        new_name = source_folder.name.split("_")[0] + "_" + datetime.now().isoformat()
+        target_folder = destination_folder / new_name
 
     logger.debug(f"Moving {source_folder} to {target_folder}, move_all: {move_all}")
     logger.debug("--- source contents ---")

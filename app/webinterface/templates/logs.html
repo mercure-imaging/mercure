@@ -22,7 +22,7 @@
           <div class="control" style="margin-right: 2px;"><input class="input is-small" type="date" id="enddate"
               value="{{end_date}}"></div>
           <div class="control"><input class="input is-small" type="time" id="endtime" value="{{end_time}}"></div>
-          <button class="button is-dark is-small" onclick="refreshDate()">
+          <button class="button is-dark is-small" id="refreshdate" >
             <i class="fas fa-sync"></i></button>
           {% endif %}
         </div>
@@ -56,8 +56,8 @@
   </div>
 </main>
 
-<script>
-  function refreshDate(val) {
+<script nonce="{{ csp_nonce }}">
+  function refreshDate() {
     var url = window.location.href.split('?')[0];
     url += "?"
     {% if start_time_available %}
@@ -72,7 +72,8 @@
     {% endif %}
     window.location.href = url;
   }
-
+  $("#refreshdate").click(refreshDate);
+  
   $(document).ready(function () {
     $("#logviewdiv").scrollTop($("#logviewdiv")[0].scrollHeight);
   });

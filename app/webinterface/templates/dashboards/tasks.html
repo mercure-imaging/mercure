@@ -3,7 +3,7 @@
 {% block title %}Tasks{% endblock %}
 
 {% block extra_head %}
-    <script type="text/javascript" src="{{ url_for('static', path='DataTables/datatables.min.js') }}"></script>
+    <script nonce="{{ csp_nonce }}"  type="text/javascript" src="{{ url_for('static', path='DataTables/datatables.min.js') }}"></script>
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', path='DataTables/datatables.min.css') }}"/>  
 {% endblock %}
 
@@ -44,7 +44,7 @@
             </div>
     </div>
 </main>
-<script>
+<script nonce="{{ csp_nonce }}">
 $(document).ready(function () {      
 
 $('#events-table').DataTable( {
@@ -58,8 +58,8 @@ $('#events-table').DataTable( {
    "scrollY": "740px",
    "scrollX": false,
    "scrollCollapse": true,   
-   "columnDefs": [
-            { "visible": false, "targets": 0 }
+   "columnDefs": [{ targets: '_all', render: DataTable.render.text() },
+            { "visible": false, "targets": 0,  render: DataTable.render.text() },
     ],
     "drawCallback": function (settings) {
             var api = this.api();
@@ -88,8 +88,8 @@ $('#series-table').DataTable( {
    "language": {
        "emptyTable": "No task data available."
    },
-   "columnDefs": [
-            { "visible": false, "targets": 0 }
+   "columnDefs": [{ targets: '_all', render: DataTable.render.text() },
+            { "visible": false, "targets": 0, render: DataTable.render.text() },
     ],
    select: {
             style: 'single'
@@ -136,9 +136,6 @@ $.ajax({
     url: '/api/get-tasks',
     data: {},
     dataType: 'json',
-    "columnDefs": [
-    { "visible": false, "targets": 0 }
-    ],
     error: function () {
         // $('#erroralert').show();
     },

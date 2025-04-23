@@ -20,7 +20,7 @@ webgui.env     Contains IP, port, and secret key for the web interface
 Additional Settings
 -------------------
 
-Advanced settings can be reviewed and adjusted on the Configuration page of the web interface. To change the settings, click the "Edit Settings" button at the bottom of the page. Once saved, the different service modules will automatically load the updated configuration. 
+Advanced settings can be reviewed and adjusted on the Configuration page of the web interface (accessible from the Overview page). To change settings, click the "Edit" button at the top-right of the page. Once saved, the different service modules will automatically load the updated configuration, with the exception of the Receiver service. If you make changes relevant to the Receiver service, you need to restart it for the changes to take effect.
 
 .. note:: Make sure to preserve correct JSON formatting of the settings. The web interface will automatically check the syntax before saving the file.
 

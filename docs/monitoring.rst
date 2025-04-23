@@ -95,8 +95,8 @@ The most convenient way for installing Graphite and Grafana is using `Docker Com
         external: true
 
 
-Bookkeeper with Redash
-----------------------
+Bookkeeper Analysis
+-------------------
 
 All mercure components transfer real-time information about their activities to mercure's bookkeeper service, which acts as central monitoring hub. The bookkeeper service can be disabled if not needed, but it is recommended to use it because it allows answering questions such as which series have been processed (or discarded) or how long average processing times were. It also keeps track of all errors and processing abnormalities that might occur. Moreover, because the bookkeeper tracks all DICOM files that pass through the server, including series that are discarded, it can be used for data mining tasks that exceed the capabilities of many PACS systems (e.g., searching for series where a certain contrast agent has been administered).
 
@@ -129,76 +129,15 @@ Dashboards that we created for our own mercure installation include:
 
 Instructions how to create these dashboards are provided in the :doc:`Dashboard Gallery <../dashboards>`.
 
+.. important:: Since Redash is not actively developed anymore, it has been replaced with `Metabase <https://metabase.com/>`_ which provides a similar web-based functions for creating dashboards. 
 
-Installing Redash
------------------
-
-Redash is a powerful open-source web application for analyzing and visualizing data stored in SQL databases, such as the data collected by the bookkeeper service. Instead of integrating limited analysis functions into mercure's own web interface, we decided to utilize Redash instead, which provides much greater flexibility. You can learn more about Redash at http://redash.io.
-
-Before proceeding with the installation of Redash, it is recommended to create a dedicated Postgres database user for Redash (named "redash") with read-only permissions for the database tables that the bookkeeper service created during the mercure installation. This can be achieved by running the following commands in a bash shell (make sure to replace the password in the command shown below).
-
-For **systemd-type** installations (make sure to use a user account with sudo rights):
+Metabase can be installed alongside with mercure by calling the mercure installation script with the argument "-m":
 
 ::
 
-    sudo -i -u postgres
-    psql
-    \c mercure
-    CREATE USER redash with encrypted password 'put-password-here';
-    GRANT CONNECT ON DATABASE mercure TO redash;
-    GRANT USAGE ON SCHEMA public TO redash;
-    GRANT SELECT ON ALL TABLES IN SCHEMA public TO redash;
-    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO redash;
-    \q
-    exit
+    sudo ./install.sh [systemd/docker] -m
 
-For **Docker-type** installations, it is necessary to open a shell in the Docker container running the postgres database. You can find the contained ID by entering "docker ps" and looking for the container running the image "postgres:alpine". Then, type the following commands:
-
-::
-
-    sudo docker exec -it [container ID] /bin/bash
-    psql -U mercure
-    \c mercure
-    CREATE USER redash with encrypted password 'put-password-here';
-    GRANT CONNECT ON DATABASE mercure TO redash;
-    GRANT USAGE ON SCHEMA public TO redash;
-    GRANT SELECT ON ALL TABLES IN SCHEMA public TO redash;
-    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO redash;
-    \q
-    exit
-
-
-.. note:: The GRANT commands need to be rerun whenever the database tables have been dropped (e.g., when clearing the database).
-
-Redash provides a convenient installation script that uses Docker for the Redash deployment. It is highly recommended to use this script, unless you are very familiar with Redash. 
-
-::
-
-    wget https://raw.githubusercontent.com/getredash/setup/master/setup.sh
-    chmod 700 setup.sh
-    sudo ./setup.sh
-
-Open the Redash configuration page in a web browser
-
-::
-
-    http://[server ip]/setup
-
-After setting up your Redash administrator password, click the top-right configuration icon and select "New Data Source". Select a PostgreSQL database and enter the following connection settings
-
-::
-
-    Type: Postgres
-    Name: mercure
-    Host: 172.17.0.1
-    Port: 5432
-    User: redash
-    Password: [as selected above]
-    Database Name: mercure
-
-Afterwards, click "Save" and validate the database connection by clicking the button "Test Connection". If you see a green "Success" notification on the bottom-right, everything works.
-
-.. tip:: If you want to run Redash on a different port than :80, then you need to edit the file "/opt/redash/docker-compose.yml" and change the value "80:80" in the nginx section to, e.g., "8888:80". Afterwards, you need to restart the nginx container.
+This will also automatically create a set of basic dashboards for monitoring mercure. The login information is printed during the installation process.
 
 
 Alerts

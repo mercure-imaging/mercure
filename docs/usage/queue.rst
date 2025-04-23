@@ -1,7 +1,7 @@
 Queue Management
 ================
 
-The "Queue" page allows monitoring the status of mercure's processing and routing queues, and it provides basic functions for modifying jobs in the processing queue.
+The "Queue" page allows monitoring the status of mercure's processing and routing queues, and it provides basic functions for modifying jobs in the processing queue. It also allows reviewing jobs that have been previously processed or routed, or that have failed.
 
 .. image:: /images/ui/queue.png
    :width: 550px
@@ -20,8 +20,8 @@ Job Status
 
 The lower part of the page shows the status of individual jobs in mercure's different queues. 
 
-.. important:: Some of the functions for modifying jobs are still incomplete and will be added in future versions of mercure.
- 
+.. note:: If you send a DICOM series to mercure, it takes a short time before the series becomes visible on the Queue page (i.e. on the Processing, Routing, or Studies tab) because mercure first waits for expiration of the series completion timeout (60 sec by default, changable in the configuration).
+
 The "Processing" tab shows the jobs currently placed in the processing queue, i.e. jobs (series or studies) for which processing modules are executed. You can mark jobs by clicking on the corresponding row. This will activate the toolbar above the table, which allows, e.g., displaying additional job information or deleting jobs. Similarly, the "Routing" tab shows the outgoing jobs currently placed in the routing queue.
 
 .. image:: /images/ui/queue_processing.png
@@ -31,8 +31,29 @@ The "Processing" tab shows the jobs currently placed in the processing queue, i.
 
 The "Studies" tab show the list of studies currently waiting for complete image arrival, i.e. studies for which a study-level rule has triggered and for which DICOM series are still being collected. It allows enforcing the completion of the series collection by clicking the button "Force study completion".
 
-The "Failure" tab shows a list of all jobs for which processing errors have occurred, including errors during preparation, processing, and routing. Failed jobs can be restarted -- if possible depending on the error type.
+The "Failure" tab shows a list of all jobs for which processing errors have occurred, including errors during preparation, processing, and routing. Failed jobs can be restarted.
 
-The "Archive" tab shows a search box that allows reviewing the status of series/studies still residing on the server that have completed processing/routing or that have been discarded because no rule had triggered. Because there is typically a high number of such jobs, it has been implemented as search box instead of a table with all entries. In the future, it will be possible to reprocess such cases (e.g., if a series had not been processed because the selection rule was incorrect).
+Job Archive
+-----------
 
-.. note:: If you send a DICOM series to mercure, it takes a short time before the series becomes visible on the Queue page (i.e. on the Processing, Routing, or Studies tab) because mercure first waits for expiration of the series completion timeout (60 sec by default).
+The "Archive" tab allows reviewing the status of the last series/studies that have completed processing/routing or that have been discarded because no rule had triggered. Using the search box shown above the table, it is furthermore possible to search for specific cases by patient name, medical record number (MRN), or accession number (ACC). By clicking the filter button (top left above the table), it is possible to restrict the search to only study-level jobs.
+
+.. note:: For study-level jobs, there will be a separate job with scope "SERIES" for each individual series as well as one joint job with scope "STUDY". This is because the indiviudal series initially get collected and then assigned to the STUDY job. 
+
+Additional information about the jobs can be displayed by selecting one job in the table and clicking on the buttons above the table. 
+
++--------------------+-------------------------------------------------------------------------------------------+
+| Button             | Function                                                                                  |
++====================+===========================================================================================+
+| Job information    | Shows details on the received study (e.g., patient, modality, and protocol data)          | 
+|                    |                                                                                           |
+|                    | and the assigned processing task                                                          |
++--------------------+-------------------------------------------------------------------------------------------+
+| Audit trail        | Shows a journal of all processing events related to the case                              |
++--------------------+-------------------------------------------------------------------------------------------+
+| Processing log     | Shows the captured output from all processing modules that have been                      |
+|                    |                                                                                           |
+|                    | executed for the job. If there are multiple jobs, the logs are concatenated               |
++--------------------+-------------------------------------------------------------------------------------------+
+| Processing results | Shows the results returned by the processing modules (if any)                             |
++--------------------+-------------------------------------------------------------------------------------------+

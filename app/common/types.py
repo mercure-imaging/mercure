@@ -4,7 +4,10 @@ types.py
 Definitions for using TypedDicts throughout mercure.
 """
 
+import json
 import typing
+from io import TextIOWrapper
+from os import PathLike
 # Standard python includes
 from typing import Any, Dict, List, Optional, Type, Union, cast
 
@@ -66,6 +69,8 @@ class DicomTarget(Target):
     port: str
     aet_target: str
     aet_source: Optional[str] = ""
+    pass_sender_aet: Optional[bool] = False
+    pass_receiver_aet: Optional[bool] = False
 
     @property
     def short_description(self) -> str:
@@ -78,6 +83,8 @@ class DicomTLSTarget(Target):
     port: str
     aet_target: str
     aet_source: Optional[str] = ""
+    pass_sender_aet: Optional[bool] = False
+    pass_receiver_aet: Optional[bool] = False
     tls_key: str
     tls_cert: str
     ca_cert: str
@@ -183,6 +190,10 @@ class UnsetRule(TypedDict):
     rule: str
 
 
+StudyTriggerCondition = Literal["timeout", "received_series"]
+StudyForceCompletionAction = Literal["discard", "proceed", "ignore"]
+
+
 class Rule(BaseModel, Compat):
     rule: str = "False"
     target: Union[str, List[str]] = ""
@@ -193,8 +204,8 @@ class Rule(BaseModel, Compat):
     tags: str = ""
     action: Literal["route", "both", "process", "discard", "notification"] = "route"
     action_trigger: Literal["series", "study"] = "series"
-    study_trigger_condition: Literal["timeout", "received_series"] = "timeout"
-    study_force_completion_action: Literal["discard", "proceed", "ignore"] = "discard"
+    study_trigger_condition: StudyTriggerCondition = "timeout"
+    study_force_completion_action: StudyForceCompletionAction = "discard"
     study_trigger_series: str = ""
     priority: Literal["normal", "urgent", "offpeak"] = "normal"
     processing_module: Union[str, List[str]] = ""
@@ -307,6 +318,7 @@ class Config(BaseModel, Compat):
     dicom_retrieve: DicomRetrieveConfig = DicomRetrieveConfig()
     store_sample_dicom_tags: bool = False
 
+
 class TaskInfo(BaseModel, Compat):
     action: Literal["route", "both", "process", "discard", "notification"]
     uid: str
@@ -322,6 +334,8 @@ class TaskInfo(BaseModel, Compat):
     mercure_server: str
     device_serial_number: Optional[str] = None
     fail_stage: Optional[FailStage] = None
+    sender_aet: str = "MISSING"
+    receiver_aet: str = "MISSING"
 
 
 class TaskDispatchStatus(BaseModel, Compat):
@@ -339,14 +353,14 @@ class TaskDispatch(BaseModel, Compat):
 
 class TaskStudy(BaseModel, Compat):
     study_uid: str
-    complete_trigger: Optional[str]
+    complete_trigger: Optional[StudyTriggerCondition]
     complete_required_series: str
     creation_time: str
     last_receive_time: str
     received_series: Optional[List[str]]
     received_series_uid: Optional[List[str]]
     complete_force: bool = False
-    complete_force_action: Optional[str] = "discard"
+    complete_force_action: Optional[StudyForceCompletionAction] = "discard"
 
 
 class TaskProcessing(BaseModel, Compat):
@@ -393,6 +407,22 @@ class Task(BaseModel, Compat):
     class Config:
         extra = "forbid"
 
+    @classmethod
+    def from_file(cls, file_or_path: Union[PathLike, TextIOWrapper]) -> 'Task':
+        if isinstance(file_or_path, TextIOWrapper):
+            content = file_or_path.read()
+        else:
+            with open(file_or_path, "r") as f:
+                content = f.read()
+        return cls(**json.loads(content))
 
-class TaskHasStudy(Task):
+    def to_file(self,  file_or_path: Union[PathLike, TextIOWrapper]) -> None:
+        if isinstance(file_or_path, TextIOWrapper):
+            json.dump(self.dict(), file_or_path)
+        else:
+            with open(file_or_path, "w") as f:
+                json.dump(self.dict(), f)
+
+
+class TaskHasStudy(Task): 
     study: TaskStudy

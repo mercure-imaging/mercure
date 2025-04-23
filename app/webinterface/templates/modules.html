@@ -23,7 +23,7 @@
                 </div>                
                 {% if is_admin %}
                 <div class="">
-                    <button class="button is-success" onclick="showAddModal()"><i class="fas fa-plus"></i>&nbsp;Add</button>
+                    <button id="show_add_modal" class="button is-success"><span class="icon"><i class="fas fa-plus"></i></span><span>Add</span></button>
                 </div>
                 {% endif %}
             </div>
@@ -58,12 +58,12 @@
                             </table>
                             <div class="buttons is-right">
                                 {% if is_admin %}
-                                    <a class="button is-success" href="/modules/edit/{{module_name}}"><i
-                                            class="fas fa-pen"></i>&nbsp;Edit</a>
-                                    <button class="button is-danger" id="confirm-me" value="{{module_name}}"
-                                            onclick="confirmDelete(this.value)" {% if module_name in used_modules%}disabled
-                                            title="Cannot delete because target is used by rule '{{ used_module }}'" {% endif %}><i
-                                            class="fas fa-trash-alt"></i>&nbsp;Delete</button>
+                                    <a class="button is-success" href="/modules/edit/{{module_name}}"><span class="icon"><i
+                                            class="fas fa-pen"></i></span><span>Edit</span></a>
+                                    <button class="button is-danger delete-button" value="{{module_name}}"
+                                            {% if module_name in used_modules%}disabled
+                                            title="Cannot delete because target is used by rule '{{ used_module }}'" {% endif %}><span class="icon"><i
+                                            class="fas fa-trash-alt"></i></span><span>Delete</span></button>
                                 {% endif %}
                             </div>
                         </div>
@@ -143,7 +143,11 @@
         </div>
     </main>
 
-    <script>
+    <script nonce="{{ csp_nonce }}">
+        $('.delete-button').click((evt) => {
+            confirmDelete(evt.target.value)
+        })
+
         document.addEventListener('DOMContentLoaded', function () {
             let cardToggles = document.getElementsByClassName('card-toggle');
             for (let i = 0; i < cardToggles.length; i++) {
@@ -154,12 +158,12 @@
             paginate(document.getElementsByClassName('entitycard'))
         });
 
-        function showAddModal(val) {
+        function showAddModal() {
             $("#addnewname").val("");
             $("#addmodal").addClass("is-active");
             $("#addnewname").focus();
         }
-
+        $('#show_add_modal').click(showAddModal)
         var moduleToDelete = "";
 
         function confirmDelete(val) {

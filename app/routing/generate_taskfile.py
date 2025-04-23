@@ -44,9 +44,9 @@ def compose_task(
         # Add general information about the job
         info=add_info(uid, uid_type, triggered_rules, applied_rule, tags_list),
         # Add dispatch information -- completed only if the job includes a dispatching step
-        dispatch=add_dispatching(task_id, uid, applied_rule, tags_list, target) or cast(EmptyDict, {}),
+        dispatch=add_dispatching(task_id, uid, applied_rule, target) or cast(EmptyDict, {}),
         # Add processing information -- completed only if the job includes a processing step
-        process=add_processing(uid, applied_rule, tags_list) or cast(EmptyDict, {}),
+        process=add_processing(applied_rule) or cast(EmptyDict, {}),
         # Add information about the study, included all collected series
         study=add_study(uid, uid_type, applied_rule, tags_list) or cast(EmptyDict, {}),
     )
@@ -56,8 +56,7 @@ def compose_task(
     return task
 
 
-def add_processing(uid: str, applied_rule: str, tags_list: Dict[str, str]
-                   ) -> Optional[Union[TaskProcessing, List[TaskProcessing]]]:
+def add_processing(applied_rule: str) -> Optional[Union[TaskProcessing, List[TaskProcessing]]]:
     """
     Adds information about the desired processing step into the task file,
     which is evaluated by the processing module
@@ -144,7 +143,7 @@ def add_study(
 
 
 def add_dispatching(
-    task_id: str, uid: str, applied_rule: str, tags_list: Dict[str, str], target: Union[str, List[str]]
+    task_id: str, uid: str, applied_rule: str,  target: Union[str, List[str]]
 ) -> Optional[TaskDispatch]:
     """
     Adds information about the desired dispatching step into the task file, which is evaluated by the dispatcher.
@@ -237,6 +236,8 @@ def add_info(
         mrn=tags_list.get("PatientID", mercure_options.MISSING),
         acc=tags_list.get("AccessionNumber", mercure_options.MISSING),
         sender_address=tags_list.get("SenderAddress", mercure_options.MISSING),
+        sender_aet=tags_list.get("SenderAET", mercure_options.MISSING),
+        receiver_aet=tags_list.get("ReceiverAET", mercure_options.MISSING),
         device_serial_number=tags_list.get("DeviceSerialNumber"),
         mercure_version=mercure_defs.VERSION,
         mercure_appliance=config.mercure.appliance_name,
@@ -275,7 +276,7 @@ def create_series_task(
 
 def create_study_task(
     task_id: str,
-    folder_name: str,
+    target_folder: Path,
     triggered_rules: Dict[str, Literal[True]],
     applied_rule: str,
     study_UID: str,
@@ -288,11 +289,10 @@ def create_study_task(
     task = compose_task(task_id, study_UID, "study", triggered_rules, applied_rule, tags_list, "")
     monitor.send_update_task(task)
 
-    task_filename = folder_name + mercure_names.TASKFILE
+    task_filename = target_folder / mercure_names.TASKFILE
     logger.debug(f"Writing study task file {task_filename}")
     try:
-        with open(task_filename, "w") as task_file:
-            json.dump(task.dict(), task_file)
+        task.to_file(task_filename)
     except Exception:
         logger.error(f"Unable to create study task file {task_filename}", task.id)  # handle_error
         return False
@@ -302,7 +302,7 @@ def create_study_task(
 
 def update_study_task(
     task_id: str,
-    folder_name: str,
+    folder: Path,
     triggered_rules: Dict[str, Literal[True]],
     applied_rule: str,
     study_UID: str,
@@ -313,12 +313,11 @@ def update_study_task(
     """
     series_description = tags_list.get("SeriesDescription", mercure_options.INVALID)
     series_uid = tags_list.get("SeriesInstanceUID", mercure_options.INVALID)
-    task_filename = folder_name + mercure_names.TASKFILE
+    task_filename = folder / mercure_names.TASKFILE
 
     # Load existing task file. Raise error if it does not exist
     try:
-        with open(task_filename, "r") as task_file:
-            task: Task = Task(**json.load(task_file))
+        task = Task.from_file(task_filename)
     except Exception:
         logger.error(f"Unable to open study task file {task_filename}", task_id)  # handle_error
         return False, ""
@@ -347,10 +346,9 @@ def update_study_task(
 
     # Safe the updated file back to disk
     try:
-        with open(task_filename, "w") as task_file:
-            json.dump(task.dict(), task_file)
+        task.to_file(task_filename)
     except Exception:
-        logger.error(f"Unable to write task file {task_filename}", task.id)  # handle_error
+        logger.exception(f"Unable to write task file {task_filename}", task.id)  # handle_error
         return False, ""
 
     monitor.send_update_task(task)

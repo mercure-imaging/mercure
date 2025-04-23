@@ -70,10 +70,8 @@ async def get_tests(request):
 @router.get("/find-tasks")
 @requires(["authenticated"])
 async def find_tasks(request):
-    search_term = request.query_params.get("search_term", "")
-    study_filter = request.query_params.get("study_filter", "false")
     try:
-        return JSONResponse(await monitor.find_tasks(search_term, study_filter))
+        return JSONResponse(await monitor.find_tasks(request))
     except monitor.MonitorHTTPError as e:
         return JSONResponse({"error": e.status_code}, status_code=e.status_code)
 

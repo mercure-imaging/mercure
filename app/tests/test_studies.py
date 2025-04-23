@@ -12,6 +12,7 @@ from common.constants import mercure_events, mercure_names
 from common.types import Module, Rule
 from freezegun import freeze_time
 from nomad.api.job import Job
+from nomad.api.jobs import Jobs
 from process import processor
 from pyfakefs.fake_filesystem import FakeFilesystem
 from routing import router
@@ -175,6 +176,7 @@ def test_route_study_error(fs: FakeFilesystem, mercure_config, mocked):
 def test_route_study_processing(fs: FakeFilesystem, mercure_config, mocked, do_error):
     config = mercure_config(
         {
+            "process_runner": "nomad",
             "modules": {
                 "test_module_1": Module(docker_tag="busybox:stable",
                                         settings={"fizz": "buzz", "result": {"value": [1, 2, 3, 4]}}).dict(),
@@ -193,6 +195,9 @@ def test_route_study_processing(fs: FakeFilesystem, mercure_config, mocked, do_e
             },
         }
     )
+    fs.create_file("nomad/mercure-processor-template.nomad", contents="foo")
+    mocked.patch.object(Jobs, "parse", new=lambda x, y: {})
+
     study_uid = str(uuid.uuid4())
     series_uid = str(uuid.uuid4())
     series_description = "test_series_complete"
@@ -229,16 +234,18 @@ def test_route_study_processing(fs: FakeFilesystem, mercure_config, mocked, do_e
                 "Index": 1138,
             },
         )
+        mocked.patch.object(Job, "get_allocations", new=lambda x, y: None)
         mocked.patch.object(Job, "register_job", new=lambda *args: None)
         mocked.patch.object(Job, "dispatch_job", new=fake_run)
         mocked.patch.object(Job, "get_job", new=lambda x, y: dict(Status="dead"))
 
         asyncio.run(processor.run_processor())
         # await processor.run_processor()
+        assert fake_run.called is not do_error
         if do_error:
-            assert list(Path(config.error_folder).glob("**/*")) != []
+            assert list(Path(config.error_folder).glob("**/*")) != [], "Error folder should not be empty."
         else:
-            assert list(Path(config.outgoing_folder).glob("**/*")) != []
+            assert list(Path(config.outgoing_folder).glob("**/*")) != [], "Outgoing folder should not be empty."
 
 
 def test_route_study_series_trigger(fs: FakeFilesystem, mercure_config, mocked):

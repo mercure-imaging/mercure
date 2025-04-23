@@ -1,3 +1,8 @@
+"""
+s3.py
+=====
+"""
+
 from pathlib import Path
 
 import boto3

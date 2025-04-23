@@ -1,3 +1,8 @@
+"""
+simple.py
+=========
+"""
+
 import common.config as config
 from starlette.authentication import requires
 # App-specific includes

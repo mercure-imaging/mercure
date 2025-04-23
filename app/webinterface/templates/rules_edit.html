@@ -2,10 +2,10 @@
 
 {% block title %}Rules{% endblock %}
 {% block extra_head %}
-<script type="text/javascript" src="{{ url_for('static', path='/js/bulma-quickview.min.js') }}"></script>
-<script type="text/javascript" src="{{ url_for('static', path='/js/dicomParser.min.js') }}"></script>
-<script type="text/javascript" src="{{ url_for('static', path='/js/dataDictionary.js') }}"></script>
-<script type="text/javascript" src="{{ url_for('static', path='/js/choices.js') }}"></script>
+<script nonce="{{ csp_nonce }}" type="text/javascript" src="{{ url_for('static', path='/js/bulma-quickview.min.js') }}"></script>
+<script nonce="{{ csp_nonce }}" type="text/javascript" src="{{ url_for('static', path='/js/dicomParser.min.js') }}"></script>
+<script nonce="{{ csp_nonce }}" type="text/javascript" src="{{ url_for('static', path='/js/dataDictionary.js') }}"></script>
+<script nonce="{{ csp_nonce }}" type="text/javascript" src="{{ url_for('static', path='/js/choices.js') }}"></script>
 <link href="{{ url_for('static', path='/css/choices.css') }}" rel="stylesheet">
 
 {% endblock %}
@@ -54,20 +54,20 @@
             </ul>
         </div>
 
-        <form method="post" onsubmit="return validate()">
+        <form method="post">
             <div id="tab-content">
                 <div class="panel is-active" data-content="filtering">
                     <div class="field">
                         <label class="label">Selection Rule</label>
                         <div class="field has-addons">
                             <div class="control">
-                                <button id="toggletestrule" class="button" type="button" onclick="toggleTestRule()" title="Test Rule">
+                                <button id="toggletestrule" class="button" type="button" title="Test Rule">
                                     <i class="fas fa-cogs"></i>
                                 </button> 
                             </div>
                             <div class="control is-expanded">
                                 <textarea rows="1" name="rule" id="rule" class="textarea testinclude textarea_scroll" autocomplete='off'
-                                    onkeyup="this.value = this.value.replace(/[{}\n]/g, '')" type="text"
+                                    type="text"
                                     placeholder="Routing rule"
                                     style="border-top-left-radius: 0px; border-bottom-left-radius: 0px; padding-top: 5px; padding-bottom: 5px; min-height: 36px; height: 36px;">{{rules[rule]['rule']}}</textarea>
                             </div>
@@ -89,8 +89,8 @@
                                         </div>
                                         <div class="buttons">
                                             <button class="button is-dark" default autofocus id="evaltestrule" hx-post="/rules/test"
-                                                hx-include=".testinclude"  hx-target="#testresult"><i class="fas fa-play"></i>&nbsp;Run Test</button>
-                                            <button class="button" type="button" onclick="resetTestRule()"><i class="fas fa-undo-alt"></i>&nbsp;Reset</button>
+                                                hx-include=".testinclude"  hx-target="#testresult"><span class="icon"><i class="fas fa-play"></i></span><span>Run Test</span></button>
+                                            <button class="button" type="button" id="resettestrule"><span class="icon"><i class="fas fa-undo-alt"></i></span><span>Reset</span></button>
                                         </div>
     
                                         <div class="field">
@@ -109,7 +109,7 @@
                                                 <div class="tile is-parent is-vertical" id="dropZone">
                                                     <article class="tile is-child notification is-light ruletesterdashed">
                                                         <p class="title is-5" style="text-align: center; margin-bottom: 0.5em;"><i class="fas fa-file-upload"></i>&nbsp; Drag &amp; drop DICOM file here</p>
-                                                        <p id="dropStatus">&nbsp;</p>
+                                                        <p id="dropStatus" style="text-align: center">&nbsp;</p>
                                                     </article>
                                                 </div>
                                             </div>
@@ -131,7 +131,7 @@
                     <div class="field is-grouped is-grouped-right">
                         <button class="button" type="button" data-show="quickview" data-target="quickviewDefault"
                             style="margin: 0px;">
-                            <i class="fas fa-tags"></i>&nbsp;Available Tags
+                            <span class="icon"><i class="fas fa-tags"></i></span><span>Available Tags</span>
                         </button>
                     </div>
 
@@ -186,11 +186,11 @@
                             </div>
                             <div class="control is-expanded" style="margin-left: 10px;">
                                 <div class="field has-addons" id="study_trigger_series_section">
-                                    <input name="study_trigger_series" id="study_trigger_series" pattern="[^{}\x22]+" onkeyup="this.value = this.value.replace(/[{}\x22\n]/g, '')"
+                                    <input name="study_trigger_series" id="study_trigger_series" pattern="[^{}\x22]+"
                                         class="input series_completion_fix" autocomplete='off' type="text"
                                         placeholder="Series required for completion"
                                         value="{{rules[rule]['study_trigger_series']}}">
-                                    <button class="button" type="button" onclick="showTestCompletionSeries()" title="Test rule">
+                                    <button class="button" type="button" id="showtestcompletionseries" title="Test rule">
                                         <i class="fas fa-spell-check"></i>
                                     </button>
                                 </div>
@@ -264,7 +264,7 @@
                     <div class="field" id="modules_list">
                         <label class="label">Processing Steps</label>
                         <div class="control process_list" style="min-height: 40px;">                            
-                            <input id="processing_module_list" name="processing_module_list" class="input" type="tags" placeholder="Add module using controls on the right"
+                            <input id="processing_module_list" name="processing_module_list" class="input" type="tags" placeholder="Add module(s)"
                             value="{{rules[rule]['processing_module']|join(',') if (rules[rule]['processing_module'].pop) else rules[rule]['processing_module']}}"
                             style="">
                         </div>
@@ -287,7 +287,7 @@
                                 </div>
                             </div>
                             {% if process_runner == "docker" %}
-                                <a class="button" id="add-module" style="border-top-left-radius: 0px; border-bottom-left-radius: 0px;" title="Insert selected module"><i class="fas fa-plus"></i></a>
+                                <a class="button is-link" id="add-module" style="border-top-left-radius: 0px; border-bottom-left-radius: 0px;" title="Insert selected module"><i class="fas fa-plus"></i></a>
                             {% endif %}
                         </div>
                     </div>
@@ -452,8 +452,8 @@
                         <label class="label">Tags</label>
                         <div class="control" style="min-height: 40px;">
                             <input id="tags" name="tags" class="input" type="tags" placeholder="Add tags"
-                                value="{{rules[rule]['tags']}}"
-                                style="height: 36px !important; font-size: 13.33px !important;">
+                                value="{{rules[rule]['tags']|strip_untrusted}}"
+                                style="height: 36px !important; font-size: 13.33px !important;" autocomplete="off">
                         </div>
                     </div>
                 </div>
@@ -461,9 +461,9 @@
             <div class="field">
                 <div class="control buttons is-expanded" style="margin-top: 50px;">
                     <button type="submit" class="button is-success" value="default action" id="savebutton">
-                        <i class="fas fa-save"></i>&nbsp;Save
+                        <span class="icon"><i class="fas fa-save"></i></span><span>Save</span>
                     </button>
-                    <a class="button" href="/rules"><i class="fas fa-ban"></i>&nbsp;Cancel</a>
+                    <a class="button" href="/rules"><span class="icon"><i class="fas fa-ban"></i></span><span>Cancel</span></a>
                 </div>
             </div>
         </form>
@@ -491,7 +491,7 @@
         <footer class="modal-card-foot buttons is-centered">
             <button style="display: none;" class="button" id="evaltestcompletionseries" hx-post="/rules/test_completionseries"
                 hx-include="#study_trigger_series" hx-target="#testcompletionseriesresult">Test</button>            
-            <button class="button" type="button" id="closetestcompletionseries" onclick="closeTestCompletionSeries()">Close</button>
+            <button class="button" type="button" id="closetestcompletionseries">Close</button>
         </footer>
     </div>
 </div>
@@ -519,8 +519,7 @@
                 <table class="table is-fullwidth is-hoverable is-bordered">
                     {% for tag in sortedtags %}
                     <tr>
-                        <td><button class="button is-small is-dark" value="tags.{{tag}}"
-                                onclick="copyTag(this.value)">Copy</button> &nbsp;&nbsp;tags.{{tag}}</td>
+                        <td><button class="button is-small is-dark tag-copy" value="tags.{{tag}}">Copy</button> &nbsp;&nbsp;tags.{{tag}}</td>
                     </tr>
                     {% endfor %}
                 </table>
@@ -533,7 +532,7 @@
     </footer>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
     function validate() {
         var field = "";
         try {
@@ -578,7 +577,10 @@
 
         return true;
     }
-
+    $('form').on('submit', validate);
+    $('#rule').on('keyup', (evt)=> evt.target.value = evt.target.value.replace(/[{}\n]/g, ''))
+    $('#study_trigger_series').on('keyup', (evt)=> evt.target.value = evt.target.value.replace(/[{}\x22\n]/g, ''))
+    
     function toggleTestRule() {
         if($("#testrule").is(":visible")) {
             $("#testrule").hide();
@@ -590,6 +592,7 @@
             $("#evaltestrule").click();
         }      
     }
+    $("#toggletestrule").click(toggleTestRule);
 
     function resetTestRule() {
         resetTags = {{alltags|tojson(indent=4)}};
@@ -598,15 +601,18 @@
         $("#dropStatus").text("");
         $('#evaltestrule').click()
     }
+    $('resettestrule').click(resetTestRule);
 
     function showTestCompletionSeries() {
         $("#testcompletionseries").addClass("is-active");
         $("#evaltestcompletionseries").click();
     }
+    $('showtestcompletionseries').click(showTestCompletionSeries);
 
     function closeTestCompletionSeries() {
         $("#testcompletionseries").removeClass("is-active");
     }
+    $('closetestcompletionseries').click(closeTestCompletionSeries);
 
     function copyTag(value) {
         $("#copyinput").val(value);
@@ -618,7 +624,7 @@
 
         $("#copyinput").css("display", "none");
     }
-
+    $('.tag-copy').click((evt)=>copyTag(evt.target.value))
     $(function () {
         $('#rule').keypress(function (e) {
             if (e.which == 13) {
@@ -897,8 +903,8 @@
         dropZone.addEventListener('drop', handleFileSelect, false);
     });
 </script>
-<script type="text/javascript" src="{{ url_for('static', path='/js/bulma-tagsinput.min.js') }}"></script>
-<script>
+<script nonce="{{ csp_nonce }}" type="text/javascript" src="{{ url_for('static', path='/js/bulma-tagsinput.min.js') }}"></script>
+<script nonce="{{ csp_nonce }}">
     var bulmaTagsInstances = bulmaTagsinput.attach();
     window.setTimeout(function(){$("#modules_list input").attr("readonly","true")},200)   
     // bulmaTagsInstances[0].container.getElementsByTagName("input")[0].setAttribute("readonly",1)

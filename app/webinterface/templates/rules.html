@@ -3,7 +3,7 @@
 {% block title %}Rules{% endblock %}
 
 {% block extra_head %}
-<script type="text/javascript" src="{{ url_for('static', path='/js/bulma-quickview.min.js') }}"></script>
+<script nonce="{{ csp_nonce }}" type="text/javascript" src="{{ url_for('static', path='/js/bulma-quickview.min.js') }}"></script>
 {% endblock %}
 
 {% block content %}
@@ -22,7 +22,7 @@
             </div>
             {% if is_admin %}
             <div class="">
-                <button class="button is-success" onclick="showAddModal()"><i class="fas fa-plus"></i>&nbsp;Add</button>
+                <button class="button is-success" id="showaddmodal"><span class="icon"><i class="fas fa-plus"></i></span><span>Add</span></button>
             </div>
             {% endif %}
         </div>
@@ -106,10 +106,9 @@
                     </table>
                     <div class="buttons is-right">
                         {% if is_admin %}
-                        <a class="button" onclick="showDuplicateModal('{{rule_name}}')"><i class="fas fa-copy"></i>&nbsp;Duplicate</a>
-                        <a class="button is-success" href="/rules/edit/{{rule_name}}"><i class="fas fa-pen"></i>&nbsp;Edit</a>
-                        <button class="button is-danger" id="confirm-me" value="{{rule_name}}"
-                            onclick="confirmDelete(this.value)"><i class="fas fa-trash-alt"></i>&nbsp;Delete</button>
+                        <a class="button duplicate-me" data-value='{{rule_name}}'><span class="icon"><i class="fas fa-copy"></i></span><span>Duplicate</span></a>
+                        <a class="button is-success" href="/rules/edit/{{rule_name}}"><span class="icon"><i class="fas fa-pen"></i></span><span>Edit</span></a>
+                        <button class="button is-danger confirm-me" value="{{rule_name}}"><span class="icon"><i class="fas fa-trash-alt"></i></span><span>Delete</span></button>
                         {% endif %}
                     </div>
                 </div>
@@ -185,7 +184,7 @@
                     <div class="field">
                         <p class="control" style="margin-top: 20px;">
                             <button id="confirm-duplicate-modal" class="button is-success">Create</button>
-                            <a onclick="$('#duplicate-modal').removeClass('is-active')" class="button">Cancel</a>
+                            <a id="closeduplicatemodal" class="button">Cancel</a>
                         </p>
                     </div>
                 </form>
@@ -194,7 +193,7 @@
     </div>
 </main>
 
-<script>
+<script nonce="{{ csp_nonce }}">
     document.addEventListener('DOMContentLoaded', function () {
         let cardToggles = document.getElementsByClassName('card-toggle');
         for (let i = 0; i < cardToggles.length; i++) {
@@ -210,7 +209,7 @@
         $("#addmodal").addClass("is-active");
         $("#addnewname").focus();
     }
-
+    $('#showaddmodal').click(showAddModal);
     function showDuplicateModal(val) {
         $("#duplicate-newname").val("");
         $("#duplicate-modal").addClass("is-active");
@@ -218,12 +217,17 @@
         $("#duplicate-name").text(val);
         $("#duplicate-name-input").val(val);
     }
+    $('.duplicate-me').click((evt) => {
+        showDuplicateModal($(evt.target.closest('.duplicate-me')).attr('data-value'));
+    })
+    $('#closeduplicatemodal').click(()=> $('#duplicate-modal').removeClass('is-active'))
     var ruleToDelete = "";
 
-    function confirmDelete(val) {
+    function confirmDelete(evt) {
         $("#deletemodal").addClass("is-active");
-        ruleToDelete = val;
+        ruleToDelete = evt.target.value;
     }
+    $('.confirm-me').click(confirmDelete)
 
     $(function () {
         $('#closeaddmodal').click(function () {

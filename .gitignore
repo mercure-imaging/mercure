@@ -146,3 +146,4 @@ build-getdcmtags-Desktop_Qt_5_13_0_GCC_64bit-Debug/Makefile
 dcm_extra_tags
 
 .pytest_cache/
+.aider*

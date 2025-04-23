@@ -18,6 +18,7 @@ import string
 import subprocess
 import sys
 import traceback
+import secrets
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
@@ -47,11 +48,12 @@ from starlette.authentication import AuthCredentials, AuthenticationBackend, Sim
 from starlette.config import Config
 from starlette.datastructures import Secret
 from starlette.middleware.authentication import AuthenticationMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.responses import JSONResponse, PlainTextResponse, RedirectResponse, Response
 from starlette.routing import Route, Router
 from starlette.staticfiles import StaticFiles
-from webinterface.common import async_run, redis, rq_fast_scheduler, templates
+from webinterface.common import async_run, get_csp_nonce, redis, rq_fast_scheduler, templates
 from webinterface.dashboards.query.jobs import QueryPipeline
 
 import docker
@@ -918,6 +920,28 @@ exception_handlers = {
 app = None
 
 
+class CSPMiddleware(BaseHTTPMiddleware):
+    async def __call__(self, scope, receive, send):
+        scope["csp_nonce"] = secrets.token_urlsafe()
+        await super().__call__(scope,receive,send)
+
+    async def dispatch(self, request, call_next):
+        response = await call_next(request)
+
+        # Define your CSP policy here
+        csp_policy = (
+            f"script-src 'nonce-{request.scope['csp_nonce']}'; "
+            "img-src 'self'; "
+            "font-src 'self'; "
+            "connect-src 'self'; "
+            "frame-src 'self'; "
+            "object-src 'none';"
+        )
+
+        response.headers["Content-Security-Policy"] = csp_policy
+        return response
+
+
 def create_app() -> Starlette:
     global app, DEBUG_MODE, SECRET_KEY
     app = Starlette(debug=DEBUG_MODE, lifespan=lifespan, exception_handlers=exception_handlers, routes=router)
@@ -926,6 +950,8 @@ def create_app() -> Starlette:
     app.mount("/static", StaticFiles(directory="webinterface/statics", check_dir=False), name="static")
     app.add_middleware(AuthenticationMiddleware, backend=SessionAuthBackend())
     app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY, session_cookie="mercure_session")
+    app.add_middleware(CSPMiddleware)
+    # print(app.state.csp_nonce)
     app.mount("/rules", rules.rules_app, name="rules")
     app.mount("/targets", targets.targets_app)
     app.mount("/modules", modules.modules_app)

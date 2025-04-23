@@ -1,3 +1,8 @@
+"""
+builtin.py
+==========
+"""
+
 from pathlib import Path
 from shlex import split
 from typing import Dict, Generator, List
@@ -48,6 +53,12 @@ class DicomTargetHandler(SubprocessTargetHandler[DicomTarget]):
         target_port = target.port or 104
         target_aet_target = target.aet_target or ""
         target_aet_source = target.aet_source or ""
+
+        if target.pass_sender_aet:
+            target_aet_source = task.info.sender_aet
+        if target.pass_receiver_aet:
+            target_aet_target = task.info.receiver_aet
+
         dcmsend_status_file = str(Path(source_folder) / mercure_names.SENDLOG)
         command = split(
             (f"""dcmsend {target_ip} {target_port} +sd {source_folder} -aet {target_aet_source} """
@@ -118,6 +129,11 @@ class DicomTLSTargetHandler(SubprocessTargetHandler[DicomTLSTarget]):
         target_port = target.port or 104
         target_aet_target = target.aet_target or ""
         target_aet_source = target.aet_source or ""
+
+        if target.pass_sender_aet:
+            target_aet_source = task.info.sender_aet
+        if target.pass_receiver_aet:
+            target_aet_target = task.info.receiver_aet
 
         command = split(
             f"""storescu +tls {target.tls_key} {target.tls_cert} +cf {target.ca_cert} {target_ip} {target_port} """

@@ -17,7 +17,7 @@
             </div>            
             {% if is_admin %}
             <div class="buttons is-left">
-                <button class="button is-success" onclick="showAddModal()"><i class="fas fa-plus"></i>&nbsp;Add</button>
+                <button class="button is-success" id="showaddmodal"><span class="icon"><i class="fas fa-plus"></i></span><span>Add</span></button>
             </div>
             {% endif %}
         </div>
@@ -50,13 +50,13 @@
                         </tr>                                
                     </table>
                     <div class="buttons is-right">
-                        <button type="button" class="button is-dark" value="{{target_name}}" id="testbtn_{{target_name}}" hx-post="/targets/test/{{target_name}}" hx-target="#target_test_result"><i class="fas fa-satellite-dish"></i>&nbsp;Test</button>
+                        <button type="button" class="button is-dark" value="{{target_name}}" id="testbtn_{{target_name}}" hx-post="/targets/test/{{target_name}}" hx-target="#target_test_result"><span class="icon"><i class="fas fa-satellite-dish"></i></span><span>Test</span></button>
                         {% if is_admin %}
-                        <a class="button is-success" href="/targets/edit/{{target_name}}"><i class="fas fa-pen"></i>&nbsp;Edit</a>
-                        <button class="button is-danger" id="confirm-me" value="{{target_name}}"
-                            onclick="confirmDelete(this.value)" {% if target_name in used_targets%}disabled
-                            title="Cannot delete because target is used by rule '{{ used_targets[target_name] }}'" {% endif %}><i
-                                class="fas fa-trash-alt"></i>&nbsp;Delete</button>
+                        <a class="button is-success" href="/targets/edit/{{target_name}}"><span class="icon"><i class="fas fa-pen"></i></span><span>Edit</span></a>
+                        <button class="button is-danger delete-button" value="{{target_name}}"
+                        {% if target_name in used_targets%}disabled
+                            title="Cannot delete because target is used by rule '{{ used_targets[target_name] }}'" {% endif %}><span class="icon"><i
+                                class="fas fa-trash-alt"></i></span><span>Delete</span></button>
                         {% endif %}
                     </div>
                 </div>
@@ -138,7 +138,7 @@
     </div>
 </main>
 
-<script>
+<script nonce="{{ csp_nonce }}">
     document.addEventListener('DOMContentLoaded', function () {
         let cardToggles = document.getElementsByClassName('card-toggle');
         for (let i = 0; i < cardToggles.length; i++) {
@@ -154,13 +154,15 @@
         $("#addmodal").addClass("is-active");
         $("#addnewname").focus();
     }
-
+    $('#showaddmodal').click(showAddModal);
     var targetToDelete = "";
 
     function confirmDelete(val) {
         targetToDelete = val;
         $("#deletemodal").addClass("is-active");
     }
+    $('.delete-button').click((evt) => confirmDelete(evt.target.value))
+
     $("#targets").on('htmx:beforeSend', (evt) => {
         $(evt.target).addClass("is-loading");
     })

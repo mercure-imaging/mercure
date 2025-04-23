@@ -43,12 +43,12 @@
           <div class="column is-one-third">
             {% if is_admin %}
             {% if runtime != "nomad" %}
-            <button class="button" id="servicecontrol" value="" onclick="showControlModal()" style="margin-right: 4px;"><i
-                class="fas fa-wrench"></i>&nbsp;Service Control</button>
+            <button class="button" id="servicecontrol" value="" style="margin-right: 4px;"><span class="icon"><i
+                class="fas fa-wrench"></i></span><span>Service Control</span></button>
             {% endif %}                
             {% endif %}
-            <a class="button" href="/configuration" id="configurationbutton" ><i
-              class="fas fa-sliders-h" ></i>&nbsp;Configuration</a>             
+            <a class="button" href="/configuration" id="configurationbutton" ><span class="icon"><i
+              class="fas fa-sliders-h" ></i></span><span>Configuration</span></a>             
           </div>
         </div>
       </div>
@@ -98,7 +98,7 @@
   <div class="pageloader is-success" id="controlpageloader"><span class="title">Please Wait...</span></div>
 </main>
 
-<script>
+<script nonce="{{ csp_nonce }}">
   function showControlModal(val) {
     $("#controlmodal").addClass("is-active");
     $("#controlserviceselector").focus();
@@ -109,6 +109,8 @@
       $("#controlmodal").removeClass("is-active");
     })
   });
+  
+  $('#servicecontrol').click(showControlModal);
 
   $('#confirmcontrolmodal').click(function () {
     $("#controlpageloader").addClass('is-active');

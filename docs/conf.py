@@ -3,13 +3,13 @@
 import os
 import sys
 from pathlib import Path
-sys.path.insert(0, os.path.abspath('..'))
+sys.path.insert(0, os.path.abspath('../app'))
 
 
 # -- Project information -----------------------------------------------------
 
 project = 'mercure'
-copyright = '2019-2024 The "mercure" authors and contributors'
+copyright = '2019-2025 The "mercure" authors and contributors'
 author = ''
 def read_version() -> str:
     current_version = "0.0.0"
@@ -107,3 +107,10 @@ html_css_files = ['custom.css']
 html_theme = 'sphinx_rtd_theme'
 html_logo = 'images/mercure_logo_w.png'
 html_show_sourcelink = False
+
+
+autodoc_default_options = {
+    'members': True,
+    'undoc-members': True,
+    'show-inheritance': True,    
+}

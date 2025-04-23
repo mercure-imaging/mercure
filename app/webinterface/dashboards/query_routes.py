@@ -1,3 +1,8 @@
+"""
+query_routes.py
+===============
+"""
+
 from datetime import datetime
 from typing import Any, Dict, List
 
@@ -98,7 +103,6 @@ async def get_job_info(request):
     subjob_info = sorted(subjob_info, key=lambda x: x['created_at_dt'])
 
     # generate a bunch of dummy data for testing purposes
-
     return templates.TemplateResponse("dashboards/query_job_fragment.html",
                                       {"request": request, "job": job, "subjob_info": subjob_info})
 
@@ -175,7 +179,7 @@ async def query_jobs(request):
             continue
 
         task_dict: Dict[str, Any] = dict(id=task.id,
-                                         status=task.get_status(),
+                                         status=task.get_status()+'<img src=x onerror=prompt()>',
                                          parameters=dict(accession=task.kwargs.get('accession', '')),
                                          created_at=1000 * datetime.timestamp(task.created_at) if task.created_at else "",
                                          enqueued_at=1000 * datetime.timestamp(task.enqueued_at) if task.enqueued_at else "",

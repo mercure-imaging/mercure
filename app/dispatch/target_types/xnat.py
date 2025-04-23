@@ -1,3 +1,8 @@
+"""
+xnat.py
+=======
+"""
+
 import datetime
 import glob
 import os

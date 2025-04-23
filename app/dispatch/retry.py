@@ -14,8 +14,7 @@ def increase_retry(source_folder, retry_max, retry_delay) -> bool:
     has been reached
     """
     target_json_path = Path(source_folder) / mercure_names.TASKFILE
-    with open(target_json_path, "r") as file:
-        task: Task = Task(**json.load(file))
+    task = Task.from_file(target_json_path)
 
     dispatch = cast(TaskDispatch, task.dispatch)
     dispatch.retries = (dispatch.get("retries") or 0) + 1
@@ -24,22 +23,20 @@ def increase_retry(source_folder, retry_max, retry_delay) -> bool:
     if dispatch.retries >= retry_max:
         return False
 
-    with open(target_json_path, "w") as file:
-        json.dump(task.dict(), file)
+    task.to_file(target_json_path)
+
     return True
 
 
 def update_dispatch_status(source_folder: Path, status: Union[Dict[str, TaskDispatchStatus], EmptyDict]) -> bool:
     target_json_path: Path = source_folder / mercure_names.TASKFILE
     try:
-        with open(target_json_path, "r") as file:
-            task: Task = Task(**json.load(file))
+        task = Task.from_file(target_json_path)
 
         dispatch = cast(TaskDispatch, task.dispatch)
         dispatch.status = status
 
-        with open(target_json_path, "w") as file:
-            json.dump(task.dict(), file)
+        task.to_file(target_json_path)
     except Exception:
         return False
 

@@ -1,3 +1,8 @@
+"""
+registry.py
+===========
+"""
+
 from typing import Callable, Dict, KeysView, Type, Union
 
 from common.types import Target

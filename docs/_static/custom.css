@@ -273,3 +273,15 @@ html.writer-html5 .rst-content table.docutils td>p {
 .spacerbottom30 {
     margin-bottom: 30px !important;
 }
+
+#usage > div > ul {
+    margin-bottom: 0px !important;
+}
+
+#usage > #contents > ul > li > p, #usage > #contents > ul > li {
+    margin-bottom: 0px !important;
+}
+
+#targets > #contents > ul > li > p, #targets > #contents > ul > li {
+    margin-bottom: 0px !important;
+}

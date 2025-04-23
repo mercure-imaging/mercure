@@ -59,6 +59,24 @@ Mercure-Anonymizer
 +---------------+------------------------------------------------------------------------------------+
 
 
+Mercure-Decompressor
+--------------------
+
++---------------+------------------------------------------------------------------------------------+
+| Docker Tag    | mercureimaging/mercure-decompressor                                                |
++===============+====================================================================================+
+| Description   | Module for decompressing receieved DICOMs with support for codes                   | 
+|               |                                                                                    | 
+|               | such as JPEG2000. The module can be placed as the initial entry                    | 
+|               |                                                                                    | 
+|               | into the processing pipeline.                                                      | 
++---------------+------------------------------------------------------------------------------------+
+| Parameters    | See documentation for usage information                                            |
++---------------+------------------------------------------------------------------------------------+
+| Code          | https://github.com/mercure-imaging/mercure-decompressor                            |
++---------------+------------------------------------------------------------------------------------+
+
+
 Mercure-TotalSegmentator
 ------------------------
 

@@ -16,20 +16,16 @@ from typing import Dict, List, Optional, Union
 from urllib.parse import parse_qs
 
 import common.config as config
-import common.monitor as monitor
 # Standard python includes
 import daiquiri
 # DICOM-related includes
-import pydicom
-# App-specific includes
-from decoRouter import Router as decoRouter
 # Starlette-related includes
 from starlette.applications import Starlette
 from starlette.authentication import requires
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
-from webinterface.common import rq_fast_queue, templates
-from webinterface.dashboards.common import ClassBasedRQTask, invoke_getdcmtags
+from webinterface.common import templates
+from webinterface.dashboards.common import invoke_getdcmtags
 
 from .common import router
 
@@ -70,8 +66,7 @@ async def parse_multipart_data(request: Request) -> MultipartData:
     # Split on boundary
     split_on = f"--{boundary}".encode()
     if not split_on in body:
-        logger.info(body)
-        raise Exception(f"Boundary {split_on} not found in body.")
+        raise Exception(f"Boundary {split_on!r} not found in body.")
     parts = body.split(split_on)
     # logger.info(f"Split on {split_on}")
     # logger.info(f"{len(parts)} parts received")
@@ -167,6 +162,12 @@ async def dataset_operation(request: Request):
     form_data = await request.form()
     # logger.info(form_data)
     force_rule = form_data.get('force_rule', None)
+    if force_rule is not None and not isinstance(force_rule, str):
+        force_rule = None
+
+    if force_rule and force_rule not in config.mercure.rules:
+        return JSONResponse({"error": f"Rule {force_rule} not found"}, status_code=404)
+
     folder = (Path(config.mercure.jobs_folder) / "uploaded_datasets" / request.user.display_name / dataset_id).resolve()
     # check that folder is really a subdirectory of config.mercure.jobs_folder
     if not Path(config.mercure.jobs_folder).resolve() in folder.parents:

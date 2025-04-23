@@ -1,7 +1,6 @@
 Service processor
 =================
 
-.. automodule:: processor
-   :members:
-   :undoc-members:
-   :show-inheritance:
+.. automodule:: process.processor
+.. automodule:: process.process_series
+.. automodule:: process.status
