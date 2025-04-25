@@ -91,12 +91,15 @@ graphyte==1.7.1
     # via -r requirements.in
 greenlet==3.0.3
     # via sqlalchemy
-h11==0.14.0
+h11==0.16.0
     # via
+    #   -r requirements.in
     #   httpcore
     #   uvicorn
-httpcore==1.0.5
-    # via httpx
+httpcore==1.0.9
+    # via
+    #   -r requirements.in
+    #   httpx
 httpx==0.27.2
     # via -r requirements.in
 hupper==1.12.1

@@ -34,10 +34,12 @@ aiofiles
 jinja2>=3.1.6
 types-Jinja2
 # 0.15.0 breaks session management; the next commit after 0.18 will include the fix
+httpcore >= 1.0.9
+h11>=0.16.0
 starlette >= 0.40.0
 
 starlette-auth-toolkit
-uvicorn ~= 0.30.6
+uvicorn >= 0.30.6
 itsdangerous
 python-multipart>=0.0.18
 distro
