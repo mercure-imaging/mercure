@@ -1,6 +1,13 @@
 Release History
 ===============
 
+Version 0.4.0-beta.6
+---------------------
+*Release date: 4/24/2025*
+
+* Fix for configuration editor
+* Update of dependencies
+
 Version 0.4.0-beta.4
 ---------------------
 *Release date: 4/21/2025*
