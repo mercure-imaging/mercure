@@ -225,7 +225,7 @@
 
     function confirmDelete(evt) {
         $("#deletemodal").addClass("is-active");
-        ruleToDelete = evt.target.value;
+        ruleToDelete = evt.target.closest('button').value;
     }
     $('.confirm-me').click(confirmDelete)
 
