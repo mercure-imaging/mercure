@@ -883,18 +883,18 @@
 
         $('#jobs_archive').DataTable( {
             "columnDefs": [{ targets: '_all', render: DataTable.render.text() }],
-            "paging":   true,
-            "ordering": true,
+            paging:   true,
+            ordering: true,
             // "info": false,
-            "searching": true,
-            "select": true,
-            "language": {
-                "emptyTable": "No jobs found",
-                "paginate": {
-                    "first":      "First",
-                    "last":       "Last",
-                    "next":       "&gt;",
-                    "previous":   "&lt;"
+            searching: true,
+            select: true,
+            language: {
+                emptyTable: "No jobs found",
+                paginate: {
+                    first:      "First",
+                    last:       "Last",
+                    next:       "&gt;",
+                    previous:   "&lt;"
                 },                
             },
             ajax: {
@@ -968,7 +968,7 @@
                     }
                 }                
             ],
-            dom: '<"columns"<"column"B>><"columns"<"column queuetablepadding"rt>><"columns"<"column"i><"column"p>>',
+            dom: '<"columns"<"column"B>><"columns"<"column queuetablepadding"rt>><"columns"<"column"i><"column"p><"column"f>>',
             /*dom: 'Brtip',*/
             "scrollY": "740px",
             "scrollX": false,
