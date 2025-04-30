@@ -1,6 +1,12 @@
 Release History
 ===============
 
+Version 0.4.0-beta.7
+---------------------
+*Release date: 4/30/2025*
+
+* Bugfixes for UI
+
 Version 0.4.0-beta.6
 ---------------------
 *Release date: 4/24/2025*
