@@ -103,6 +103,12 @@
                         </div>                
                         {% endif %}
                     </div>
+                    <div class="field" style="">
+                        <input id="requires_persistent_storage" name="requires_persistent_storage" type="checkbox"
+                            class="switch is-rounded is-dark" value="True" {% if
+                                module['requires_persistent_storage']==True %}checked="checked" {% endif%}>
+                        <label for="requires_persistent_storage" title="This setting provisions persistent storage for the module">Provision Persistent Storage</label>
+                    </div>
                 </div>
                 <div class="panel" data-content="settings">
                     <div class="field">

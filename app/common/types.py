@@ -184,6 +184,7 @@ class Module(BaseModel, Compat):
     constraints: Optional[str] = ""
     resources: Optional[str] = ""
     requires_root: Optional[bool] = False
+    requires_persistent_storage: Optional[bool] = False
 
 
 class UnsetRule(TypedDict):

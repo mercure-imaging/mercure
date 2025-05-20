@@ -64,6 +64,7 @@ async def save_module(form, name) -> None:
         resources=form.get("resources", ""),
         requires_root=form.get("requires_root", False)
         or form.get("container_type", "mercure") == "monai",
+        requires_persistent_storage=form.get("requires_persistent_storage", False),
     )
     config.save_config()
 
