@@ -109,7 +109,7 @@
                                 module['requires_persistent_storage']==True %}checked="checked" {% endif%}>
                         <label for="requires_persistent_storage" title="This setting provisions persistent storage for the module">Provision Persistent Storage</label>
                     </div>
-                    <div id="persistent_field" class="field">
+                    <div id="persistent_field" class="field" {% if module['requires_persistent_storage']==False %} hidden {% endif%}>
                         <label class="label" for="persistent_file">Persistent File</label>
                         <p class="control">
                             <input class="input"
@@ -226,11 +226,25 @@
     $('#gpu_support').click((evt)=> toggleGPUSupport(evt.target))
 
     function toggleRequiresPersistentStorage(cb) {
+        let field_value= $("#environment").val();
+        if (field_value == "") {
+            field_value="{}";
+        }
+        let environment = JSON.parse(field_value);
         if (cb.checked) {
+            environment["MERCURE_VOLUME"] = "/opt/mercure/module_storage";
             $("#persistent_field").show();
         } else {
+            // if ('MERCURE_VOLUME' in environment) {
+            //     delete environment.MERCURE_VOLUME;
+            // }
             $("#persistent_field").hide();
         }
+        field_value = JSON.stringify(environment);
+        if (field_value == "{}") {
+            field_value = "";
+        }
+        $("#environment").val(field_value);
     }
     $('#requires_persistent_storage').click((evt) => toggleRequiresPersistentStorage(evt.target));
 

@@ -9,6 +9,7 @@ import json
 import re
 from typing import Dict
 from pathlib import Path
+import os
 
 # App-specific includes
 import common.config as config
@@ -69,6 +70,21 @@ async def save_module(form, name) -> None:
     )
     config.save_config()
 
+    if form.get("requires_persistent_storage", False):
+        module_data = config.mercure.modules[name]
+        module_storage_name = module_data.get("persistent_storage_name", "") or name
+        environment = json.loads(module_data.environment) if module_data.environment else {}
+        module_mount_source = Path(environment.get("MERCURE_VOLUME", "")) / module_storage_name
+        try:
+            os.makedirs(module_mount_source, exist_ok=True)
+        except Exception:
+            logger.error(f"Unable to create persistent storage folder {module_mount_source}")
+        if Path(module_mount_source).exists():
+            try:
+                with open(Path(module_mount_source) / "persistent.json", "w") as f:
+                    json.dump(json.loads(form.get("persistent_file", "{}")), f, indent=4)
+            except Exception:
+                logger.error(f"Unable to write persistent.json at {module_mount_source}.")
 
 ###################################################################################
 # Modules endpoints
@@ -203,7 +219,7 @@ async def edit_module(request):
 
     module_data = config.mercure.modules[module]
     module_storage_name = module_data.get("persistent_storage_name", "") or module
-    environment = json.loads(module_data.environment)
+    environment = json.loads(module_data.environment) if module_data.environment else {}
     module_mount_source = Path(environment.get("MERCURE_VOLUME", "")) / module_storage_name
 
     module_persistent_file = ""
