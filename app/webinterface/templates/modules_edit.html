@@ -109,6 +109,18 @@
                                 module['requires_persistent_storage']==True %}checked="checked" {% endif%}>
                         <label for="requires_persistent_storage" title="This setting provisions persistent storage for the module">Provision Persistent Storage</label>
                     </div>
+                    <div id="persistent_field" class="field">
+                        <label class="label" for="persistent_file">Persistent File</label>
+                        <p class="control">
+                            <input class="input"
+                                id="persistent_file"
+                                type="text"
+                                data-json
+                                placeholder="{&quot;counter&quot;: 1}"
+                                name="persistent_file"
+                                value="{{module_persistent_file}}">
+                        </p>
+                    </div>
                 </div>
                 <div class="panel" data-content="settings">
                     <div class="field">
@@ -212,6 +224,15 @@
     }
     
     $('#gpu_support').click((evt)=> toggleGPUSupport(evt.target))
+
+    function toggleRequiresPersistentStorage(cb) {
+        if (cb.checked) {
+            $("#persistent_field").show();
+        } else {
+            $("#persistent_field").hide();
+        }
+    }
+    $('#requires_persistent_storage').click((evt) => toggleRequiresPersistentStorage(evt.target));
 
     function updateDockerArguments() {  
         console.log("update docker arguments")

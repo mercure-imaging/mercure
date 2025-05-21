@@ -8,6 +8,7 @@ Modules page for the graphical user interface of mercure.
 import json
 import re
 from typing import Dict
+from pathlib import Path
 
 # App-specific includes
 import common.config as config
@@ -200,6 +201,19 @@ async def edit_module(request):
             config.mercure.modules[module].settings, indent=4, sort_keys=False
         )
 
+    module_data = config.mercure.modules[module]
+    module_storage_name = module_data.get("persistent_storage_name", "") or module
+    environment = json.loads(module_data.environment)
+    module_mount_source = Path(environment.get("MERCURE_VOLUME", "")) / module_storage_name
+
+    module_persistent_file = ""
+    if Path(module_mount_source).exists():
+        try:
+            with open(Path(module_mount_source) / "persistent.json") as f:
+                module_persistent_file = json.dumps(json.load(f), indent=4, sort_keys=False)
+        except Exception:
+            logger.error(f"Unable to read persistent.json at {module_mount_source}.")
+
     runtime = helper.get_runner()
 
     template = "modules_edit.html"
@@ -212,6 +226,7 @@ async def edit_module(request):
         "settings": settings_string,
         "runtime": runtime,
         "support_root_modules": config.mercure.support_root_modules,
+        "module_persistent_file": module_persistent_file,
     }
     return templates.TemplateResponse(template, context)
 
