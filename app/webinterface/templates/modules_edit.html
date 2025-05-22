@@ -121,6 +121,9 @@
                                 value="{{module_persistent_file}}">
                         </p>
                     </div>
+                    <div class="notification is-warning" id="warning_persistent" style="margin-top: 16px;" {% if module['requires_persistent_storage']==False %} hidden {% endif%}>
+                        <i class="fas fa-info-circle"></i>&nbsp;&nbsp;Persistent JSON file will be overwritten by the above content when saved.
+                    </div>
                 </div>
                 <div class="panel" data-content="settings">
                     <div class="field">
@@ -234,11 +237,13 @@
         if (cb.checked) {
             environment["MERCURE_VOLUME"] = "/opt/mercure/module_storage";
             $("#persistent_field").show();
+            $("#warning_persistent").show();
         } else {
             // if ('MERCURE_VOLUME' in environment) {
             //     delete environment.MERCURE_VOLUME;
             // }
             $("#persistent_field").hide();
+            $("#warning_persistent").hide();
         }
         field_value = JSON.stringify(environment);
         if (field_value == "{}") {
