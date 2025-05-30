@@ -66,24 +66,24 @@ async def save_module(form, name) -> None:
         resources=form.get("resources", ""),
         requires_root=form.get("requires_root", False)
         or form.get("container_type", "mercure") == "monai",
-        requires_persistent_storage=form.get("requires_persistent_storage", False),
+        requires_persistence=form.get("requires_persistence", False),
     )
     config.save_config()
 
-    if form.get("requires_persistent_storage", False):
+    if form.get("requires_persistence", False):
         module_data = config.mercure.modules[name]
-        module_persistence_name = module_data.get("persistent_storage_name", "") or name
+        module_persistence_name = module_data.get("persistence_folder_name", "") or name
         module_mount_source = Path(config.mercure.persistence_folder) / module_persistence_name
         try:
             os.makedirs(module_mount_source, exist_ok=True)
         except Exception:
-            logger.error(f"Unable to create persistent storage folder {module_mount_source}")
+            logger.error(f"Unable to create persistence folder {module_mount_source}")
         if Path(module_mount_source).exists():
             try:
-                with open(Path(module_mount_source) / "persistent.json", "w") as f:
-                    json.dump(json.loads(form.get("persistent_file", "{}")), f, indent=4)
+                with open(Path(module_mount_source) / "persistence.json", "w") as f:
+                    json.dump(json.loads(form.get("persistence_file", "{}")), f, indent=4)
             except Exception:
-                logger.error(f"Unable to write persistent.json at {module_mount_source}.")
+                logger.error(f"Unable to write persistence.json at {module_mount_source}.")
 
 ###################################################################################
 # Modules endpoints
@@ -217,16 +217,16 @@ async def edit_module(request):
         )
 
     module_data = config.mercure.modules[module]
-    module_persistence_name = module_data.get("persistent_storage_name", "") or module
+    module_persistence_name = module_data.get("persistence_folder_name", "") or module
     module_mount_source = Path(config.mercure.persistence_folder) / module_persistence_name
 
-    module_persistent_file = ""
+    module_persistence_file = ""
     if Path(module_mount_source).exists():
         try:
-            with open(Path(module_mount_source) / "persistent.json") as f:
-                module_persistent_file = json.dumps(json.load(f), indent=4, sort_keys=False)
+            with open(Path(module_mount_source) / "persistence.json") as f:
+                module_persistence_file = json.dumps(json.load(f), indent=4, sort_keys=False)
         except Exception:
-            logger.error(f"Unable to read persistent.json at {module_mount_source}.")
+            logger.error(f"Unable to read persistence.json at {module_mount_source}.")
 
     runtime = helper.get_runner()
 
@@ -240,7 +240,7 @@ async def edit_module(request):
         "settings": settings_string,
         "runtime": runtime,
         "support_root_modules": config.mercure.support_root_modules,
-        "module_persistent_file": module_persistent_file,
+        "module_persistence_file": module_persistence_file,
     }
     return templates.TemplateResponse(template, context)
 

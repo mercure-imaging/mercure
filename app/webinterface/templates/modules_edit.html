@@ -112,25 +112,25 @@
                 </div>
                 <div class="panel" data-content="persistence">
                     <div class="field" style="">
-                        <input id="requires_persistent_storage" name="requires_persistent_storage" type="checkbox"
+                        <input id="requires_persistence" name="requires_persistence" type="checkbox"
                             class="switch is-rounded is-dark" value="True" {% if
-                                module['requires_persistent_storage']==True %}checked="checked" {% endif%}>
-                        <label for="requires_persistent_storage" title="This setting provisions persistent storage for the module">Provision Persistent Storage</label>
+                                module['requires_persistence']==True %}checked="checked" {% endif%}>
+                        <label for="requires_persistence" title="This setting provisions persistence folder for the module">Provision Persistence Folder</label>
                     </div>
-                    <div id="persistent_field" class="field" {% if module['requires_persistent_storage']==False %} hidden {% endif%}>
-                        <label class="label" for="persistent_file">Persistent File</label>
+                    <div id="persistence_field" class="field" {% if module['requires_persistence']==False %} hidden {% endif%}>
+                        <label class="label" for="persistence_file">Persistence File</label>
                         <p class="control">
                             <input class="input"
-                                id="persistent_file"
+                                id="persistence_file"
                                 type="text"
                                 data-json
                                 placeholder="{&quot;counter&quot;: 1}"
-                                name="persistent_file"
-                                value="{{module_persistent_file}}">
+                                name="persistence_file"
+                                value="{{module_persistence_file}}">
                         </p>
                     </div>
-                    <div class="notification is-warning" id="warning_persistent" style="margin-top: 16px;" {% if module['requires_persistent_storage']==False %} hidden {% endif%}>
-                        <i class="fas fa-info-circle"></i>&nbsp;&nbsp;Persistent JSON file will be overwritten by the above content when saved.
+                    <div class="notification is-warning" id="warning_persistence" style="margin-top: 16px;" {% if module['requires_persistence']==False %} hidden {% endif%}>
+                        <i class="fas fa-info-circle"></i>&nbsp;&nbsp;Persistence JSON file will be overwritten by the above content when saved.
                     </div>
                 </div>
                 <div class="panel" data-content="settings">
@@ -236,16 +236,16 @@
     
     $('#gpu_support').click((evt)=> toggleGPUSupport(evt.target))
 
-    function toggleRequiresPersistentStorage(cb) {
+    function toggleRequiresPersistenceStorage(cb) {
         if (cb.checked) {
-            $("#persistent_field").show();
-            $("#warning_persistent").show();
+            $("#persistence_field").show();
+            $("#warning_persistence").show();
         } else {
-            $("#persistent_field").hide();
-            $("#warning_persistent").hide();
+            $("#persistence_field").hide();
+            $("#warning_persistence").hide();
         }
     }
-    $('#requires_persistent_storage').click((evt) => toggleRequiresPersistentStorage(evt.target));
+    $('#requires_persistence').click((evt) => toggleRequiresPersistenceStorage(evt.target));
 
     function updateDockerArguments() {  
         console.log("update docker arguments")

@@ -143,20 +143,20 @@ async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_p
     environment = {**module_environment, **mercure_environment, **monai_environment}
     arguments = decode_task_json(module.docker_arguments)
 
-    if module.requires_persistent_storage:
-        persistence_name = module.persistent_storage_name or task_processing.module_name
+    if module.requires_persistence:
+        persistence_name = module.persistence_folder_name or task_processing.module_name
         mount_source = str(Path(config.mercure.persistence_folder) / persistence_name)
         mount_target = "/tmp/persistence"
         environment["MODULE_PERSISTENCE_DIR"] = mount_target
-        logger.info("Mounting persistent storage: " + mount_source)
+        logger.info("Mounting persistence folder: " + mount_source)
         try:
             os.makedirs(mount_source, exist_ok=True)
         except Exception:
-            logger.error(f"Unable to create persistent storage folder {mount_source}")
+            logger.error(f"Unable to create persistence folder {mount_source}")
         if mount_source and Path(mount_source).exists():
             default_mounts.append(Mount(source=mount_source, target=mount_target, type="bind"))
         else:
-            logger.error(f"Persistent storage {mount_source} not found.")
+            logger.error(f"Persistence folder {mount_source} not found.")
 
     set_command = {}
     image_is_monai_map = False
