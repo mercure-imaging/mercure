@@ -20,6 +20,12 @@
                         <span>Docker</span>
                     </a>
                 </li>
+                <li data-tab="persistence">
+                    <a>
+                        <span class="icon"><i class="fas fa-folder"></i></span>
+                        <span>Persistence</span>
+                    </a>
+                </li>
                 <li data-tab="settings">
                     <a>
                         <span class="icon"><i class="fas fa-sliders-h"></i></span>
@@ -103,6 +109,8 @@
                         </div>                
                         {% endif %}
                     </div>
+                </div>
+                <div class="panel" data-content="persistence">
                     <div class="field" style="">
                         <input id="requires_persistent_storage" name="requires_persistent_storage" type="checkbox"
                             class="switch is-rounded is-dark" value="True" {% if
@@ -229,27 +237,13 @@
     $('#gpu_support').click((evt)=> toggleGPUSupport(evt.target))
 
     function toggleRequiresPersistentStorage(cb) {
-        let field_value= $("#environment").val();
-        if (field_value == "") {
-            field_value="{}";
-        }
-        let environment = JSON.parse(field_value);
         if (cb.checked) {
-            environment["MERCURE_VOLUME"] = "/opt/mercure/module_storage";
             $("#persistent_field").show();
             $("#warning_persistent").show();
         } else {
-            // if ('MERCURE_VOLUME' in environment) {
-            //     delete environment.MERCURE_VOLUME;
-            // }
             $("#persistent_field").hide();
             $("#warning_persistent").hide();
         }
-        field_value = JSON.stringify(environment);
-        if (field_value == "{}") {
-            field_value = "";
-        }
-        $("#environment").val(field_value);
     }
     $('#requires_persistent_storage').click((evt) => toggleRequiresPersistentStorage(evt.target));
 

@@ -9,6 +9,7 @@
     "discard_folder": "/var/discard",
     "processing_folder": "/var/processing",
     "jobs_folder": "/var/jobs",
+    "persistence_folder": "/var/persistence",
     "bookkeeper": "0.0.0.0:8080",
     "bookkeeper_api_key": "12345",
     "graphite_ip": "",

@@ -144,10 +144,10 @@ async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_p
     arguments = decode_task_json(module.docker_arguments)
 
     if module.requires_persistent_storage:
-        storage_name = module.persistent_storage_name or task_processing.module_name
-        mount_source = str(Path(environment.get("MERCURE_VOLUME", "")) / storage_name)
-        mount_target = "/tmp/module_storage"
-        environment["MODULE_STORAGE_DIR"] = mount_target
+        persistence_name = module.persistent_storage_name or task_processing.module_name
+        mount_source = str(Path(config.mercure.persistence_folder) / persistence_name)
+        mount_target = "/tmp/persistence"
+        environment["MODULE_PERSISTENCE_DIR"] = mount_target
         logger.info("Mounting persistent storage: " + mount_source)
         try:
             os.makedirs(mount_source, exist_ok=True)

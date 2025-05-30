@@ -72,9 +72,8 @@ async def save_module(form, name) -> None:
 
     if form.get("requires_persistent_storage", False):
         module_data = config.mercure.modules[name]
-        module_storage_name = module_data.get("persistent_storage_name", "") or name
-        environment = json.loads(module_data.environment) if module_data.environment else {}
-        module_mount_source = Path(environment.get("MERCURE_VOLUME", "")) / module_storage_name
+        module_persistence_name = module_data.get("persistent_storage_name", "") or name
+        module_mount_source = Path(config.mercure.persistence_folder) / module_persistence_name
         try:
             os.makedirs(module_mount_source, exist_ok=True)
         except Exception:
@@ -218,9 +217,8 @@ async def edit_module(request):
         )
 
     module_data = config.mercure.modules[module]
-    module_storage_name = module_data.get("persistent_storage_name", "") or module
-    environment = json.loads(module_data.environment) if module_data.environment else {}
-    module_mount_source = Path(environment.get("MERCURE_VOLUME", "")) / module_storage_name
+    module_persistence_name = module_data.get("persistent_storage_name", "") or module
+    module_mount_source = Path(config.mercure.persistence_folder) / module_persistence_name
 
     module_persistent_file = ""
     if Path(module_mount_source).exists():

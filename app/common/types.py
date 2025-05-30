@@ -283,6 +283,7 @@ class Config(BaseModel, Compat):
     discard_folder: str
     processing_folder: str
     jobs_folder: str
+    persistence_folder: str
     router_scan_interval: int       # in seconds
     dispatcher_scan_interval: int   # in seconds
     cleaner_scan_interval: int      # in seconds
