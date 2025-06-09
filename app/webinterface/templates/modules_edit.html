@@ -128,9 +128,13 @@
                                 name="persistence_file"
                                 value="{{module_persistence_file}}">
                         </p>
+                        <div class="buttons is-right" style="margin-top: 16px;">
+                            <button id="save_persistence" class="button is-success"><span class="icon"><i class="fas fa-save"></i></span><span>Save Persistence</span></button>
+                        </div>
                     </div>
+                    <input type="hidden" name="old_persistence_file" value="{{module_persistence_file}}">
                     <div class="notification is-warning" id="warning_persistence" style="margin-top: 16px;" {% if module['requires_persistence']==False %} hidden {% endif%}>
-                        <i class="fas fa-info-circle"></i>&nbsp;&nbsp;Persistence JSON file will be overwritten by the above content when saved.
+                        <i class="fas fa-info-circle"></i>&nbsp;&nbsp;Persistence JSON file will be overwritten only by the above save button.
                     </div>
                 </div>
                 <div class="panel" data-content="settings">
@@ -352,6 +356,33 @@
         });
 
         updateDockerArguments();
+
+        // ajax call to save the persistence file on button click
+        $('#save_persistence').click(function (e) {
+            e.preventDefault();
+            let persistence_file = JSON.parse($('#persistence_file').val());
+            let old_persistence_file = JSON.parse($('input[name="old_persistence_file"]').val());
+            let current_path = window.location.pathname;
+
+            $.ajax({
+                url: current_path + '/save_persistence',
+                type: 'POST',
+                data: JSON.stringify({
+                    'persistence_file': persistence_file,
+                    'old_persistence_file': old_persistence_file
+                }),
+                contentType: "application/json",
+                success: function (response) {
+                    alert(response['message']);
+                    if (response['code'] == 2) {
+                        $('input[name="old_persistence_file"]').val(JSON.stringify(persistence_file));
+                    }
+                },
+                error: function (xhr, status, error) {
+                    alert("Error saving persistence file: " + error);
+                }
+            });
+        });
     });
 
 </script>

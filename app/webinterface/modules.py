@@ -19,7 +19,7 @@ from decoRouter import Router as decoRouter
 # Starlette-related includes
 from starlette.applications import Starlette
 from starlette.authentication import requires
-from starlette.responses import PlainTextResponse, RedirectResponse
+from starlette.responses import PlainTextResponse, RedirectResponse, JSONResponse
 from webinterface.common import strip_untrusted, templates
 
 import docker
@@ -70,20 +70,6 @@ async def save_module(form, name) -> None:
     )
     config.save_config()
 
-    if form.get("requires_persistence", False):
-        module_data = config.mercure.modules[name]
-        module_persistence_name = module_data.get("persistence_folder_name", "") or name
-        module_mount_source = Path(config.mercure.persistence_folder) / module_persistence_name
-        try:
-            os.makedirs(module_mount_source, exist_ok=True)
-        except Exception:
-            logger.error(f"Unable to create persistence folder {module_mount_source}")
-        if Path(module_mount_source).exists():
-            try:
-                with open(Path(module_mount_source) / "persistence.json", "w") as f:
-                    json.dump(json.loads(form.get("persistence_file", "{}")), f, indent=4)
-            except Exception:
-                logger.error(f"Unable to write persistence.json at {module_mount_source}.")
 
 ###################################################################################
 # Modules endpoints
@@ -220,7 +206,7 @@ async def edit_module(request):
     module_persistence_name = module_data.get("persistence_folder_name", "") or module
     module_mount_source = Path(config.mercure.persistence_folder) / module_persistence_name
 
-    module_persistence_file = ""
+    module_persistence_file = "{}"
     if Path(module_mount_source).exists():
         try:
             with open(Path(module_mount_source) / "persistence.json") as f:
@@ -275,6 +261,44 @@ async def edit_module_POST(request):
         return PlainTextResponse("ERROR: Unable to write configuration. Try again.")
 
     return RedirectResponse(url="/modules/", status_code=303)
+
+@router.post("/edit/{module}/save_persistence")
+@requires(["authenticated", "admin"], redirect="login")
+async def save_persistence_file(request):
+    """Saves the persistence file for the given module."""
+    name = request.path_params["module"]
+    data = await request.json()
+
+    if name not in config.mercure.modules:
+        return PlainTextResponse("Invalid module name - perhaps it was deleted?")
+
+    if not re.fullmatch("[0-9a-zA-Z_\-]+", name):
+        return BadRequestResponse("Invalid module name provided.")
+
+    module_data = config.mercure.modules[name]
+    module_persistence_name = module_data.get("persistence_folder_name", "") or name
+    module_mount_source = Path(config.mercure.persistence_folder) / module_persistence_name
+
+    try:
+        os.makedirs(module_mount_source, exist_ok=True)
+    except Exception:
+        logger.error(f"Unable to create persistence folder {module_mount_source}")
+        return JSONResponse({'code': 1, 'message': 'Unable to write persistence file.'})
+    if Path(module_mount_source).exists():
+        try:
+            # check if the saved persistence file matches old persistence file from the form (UI)
+            if Path(module_mount_source / "persistence.json").exists():
+                with open(Path(module_mount_source) / "persistence.json", "r") as f:
+                    saved_persistence_file = json.load(f)
+                if data.get("old_persistence_file", "{}") != saved_persistence_file:
+                        logger.error(f"Old persistence file does not match the saved one at {module_mount_source}. Skipping update!")
+                        return JSONResponse({'code': 0, 'message': 'Load persistence file again. There is a mismatch!'})
+            with open(Path(module_mount_source) / "persistence.json", "w") as f:
+                json.dump(data.get("persistence_file", "{}"), f, indent=4)
+        except Exception:
+            logger.error(f"Unable to write persistence.json at {module_mount_source}.")
+            return JSONResponse({'code': 1, 'message': 'Unable to write persistence file.'})
+    return JSONResponse({'code': 2, 'message': 'Persistence file saved successfully.'})
 
 
 @router.post("/delete/{module}")
