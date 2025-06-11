@@ -211,7 +211,7 @@ reactivex==4.0.4
     # via influxdb-client
 redis==5.0.4
     # via rq
-requests==2.32.3
+requests==2.32.4
     # via
     #   -r requirements.in
     #   dicomweb-client
