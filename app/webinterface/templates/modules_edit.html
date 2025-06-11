@@ -20,16 +20,16 @@
                         <span>Docker</span>
                     </a>
                 </li>
-                <li data-tab="persistence">
-                    <a>
-                        <span class="icon"><i class="fas fa-folder"></i></span>
-                        <span>Persistence</span>
-                    </a>
-                </li>
                 <li data-tab="settings">
                     <a>
                         <span class="icon"><i class="fas fa-sliders-h"></i></span>
                         <span>Settings</span>
+                    </a>
+                </li>
+                <li data-tab="persistence">
+                    <a>
+                        <span class="icon"><i class="fas fa-archive"></i></span>
+                        <span>Persistence</span>
                     </a>
                 </li>
                 <li data-tab="nomad">
@@ -111,31 +111,38 @@
                     </div>
                 </div>
                 <div class="panel" data-content="persistence">
-                    <div class="field" style="">
+                    <div class="field">
                         <input id="requires_persistence" name="requires_persistence" type="checkbox"
                             class="switch is-rounded is-dark" value="True" {% if
                                 module['requires_persistence']==True %}checked="checked" {% endif%}>
-                        <label for="requires_persistence" title="This setting provisions persistence folder for the module">Provision Persistence Folder</label>
+                        <label for="requires_persistence" title="Enables the module to store data that persists across multiple executions">Enable Persistent Data</label>
                     </div>
-                    <div id="persistence_field" class="field" {% if module['requires_persistence']==False %} hidden {% endif%}>
+                    <div id="persistence_field" class="field" {% if module['requires_persistence']==False %} hidden {% endif%} style="margin-top: 30px;">
+
+                        <article class="message is-dark" style="margin-bottom: 30px;">
+                            <div class="message-body">
+                                <p><span style="font-weight: 700; margin-right: 8px;">Storage Location: </span> {{persistence_folder}}</p>
+                            </div>
+                          </article>
+                        <div class="notification is-success" id="persistence_save_success" style="margin-bottom: 1rem;" hidden>
+                            <i class="fas fa-check"></i>&nbsp;&nbsp;Persistence file has been updated.
+                        </div>
                         <label class="label" for="persistence_file">Persistence File</label>
-                        <p class="control">
+                        <div class="control" id="persistence_file_control">
                             <input class="input"
                                 id="persistence_file"
                                 type="text"
                                 data-json
                                 placeholder="{&quot;counter&quot;: 1}"
                                 name="persistence_file"
-                                value="{{module_persistence_file}}">
-                        </p>
-                        <div class="buttons is-right" style="margin-top: 16px;">
-                            <button id="save_persistence" class="button is-success"><span class="icon"><i class="fas fa-save"></i></span><span>Save Persistence</span></button>
+                                value="{{module_persistence_file}}"></textarea>
+                        </div>
+                        <div class="buttons is-right" style="margin-top: 8px;">
+                            <a id="refresh_persistence" type="button" class="button has-tooltip-left has-tooltip-success" style="margin-right: 1px;" data-tooltip="Refresh Persistence File" ><span class="icon"><i class="fas fa-sync-alt"></i></span></a>
+                            <a id="save_persistence" type="button" class="button has-tooltip-right has-tooltip-success" data-tooltip="Save Persistence File" style="margin-right: 0px;"><span class="icon"><i class="fas fa-save"></i></span></a>
                         </div>
                     </div>
                     <input type="hidden" name="old_persistence_file" value="{{module_persistence_file}}">
-                    <div class="notification is-warning" id="warning_persistence" style="margin-top: 16px;" {% if module['requires_persistence']==False %} hidden {% endif%}>
-                        <i class="fas fa-info-circle"></i>&nbsp;&nbsp;Persistence JSON file will be overwritten only by the above save button.
-                    </div>
                 </div>
                 <div class="panel" data-content="settings">
                     <div class="field">
@@ -243,16 +250,13 @@
     function toggleRequiresPersistenceStorage(cb) {
         if (cb.checked) {
             $("#persistence_field").show();
-            $("#warning_persistence").show();
         } else {
             $("#persistence_field").hide();
-            $("#warning_persistence").hide();
         }
     }
     $('#requires_persistence').click((evt) => toggleRequiresPersistenceStorage(evt.target));
 
-    function updateDockerArguments() {  
-        console.log("update docker arguments")
+    function updateDockerArguments() {
         try {        
             text_value = $( "#docker_arguments" ).val();
             if (text_value == "") {
@@ -278,6 +282,17 @@
         "change": updateDockerArguments,
         "input": updateDockerArguments
     })
+
+    function updateSavePersistenceButton() {  
+        $("#save_persistence").addClass("is-success");
+        $('#persistence_save_success').hide();
+    }
+    $('#persistence_file_control').on({
+        "keypress": updateSavePersistenceButton,
+        "keydown": updateSavePersistenceButton,
+        "change": updateSavePersistenceButton,
+        "input": updateSavePersistenceButton
+    })    
 
     function validate() {
         var field = "";
@@ -333,12 +348,12 @@
             }            
             return false;
         }
-        console.log("PASSED");
         return true;
     }
-    $('form').on('submit', validate);
-    $(document).ready(function () {
 
+    $('form').on('submit', validate);
+
+    $(document).ready(function () {
         {% if module['requires_root']==True %}
         $("#warningroot").show();
         {% else %}
@@ -373,7 +388,12 @@
                 }),
                 contentType: "application/json",
                 success: function (response) {
-                    alert(response['message']);
+                    //alert(response['message']);
+                    $('#persistence_save_success').show();
+                    $("#save_persistence").removeClass("is-success");
+                    setTimeout(() => {
+                        $('#persistence_save_success').hide();
+                    }, 3000);
                     if (response['code'] == 2) {
                         $('input[name="old_persistence_file"]').val(JSON.stringify(persistence_file));
                     }

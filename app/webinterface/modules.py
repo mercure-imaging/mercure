@@ -6,10 +6,10 @@ Modules page for the graphical user interface of mercure.
 
 # Standard python includes
 import json
-import re
-from typing import Dict
-from pathlib import Path
 import os
+import re
+from pathlib import Path
+from typing import Dict
 
 # App-specific includes
 import common.config as config
@@ -19,7 +19,7 @@ from decoRouter import Router as decoRouter
 # Starlette-related includes
 from starlette.applications import Starlette
 from starlette.authentication import requires
-from starlette.responses import PlainTextResponse, RedirectResponse, JSONResponse
+from starlette.responses import JSONResponse, PlainTextResponse, RedirectResponse
 from webinterface.common import strip_untrusted, templates
 
 import docker
@@ -219,7 +219,6 @@ async def edit_module(request):
     template = "modules_edit.html"
     context = {
         "request": request,
-
         "page": "modules",
         "module": config.mercure.modules[module],
         "module_name": module,
@@ -227,6 +226,7 @@ async def edit_module(request):
         "runtime": runtime,
         "support_root_modules": config.mercure.support_root_modules,
         "module_persistence_file": module_persistence_file,
+        "persistence_folder": module_mount_source,
     }
     return templates.TemplateResponse(template, context)
 
