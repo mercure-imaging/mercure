@@ -127,6 +127,9 @@
                         <div class="notification is-success" id="persistence_save_success" style="margin-bottom: 1rem;" hidden>
                             <i class="fas fa-check"></i>&nbsp;&nbsp;Persistence file has been updated.
                         </div>
+                        <div class="notification is-danger" id="persistence_save_fail" style="margin-bottom: 1rem;" hidden>
+                            <i class="fas fa-times"></i>&nbsp;&nbsp;Persistence file could not be updated.
+                        </div>
                         <label class="label" for="persistence_file">Persistence File</label>
                         <div class="control" id="persistence_file_control">
                             <input class="input"
@@ -286,6 +289,7 @@
     function updateSavePersistenceButton() {  
         $("#save_persistence").addClass("is-success");
         $('#persistence_save_success').hide();
+        $('#persistence_save_fail').hide();
     }
     $('#persistence_file_control').on({
         "keypress": updateSavePersistenceButton,
@@ -389,13 +393,22 @@
                 contentType: "application/json",
                 success: function (response) {
                     //alert(response['message']);
-                    $('#persistence_save_success').show();
-                    $("#save_persistence").removeClass("is-success");
-                    setTimeout(() => {
-                        $('#persistence_save_success').hide();
-                    }, 3000);
                     if (response['code'] == 2) {
+                        $('#persistence_save_success').show();
+                        $("#save_persistence").removeClass("is-success");
+                        $('#persistence_save_fail').hide();
+                        setTimeout(() => {
+                            $('#persistence_save_success').hide();
+                        }, 3000);
                         $('input[name="old_persistence_file"]').val(JSON.stringify(persistence_file));
+                    } else {
+                        $('#persistence_save_fail').html('<i class="fas fa-times"></i>&nbsp;&nbsp;' + response['message']);
+                        $('#persistence_save_fail').show();
+                        $("#save_persistence").removeClass("is-success");
+                        $('#persistence_save_success').hide();
+                        setTimeout(() => {
+                            $('#persistence_save_fail').hide();
+                        }, 3000);
                     }
                 },
                 error: function (xhr, status, error) {
