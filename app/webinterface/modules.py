@@ -15,6 +15,7 @@ from typing import Dict
 import common.config as config
 import common.helper as helper
 from common.types import Module
+from common.constants import mercure_names
 from decoRouter import Router as decoRouter
 # Starlette-related includes
 from starlette.applications import Starlette
@@ -285,6 +286,14 @@ async def save_persistence_file(request):
         logger.error(f"Unable to create persistence folder {module_mount_source}")
         return JSONResponse({'code': 1, 'message': 'Unable to write persistence file.'})
     if Path(module_mount_source).exists():
+        lock_exists = any(
+            f.endswith(mercure_names.LOCK) and os.path.isfile(os.path.join(module_mount_source, f))
+            for f in os.listdir(module_mount_source)
+            )
+        if lock_exists:
+            logger.info(f"Persistence for module {name} is locked. Skipping update!")
+            return JSONResponse({'code': 3, 'message': 'Cannot update the persistence file while module is running. Try again later.'})
+
         try:
             # check if the saved persistence file matches old persistence file from the form (UI)
             if Path(module_mount_source / "persistence.json").exists():

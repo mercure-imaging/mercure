@@ -9,6 +9,7 @@ import json
 import os
 import shutil
 import sys
+import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional, cast
@@ -143,6 +144,8 @@ async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_p
     environment = {**module_environment, **mercure_environment, **monai_environment}
     arguments = decode_task_json(module.docker_arguments)
 
+    lock_id = str(uuid.uuid1())
+    persistence_lock_file: Optional[Path] = None
     if module.requires_persistence:
         persistence_name = module.persistence_folder_name or task_processing.module_name
         mount_source = str(Path(config.mercure.persistence_folder) / persistence_name)
@@ -155,8 +158,15 @@ async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_p
             logger.error(f"Unable to create persistence folder {mount_source}")
         if mount_source and Path(mount_source).exists():
             default_mounts.append(Mount(source=mount_source, target=mount_target, type="bind"))
+            persistence_lock_file = Path(mount_source) / (lock_id + mercure_names.LOCK)
+            try:
+                persistence_lock_file.touch(exist_ok=False)
+            except Exception:
+                logger.error(f"Unable to create lock file {persistence_lock_file}", task.id)  # handle_error
+                return False
         else:
             logger.error(f"Persistence folder {mount_source} not found.")
+            return False
 
     set_command = {}
     image_is_monai_map = False
@@ -348,6 +358,13 @@ async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_p
             # Remove the container now to avoid that the drive gets full
             container.remove()
 
+    if module.requires_persistence:
+        if persistence_lock_file and persistence_lock_file.exists():
+            try:
+                persistence_lock_file.unlink()
+            except Exception:
+                logger.error(f"Error removing lock file {persistence_lock_file}", task.id)
+                return False
     return processing_success
 
 
