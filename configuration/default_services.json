@@ -2,46 +2,46 @@
     "receiver": {
         "name": "Receiver",
         "systemd_service": "mercure_receiver.service",
-        "docker_service": "mercure_receiver_1"
+        "docker_service": "mercure-receiver-1"
     },
     "router": {
         "name": "Router",
         "systemd_service": "mercure_router.service",
-        "docker_service": "mercure_router_1"
+        "docker_service": "mercure-router-1"
     },
     "processor": {
         "name": "Processor",
         "systemd_service": "mercure_processor.service",
-        "docker_service": "mercure_processor_1"
+        "docker_service": "mercure-processor-1"
     },
     "dispatcher": {
         "name": "Dispatcher",
         "systemd_service": "mercure_dispatcher.service",
-        "docker_service": "mercure_dispatcher_1"
+        "docker_service": "mercure-dispatcher-1"
     },
     "cleaner": {
         "name": "Cleaner",
         "systemd_service": "mercure_cleaner.service",
-        "docker_service": "mercure_cleaner_1"
+        "docker_service": "mercure-cleaner-1"
     },    
     "bookkeeper": {
         "name": "Bookkeeper",
         "systemd_service": "mercure_bookkeeper.service",
-        "docker_service": "mercure_bookkeeper_1"
+        "docker_service": "mercure-bookkeeper-1"
     },
     "ui": {
         "name": "WebUI",
         "systemd_service": "mercure_ui.service",
-        "docker_service": "mercure_ui_1"
+        "docker_service": "mercure-ui-1"
     },
     "redis": {
         "name": "Redis",
         "systemd_service": "redis.service",
-        "docker_service": "mercure_redis_1"
+        "docker_service": "mercure-redis-1"
     },
     "workers": {
         "name": "Workers",
         "systemd_service": ["mercure_worker_fast@1.service", "mercure_worker_fast@2.service", "mercure_worker_slow@1.service", "mercure_worker_slow@2.service"],
-        "docker_service": ["mercure_worker_fast_1", "mercure_worker_fast_2", "mercure_worker_slow_1", "mercure_worker_slow_2"]
+        "docker_service": ["mercure-worker_fast-1", "mercure-worker_fast-2", "mercure-worker_slow-1", "mercure-worker_slow-2"]
     }
 }
