@@ -1,4 +1,3 @@
-version: "3.9"
 x-env: &env
   environment:
     MERCURE_RUNNER: docker
@@ -18,9 +17,10 @@ x-docker-user: &docker-user
   user: "${UID}:${DOCKER_GID}"
 x-user: &user
   user: "${UID}:${GID}"
+
 services:
   ui:
-    <<: *docker-user
+    <<: [*docker-user, *volumes-docker, *env]
     depends_on:
       db:
         condition: service_healthy
@@ -35,8 +35,6 @@ services:
     restart: always
     ports:
       - "8000:8000"
-    <<: *volumes-docker
-    <<: *env
   db:
     image: library/postgres:14-alpine
     restart: always
@@ -54,7 +52,7 @@ services:
       test: [ "CMD-SHELL", "pg_isready -U mercure" ]
 
   receiver:
-    <<: *user
+    <<: [*user, *volumes, *env]
     image: mercureimaging/mercure-receiver${IMAGE_TAG}
     restart: always
     depends_on:
@@ -62,58 +60,46 @@ services:
         condition: service_healthy
     ports:
       - "11112:11112"
-    <<: *volumes
-    <<: *env
 
   cleaner:
-    <<: *user
+    <<: [*user, *volumes, *env]
     image: mercureimaging/mercure-cleaner${IMAGE_TAG}
     restart: always
     depends_on:
       bookkeeper:
         condition: service_healthy
-    <<: *volumes
-    <<: *env
 
   dispatcher:
-    <<: *user
+    <<: [*user, *volumes, *env]
     image: mercureimaging/mercure-dispatcher${IMAGE_TAG}
     restart: always
     depends_on:
       bookkeeper:
         condition: service_healthy
-    <<: *volumes
-    <<: *env
 
   processor:
-    <<: *docker-user
+    <<: [*docker-user, *volumes-docker, *env]
     image: mercureimaging/mercure-processor${IMAGE_TAG}
     restart: always
     depends_on:
       bookkeeper:
         condition: service_healthy
-    <<: *volumes-docker
-    <<: *env
 
   router:
-    <<: *user
+    <<: [*user, *volumes, *env]
     image: mercureimaging/mercure-router${IMAGE_TAG}
     restart: always
     depends_on:
       bookkeeper:
         condition: service_healthy
-    <<: *volumes
-    <<: *env
 
   bookkeeper:
-    <<: *user
+    <<: [*user, *volumes, *env]
     image: mercureimaging/mercure-bookkeeper${IMAGE_TAG}
     restart: always
     depends_on:
       db:
         condition: service_healthy
-    <<: *volumes
-    <<: *env
   
   redis:
     image: redis
@@ -123,7 +109,7 @@ services:
       - redis-cache:/data
 
   worker_fast:
-    <<: *user
+    <<: [*user, *volumes]
     image: mercureimaging/mercure-worker${IMAGE_TAG}
     restart: always
     depends_on:
@@ -133,10 +119,9 @@ services:
     environment:
       WORKER_QUEUE: mercure_fast
       REDIS_URL: redis://redis:6379/0
-    <<: *volumes
 
   worker_slow:
-    <<: *user
+    <<: [*user, *volumes]
     image: mercureimaging/mercure-worker${IMAGE_TAG}
     restart: always
     depends_on:
@@ -146,7 +131,6 @@ services:
     environment:
       WORKER_QUEUE: mercure_slow
       REDIS_URL: redis://redis:6379/0
-    <<: *volumes
 
 volumes:
   db-data:
