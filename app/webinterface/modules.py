@@ -301,7 +301,7 @@ async def save_persistence_file(request):
                     saved_persistence_file = json.load(f)
                 if data.get("old_persistence_file", "{}") != saved_persistence_file:
                         logger.error(f"Old persistence file does not match the saved one at {module_mount_source}. Skipping update!")
-                        return JSONResponse({'code': 0, 'message': 'Load persistence file again. There is a mismatch!'})
+                        return JSONResponse({'code': 0, 'message': 'The persistence file has changed on disk since it was last loaded, so changes cannot be saved. Please reload the persistence file and make your update again. If this happens repeatedly, suspend processing before manually updating the persistence file.'})
             with open(Path(module_mount_source) / "persistence.json", "w") as f:
                 json.dump(data.get("persistence_file", "{}"), f, indent=4)
         except Exception:

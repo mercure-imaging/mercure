@@ -138,7 +138,9 @@
                                 data-json
                                 placeholder="{&quot;counter&quot;: 1}"
                                 name="persistence_file"
-                                value="{{module_persistence_file}}"></textarea>
+                                value="{{module_persistence_file}}"
+                                autocomplete="off"
+                                ></textarea>
                         </div>
                         <div class="buttons is-right" style="margin-top: 8px;">
                             <a id="refresh_persistence" type="button" class="button has-tooltip-left has-tooltip-success" style="margin-right: 1px;" data-tooltip="Refresh Persistence File" ><span class="icon"><i class="fas fa-sync-alt"></i></span></a>
@@ -300,6 +302,14 @@
 
     function validate() {
         var field = "";
+        let persistence_file = JSON.parse($('#persistence_file').val());
+        let old_persistence_file = JSON.parse($('input[name="old_persistence_file"]').val());
+        if ( persistence_file != old_persistence_file && $('#requires_persistence').get(0).checked) {
+            $('#erroralert').html('<i class="fas fa-bug"></i>&nbsp;&nbsp;Persistence information has been edited without saving.');
+            $('#erroralert').show();
+            window.scroll(0,0);
+            return false;
+        }
         try {
             field = "Settings";
             if ($('#settings').val() == "") {
@@ -339,17 +349,18 @@
             {
                 $('#docker_arguments').addClass("is-danger");
                 $('#docker_arguments').focus();
-            }            
+            }
             if (field == "Additional Volumes")
             {
                 $('#additional_volumes').addClass("is-danger");
                 $('#additional_volumes').focus();
-            }            
+            }
             if (field == "Environment Variables")
             {
                 $('#environment').addClass("is-danger");
                 $('#environment').focus();
-            }            
+            }
+            window.scroll(0,0);
             return false;
         }
         return true;
@@ -363,7 +374,7 @@
         {% else %}
         $("#warningroot").hide();
         {% endif %}
-
+        toggleRequiresPersistenceStorage($('#requires_persistence').get(0));
         $('#tabs li').on('click', function () {
             var tab = $(this).data('tab');
 
