@@ -309,6 +309,33 @@ async def save_persistence_file(request):
             return JSONResponse({'code': 1, 'message': 'Unable to write persistence file.'})
     return JSONResponse({'code': 2, 'message': 'Persistence file saved successfully.'})
 
+@router.get("/edit/{module}/refresh_persistence")
+@requires("authenticated", redirect="login")
+async def refresh_persistence_file(request):
+    """Refreshes the persistence file for the given module."""
+    name = request.path_params["module"]
+
+    if name not in config.mercure.modules:
+        return PlainTextResponse("Invalid module name - perhaps it was deleted?")
+
+    if not re.fullmatch("[0-9a-zA-Z_\-]+", name):
+        return BadRequestResponse("Invalid module name provided.")
+
+    module_data = config.mercure.modules[name]
+    module_persistence_name = module_data.get("persistence_folder_name", "") or name
+    module_mount_source = Path(config.mercure.persistence_folder) / module_persistence_name
+
+    if Path(module_mount_source).exists():
+        try:
+            with open(Path(module_mount_source) / "persistence.json") as f:
+                persistence_file = json.dumps(json.load(f), indent=4, sort_keys=False)
+        except Exception:
+            logger.error(f"Unable to read persistence.json at {module_mount_source}.")
+            persistence_file = "{}"
+    else:
+        persistence_file = "{}"
+    return JSONResponse({"persistence_file": persistence_file})
+
 
 @router.post("/delete/{module}")
 @requires(["authenticated", "admin"], redirect="login")

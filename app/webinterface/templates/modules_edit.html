@@ -304,7 +304,7 @@
         var field = "";
         let persistence_file = JSON.parse($('#persistence_file').val());
         let old_persistence_file = JSON.parse($('input[name="old_persistence_file"]').val());
-        if ( persistence_file != old_persistence_file && $('#requires_persistence').get(0).checked) {
+        if ( (JSON.stringify(persistence_file) != JSON.stringify(old_persistence_file)) && $('#requires_persistence').get(0).checked) {
             $('#erroralert').html('<i class="fas fa-bug"></i>&nbsp;&nbsp;Persistence information has been edited without saving.');
             $('#erroralert').show();
             window.scroll(0,0);
@@ -424,6 +424,28 @@
                 },
                 error: function (xhr, status, error) {
                     alert("Error saving persistence file: " + error);
+                }
+            });
+        });
+
+        $('#refresh_persistence').click(function (e) {
+            e.preventDefault();
+            let current_path = window.location.pathname;
+            $.ajax({
+                url: current_path + '/refresh_persistence',
+                type: 'GET',
+                success: function (response) {
+                    let persistence_file = JSON.parse(response['persistence_file']);
+                    $('#persistence_file').val(JSON.stringify(persistence_file)).trigger('input');
+                    $('input[name="old_persistence_file"]').val(JSON.stringify(persistence_file));
+                },
+                error: function (xhr, status, error) {
+                    let message = "Failed to refresh persistence file. Manually verify if the file exists and is accessible.";
+                    $('#persistence_save_fail').html('<i class="fas fa-times"></i>&nbsp;&nbsp;' + message);
+                    $('#persistence_save_fail').show();
+                    setTimeout(() => {
+                        $('#persistence_save_fail').hide();
+                    }, 3000);
                 }
             });
         });
