@@ -434,7 +434,6 @@
                 type: 'GET',
                 success: function (response) {
                     let persistence_file = response['persistence_file'];
-                    console.log(persistence_file)
                     $('#persistence_file').val(persistence_file).trigger('input');
                     $('input[name="old_persistence_file"]').val(persistence_file);
                 },
