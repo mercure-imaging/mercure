@@ -278,7 +278,7 @@
                   }});
           el.on("input", (evt)=> {
             ed.select(null);
-            ed.set({"text":el.val()});
+            ed.set({"text":el.val().replace(/\\n/g,'\n')});
             // if (!el.val()) {
             //   setTimeout(()=>$(new_div).find(".cm-line").attr("placeholder",el.attr("placeholder")), 1000);
             // }
@@ -286,7 +286,7 @@
           // if (el.val() == "") {
           //   ed.set({"text": el.attr("placeholder")})
           // } else {
-          let val = el.val();
+          let val = el.val().replace(/\\n/g,'\n');
           try {
             val = JSON.stringify(JSON.parse(val),null,4);
           } catch {}
