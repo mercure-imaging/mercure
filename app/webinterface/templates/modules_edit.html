@@ -132,15 +132,13 @@
                         </div>
                         <label class="label" for="persistence_file">Persistence File</label>
                         <div class="control" id="persistence_file_control">
-                            <input class="textarea"
+                            <textarea
                                 id="persistence_file"
-                                type="text"
                                 data-json
                                 placeholder="{&quot;counter&quot;: 1}"
                                 name="persistence_file"
-                                value="{{module_persistence_file}}"
                                 autocomplete="off"
-                                ></textarea>
+                                >{{module_persistence_file}}</textarea>
                         </div>
                         <div class="buttons is-right" style="margin-top: 8px;">
                             <a id="refresh_persistence" type="button" class="button has-tooltip-left has-tooltip-success" style="margin-right: 1px;" data-tooltip="Refresh Persistence File" ><span class="icon"><i class="fas fa-sync-alt"></i></span></a>
@@ -390,8 +388,8 @@
         // ajax call to save the persistence file on button click
         $('#save_persistence').click(function (e) {
             e.preventDefault();
-            let persistence_file = JSON.parse($('#persistence_file').val().replace(/\\n/g,'\n'));
-            let old_persistence_file = JSON.parse($('input[name="old_persistence_file"]').val().replace(/\\n/g,'\n'));
+            let persistence_file = JSON.parse($('#persistence_file').val());
+            let old_persistence_file = JSON.parse($('input[name="old_persistence_file"]').val());
             let current_path = window.location.pathname;
 
             $.ajax({
@@ -436,7 +434,8 @@
                 type: 'GET',
                 success: function (response) {
                     let persistence_file = response['persistence_file'];
-                    $('#persistence_file').val(persistence_file.replace(/\n/g, '\\n')).trigger('input');
+                    console.log(persistence_file)
+                    $('#persistence_file').val(persistence_file).trigger('input');
                     $('input[name="old_persistence_file"]').val(persistence_file);
                 },
                 error: function (xhr, status, error) {

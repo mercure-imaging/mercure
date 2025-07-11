@@ -243,6 +243,7 @@
         //     document.getElementById(targetError.value).style.display = "none";
         //   }
         // });
+        window.jsonEditors = new WeakMap();
         $("[data-json]").map(((i,el)=>{
           let new_div = document.createElement("div")
           $(new_div).addClass("json_container")
@@ -276,9 +277,10 @@
                       setTimeout(()=>$(new_div).find(".cm-line").attr("placeholder",el.attr("placeholder")), 10);
                   }
                   }});
+          window.jsonEditors.set(el, ed);
           el.on("input", (evt)=> {
             ed.select(null);
-            ed.set({"text":el.val().replace(/\\n/g,'\n')});
+            ed.set({"text":el.val()});
             // if (!el.val()) {
             //   setTimeout(()=>$(new_div).find(".cm-line").attr("placeholder",el.attr("placeholder")), 1000);
             // }
@@ -286,7 +288,7 @@
           // if (el.val() == "") {
           //   ed.set({"text": el.attr("placeholder")})
           // } else {
-          let val = el.val().replace(/\\n/g,'\n');
+          let val = el.val();
           try {
             val = JSON.stringify(JSON.parse(val),null,4);
           } catch {}
