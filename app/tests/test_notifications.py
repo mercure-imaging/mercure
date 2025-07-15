@@ -134,7 +134,6 @@ async def test_notifications(fs, mercure_config: Callable[[Dict], Config], mocke
     assert hasattr(notification.trigger_notification_for_rule, "assert_has_calls")
     uuids = [str(uuid.uuid1()) for i in range(2)]
     real_uuid1 = uuid.uuid1
-    # real_uuid = uuid.uuid1
 
     def generate_uuids(_uuids) -> Iterator[str]:
         yield from _uuids

@@ -87,7 +87,7 @@ def clean() -> None:
             monitor.send_event(
                 monitor.m_events.PROCESSING,
                 monitor.severity.WARNING,
-                (f"Disk is almost full. Emergency cleaning of the {success_folder} and {discard_folder} folders."
+                (f"Disk is almost full ({used} used of {total}). Emergency cleaning of the {success_folder} and {discard_folder} folders."
                  " Consider adjusting retention period."),
             )
     else:
@@ -101,7 +101,7 @@ def clean() -> None:
                 monitor.send_event(
                     monitor.m_events.PROCESSING,
                     monitor.severity.WARNING,
-                    f"Disk is almost full. Emergency cleaning of the {folder} folder. Consider adjusting retention period.",
+                    f"Disk is almost full ({used} used of {total}). Emergency cleaning of the {folder} folder. Consider adjusting retention period.",
                 )
 
     # Regular cleaning procedure
