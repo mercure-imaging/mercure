@@ -177,7 +177,7 @@ pydicom==2.4.4
     #   -r requirements.in
     #   dicomweb-client
     #   pynetdicom
-pyfakefs==4.5.6
+pyfakefs==5.3.5
     # via -r requirements.in
 pygments==2.18.0
     # via sphinx

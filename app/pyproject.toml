@@ -1,7 +1,7 @@
 [project]
 name = "app"
 version = "0.1.0"
-requires-python = ">=3.10,<3.11"
+requires-python = ">=3.10,<3.13"
 dependencies = [
     "aiofiles>=23.2.1",
     "aiohttp>=3.10.11",
@@ -35,7 +35,7 @@ dependencies = [
     "psycopg2>=2.9.9",
     "pydantic>=1.10.9,<2.0.0",
     "pydicom~=2.4.1",
-    "pyfakefs~=4.5.5",
+    "pyfakefs==5.3.5",
     "pynetdicom~=2.0.2",
     "pytest>=8.2.2",
     "pytest-mock>=3.14.0",
