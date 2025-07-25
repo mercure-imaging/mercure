@@ -58,7 +58,7 @@ class RsyncTargetHandler(SubprocessTargetHandler[RsyncTarget]):
 
         commands = [transfer_command, complete_command]
 
-        if target.run_on_complete is not None:
+        if target.run_on_complete:
             fullpath = f"{target.folder}/mercure_complete.sh"
 
             check_exists = [

@@ -4,6 +4,7 @@ base.py
 """
 
 import subprocess
+import shutil
 from dataclasses import dataclass
 from pathlib import Path
 from subprocess import CalledProcessError, check_output
@@ -13,6 +14,7 @@ import common.config as config
 from common.types import Task, TaskDispatch
 from pydicom import Dataset
 from pydicom.datadict import tag_for_keyword
+import tempfile
 
 logger = config.get_logger()
 
@@ -84,6 +86,15 @@ class SubprocessTargetHandler(TargetHandler[TargetTypeVar]):
         source_folder: Path,
         task: Task,
     ) -> str:
+        # workaround for filtering files from the source folder
+        filter_used = False
+        if "file_filter" in target and target.file_filter:
+            tmp_dir = Path(tempfile.mkdtemp())
+            tmp_folder =  tmp_dir / str(task_id)
+            logger.info(f"Copying {source_folder} to temporary folder {tmp_folder} for filtering")
+            shutil.copytree(source_folder, tmp_folder, ignore=shutil.ignore_patterns(*target.file_filter.split(",")))
+            source_folder = tmp_folder
+            filter_used = True
         commands, opts = self._create_command(target, source_folder, task)
         if not isinstance(commands[0], list):
             commands = [commands]
@@ -101,6 +112,9 @@ class SubprocessTargetHandler(TargetHandler[TargetTypeVar]):
             except CalledProcessError as e:
                 self.handle_error(e, command)
                 raise
+        if filter_used and tmp_dir.exists():
+            logger.info(f"Removing temporary folder {tmp_dir}")
+            shutil.rmtree(tmp_dir)
         return result
 
     def handle_error(self, e: CalledProcessError, command) -> None:

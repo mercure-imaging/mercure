@@ -115,6 +115,7 @@ class SftpTarget(Target):
     user: str
     host: str
     password: Optional[str]
+    file_filter: Optional[str]
 
     @property
     def short_description(self) -> str:
@@ -128,6 +129,7 @@ class RsyncTarget(Target):
     host: str
     password: Optional[str]
     run_on_complete: bool = False
+    file_filter: Optional[str]
 
     @property
     def short_description(self) -> str:
