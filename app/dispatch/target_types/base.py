@@ -88,7 +88,7 @@ class SubprocessTargetHandler(TargetHandler[TargetTypeVar]):
     ) -> str:
         # workaround for filtering files from the source folder
         filter_used = False
-        if "file_filter" in target and target.file_filter:
+        if hasattr(target, "file_filter") and target.file_filter:
             tmp_dir = Path(tempfile.mkdtemp())
             tmp_folder =  tmp_dir / str(task_id)
             logger.info(f"Copying {source_folder} to temporary folder {tmp_folder} for filtering")
