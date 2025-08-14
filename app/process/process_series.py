@@ -318,18 +318,21 @@ async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_p
             mounts=default_mounts,
             **set_usrns_mode,
             command=f"chown -R {os.getuid()}:{os.getegid()} {container_out_dir}",
-            detach=True
+            detach=False
         )
 
         # Reset the permissions to owner rwx, world readonly.
-        (folder / "out").chmod(0o755)
-        for k in (folder / "out").glob("**/*"):
-            if k.is_dir():
-                k.chmod(0o755)
+        try:
+            (folder / "out").chmod(0o755)
+            for k in (folder / "out").glob("**/*"):
+                if k.is_dir():
+                    k.chmod(0o755)
 
-        for k in (folder / "out").glob("**/*"):
-            if k.is_file():
-                k.chmod(0o644)
+            for k in (folder / "out").glob("**/*"):
+                if k.is_file():
+                    k.chmod(0o644)
+        except Exception as e:
+            logger.exception("Unable to set permissions on output files, manually verify to avoid issues. " + str(e))
 
         await monitor.async_send_task_event(
             monitor.task_event.PROCESS_MODULE_COMPLETE,
