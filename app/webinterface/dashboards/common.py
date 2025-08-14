@@ -51,7 +51,7 @@ def invoke_getdcmtags(file: Path, node: Union[DicomTarget, DicomWebTarget, None]
         sender_aet = "MERCURE"
         receiver_aet = "MERCURE"
 
-    import pyfakefs
+    import pyfakefs.fake_pathlib
 
     is_fake_fs = isinstance(Path, pyfakefs.fake_pathlib.FakePathlibPathModule)
     if is_fake_fs:  # running a test
