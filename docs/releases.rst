@@ -1,6 +1,15 @@
 Release History
 ===============
 
+Version 0.4.0-beta.8
+---------------------
+*Release date: 8/15/2025*
+
+* Added persistent storage for processing modules
+* Support modern docker compose
+* Added exclusion filter to sftp and rsync targets
+* Bug fixes and dependencies updates
+
 Version 0.4.0-beta.7
 ---------------------
 *Release date: 4/30/2025*
