@@ -22,7 +22,10 @@ from app.tests.integration.common import MercureService
 
 # current workding directory
 def here() -> str:
-    return os.path.abspath(os.getcwd())
+    if os.path.exists(os.path.abspath(os.getcwd()) + "/app"):
+        return os.path.abspath(os.getcwd())
+    else:
+        return os.path.abspath(os.path.dirname(os.getcwd()))
 
 
 class SupervisorManager:

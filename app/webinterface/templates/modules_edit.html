@@ -26,6 +26,12 @@
                         <span>Settings</span>
                     </a>
                 </li>
+                <li data-tab="persistence">
+                    <a>
+                        <span class="icon"><i class="fas fa-archive"></i></span>
+                        <span>Persistence</span>
+                    </a>
+                </li>
                 <li data-tab="nomad">
                     <a>
                         <span class="icon"><i class="fas fa-dolly-flatbed"></i></span>
@@ -103,6 +109,43 @@
                         </div>                
                         {% endif %}
                     </div>
+                </div>
+                <div class="panel" data-content="persistence">
+                    <div class="field">
+                        <input id="requires_persistence" name="requires_persistence" type="checkbox"
+                            class="switch is-rounded is-dark" value="True" {% if
+                                module['requires_persistence']==True %}checked="checked" {% endif%}>
+                        <label for="requires_persistence" title="Enables the module to store data that persists across multiple executions">Enable Persistent Data</label>
+                    </div>
+                    <div id="persistence_field" class="field" {% if module['requires_persistence']==False %} hidden {% endif%} style="margin-top: 30px;">
+
+                        <article class="message is-dark" style="margin-bottom: 30px;">
+                            <div class="message-body">
+                                <p><span style="font-weight: 700; margin-right: 8px;">Storage Location: </span> {{persistence_folder}}</p>
+                            </div>
+                          </article>
+                        <div class="notification is-success" id="persistence_save_success" style="margin-bottom: 1rem;" hidden>
+                            <i class="fas fa-check"></i>&nbsp;&nbsp;Persistence file has been updated.
+                        </div>
+                        <div class="notification is-danger" id="persistence_save_fail" style="margin-bottom: 1rem;" hidden>
+                            <i class="fas fa-times"></i>&nbsp;&nbsp;Persistence file could not be updated.
+                        </div>
+                        <label class="label" for="persistence_file">Persistence File</label>
+                        <div class="control" id="persistence_file_control">
+                            <textarea
+                                id="persistence_file"
+                                data-json
+                                placeholder="{&quot;counter&quot;: 1}"
+                                name="persistence_file"
+                                autocomplete="off"
+                                >{{module_persistence_file}}</textarea>
+                        </div>
+                        <div class="buttons is-right" style="margin-top: 8px;">
+                            <a id="refresh_persistence" type="button" class="button has-tooltip-left has-tooltip-success" style="margin-right: 1px;" data-tooltip="Refresh Persistence File" ><span class="icon"><i class="fas fa-sync-alt"></i></span></a>
+                            <a id="save_persistence" type="button" class="button has-tooltip-right has-tooltip-success" data-tooltip="Save Persistence File" style="margin-right: 0px;"><span class="icon"><i class="fas fa-save"></i></span></a>
+                        </div>
+                    </div>
+                    <input type="hidden" name="old_persistence_file" value="{{module_persistence_file}}">
                 </div>
                 <div class="panel" data-content="settings">
                     <div class="field">
@@ -207,8 +250,16 @@
     
     $('#gpu_support').click((evt)=> toggleGPUSupport(evt.target))
 
-    function updateDockerArguments() {  
-        console.log("update docker arguments")
+    function toggleRequiresPersistenceStorage(cb) {
+        if (cb.checked) {
+            $("#persistence_field").show();
+        } else {
+            $("#persistence_field").hide();
+        }
+    }
+    $('#requires_persistence').click((evt) => toggleRequiresPersistenceStorage(evt.target));
+
+    function updateDockerArguments() {
         try {        
             text_value = $( "#docker_arguments" ).val();
             if (text_value == "") {
@@ -235,8 +286,28 @@
         "input": updateDockerArguments
     })
 
+    function updateSavePersistenceButton() {  
+        $("#save_persistence").addClass("is-success");
+        $('#persistence_save_success').hide();
+        $('#persistence_save_fail').hide();
+    }
+    $('#persistence_file_control').on({
+        "keypress": updateSavePersistenceButton,
+        "keydown": updateSavePersistenceButton,
+        "change": updateSavePersistenceButton,
+        "input": updateSavePersistenceButton
+    })    
+
     function validate() {
         var field = "";
+        let persistence_file = JSON.parse($('#persistence_file').val());
+        let old_persistence_file = JSON.parse($('input[name="old_persistence_file"]').val());
+        if ( (JSON.stringify(persistence_file) != JSON.stringify(old_persistence_file)) && $('#requires_persistence').get(0).checked) {
+            $('#erroralert').html('<i class="fas fa-bug"></i>&nbsp;&nbsp;Persistence information has been edited without saving.');
+            $('#erroralert').show();
+            window.scroll(0,0);
+            return false;
+        }
         try {
             field = "Settings";
             if ($('#settings').val() == "") {
@@ -276,31 +347,32 @@
             {
                 $('#docker_arguments').addClass("is-danger");
                 $('#docker_arguments').focus();
-            }            
+            }
             if (field == "Additional Volumes")
             {
                 $('#additional_volumes').addClass("is-danger");
                 $('#additional_volumes').focus();
-            }            
+            }
             if (field == "Environment Variables")
             {
                 $('#environment').addClass("is-danger");
                 $('#environment').focus();
-            }            
+            }
+            window.scroll(0,0);
             return false;
         }
-        console.log("PASSED");
         return true;
     }
-    $('form').on('submit', validate);
-    $(document).ready(function () {
 
+    $('form').on('submit', validate);
+
+    $(document).ready(function () {
         {% if module['requires_root']==True %}
         $("#warningroot").show();
         {% else %}
         $("#warningroot").hide();
         {% endif %}
-
+        toggleRequiresPersistenceStorage($('#requires_persistence').get(0));
         $('#tabs li').on('click', function () {
             var tab = $(this).data('tab');
 
@@ -312,6 +384,69 @@
         });
 
         updateDockerArguments();
+
+        // ajax call to save the persistence file on button click
+        $('#save_persistence').click(function (e) {
+            e.preventDefault();
+            let persistence_file = JSON.parse($('#persistence_file').val());
+            let old_persistence_file = JSON.parse($('input[name="old_persistence_file"]').val());
+            let current_path = window.location.pathname;
+
+            $.ajax({
+                url: current_path + '/save_persistence',
+                type: 'POST',
+                data: JSON.stringify({
+                    'persistence_file': persistence_file,
+                    'old_persistence_file': old_persistence_file
+                }),
+                contentType: "application/json",
+                success: function (response) {
+                    //alert(response['message']);
+                    if (response['code'] == 2) {
+                        $('#persistence_save_success').show();
+                        $("#save_persistence").removeClass("is-success");
+                        $('#persistence_save_fail').hide();
+                        setTimeout(() => {
+                            $('#persistence_save_success').hide();
+                        }, 3000);
+                        $('input[name="old_persistence_file"]').val(JSON.stringify(persistence_file));
+                    } else {
+                        $('#persistence_save_fail').html('<i class="fas fa-times"></i>&nbsp;&nbsp;' + response['message']);
+                        $('#persistence_save_fail').show();
+                        $("#save_persistence").removeClass("is-success");
+                        $('#persistence_save_success').hide();
+                        setTimeout(() => {
+                            $('#persistence_save_fail').hide();
+                        }, 3000);
+                    }
+                },
+                error: function (xhr, status, error) {
+                    alert("Error saving persistence file: " + error);
+                }
+            });
+        });
+
+        $('#refresh_persistence').click(function (e) {
+            e.preventDefault();
+            let current_path = window.location.pathname;
+            $.ajax({
+                url: current_path + '/refresh_persistence',
+                type: 'GET',
+                success: function (response) {
+                    let persistence_file = response['persistence_file'];
+                    $('#persistence_file').val(persistence_file).trigger('input');
+                    $('input[name="old_persistence_file"]').val(persistence_file);
+                },
+                error: function (xhr, status, error) {
+                    let message = "Failed to refresh persistence file. Manually verify if the file exists and is accessible.";
+                    $('#persistence_save_fail').html('<i class="fas fa-times"></i>&nbsp;&nbsp;' + message);
+                    $('#persistence_save_fail').show();
+                    setTimeout(() => {
+                        $('#persistence_save_fail').hide();
+                    }, 3000);
+                }
+            });
+        });
     });
 
 </script>

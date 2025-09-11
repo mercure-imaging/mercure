@@ -145,7 +145,7 @@
 
     <script nonce="{{ csp_nonce }}">
         $('.delete-button').click((evt) => {
-            confirmDelete(evt.target.value)
+            confirmDelete(evt.target.closest('button').value)
         })
 
         document.addEventListener('DOMContentLoaded', function () {

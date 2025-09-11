@@ -734,3 +734,7 @@ tr:hover td.dt-control::before {
   padding-top: 0;
   padding-bottom: 0.75rem;
 }
+
+#persistence_file_control > .json_container {
+  height: 400px;
+}

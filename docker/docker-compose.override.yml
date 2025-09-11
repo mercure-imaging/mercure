@@ -1,4 +1,3 @@
-version: "3.9"
 # This file is used to override the default configuration of docker-compose.yml to enable development.
 x-env: &env
   environment:
@@ -23,38 +22,31 @@ x-volumes-docker: &volumes-docker
 services:
   receiver:
     image: mercureimaging/mercure-receiver${IMAGE_TAG}
-    <<: *env
-    <<: *volumes
+    <<: [*env, *volumes]
 
   ui:
     image: mercureimaging/mercure-ui${IMAGE_TAG}
-    <<: *env
-    <<: *volumes-docker
+    <<: [*env, *volumes-docker]
 
   cleaner:
     image: mercureimaging/mercure-cleaner${IMAGE_TAG}
-    <<: *env
-    <<: *volumes
+    <<: [*env, *volumes]
 
   dispatcher:
     image: mercureimaging/mercure-dispatcher${IMAGE_TAG}
-    <<: *env
-    <<: *volumes
+    <<: [*env, *volumes]
       
   processor:
     image: mercureimaging/mercure-processor${IMAGE_TAG}
-    <<: *env  
-    <<: *volumes-docker
+    <<: [*env, *volumes-docker]
 
   router:
     image: mercureimaging/mercure-router${IMAGE_TAG}
-    <<: *env
-    <<: *volumes
+    <<: [*env, *volumes]
 
   bookkeeper:
     image: mercureimaging/mercure-bookkeeper${IMAGE_TAG}
-    <<: *env
-    <<: *volumes
+    <<: [*env, *volumes]
 
   worker_fast:
     image: mercureimaging/mercure-worker${IMAGE_TAG}

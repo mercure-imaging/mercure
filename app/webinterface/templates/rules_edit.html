@@ -607,12 +607,12 @@
         $("#testcompletionseries").addClass("is-active");
         $("#evaltestcompletionseries").click();
     }
-    $('showtestcompletionseries').click(showTestCompletionSeries);
+    $('#showtestcompletionseries').click(showTestCompletionSeries);
 
     function closeTestCompletionSeries() {
         $("#testcompletionseries").removeClass("is-active");
     }
-    $('closetestcompletionseries').click(closeTestCompletionSeries);
+    $('#closetestcompletionseries').click(closeTestCompletionSeries);
 
     function copyTag(value) {
         $("#copyinput").val(value);
@@ -712,7 +712,6 @@
         $('#action_trigger').change(function () {
             var action_trigger = $(this).children("option:selected").val();
             var study_trigger = $('#study_trigger_condition').children("option:selected").val();
-
             if (action_trigger == 'series') {
                 $('#study_trigger_field').hide();
                 $("#force_study_completion_field").hide();
@@ -853,9 +852,12 @@
                         }, 
                         {}
                     );
+                    console.log(JSON.stringify(orderedOutput, null, '    '));
                     $("#dropZone article").removeClass("is-danger").addClass("is-dark")
                     $("#dropStatus").text("Loaded tags from DICOM file " + file.name)
                     $('#testvalues').val(JSON.stringify(orderedOutput, null, '    '))
+                    const event = new Event('input', { bubbles: true, cancelable: true });
+                    $('#testvalues').get(0).dispatchEvent(event);
                     $('#evaltestrule').click()
                 } catch (e) {
                     $("#dropZone article").addClass("is-danger").removeClass("is-primary").removeClass("is-info")

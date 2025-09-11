@@ -179,7 +179,7 @@ async def query_jobs(request):
             continue
 
         task_dict: Dict[str, Any] = dict(id=task.id,
-                                         status=task.get_status()+'<img src=x onerror=prompt()>',
+                                         status=task.get_status(),
                                          parameters=dict(accession=task.kwargs.get('accession', '')),
                                          created_at=1000 * datetime.timestamp(task.created_at) if task.created_at else "",
                                          enqueued_at=1000 * datetime.timestamp(task.enqueued_at) if task.enqueued_at else "",

@@ -6,18 +6,21 @@ Modules page for the graphical user interface of mercure.
 
 # Standard python includes
 import json
+import os
 import re
+from pathlib import Path
 from typing import Dict
 
 # App-specific includes
 import common.config as config
 import common.helper as helper
 from common.types import Module
+from common.constants import mercure_names
 from decoRouter import Router as decoRouter
 # Starlette-related includes
 from starlette.applications import Starlette
 from starlette.authentication import requires
-from starlette.responses import PlainTextResponse, RedirectResponse
+from starlette.responses import JSONResponse, PlainTextResponse, RedirectResponse
 from webinterface.common import strip_untrusted, templates
 
 import docker
@@ -64,6 +67,7 @@ async def save_module(form, name) -> None:
         resources=form.get("resources", ""),
         requires_root=form.get("requires_root", False)
         or form.get("container_type", "mercure") == "monai",
+        requires_persistence=form.get("requires_persistence", False),
     )
     config.save_config()
 
@@ -199,18 +203,31 @@ async def edit_module(request):
             config.mercure.modules[module].settings, indent=4, sort_keys=False
         )
 
+    module_data = config.mercure.modules[module]
+    module_persistence_name = module_data.get("persistence_folder_name", "") or module
+    module_mount_source = Path(config.mercure.persistence_folder) / module_persistence_name
+
+    module_persistence_file = "{}"
+    if Path(module_mount_source).exists():
+        try:
+            with open(Path(module_mount_source) / "persistence.json") as f:
+                module_persistence_file = json.dumps(json.load(f), indent=4, sort_keys=False)
+        except Exception:
+            logger.error(f"Unable to read persistence.json at {module_mount_source}.")
+
     runtime = helper.get_runner()
 
     template = "modules_edit.html"
     context = {
         "request": request,
-
         "page": "modules",
         "module": config.mercure.modules[module],
         "module_name": module,
         "settings": settings_string,
         "runtime": runtime,
         "support_root_modules": config.mercure.support_root_modules,
+        "module_persistence_file": module_persistence_file,
+        "persistence_folder": module_mount_source,
     }
     return templates.TemplateResponse(template, context)
 
@@ -245,6 +262,79 @@ async def edit_module_POST(request):
         return PlainTextResponse("ERROR: Unable to write configuration. Try again.")
 
     return RedirectResponse(url="/modules/", status_code=303)
+
+@router.post("/edit/{module}/save_persistence")
+@requires(["authenticated", "admin"], redirect="login")
+async def save_persistence_file(request):
+    """Saves the persistence file for the given module."""
+    name = request.path_params["module"]
+    data = await request.json()
+
+    if name not in config.mercure.modules:
+        return PlainTextResponse("Invalid module name - perhaps it was deleted?")
+
+    if not re.fullmatch("[0-9a-zA-Z_\-]+", name):
+        return BadRequestResponse("Invalid module name provided.")
+
+    module_data = config.mercure.modules[name]
+    module_persistence_name = module_data.get("persistence_folder_name", "") or name
+    module_mount_source = Path(config.mercure.persistence_folder) / module_persistence_name
+
+    try:
+        os.makedirs(module_mount_source, exist_ok=True)
+    except Exception:
+        logger.error(f"Unable to create persistence folder {module_mount_source}")
+        return JSONResponse({'code': 1, 'message': 'Unable to write persistence file.'})
+    if Path(module_mount_source).exists():
+        lock_exists = any(
+            f.endswith(mercure_names.LOCK) and os.path.isfile(os.path.join(module_mount_source, f))
+            for f in os.listdir(module_mount_source)
+            )
+        if lock_exists:
+            logger.info(f"Persistence for module {name} is locked. Skipping update!")
+            return JSONResponse({'code': 3, 'message': 'Cannot update the persistence file while module is running. Try again later.'})
+
+        try:
+            # check if the saved persistence file matches old persistence file from the form (UI)
+            if Path(module_mount_source / "persistence.json").exists():
+                with open(Path(module_mount_source) / "persistence.json", "r") as f:
+                    saved_persistence_file = json.load(f)
+                if data.get("old_persistence_file", "{}") != saved_persistence_file:
+                        logger.error(f"Old persistence file does not match the saved one at {module_mount_source}. Skipping update!")
+                        return JSONResponse({'code': 0, 'message': 'The persistence file has changed on disk since it was last loaded, so changes cannot be saved. Please reload the persistence file and make your update again. If this happens repeatedly, suspend processing before manually updating the persistence file.'})
+            with open(Path(module_mount_source) / "persistence.json", "w") as f:
+                json.dump(data.get("persistence_file", "{}"), f, indent=4)
+        except Exception:
+            logger.error(f"Unable to write persistence.json at {module_mount_source}.")
+            return JSONResponse({'code': 1, 'message': 'Unable to write persistence file.'})
+    return JSONResponse({'code': 2, 'message': 'Persistence file saved successfully.'})
+
+@router.get("/edit/{module}/refresh_persistence")
+@requires("authenticated", redirect="login")
+async def refresh_persistence_file(request):
+    """Refreshes the persistence file for the given module."""
+    name = request.path_params["module"]
+
+    if name not in config.mercure.modules:
+        return PlainTextResponse("Invalid module name - perhaps it was deleted?")
+
+    if not re.fullmatch("[0-9a-zA-Z_\-]+", name):
+        return BadRequestResponse("Invalid module name provided.")
+
+    module_data = config.mercure.modules[name]
+    module_persistence_name = module_data.get("persistence_folder_name", "") or name
+    module_mount_source = Path(config.mercure.persistence_folder) / module_persistence_name
+
+    if Path(module_mount_source).exists():
+        try:
+            with open(Path(module_mount_source) / "persistence.json") as f:
+                persistence_file = json.dumps(json.load(f), indent=4, sort_keys=False)
+        except Exception:
+            logger.error(f"Unable to read persistence.json at {module_mount_source}.")
+            persistence_file = "{}"
+    else:
+        persistence_file = "{}"
+    return JSONResponse({"persistence_file": persistence_file})
 
 
 @router.post("/delete/{module}")

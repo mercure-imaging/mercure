@@ -17,7 +17,6 @@ from docker.models.containers import ContainerCollection
 from process import processor
 from pytest_mock import MockerFixture
 from routing import router
-
 from .testing_common import FakeDockerContainer, make_fake_processor, mock_incoming_uid
 
 logger = config.get_logger()
@@ -134,14 +133,15 @@ async def test_notifications(fs, mercure_config: Callable[[Dict], Config], mocke
     assert hasattr(notification.trigger_notification_for_rule, "assert_called_with")
     assert hasattr(notification.trigger_notification_for_rule, "assert_has_calls")
     uuids = [str(uuid.uuid1()) for i in range(2)]
+    real_uuid1 = uuid.uuid1
 
-    # real_uuid = uuid.uuid1
-
-    def generate_uuids() -> Iterator[str]:
-        yield from uuids
-
-    generator = generate_uuids()
-
+    def generate_uuids(_uuids) -> Iterator[str]:
+        yield from _uuids
+        while True:
+            yield str(real_uuid1())
+    
+    generator = generate_uuids(uuids)
+    # print(list(itertools.islice(generator,6)))
     task_id = uuids[0]
     new_task_id = uuids[1]
 
@@ -153,7 +153,15 @@ async def test_notifications(fs, mercure_config: Callable[[Dict], Config], mocke
                            trigger_error=on_error, do_request=do_request, do_error=do_error)},
     )
     mock_incoming_uid(config, fs, uid)
+    
     mocked.patch("uuid.uuid1", new=lambda: next(generator))
+    class FakeSMTP:
+        def send_message(self, msg):
+            pass
+        def quit(self):
+            pass
+    
+    mocked.patch("smtplib.SMTP", new=lambda x: FakeSMTP())
     router.run_router()
     if action == "notification":
         notification.trigger_notification_for_rule.assert_has_calls(  # type: ignore

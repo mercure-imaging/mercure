@@ -49,7 +49,7 @@ def test_wrong_end_input_offpeak():
 def test_cleaning_simple(fs: FakeFilesystem, mercure_config, mocked):
     """ """
     config = mercure_config({"retention": timedelta(hours=24 * 3).total_seconds()})
-    fs.set_disk_usage(10_000)
+    fs.set_disk_usage(100_000_000)
 
     success_folder = Path(config.success_folder)
 

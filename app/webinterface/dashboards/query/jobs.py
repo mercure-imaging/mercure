@@ -16,7 +16,7 @@ from typing import Any, Dict, Generator, List, Optional, Union, cast
 
 # App-specific includes
 import common.config as config
-import pyfakefs.fake_pathlib
+# import pyfakefs.fake_pathlib
 import rq
 from common import helper
 from common.types import DicomTarget, DicomWebTarget

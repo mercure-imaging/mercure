@@ -115,6 +115,7 @@ class SftpTarget(Target):
     user: str
     host: str
     password: Optional[str]
+    file_filter: Optional[str]
 
     @property
     def short_description(self) -> str:
@@ -128,6 +129,7 @@ class RsyncTarget(Target):
     host: str
     password: Optional[str]
     run_on_complete: bool = False
+    file_filter: Optional[str]
 
     @property
     def short_description(self) -> str:
@@ -184,6 +186,8 @@ class Module(BaseModel, Compat):
     constraints: Optional[str] = ""
     resources: Optional[str] = ""
     requires_root: Optional[bool] = False
+    requires_persistence: Optional[bool] = False
+    persistence_folder_name: Optional[str] = ""
 
 
 class UnsetRule(TypedDict):
@@ -281,6 +285,7 @@ class Config(BaseModel, Compat):
     discard_folder: str
     processing_folder: str
     jobs_folder: str
+    persistence_folder: str
     router_scan_interval: int       # in seconds
     dispatcher_scan_interval: int   # in seconds
     cleaner_scan_interval: int      # in seconds

@@ -243,6 +243,7 @@
         //     document.getElementById(targetError.value).style.display = "none";
         //   }
         // });
+        window.jsonEditors = {};
         $("[data-json]").map(((i,el)=>{
           let new_div = document.createElement("div")
           $(new_div).addClass("json_container")
@@ -276,6 +277,7 @@
                       setTimeout(()=>$(new_div).find(".cm-line").attr("placeholder",el.attr("placeholder")), 10);
                   }
                   }});
+          window.jsonEditors[el.attr("id")] = ed;
           el.on("input", (evt)=> {
             ed.select(null);
             ed.set({"text":el.val()});

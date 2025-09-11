@@ -18,3 +18,9 @@
     <td>Run on complete:</td>
     <td>{{ target.run_on_complete }}</td>
 </tr>
+{% if target.file_filter %}
+<tr>
+    <td>Exclusion Filter:</td>
+    <td>{{ target.file_filter }}</td>
+</tr>
+{% endif %}

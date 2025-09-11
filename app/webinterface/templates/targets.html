@@ -161,7 +161,7 @@
         targetToDelete = val;
         $("#deletemodal").addClass("is-active");
     }
-    $('.delete-button').click((evt) => confirmDelete(evt.target.value))
+    $('.delete-button').click((evt) => confirmDelete(evt.target.closest('button').value))
 
     $("#targets").on('htmx:beforeSend', (evt) => {
         $(evt.target).addClass("is-loading");

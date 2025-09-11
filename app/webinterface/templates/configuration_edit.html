@@ -46,9 +46,9 @@
     $('form').on('submit', validate);
 </script>
 
-<script nonce="{{ csp_nonce }}" type="text" id="config_content" nonce="{{ csp_nonce }}">{{ config_content|safe }}</script>
+<script nonce="{{ csp_nonce }}" type="text" id="config_content">{{ config_content|safe }}</script>
 
-<script nonce="{{ csp_nonce }}" type="module" nonce="{{ csp_nonce }}">
+<script nonce="{{ csp_nonce }}" type="module">
     let config_text = document.getElementById('config_content').textContent;
     import { JSONEditor } from "{{ url_for('static', path='/js/svelte-jsoneditor.js') }}"
 

@@ -286,7 +286,7 @@ async def test_process_series(fs, mercure_config: Callable[[Dict], Config], mock
                  mounts=unittest.mock.ANY,
                  userns_mode='host',
                  command=f'chown -R {uid_string} /tmp/output',
-                 detach=True)
+                 detach=False)
         ]
     )
     print("FAKE RUN RESULT FILES", list((Path("/var/success")).glob("**/*")))
