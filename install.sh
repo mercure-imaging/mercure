@@ -92,7 +92,7 @@ create_folder () {
 
 create_folders () {
   create_folder $MERCURE_BASE $CONFIG_PATH
-  if [ $INSTALL_TYPE != "systemd" ]; then
+  if [ $INSTALL_TYPE != "systemd" ] && [ $INSTALL_TYPE != "systemd-sso" ]; then
     create_folder $DB_PATH
   fi
 
@@ -121,7 +121,7 @@ install_configuration () {
     cp "$MERCURE_SRC"/configuration/default_webgui.env "$CONFIG_PATH"/webgui.env
     echo "POSTGRES_PASSWORD=$DB_PWD" > "$CONFIG_PATH"/db.env
 
-    if [ $INSTALL_TYPE = "systemd" ]; then 
+    if [ $INSTALL_TYPE = "systemd" ] || [ $INSTALL_TYPE = "systemd-sso" ]; then 
       sed -i -e "s/mercure:ChangePasswordHere@localhost/mercure:$DB_PWD@localhost/" "$CONFIG_PATH"/bookkeeper.env
     elif [ $INSTALL_TYPE = "docker" ]; then
       sed -i -e "s/mercure:ChangePasswordHere@localhost/mercure:$DB_PWD@db/" "$CONFIG_PATH"/bookkeeper.env
@@ -398,7 +398,7 @@ install_app_files() {
 install_packages() {
   echo "## Installing Linux packages..."
   sudo apt-get update
-  sudo apt-get install -y build-essential wget git dcmtk jq inetutils-ping sshpass rsync postgresql postgresql-contrib libpq-dev git-lfs python3-wheel python3-dev python3 python3-venv sendmail libqt5core5a redis
+  sudo apt-get install -y build-essential wget git dcmtk jq inetutils-ping sshpass rsync postgresql postgresql-contrib libpq-dev git-lfs python3-wheel python3-dev python3 python3-venv sendmail libqt5core5a redis nginx
   if [ $UBUNTU_VERSION == "24.04" ]; then
     sudo apt-get install -y libqt6core6t64 
   else
@@ -429,6 +429,35 @@ install_postgres() {
 EOM
 }
 
+install_oauth2_proxy() {
+  echo "## Installing OAuth2-proxy..."
+  if [ ! -f "/usr/local/bin/oauth2-proxy" ]; then
+    OAUTH2_VERSION="v7.5.1"
+    wget -O /tmp/oauth2-proxy.tar.gz "https://github.com/oauth2-proxy/oauth2-proxy/releases/download/${OAUTH2_VERSION}/oauth2-proxy-${OAUTH2_VERSION}.linux-amd64.tar.gz"
+    tar -xzf /tmp/oauth2-proxy.tar.gz -C /tmp/
+    sudo cp "/tmp/oauth2-proxy-${OAUTH2_VERSION}.linux-amd64/oauth2-proxy" /usr/local/bin/
+    sudo chmod +x /usr/local/bin/oauth2-proxy
+    rm -rf /tmp/oauth2-proxy*
+    echo "OAuth2-proxy installed successfully"
+  else
+    echo "OAuth2-proxy already installed"
+  fi
+}
+
+install_sso_configuration() {
+  echo "## Installing SSO configuration templates..."
+  if [ ! -f "$CONFIG_PATH"/nginx.conf ]; then
+    sudo cp "$MERCURE_SRC"/installation/nginx.conf.template "$CONFIG_PATH"/nginx.conf
+    sudo chown $OWNER:$OWNER "$CONFIG_PATH"/nginx.conf
+  fi
+
+  if [ ! -f "$CONFIG_PATH"/oauth2.env ]; then
+    sudo cp "$MERCURE_SRC"/docker/oauth.env.example "$CONFIG_PATH"/oauth2.env
+    sudo chown $OWNER:$OWNER "$CONFIG_PATH"/oauth2.env
+    echo "## Please edit $CONFIG_PATH/oauth2.env with your Azure AD configuration"
+  fi
+}
+
 install_services() {
   echo "## Installing services..."
   sudo cp -n "$MERCURE_SRC"/installation/*.service /etc/systemd/system
@@ -438,6 +467,23 @@ install_services() {
 
   sudo systemctl enable mercure_worker_fast@1.service mercure_worker_fast@2.service mercure_worker_slow@1.service mercure_worker_slow@2.service
   sudo systemctl restart mercure_worker_fast@1.service mercure_worker_fast@2.service mercure_worker_slow@1.service mercure_worker_slow@2.service
+}
+
+install_sso_services() {
+  echo "## Installing SSO services..."
+  # First install regular services
+  install_services
+
+  # Stop default nginx if running to avoid conflicts
+  sudo systemctl stop nginx || true
+  sudo systemctl disable nginx || true
+
+  # Enable and start SSO services
+  sudo systemctl enable mercure_oauth2_proxy.service mercure_nginx.service
+  sudo systemctl start mercure_oauth2_proxy.service
+  sudo systemctl start mercure_nginx.service
+
+  echo "## SSO services installed. Please configure $CONFIG_PATH/oauth2.env before using."
 }
 
 systemd_install () {
@@ -453,6 +499,23 @@ systemd_install () {
   install_postgres
   sudo chown -R mercure:mercure "$MERCURE_BASE"
   install_services
+}
+
+systemd_sso_install () {
+  echo "## Performing systemd-type mercure installation with SSO..."
+  create_user
+  create_folders
+  install_configuration
+  install_sso_configuration
+  sudo cp -n "$MERCURE_SRC"/installation/sudoers/* /etc/sudoers.d/
+  install_packages
+  install_oauth2_proxy
+  install_docker
+  install_app_files
+  install_dependencies
+  install_postgres
+  sudo chown -R mercure:mercure "$MERCURE_BASE"
+  install_sso_services
 }
 
 docker_install () {
@@ -544,6 +607,7 @@ while getopts ":hy" opt; do
       echo ""
       echo "    install.sh -h                      Display this help message."
       echo "    install.sh [-y] systemd [-dmbu]    Install as systemd service."
+      echo "    install.sh [-y] systemd-sso [-dmbu] Install as systemd service with SSO."
       echo "    install.sh [-y] docker  [-dm]      Install with docker-compose."
       echo "    install.sh [-y] nomad              Install as nomad job."
       echo ""
@@ -613,7 +677,7 @@ if [ $DO_DEV_INSTALL == true ] && [ $DO_OPERATION == "update" ]; then
   exit 1
 fi
 
-if [ $INSTALL_TYPE == "systemd" ] && [ $DO_OPERATION == "update" ]; then 
+if ([ $INSTALL_TYPE == "systemd" ] || [ $INSTALL_TYPE == "systemd-sso" ]) && [ $DO_OPERATION == "update" ]; then 
   systemd_update
   exit 0
 elif [ $INSTALL_TYPE == "docker" ] && [ $DO_OPERATION == "update" ]; then 
@@ -633,14 +697,17 @@ else
   fi
 fi
 
-case "$INSTALL_TYPE" in 
+case "$INSTALL_TYPE" in
   systemd )
     systemd_install
+    ;;
+  systemd-sso )
+    systemd_sso_install
     ;;
   docker )
     docker_install
     ;;
-  nomad ) 
+  nomad )
     nomad_install
     ;;
   * )

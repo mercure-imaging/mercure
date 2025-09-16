@@ -1,0 +1,20 @@
+[Unit]
+Description=Nginx reverse proxy for Mercure with OAuth2
+Documentation=http://nginx.org/en/docs/
+After=network.target mercure_oauth2_proxy.service mercure_ui.service
+Requires=network.target
+Wants=mercure_oauth2_proxy.service mercure_ui.service
+
+[Service]
+Type=forking
+PIDFile=/var/run/nginx-mercure.pid
+ExecStartPre=/usr/sbin/nginx -t -c /opt/mercure/config/nginx.conf
+ExecStart=/usr/sbin/nginx -c /opt/mercure/config/nginx.conf
+ExecReload=/bin/kill -s HUP $MAINPID
+ExecStop=/bin/kill -s QUIT $MAINPID
+PrivateTmp=true
+User=root
+Group=root
+
+[Install]
+WantedBy=multi-user.target

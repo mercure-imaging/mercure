@@ -1,0 +1,36 @@
+[Unit]
+Description=OAuth2 Proxy for Mercure SSO
+Documentation=https://oauth2-proxy.github.io/oauth2-proxy/
+After=network.target
+Requires=network.target
+
+[Service]
+Type=simple
+User=mercure
+Group=mercure
+EnvironmentFile=-/opt/mercure/config/oauth2.env
+ExecStart=/usr/local/bin/oauth2-proxy \
+    --provider=${OAUTH2_PROXY_PROVIDER} \
+    --azure-tenant=${OAUTH2_PROXY_AZURE_TENANT} \
+    --client-id=${OAUTH2_PROXY_CLIENT_ID} \
+    --client-secret=${OAUTH2_PROXY_CLIENT_SECRET} \
+    --redirect-url=${OAUTH2_PROXY_REDIRECT_URL} \
+    --cookie-name=${OAUTH2_PROXY_COOKIE_NAME} \
+    --cookie-secret=${OAUTH2_PROXY_COOKIE_SECRET} \
+    --cookie-domain=${OAUTH2_PROXY_COOKIE_DOMAIN} \
+    --cookie-expire=${OAUTH2_PROXY_COOKIE_EXPIRE} \
+    --upstream=http://127.0.0.1:8001/ \
+    --http-address=0.0.0.0:4180 \
+    --request-logging=${OAUTH2_PROXY_REQUEST_LOGGING} \
+    --standard-logging=${OAUTH2_PROXY_STANDARD_LOGGING} \
+    --auth-logging=${OAUTH2_PROXY_AUTH_LOGGING} \
+    --set-xauthrequest=true \
+    --pass-user-headers=true \
+    --pass-access-token=false \
+    --pass-authorization-header=false
+Restart=on-failure
+RestartSec=3
+KillMode=process
+
+[Install]
+WantedBy=multi-user.target

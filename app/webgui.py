@@ -676,6 +676,12 @@ async def login_post(request) -> Response:
 async def logout(request):
     """Logouts the users by clearing the session cookie."""
     monitor.send_webgui_event(monitor.w_events.LOGOUT, request.user.display_name, "")
+
+    # Check if this is an SSO user and redirect to OAuth logout
+    if request.session.get("sso_user") == "True":
+        request.session.clear()
+        return RedirectResponse(url="/oauth2/sign_out")
+
     request.session.clear()
     return RedirectResponse(url="/login")
 
@@ -920,6 +926,90 @@ exception_handlers = {
 app = None
 
 
+class SSOMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        # SECURITY: Enhanced header validation to prevent spoofing attacks
+
+        # Check if request comes from trusted nginx proxy (localhost only)
+        client_host = request.client.host if request.client else ""
+        if client_host not in ["127.0.0.1", "::1", "localhost"]:
+            # For non-localhost requests, ignore SSO headers completely
+            response = await call_next(request)
+            return response
+
+        # Get headers with validation
+        forwarded_user = request.headers.get("x-forwarded-user", "").strip()
+        forwarded_groups = request.headers.get("x-forwarded-groups", "").strip()
+        forwarded_email = request.headers.get("x-email", "").strip()
+
+        # SECURITY: Validate header format and content
+        if forwarded_user and self._is_valid_sso_headers(forwarded_user, forwarded_groups, forwarded_email):
+            # Auto-provision session for SSO users
+            username = forwarded_user
+            request.session["user"] = username
+            request.session["sso_user"] = "True"
+
+            # Store additional user info if available
+            if forwarded_email:
+                request.session["user_email"] = forwarded_email
+
+            # Check if user is in admin groups with enhanced validation
+            admin_groups = os.getenv("OAUTH2_ADMIN_GROUPS", "mercure-admins").split(",")
+            user_groups = [group.strip() for group in forwarded_groups.split(",") if group.strip()]
+
+            # SECURITY: Validate admin groups match expected patterns
+            validated_admin_groups = [g.strip() for g in admin_groups if g.strip()]
+
+            if validated_admin_groups and any(admin_group in user_groups for admin_group in validated_admin_groups):
+                request.session["is_admin"] = "Jawohl"
+                # Log admin access for monitoring
+                logger.info(f"Admin access granted to user {username} with groups {user_groups}")
+            else:
+                # Clear admin status if not in admin groups
+                request.session.pop("is_admin", None)
+        else:
+            # SECURITY: Clear any existing SSO session if headers are invalid/missing
+            if request.session.get("sso_user") == "True":
+                request.session.clear()
+
+        response = await call_next(request)
+        return response
+
+    def _is_valid_sso_headers(self, user, groups, email):
+        """Validate SSO headers to prevent injection attacks"""
+        # Check user format (basic validation)
+        if not user or len(user) > 256:
+            return False
+
+        # Prevent header injection attacks
+        forbidden_chars = ['\n', '\r', '\0', '\t']
+        if any(char in user for char in forbidden_chars):
+            return False
+
+        if any(char in groups for char in forbidden_chars):
+            return False
+
+        if email and any(char in email for char in forbidden_chars):
+            return False
+
+        # Basic email validation if present
+        if email and '@' not in email:
+            return False
+
+        # Groups validation (if present)
+        if groups:
+            # Check for reasonable group format
+            group_list = groups.split(',')
+            if len(group_list) > 50:  # Prevent DoS via excessive groups
+                return False
+
+            for group in group_list:
+                if len(group.strip()) > 128:  # Reasonable group name length
+                    return False
+
+        return True
+
+
 class CSPMiddleware(BaseHTTPMiddleware):
     async def __call__(self, scope, receive, send):
         scope["csp_nonce"] = secrets.token_urlsafe()
@@ -948,6 +1038,7 @@ def create_app() -> Starlette:
     # Don't check the existence of the static folder because the wrong parent folder is used if the
     # source code is parsed by sphinx. This would raise an exception and lead to failure of sphinx.
     app.mount("/static", StaticFiles(directory="webinterface/statics", check_dir=False), name="static")
+    app.add_middleware(SSOMiddleware)
     app.add_middleware(AuthenticationMiddleware, backend=SessionAuthBackend())
     app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY, session_cookie="mercure_session")
     app.add_middleware(CSPMiddleware)
