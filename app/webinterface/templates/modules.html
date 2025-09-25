@@ -8,6 +8,41 @@
         background: black;
         color: white;
     }
+    #modulesmodal {
+        align-items: start;
+        flex-direction: row;
+        justify-content: end;
+    }
+    #modulesmodal .modal-card {
+        max-height: 100%;
+        min-height: 100%;
+        margin-right: 0;
+    }
+    #dynamic-modules-content {
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+    .module-item {
+        background-color: #fff;
+        border: 1px solid #ddd;
+        margin: 10px 0;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        transition: transform 0.2s, box-shadow 0.2s;
+        cursor: pointer;
+    }
+    .module-item:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    }
+    .cover-image {
+        width: 100%;
+        height: 150px;
+        object-fit: cover;
+        border-bottom: 1px solid #ddd;
+        margin-bottom: 15px;
+    }
 </style>
     <main role="main">
         <div class="container">
@@ -96,6 +131,11 @@
                                 <input class="input" id="docker_tag" type="text" required pattern="[a-zA-Z0-9-:/_.@]+" placeholder="Docker tag" name="docker_tag" >
                             </p>
                         </div>
+                        <div class="field" style="margin-top: 10px;">
+                            <div class="control">
+                                <button id="browseaddmodal" class="button is-success"><i class="fas fa-list"></i>&nbsp; Browse</button>
+                            </div>
+                        </div>
                         <div class="field" style="margin-top: 20px; margin-bottom: 25px;">
                             <label class="label">Module Type</label>
                             <div class="control radiobuttons radiobuttons_module">
@@ -139,6 +179,22 @@
                         </p>
                     </div>
             </section>
+            </div>
+        </div>
+        <div id="modulesmodal" class="modal">
+            <div class="modal-background"></div>
+            <div class="modal-card">
+                <header class="modal-card-head">
+                    <p class="modal-card-title">Available Modules</p>
+                </header>
+                <section id="dynamic-modules-content" class="modal-card-body">
+                    <!-- Dynamic content will be loaded here -->
+                </section>
+                <footer class="modal-card-foot">
+                <div class="buttons">
+                    <button id="closemodulesmodal" class="button">Close</button>
+                </div>
+                </footer>
             </div>
         </div>
     </main>
@@ -188,6 +244,54 @@
                 $('body').append(form);
                 form.submit();
             })
+
+            $("#closemodulesmodal").click(function() {
+                $("#modulesmodal").removeClass("is-active");
+            });
+
+            const defaultCoverUrl = "{{ url_for('static', path='favicon-32x32.png') }}";
+            $("#browseaddmodal").click(function(event) {
+                let modulesList = $('#dynamic-modules-content');
+                modulesList.empty();
+                modulesList.append('<i class="fas fa-spin fa-spinner"></i>');
+
+                $.ajax({
+                    type: 'GET',
+                    url: '/modules/fetch_registry',
+                    data: {},
+                    dataType: 'json',
+                    error: function () {
+                        console.log("Error fetching available modules");
+                        $("#modulesmodal").removeClass("is-active");
+                    },
+                    success: function (modules) {
+                        modulesList.empty();
+                        let modulesData = JSON.parse(modules);
+                        modulesData.forEach(module => {
+                            let coverUrl = module.coverUrl || defaultCoverUrl;
+                            let moduleItem = `
+                                <div class="module-item" data-module='${JSON.stringify(module)}'>
+                                    <img src="${coverUrl}" alt="${module.name} cover image" class="cover-image">
+                                    <b>${module.name}</b>
+                                    <p>${module.description}</p>
+                                    <a href="${module.githubUrl}" target="_blank"><i class="fab fa-github"></i></a>
+                                </div>`;
+                            modulesList.append(moduleItem);
+                        });
+                    },
+                    timeout: 3000
+                });
+                $("#modulesmodal").addClass("is-active");
+            });
+
+            $(document).on('click', '.module-item', function() {
+                let moduleData = $(this).data('module');
+                $("#addnewname").val(moduleData.name);
+                if (moduleData.dockerhubImage) {
+                    $("#docker_tag").val(moduleData.dockerhubImage);
+                }
+                $("#modulesmodal").removeClass("is-active");
+            });
         });
     </script>
 

@@ -23,7 +23,9 @@ from starlette.authentication import requires
 from starlette.responses import JSONResponse, PlainTextResponse, RedirectResponse
 from webinterface.common import strip_untrusted, templates
 
+import base64
 import docker
+import httpx
 
 router = decoRouter()
 logger = config.get_logger()
@@ -360,5 +362,27 @@ async def delete_module(request):
     # monitor.send_webgui_event(monitor.w_events.RULE_CREATE, request.user.display_name, newrule)
     return RedirectResponse(url="/modules", status_code=303)
 
+@router.get("/fetch_registry")
+@requires("authenticated", redirect="login")
+async def fetch_modules(request):
+    """Fetch the list of available modules from the modules registry."""
+
+    GITHUB_REPO = 'mercure-imaging/modules-registry'
+    MODULES_JSON_PATH = 'modules.json'
+    GITHUB_API_URL = f'https://api.github.com/repos/{GITHUB_REPO}/contents/{MODULES_JSON_PATH}'
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(GITHUB_API_URL)
+            if response.status_code == 200:
+                content = response.json()
+                if 'content' in content:
+                    base64_content = content['content']
+                    modules_data = base64.b64decode(base64_content).decode('utf-8')
+                    return JSONResponse(content=modules_data)
+            return JSONResponse(status_code=404, content={'error': 'Modules file not found.'})
+    except Exception as e:
+        logger.exception(e)
+        return ServerErrorResponse(f"Unable to fetch module list: {e}")
 
 modules_app = Starlette(routes=router)
