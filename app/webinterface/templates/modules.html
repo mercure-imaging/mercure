@@ -265,13 +265,39 @@
                         $("#modulesmodal").removeClass("is-active");
                     },
                     success: function (modules) {
+                        let onlineModules = modules.online_modules;
+                        let installedImages = modules.installed_images;
+
                         modulesList.empty();
-                        let modulesData = JSON.parse(modules);
+                        modulesList.append('<h2 class="title is-5">Online Registry Modules</h2>');
+                        let modulesData = JSON.parse(onlineModules);
                         modulesData.forEach(module => {
                             let coverUrl = module.coverUrl || defaultCoverUrl;
                             let moduleItem = `
                                 <div class="module-item" data-module='${JSON.stringify(module)}'>
                                     <img src="${coverUrl}" alt="${module.name} cover image" class="cover-image">
+                                    <b>${module.name}</b>
+                                    <p>${module.description}</p>
+                                    <a href="${module.githubUrl}" target="_blank"><i class="fab fa-github"></i></a>
+                                </div>`;
+                            modulesList.append(moduleItem);
+                        });
+
+                        if (installedImages.length > 0) {
+                            modulesList.append('<h2 class="title is-5">Locally Installed Images</h2>');
+                        }
+
+                        installedImages.forEach(image => {
+                            let module = {
+                                name: image.split('/').pop().split(':')[0],
+                                description: "Locally installed image",
+                                dockerhubImage: image,
+                                githubUrl: "#",
+                                coverUrl: defaultCoverUrl
+                            };
+                            let moduleItem = `
+                                <div class="module-item" data-module='${JSON.stringify(module)}'>
+                                    <img src="${defaultCoverUrl}" alt="${module.name} cover image" class="cover-image">
                                     <b>${module.name}</b>
                                     <p>${module.description}</p>
                                     <a href="${module.githubUrl}" target="_blank"><i class="fab fa-github"></i></a>

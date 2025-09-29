@@ -365,7 +365,16 @@ async def delete_module(request):
 @router.get("/fetch_registry")
 @requires("authenticated", redirect="login")
 async def fetch_modules(request):
-    """Fetch the list of available modules from the modules registry."""
+    """Fetch the list of available modules from the modules registry and local images."""
+
+    installed_images = []
+    try:
+        docker_client = docker.from_env()
+        for image in docker_client.images.list():
+            if image.tags:
+                installed_images.append(image.tags[0])
+    except Exception as e:
+        logger.error(f"Error fetching installed docker images: {e}")
 
     GITHUB_REPO = 'mercure-imaging/modules-registry'
     MODULES_JSON_PATH = 'modules.json'
@@ -379,7 +388,7 @@ async def fetch_modules(request):
                 if 'content' in content:
                     base64_content = content['content']
                     modules_data = base64.b64decode(base64_content).decode('utf-8')
-                    return JSONResponse(content=modules_data)
+                    return JSONResponse({'online_modules': modules_data, 'installed_images': installed_images})
             return JSONResponse(status_code=404, content={'error': 'Modules file not found.'})
     except Exception as e:
         logger.exception(e)
