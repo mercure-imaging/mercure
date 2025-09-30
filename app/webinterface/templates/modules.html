@@ -251,6 +251,7 @@
 
             const defaultCoverUrl = "{{ url_for('static', path='favicon-32x32.png') }}";
             $("#browseaddmodal").click(function(event) {
+                event.preventDefault();
                 let modulesList = $('#dynamic-modules-content');
                 modulesList.empty();
                 modulesList.append('<i class="fas fa-spin fa-spinner"></i>');
@@ -284,7 +285,7 @@
                         });
 
                         if (installedImages.length > 0) {
-                            modulesList.append('<h2 class="title is-5">Locally Installed Images</h2>');
+                            modulesList.append('<br><h2 class="title is-5">Locally Installed Images</h2>');
                         }
 
                         installedImages.forEach(image => {
@@ -315,6 +316,8 @@
                 $("#addnewname").val(moduleData.name);
                 if (moduleData.dockerhubImage) {
                     $("#docker_tag").val(moduleData.dockerhubImage);
+                } else {
+                    $("#docker_tag").val("");
                 }
                 $("#modulesmodal").removeClass("is-active");
             });
