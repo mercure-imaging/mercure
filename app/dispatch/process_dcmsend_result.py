@@ -30,7 +30,7 @@ def _parse_summary(summary) -> Dict:
             result["sent_to_peer"] = int(line.split(":")[1])
         elif line.startswith("  * with status SUCCESS"):
             result["successfull"] = int(line.split(":")[1])
-        elif line.startswith("  * with status SUCCESS"):
+        elif line.startswith("  * with status ERROR"):
             result["error"] = int(line.split(":")[1])
     return result
 
