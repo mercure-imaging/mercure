@@ -10,6 +10,7 @@ from typing import Dict, Generator, List
 import common.config as config
 from common.constants import mercure_names
 from common.types import DicomTarget, DicomTLSTarget, DummyTarget, SftpTarget, Task
+from dispatch.process_dcmsend_result import parse as parse_dcmsend_result
 from pydicom import Dataset
 from webinterface.common import async_run
 from webinterface.dicom_client import DicomClientCouldNotFind, SimpleDicomClient
@@ -86,6 +87,23 @@ class DicomTargetHandler(SubprocessTargetHandler[DicomTarget]):
         dcmsend_error_message = DCMSEND_ERROR_CODES.get(e.returncode, None)
         logger.exception(f"Failed command:\n {command} \nbecause of {dcmsend_error_message}")
         raise RuntimeError(f"{dcmsend_error_message}")
+
+    def subprocess_success_check(self, command: list) -> None:
+        if "dcmsend" in command[0]:
+            result_file = Path(command[-1])
+            if result_file.exists():
+                parsed_result = parse_dcmsend_result(result_file)
+                logger.info(f"dcmsend result: {parsed_result}")
+                total_instances = parsed_result["summary"].get("sop_instances", 0)
+                success_instances = parsed_result["summary"].get("successfull", 0)
+                if total_instances != success_instances:
+                    raise RuntimeError(
+                        f"Only {success_instances} out of {total_instances} instances were sent successfully."
+                    )
+            else:
+                logger.info(f"Result file {result_file} does not exist. Skipping result parsing.")
+        else:
+            logger.info("Not a dcmsend command, skipping validation.")
 
     async def test_connection(self, target: DicomTarget, target_name: str):
         cecho_response = False

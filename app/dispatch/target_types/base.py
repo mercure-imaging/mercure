@@ -12,7 +12,6 @@ from typing import Any, Dict, Generator, Generic, List, TypeVar
 
 import common.config as config
 from common.types import Task, TaskDispatch
-from dispatch.process_dcmsend_result import parse
 from pydicom import Dataset
 from pydicom.datadict import tag_for_keyword
 import tempfile
@@ -79,6 +78,9 @@ class SubprocessTargetHandler(TargetHandler[TargetTypeVar]):
     def _create_command(self, target: TargetTypeVar, source_folder: Path, task: Task):
         return ("", {})
 
+    def subprocess_success_check(self, command: list) -> None:
+        return None
+
     def send_to_target(
         self,
         task_id: str,
@@ -107,19 +109,7 @@ class SubprocessTargetHandler(TargetHandler[TargetTypeVar]):
                 output = check_output(
                     command, encoding="utf-8", stderr=subprocess.STDOUT, **opts
                 )
-
-                # verify if all the instances were sent successfully if dcmsend was used
-                if "dcmsend" in command[0]:
-                    result_file = Path(command[-1])
-                    if result_file.exists():
-                        parsed_result = parse(result_file)
-                        logger.info(f"dcmsend result: {parsed_result}")
-                        total_instances = parsed_result["summary"]["sop_instances"]
-                        success_instances = parsed_result["summary"]["successfull"]
-                        if total_instances != success_instances:
-                            raise Exception(f"Only {success_instances} out of {total_instances} instances were sent successfully.")
-                    else:
-                        logger.info(f"Result file {result_file} does not exist. Skipping result parsing.")
+                self.subprocess_success_check(command)
                 result += output
                 logger.info(output)
             # return result  # type: ignore  # Mypy doesn't know that check_output returns a string here?
