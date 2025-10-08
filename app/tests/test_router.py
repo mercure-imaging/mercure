@@ -17,6 +17,7 @@ from common.types import Rule, Task, TaskStudy
 from dispatch import dispatcher
 from pyfakefs.fake_filesystem import FakeFilesystem
 from routing import router
+from subprocess import check_output
 
 from .testing_common import generate_uid, mock_incoming_uid, mock_task_ids, process_dicom
 
@@ -156,7 +157,19 @@ def test_route_series_fail4(fs: FakeFilesystem, mercure_config, mocked):
     assert list(Path(config.outgoing_folder).glob("**/*.dcm")) == []
 
 
-def task_will_dispatch_to(task, config, fake_process) -> None:
+def task_will_dispatch_to(task, config, fake_process, fs, mocked) -> None:
+    def fake_check_output(command, encoding="utf-8", stderr=None, **opts):
+        result_file = Path(command[-1])
+        fs.create_file(result_file, contents="dummy report file for testing")
+        return check_output(command, encoding=encoding, stderr=stderr, **opts)
+    mocked.patch("dispatch.target_types.base.check_output", side_effect=fake_check_output)
+    dummy_parse_dcmsend_result = {
+        "summary": {
+            "sop_instances": 1,
+            "successful": 1,
+        }
+    }
+    mocked.patch("dispatch.target_types.builtin.parse_dcmsend_result", return_value=dummy_parse_dcmsend_result)
     for target_item in task.dispatch.target_name:
         t = config.targets[target_item]
         # type: ignore
@@ -226,7 +239,7 @@ def test_route_study(fs: FakeFilesystem, mercure_config, mocked, fake_process):
 
     common.monitor.send_update_task.assert_called_with(task)  # type: ignore
 
-    task_will_dispatch_to(task, config, fake_process)
+    task_will_dispatch_to(task, config, fake_process, fs, mocked)
     # common.monitor.send_task_event.assert_any_call(  # type: ignore
     #     "ROUTED",
     #     task_id,
@@ -294,7 +307,7 @@ def test_route_series_success(fs: FakeFilesystem, mercure_config, mocked, fake_p
     common.monitor.send_register_task.assert_any_call(task_id, series_uid)  # type: ignore
     common.monitor.send_register_task.assert_any_call(new_task_id, series_uid, task_id)  # type: ignore
 
-    task_will_dispatch_to(task, config, fake_process)
+    task_will_dispatch_to(task, config, fake_process, fs, mocked)
     # print(common.monitor.send_event.call_args_list)
     # common.monitor.send_event.assert_not_called()
 
@@ -340,7 +353,7 @@ def test_route_series_new_rule(fs: FakeFilesystem, mercure_config, mocked, fake_
     assert task.info.uid == series_uid
     assert task.info.uid_type == "series"
     assert task.info.triggered_rules["route_series_new_rule"] is True  # type: ignore
-    task_will_dispatch_to(task, config, fake_process)
+    task_will_dispatch_to(task, config, fake_process, fs, mocked)
 
 
 def test_route_series_with_bad_tags(fs: FakeFilesystem, mercure_config, mocked, fake_process):
@@ -377,7 +390,7 @@ def test_route_series_with_bad_tags(fs: FakeFilesystem, mercure_config, mocked, 
     out_path = next(Path("/var/outgoing").iterdir())
     with open(out_path / "task.json") as e:
         task: Task = Task(**json.load(e))
-    task_will_dispatch_to(task, config, fake_process)
+    task_will_dispatch_to(task, config, fake_process, fs, mocked)
 
 
 def test_route_series_fail_with_bad_tags(fs: FakeFilesystem, mercure_config, mocked, fake_process):

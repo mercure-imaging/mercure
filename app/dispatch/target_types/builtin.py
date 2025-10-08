@@ -89,21 +89,18 @@ class DicomTargetHandler(SubprocessTargetHandler[DicomTarget]):
         raise RuntimeError(f"{dcmsend_error_message}")
 
     def subprocess_success_check(self, command: list) -> None:
-        if "dcmsend" in command[0]:
-            result_file = Path(command[-1])
-            if result_file.exists():
-                parsed_result = parse_dcmsend_result(result_file)
-                logger.info(f"dcmsend result: {parsed_result}")
-                total_instances = parsed_result["summary"].get("sop_instances", 0)
-                success_instances = parsed_result["summary"].get("successfull", 0)
-                if total_instances != success_instances:
-                    raise RuntimeError(
-                        f"Only {success_instances} out of {total_instances} instances were sent successfully."
-                    )
-            else:
-                logger.info(f"Result file {result_file} does not exist. Skipping result parsing.")
+        result_file = Path(command[-1])
+        if result_file.exists():
+            parsed_result = parse_dcmsend_result(result_file)
+            logger.info(f"dcmsend result: {parsed_result}")
+            total_instances = parsed_result["summary"].get("sop_instances", 0)
+            success_instances = parsed_result["summary"].get("successful", 0)
+            if total_instances != success_instances:
+                raise RuntimeError(
+                    f"Only {success_instances} out of {total_instances} instances were sent successfully."
+                )
         else:
-            logger.info("Not a dcmsend command, skipping validation.")
+            raise RuntimeError(f"Result file {result_file} from dcmsend not found.")
 
     async def test_connection(self, target: DicomTarget, target_name: str):
         cecho_response = False

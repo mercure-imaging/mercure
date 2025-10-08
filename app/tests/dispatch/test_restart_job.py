@@ -111,7 +111,18 @@ def test_restart_dispatch_success(fs, mocked):
     assert task_file_json["dispatch"]["retries"] is None
 
     # Once moved to outgoing folder, verify the execution/dispatching
-    mocked.patch("dispatch.target_types.base.check_output", return_value="Success")
+    def fake_check_output(command, encoding="utf-8", stderr=None, **opts):
+        result_file = Path(command[-1])
+        fs.create_file(result_file, contents="dummy report file for testing")
+        return "Success"
+    mocked.patch("dispatch.target_types.base.check_output", side_effect=fake_check_output)
+    dummy_parse_dcmsend_result = {
+        "summary": {
+            "sop_instances": 1,
+            "successful": 1,
+        }
+    }
+    mocked.patch("dispatch.target_types.builtin.parse_dcmsend_result", return_value=dummy_parse_dcmsend_result)
     response = execute(outgoing_folder / task_id, success_folder, error_folder, 1, 1)
 
     assert not (outgoing_folder / task_id).exists()
@@ -249,7 +260,18 @@ async def test_dispatching_with_processing(fs, mercure_config: Callable[[Dict], 
     assert task_file_json["dispatch"]["retries"] is None  # indicates that it hasn't retried at all
 
     # Once moved to outgoing folder, verify the execution/dispatching
-    mocked.patch("dispatch.target_types.base.check_output", return_value="Success")
+    def fake_check_output(command, encoding="utf-8", stderr=None, **opts):
+        result_file = Path(command[-1])
+        fs.create_file(result_file, contents="dummy report file for testing")
+        return "Success"
+    mocked.patch("dispatch.target_types.base.check_output", side_effect=fake_check_output)
+    dummy_parse_dcmsend_result = {
+        "summary": {
+            "sop_instances": 1,
+            "successful": 1,
+        }
+    }
+    mocked.patch("dispatch.target_types.builtin.parse_dcmsend_result", return_value=dummy_parse_dcmsend_result)
     response = execute(outgoing_folder / new_task_id, success_folder, error_folder, 1, 1)
     assert not (outgoing_folder / new_task_id).exists()  # it's not outgoing anymore
     assert (success_folder / new_task_id).exists()  # dispatching succeeded
