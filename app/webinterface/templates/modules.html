@@ -22,6 +22,10 @@
         overflow-y: auto;
         overflow-x: hidden;
     }
+    #browseaddmodal {
+        padding-left: 10px;
+        padding-right: 10px;
+    }
     .module-item {
         background-color: #fff;
         border: 1px solid #ddd;
@@ -126,14 +130,14 @@
                                        placeholder="Name of module" name="name" autofocus>
                             </p>
                         </div>
-                        <div class="field">
-                            <p class="control">
+                        <div class="field has-addons">
+                            <div class="control is-expanded">
                                 <input class="input" id="docker_tag" type="text" required pattern="[a-zA-Z0-9-:/_.@]+" placeholder="Docker tag" name="docker_tag" >
-                            </p>
-                        </div>
-                        <div class="field" style="margin-top: 10px;">
+                            </div>
                             <div class="control">
-                                <button id="browseaddmodal" class="button is-success"><i class="fas fa-list"></i>&nbsp; Browse</button>
+                                <button id="browseaddmodal" class="button is-success" type="button">
+                                    <i class="fas fa-list"></i>
+                                </button>
                             </div>
                         </div>
                         <div class="field" style="margin-top: 20px; margin-bottom: 25px;">
