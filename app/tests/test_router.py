@@ -7,7 +7,7 @@ import os
 import unittest
 import uuid
 from pathlib import Path
-from typing import Tuple, Callable
+from typing import Tuple
 from unittest.mock import call
 
 import common
@@ -161,17 +161,11 @@ def task_will_dispatch_to(task, config, fake_process) -> None:
     for target_item in task.dispatch.target_name:
         t = config.targets[target_item]
         # type: ignore
+        result_file_path = f"/var/outgoing/{task.id}/sent.txt"
         expect_command = (f"dcmsend {t.ip} {t.port} +sd /var/outgoing/{task.id} "
-                          f"-aet -aec {t.aet_target} -nuc +sp *.dcm -to 60 +crf /var/outgoing/{task.id}/sent.txt")
+                          f"-aet -aec {t.aet_target} -nuc +sp *.dcm -to 60 +crf {result_file_path}")
 
-        # Create a callback that will write the sent.txt file when the fake process runs
-        def create_sent_file_callback(result_path) -> Callable:
-            def callback(*args, **kwargs) -> str:
-                return fake_check_output([str(result_path)])
-            return callback
-
-        result_file_path = Path(f"/var/outgoing/{task.id}/sent.txt")
-        fake_process.register(expect_command, callback=create_sent_file_callback(result_file_path))  # type: ignore
+        fake_process.register(expect_command, callback=fake_check_output, callback_kwargs={"result_file": result_file_path})  # type: ignore
         common.monitor.configure("dispatcher", "test", config.bookkeeper)
         dispatcher.dispatch()
 

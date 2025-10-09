@@ -181,7 +181,10 @@ def mock_incoming_uid(config, fs, series_uid, tags={}, name="bar", force_tags_ou
     return str(dcm_file), tags_f
 
 def fake_check_output(command, encoding="utf-8", stderr=None, **opts) -> str:
-    result_file = Path(command[-1])
+    if "result_file" in opts:
+        result_file = Path(opts["result_file"])
+    else:
+        result_file = Path(command[-1])
     dummy_sent_file = """Detailed Report on the Transfer of Instances
                         ============================================
 
