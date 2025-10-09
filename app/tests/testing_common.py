@@ -179,3 +179,39 @@ def mock_incoming_uid(config, fs, series_uid, tags={}, name="bar", force_tags_ou
     # ( incoming / "receiver_info").mkdir(exist_ok=True)
     # ( incoming / "receiver_info" / (series_uid+".received")).touch()
     return str(dcm_file), tags_f
+
+def fake_check_output(command, encoding="utf-8", stderr=None, **opts) -> str:
+    result_file = Path(command[-1])
+    dummy_sent_file = """Detailed Report on the Transfer of Instances
+                        ============================================
+
+                        Communication Peer : 127.0.0.1:4242
+                        AE Titles used     : DCMSEND -> ORTHANC
+                        Current Date/Time  : 2025-07-25 18:53:23
+
+                        Number        : 1
+                        Filename      : one.dcm
+                        SOP Instance  : 1.3.6.7.8.9
+                        SOP Class     : 1.2.3.4.5 = CTImageStorage
+                        Original Xfer : 1.2.840 = Little Endian Explicit
+                        Dataset Size  : 527438 bytes
+                        Association   : 1
+                        Pres. Context : 1
+                        Network Xfer  : 1.2.840 = Little Endian Explicit
+                        DIMSE Status  : 0x0000 (Success)
+
+                        Status Summary
+                        --------------
+                        Number of associations   : 1
+                        Number of pres. contexts : 1
+                        Number of SOP instances  : 1
+                          - sent to the peer       : 1
+                          * with status SUCCESS  : 1 """
+    # Note: number of spaces is important as parsing is done line by line.
+    dummy_sent_file = dummy_sent_file.replace("                        ", "")
+    try:
+        result_file.write_text(dummy_sent_file)
+    except Exception as e:
+        print(f"Error writing to {result_file}: {e}")
+        raise
+    return "Success"

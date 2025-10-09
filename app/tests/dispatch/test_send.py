@@ -8,6 +8,7 @@ import common
 from common.constants import mercure_names
 from common.monitor import m_events, severity, task_event
 from dispatch.send import execute, is_ready_for_sending
+from tests.testing_common import fake_check_output
 
 dummy_info = {
     "action": "route",
@@ -38,18 +39,7 @@ def test_execute_successful_case(fs, mocked):
     }
     fs.create_file("/var/data/source/a/" + mercure_names.TASKFILE, contents=json.dumps(target))
 
-    def fake_check_output(command, encoding="utf-8", stderr=None, **opts):
-        result_file = Path(command[-1])
-        fs.create_file(result_file, contents="dummy report file for testing")
-        return "Success"
     mocked.patch("dispatch.target_types.base.check_output", side_effect=fake_check_output)
-    dummy_parse_dcmsend_result = {
-        "summary": {
-            "sop_instances": 1,
-            "successful": 1,
-        }
-    }
-    mocked.patch("dispatch.target_types.builtin.parse_dcmsend_result", return_value=dummy_parse_dcmsend_result)
 
     execute(Path(source), Path(success), Path(error), 1, 1)
 
