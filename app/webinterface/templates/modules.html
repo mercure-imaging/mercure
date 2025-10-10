@@ -262,6 +262,8 @@
             const defaultCoverUrl = "{{ url_for('static', path='favicon-32x32.png') }}";
             let onlineModules = [];
             let locallyInstalledImages = [];
+            let modulesCacheTimestamp = null;
+            const MODULES_CACHE_TTL = 60 * 1000;
 
             function renderModulesTab(tab) {
                 let modulesList = $('#dynamic-modules-content');
@@ -307,8 +309,14 @@
                 }
             }
 
-            $("#browseaddmodal").click(function(event) {
-                event.preventDefault();
+            function fetchAndCacheModules(forceReload = false) {
+                let now = Date.now();
+                if (!forceReload && modulesCacheTimestamp && (now - modulesCacheTimestamp < MODULES_CACHE_TTL) && onlineModules.length > 0) {
+                    renderModulesTab('online');
+                    $("#modulesmodal").addClass("is-active");
+                    return;
+                }
+
                 let modulesList = $('#dynamic-modules-content');
                 modulesList.empty();
                 modulesList.append('<i class="fas fa-spin fa-spinner"></i>');
@@ -321,17 +329,23 @@
                     data: {},
                     dataType: 'json',
                     error: function () {
-                        console.log("Error fetching available modules");
                         $("#modulesmodal").removeClass("is-active");
+                        alert("Error fetching available modules. Try again!");
                     },
                     success: function (modules) {
                         onlineModules = JSON.parse(modules.online_modules);
                         locallyInstalledImages = modules.installed_images;
+                        modulesCacheTimestamp = Date.now();
                         renderModulesTab('online');
                     },
                     timeout: 3000
                 });
                 $("#modulesmodal").addClass("is-active");
+            }
+
+            $("#browseaddmodal").click(function(event) {
+                event.preventDefault();
+                fetchAndCacheModules();
             });
 
             $(document).on('click', '#modules-tabs li', function() {
