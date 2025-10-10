@@ -191,8 +191,14 @@
                 <header class="modal-card-head">
                     <p class="modal-card-title">Available Modules</p>
                 </header>
-                <section id="dynamic-modules-content" class="modal-card-body">
-                    <!-- Dynamic content will be loaded here -->
+                <section class="modal-card-body">
+                    <div class="tabs is-fullwidth" id="modules-tabs">
+                        <ul>
+                            <li class="is-active" data-tab="online"><a><span class="icon is-small"><i class="fas fa-globe"></i></span> <span>Online Registry</span></a></li>
+                            <li data-tab="local"><a><span class="icon is-small"><i class="fas fa-hdd"></i></span> <span>Local Images</span></a></li>
+                        </ul>
+                    </div>
+                    <div id="dynamic-modules-content"></div>
                 </section>
                 <footer class="modal-card-foot">
                 <div class="buttons">
@@ -254,11 +260,60 @@
             });
 
             const defaultCoverUrl = "{{ url_for('static', path='favicon-32x32.png') }}";
+            let onlineModules = [];
+            let locallyInstalledImages = [];
+
+            function renderModulesTab(tab) {
+                let modulesList = $('#dynamic-modules-content');
+                modulesList.empty();
+                if (tab === 'online') {
+                    if (onlineModules.length === 0) {
+                        modulesList.append('<p>No online modules found.</p>');
+                        return;
+                    }
+                    onlineModules.forEach(module => {
+                        let coverUrl = module.coverUrl || defaultCoverUrl;
+                        let moduleItem = `
+                            <div class="module-item" data-module='${JSON.stringify(module)}'>
+                                <img src="${coverUrl}" alt="${module.name} cover image" class="cover-image">
+                                <b>${module.name}</b>
+                                <p>${module.description}</p>
+                                <a href="${module.githubUrl}" target="_blank"><i class="fab fa-github"></i></a>
+                            </div>`;
+                        modulesList.append(moduleItem);
+                    });
+                } else if (tab === 'local') {
+                    if (locallyInstalledImages.length === 0) {
+                        modulesList.append('<p>No local images found.</p>');
+                        return;
+                    }
+                    locallyInstalledImages.forEach(image => {
+                        let module = {
+                            name: image.split('/').pop().split(':')[0],
+                            description: "Locally installed image",
+                            dockerhubImage: image,
+                            githubUrl: "#",
+                            coverUrl: defaultCoverUrl
+                        };
+                        let moduleItem = `
+                            <div class="module-item" data-module='${JSON.stringify(module)}'>
+                                <img src="${defaultCoverUrl}" alt="${module.name} cover image" class="cover-image">
+                                <b>${module.name}</b>
+                                <p>${module.description}</p>
+                                <a href="${module.githubUrl}" target="_blank"><i class="fab fa-github"></i></a>
+                            </div>`;
+                        modulesList.append(moduleItem);
+                    });
+                }
+            }
+
             $("#browseaddmodal").click(function(event) {
                 event.preventDefault();
                 let modulesList = $('#dynamic-modules-content');
                 modulesList.empty();
                 modulesList.append('<i class="fas fa-spin fa-spinner"></i>');
+                $('#modules-tabs li').removeClass('is-active');
+                $('#modules-tabs li[data-tab="online"]').addClass('is-active');
 
                 $.ajax({
                     type: 'GET',
@@ -270,49 +325,20 @@
                         $("#modulesmodal").removeClass("is-active");
                     },
                     success: function (modules) {
-                        let onlineModules = modules.online_modules;
-                        let installedImages = modules.installed_images;
-
-                        modulesList.empty();
-                        modulesList.append('<h2 class="title is-5">Online Registry Modules</h2>');
-                        let modulesData = JSON.parse(onlineModules);
-                        modulesData.forEach(module => {
-                            let coverUrl = module.coverUrl || defaultCoverUrl;
-                            let moduleItem = `
-                                <div class="module-item" data-module='${JSON.stringify(module)}'>
-                                    <img src="${coverUrl}" alt="${module.name} cover image" class="cover-image">
-                                    <b>${module.name}</b>
-                                    <p>${module.description}</p>
-                                    <a href="${module.githubUrl}" target="_blank"><i class="fab fa-github"></i></a>
-                                </div>`;
-                            modulesList.append(moduleItem);
-                        });
-
-                        if (installedImages.length > 0) {
-                            modulesList.append('<br><h2 class="title is-5">Locally Installed Images</h2>');
-                        }
-
-                        installedImages.forEach(image => {
-                            let module = {
-                                name: image.split('/').pop().split(':')[0],
-                                description: "Locally installed image",
-                                dockerhubImage: image,
-                                githubUrl: "#",
-                                coverUrl: defaultCoverUrl
-                            };
-                            let moduleItem = `
-                                <div class="module-item" data-module='${JSON.stringify(module)}'>
-                                    <img src="${defaultCoverUrl}" alt="${module.name} cover image" class="cover-image">
-                                    <b>${module.name}</b>
-                                    <p>${module.description}</p>
-                                    <a href="${module.githubUrl}" target="_blank"><i class="fab fa-github"></i></a>
-                                </div>`;
-                            modulesList.append(moduleItem);
-                        });
+                        onlineModules = JSON.parse(modules.online_modules);
+                        locallyInstalledImages = modules.installed_images;
+                        renderModulesTab('online');
                     },
                     timeout: 3000
                 });
                 $("#modulesmodal").addClass("is-active");
+            });
+
+            $(document).on('click', '#modules-tabs li', function() {
+                $('#modules-tabs li').removeClass('is-active');
+                $(this).addClass('is-active');
+                let tab = $(this).data('tab');
+                renderModulesTab(tab);
             });
 
             $(document).on('click', '.module-item', function() {
