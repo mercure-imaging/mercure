@@ -198,6 +198,12 @@
                             <li data-tab="local"><a><span class="icon is-small"><i class="fas fa-hdd"></i></span> <span>Local Images</span></a></li>
                         </ul>
                     </div>
+                    <div class="control has-icons-left is-fullwidth" style="margin-bottom: 10px;">
+                        <input class="input" type="text" id="modules-search-input" placeholder="Search..." value="">
+                        <span class="icon is-small is-left">
+                            <i class="fas fa-search"></i>
+                        </span>
+                    </div>
                     <div id="dynamic-modules-content"></div>
                 </section>
                 <footer class="modal-card-foot">
@@ -268,12 +274,16 @@
             function renderModulesTab(tab) {
                 let modulesList = $('#dynamic-modules-content');
                 modulesList.empty();
+                let searchVal = ($('#modules-search-input').val() || '').toLowerCase();
                 if (tab === 'online') {
-                    if (onlineModules.length === 0) {
+                    let filtered_online = onlineModules.filter(module => {
+                        return module.name.toLowerCase().includes(searchVal) || (module.description && module.description.toLowerCase().includes(searchVal));
+                    });
+                    if (filtered_online.length === 0) {
                         modulesList.append('<p>No online modules found.</p>');
                         return;
                     }
-                    onlineModules.forEach(module => {
+                    filtered_online.forEach(module => {
                         let coverUrl = module.coverUrl || defaultCoverUrl;
                         let moduleItem = `
                             <div class="module-item" data-module='${JSON.stringify(module)}'>
@@ -285,11 +295,15 @@
                         modulesList.append(moduleItem);
                     });
                 } else if (tab === 'local') {
-                    if (locallyInstalledImages.length === 0) {
+                    let filtered_local = locallyInstalledImages.filter(image => {
+                        let name = image.split('/').pop().split(':')[0];
+                        return name.toLowerCase().includes(searchVal);
+                    });
+                    if (filtered_local.length === 0) {
                         modulesList.append('<p>No local images found.</p>');
                         return;
                     }
-                    locallyInstalledImages.forEach(image => {
+                    filtered_local.forEach(image => {
                         let module = {
                             name: image.split('/').pop().split(':')[0],
                             description: "Locally installed image",
@@ -314,6 +328,7 @@
             function fetchAndCacheModules(forceReload = false) {
                 $('#modules-tabs li').removeClass('is-active');
                 $('#modules-tabs li[data-tab="online"]').addClass('is-active');
+                $("#modules-search-input").val("");
 
                 let now = Date.now();
                 if (!forceReload && modulesCacheTimestamp && (now - modulesCacheTimestamp < MODULES_CACHE_TTL) && onlineModules.length > 0) {
@@ -349,6 +364,11 @@
             $("#browseaddmodal").click(function(event) {
                 event.preventDefault();
                 fetchAndCacheModules();
+            });
+
+            $("#modules-search-input").on("input", function() {
+                let tab = $('#modules-tabs li.is-active').data('tab');
+                renderModulesTab(tab);
             });
 
             $(document).on('click', '#modules-tabs li', function() {
