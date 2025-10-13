@@ -307,9 +307,14 @@
                         modulesList.append(moduleItem);
                     });
                 }
+                let modulesBody = $('#modulesmodal').find('.modal-card-body');
+                modulesBody.animate({scrollTop: 0}, 200);
             }
 
             function fetchAndCacheModules(forceReload = false) {
+                $('#modules-tabs li').removeClass('is-active');
+                $('#modules-tabs li[data-tab="online"]').addClass('is-active');
+
                 let now = Date.now();
                 if (!forceReload && modulesCacheTimestamp && (now - modulesCacheTimestamp < MODULES_CACHE_TTL) && onlineModules.length > 0) {
                     renderModulesTab('online');
@@ -320,8 +325,6 @@
                 let modulesList = $('#dynamic-modules-content');
                 modulesList.empty();
                 modulesList.append('<i class="fas fa-spin fa-spinner"></i>');
-                $('#modules-tabs li').removeClass('is-active');
-                $('#modules-tabs li[data-tab="online"]').addClass('is-active');
 
                 $.ajax({
                     type: 'GET',
