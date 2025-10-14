@@ -47,6 +47,10 @@
         border-bottom: 1px solid #ddd;
         margin-bottom: 15px;
     }
+    .verified-badge {
+        color: #209cee;
+        vertical-align: middle;
+    }
 </style>
     <main role="main">
         <div class="container">
@@ -270,6 +274,9 @@
             let locallyInstalledImages = [];
             let modulesCacheTimestamp = null;
             const MODULES_CACHE_TTL = 60 * 1000;
+            const verifiedSpan = `<span title="Verified Module" class="verified-badge fa-stack fa-sm">
+                                    <span style="font-size: 1.25rem;"><i class="fas fa-certificate fa-stack-1x"></i></span>
+                                    <span style="font-size: 0.5rem;"><i class="fas fa-check fa-stack-1x fa-inverse"></i></span>`;
 
             function renderModulesTab(tab) {
                 let modulesList = $('#dynamic-modules-content');
@@ -285,10 +292,14 @@
                     }
                     filtered_online.forEach(module => {
                         let coverUrl = module.coverUrl || defaultCoverUrl;
+                        let dockerTag = module.dockerhubImage || '';
+                        let base = dockerTag.split('/')[0] || '';
+                        let isVerified = base.toLowerCase().includes('mercureimaging');
+                        let badge = isVerified ? verifiedSpan : '';
                         let moduleItem = `
                             <div class="module-item" data-module='${JSON.stringify(module)}'>
                                 <img src="${coverUrl}" alt="${module.name} cover image" class="cover-image">
-                                <b>${module.name}</b>
+                                <b>${module.name}${badge}</b>
                                 <p>${module.description}</p>
                                 <a href="${module.githubUrl}" target="_blank"><i class="fab fa-github"></i></a>
                             </div>`;
