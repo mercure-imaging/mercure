@@ -77,7 +77,7 @@ def test_execute_error_case(fs, mocked):
                 m_events.PROCESSING,
                 severity.ERROR,
                 """Failed command:
- ['dcmsend', '0.0.0.0', '11112', '+sd', '/var/data/source/a', '-aet', '-aec', 'foo', '-nuc', '+sp', '*.dcm', '-to', '60', '+crf', '/var/data/source/a/sent.txt'] 
+ ['dcmsend', '0.0.0.0', '11112', '+r', '+sd', '/var/data/source/a', '-aet', '-aec', 'foo', '-nuc', '+sp', '*.dcm', '-to', '60', '+crf', '/var/data/source/a/sent.txt'] 
 because of EXITCODE_COMMANDLINE_SYNTAX_ERROR""",  # noqa: E501,W291
             ),
             call(
@@ -97,7 +97,7 @@ because of EXITCODE_COMMANDLINE_SYNTAX_ERROR""",  # noqa: E501,W291
                 0,
                 "",
                 """Failed command:
- ['dcmsend', '0.0.0.0', '11112', '+sd', '/var/data/source/a', '-aet', '-aec', 'foo', '-nuc', '+sp', '*.dcm', '-to', '60', '+crf', '/var/data/source/a/sent.txt'] 
+ ['dcmsend', '0.0.0.0', '11112', '+r', '+sd', '/var/data/source/a', '-aet', '-aec', 'foo', '-nuc', '+sp', '*.dcm', '-to', '60', '+crf', '/var/data/source/a/sent.txt'] 
 because of EXITCODE_COMMANDLINE_SYNTAX_ERROR""",  # noqa: E501,W291
             ),
             call(

@@ -162,7 +162,7 @@ def task_will_dispatch_to(task, config, fake_process) -> None:
         t = config.targets[target_item]
         # type: ignore
         result_file_path = f"/var/outgoing/{task.id}/sent.txt"
-        expect_command = (f"dcmsend {t.ip} {t.port} +sd /var/outgoing/{task.id} "
+        expect_command = (f"dcmsend {t.ip} {t.port} +r +sd /var/outgoing/{task.id} "
                           f"-aet -aec {t.aet_target} -nuc +sp *.dcm -to 60 +crf {result_file_path}")
 
         fake_process.register(expect_command, callback=fake_check_output, callback_kwargs={"result_file": result_file_path})  # type: ignore

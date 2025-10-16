@@ -62,7 +62,7 @@ class DicomTargetHandler(SubprocessTargetHandler[DicomTarget]):
 
         dcmsend_status_file = str(Path(source_folder) / mercure_names.SENDLOG)
         command = split(
-            (f"""dcmsend {target_ip} {target_port} +sd {source_folder} -aet {target_aet_source} """
+            (f"""dcmsend {target_ip} {target_port} +r +sd {source_folder} -aet {target_aet_source} """
              f"""-aec {target_aet_target} -nuc +sp '*.dcm' -to 60 +crf {dcmsend_status_file}""")
         )
         return command, {}
