@@ -51,6 +51,30 @@
         color: #209cee;
         vertical-align: middle;
     }
+    .tag-select-group {
+        pointer-events: none;
+        float: right;
+        cursor: default;
+        background-color: #F6F8FA;
+        border: 1px solid #edeff1;
+    }
+    .tag-logo {
+        font-size: 0.75rem;
+        pointer-events: auto;
+        color: #59636e;
+    }
+    .module-tag-select {
+        pointer-events: auto;
+        border: none;
+        box-shadow: none;
+        background: none;
+        color: #59636e;
+    }
+    .module-tag-select:focus {
+        outline: none;
+        box-shadow: none;
+        border: none;
+    }
 </style>
     <main role="main">
         <div class="container">
@@ -296,12 +320,34 @@
                         let base = dockerTag.split('/')[0] || '';
                         let isVerified = base.toLowerCase().includes('mercureimaging');
                         let badge = isVerified ? verifiedSpan : '';
+
+                        let tagFromImage = '';
+                        if (dockerTag.includes(':')) {
+                            tagFromImage = dockerTag.split(':')[-1];
+                        }
+                        let supportedTags = Array.isArray(module.supportedImageTags) ? module.supportedImageTags : [];
+                        if (tagFromImage && !(supportedTags.includes(tagFromImage))) {
+                            supportedTags.push(tagFromImage);
+                        }
+                        if (supportedTags.length === 0) {
+                            supportedTags = ['latest'];
+                            tagFromImage = 'latest';
+                        }
+
+                        let selectOptions = '';
+                        supportedTags.forEach(tag => {
+                            selectOptions += `<option value="${tag}" ${tag === tagFromImage ? ' selected' : ''}> ${tag}</option>`;
+                        });
+
                         let moduleItem = `
                             <div class="module-item" data-module='${JSON.stringify(module)}'>
                                 <img src="${coverUrl}" alt="${module.name} cover image" class="cover-image">
                                 <b>${module.name}${badge}</b>
                                 <p>${module.description}</p>
                                 <a href="${module.githubUrl}" target="_blank"><i class="fab fa-github"></i></a>
+                                <span class="tag-select-group tag is-light"><i class="fas fa-tag tag-logo"></i>
+                                    <select class="select module-tag-select">${selectOptions}</select>
+                                </span>
                             </div>`;
                         modulesList.append(moduleItem);
                     });
@@ -389,11 +435,18 @@
                 renderModulesTab(tab);
             });
 
-            $(document).on('click', '.module-item', function() {
+            $(document).on('click', '.tag-select-group, .module-tag-select, .module-tag-select option', function(e) {
+                e.stopPropagation();
+            });
+
+            $(document).on('click', '.module-item', function(e) {
                 let moduleData = $(this).data('module');
                 $("#addnewname").val(moduleData.name);
                 if (moduleData.dockerhubImage) {
-                    $("#docker_tag").val(moduleData.dockerhubImage);
+                    let selectedTag = $(this).find('.module-tag-select').val();
+                    // Note: there could be multiple ":" in the image name.
+                    let baseImage = moduleData.dockerhubImage.split(':').slice(0, -1).join(':');
+                    $("#docker_tag").val(baseImage + ':' + selectedTag);
                 } else {
                     $("#docker_tag").val("");
                 }
