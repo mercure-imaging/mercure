@@ -1,6 +1,13 @@
 Release History
 ===============
 
+Version 0.4.0-beta.9
+---------------------
+*Release date: 10/17/2025*
+
+* Bug fixes and improvements
+* Added validation for number of instances sent in DICOM targets
+
 Version 0.4.0-beta.8
 ---------------------
 *Release date: 8/15/2025*
