@@ -260,6 +260,8 @@
 
         function showAddModal() {
             $("#addnewname").val("");
+            $("#docker_tag").val("");
+            $('#radio_mercure').prop('checked', true);
             $("#addmodal").addClass("is-active");
             $("#addnewname").focus();
         }
@@ -449,6 +451,11 @@
                     $("#docker_tag").val(baseImage + ':' + selectedTag);
                 } else {
                     $("#docker_tag").val("");
+                }
+                if (moduleData.isMonaiModule === true) {
+                    $('#radio_monai').prop('checked', true);
+                } else {
+                    $('#radio_mercure').prop('checked', true);
                 }
                 $("#modulesmodal").removeClass("is-active");
             });
