@@ -826,14 +826,19 @@
         } );
 
         $('#jobs_fail').DataTable( {
-            "paging":   false,
-            "ordering": false,
-            "info": false,
-            "searching": true,
-            "select": true,
-            "columnDefs": [{ targets: '_all', render: DataTable.render.text() }],
-            "language": {
-                "emptyTable": "No failed jobs"
+            paging:   true,
+            ordering: true,
+            info: true,
+            searching: true,
+            columnDefs: [{ targets: '_all', render: DataTable.render.text() }],
+            language: {
+                emptyTable: "No failed jobs",
+                paginate: {
+                    first: "First",
+                    last:  "Last",
+                    next:  "&gt;",
+                    previous: "&lt;"
+                },
             },
             select: true,
             buttons: [
@@ -864,11 +869,16 @@
                     }
                 }
             ],
-            /*dom: 'Bfrtip',*/
-            dom: '<"columns"<"column"B><"column"f>><"columns"<"column queuetablepadding"rt>><"columns"<"column"i><"column"p>>',
+            /*dom: 'Bfrtipf',*/
+            dom: '<"columns"<"column"B><"column"f>><"columns"<"column queuetablepadding"rt>><"columns"<"column"i><"column"p><"column"f>>',
             "scrollY": "740px",
             "scrollX": false,
-            "scrollCollapse": true,            
+            "scrollCollapse": true,
+            "order": [[5, 'desc'], [4, 'desc']],
+            initComplete: function() {
+                $('.dataTables_filter').last().hide();
+                $(".dataTables_info").css("color", "#dbdbdb");
+            }
         } );
         $('#jobs_fail').DataTable().on( 'select deselect', function () {
             var selectedRows = $('#jobs_fail').DataTable().rows( { selected: true } ).count();

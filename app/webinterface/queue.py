@@ -329,7 +329,7 @@ async def show_jobs_fail(request):
             job_scope = "Error"
 
         job_list[job_name] = {
-            "ACC": job_acc + "<b>foo</b>",
+            "ACC": job_acc,
             "MRN": job_mrn,
             "Scope": job_scope,
             "FailStage": job_failstage,
