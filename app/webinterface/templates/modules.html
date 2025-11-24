@@ -87,14 +87,14 @@
                     </span>
                 </div>
                 <div class="control is-expanded">
-                </div>                
+                </div>
                 {% if is_admin %}
                 <div class="">
                     <button id="show_add_modal" class="button is-success"><span class="icon"><i class="fas fa-plus"></i></span><span>Add</span></button>
                 </div>
                 {% endif %}
             </div>
-    
+
             {% for module_name, module in modules.items()|sort() %}
                 <div class="card entitycard" data-name="{{module_name}} {{module.docker_tag}}">
                     <header class="card-header has-background-light">
@@ -117,11 +117,11 @@
                                 <tr>
                                     <td>Contact:</td>
                                     <td>{{ module.contact }}</td>
-                                </tr>                                
+                                </tr>
                                 <tr>
                                     <td>Comment:</td>
                                     <td>{{ module.comment }}</td>
-                                </tr>                                
+                                </tr>
                             </table>
                             <div class="buttons is-right">
                                 {% if is_admin %}
@@ -140,7 +140,7 @@
             <nav class="pagination is-centered" role="navigation" aria-label="pagination" style="margin-top: 16px;">
                 <ul class="pagination-list" id="paginationList">
                 </ul>
-            </nav>   
+            </nav>
         </div>
 
         <div class="modal" id="addmodal">
@@ -187,7 +187,7 @@
                                 <button id="confirmaddmodal" class="button is-success">Install</button>
                                 <a id="closeaddmodal" class="button">Cancel</a>
                                 <i class="fas fa-spin fa-spinner htmx-indicator" style="font-size: 1.5em; float: right !important;"></i>
-                            </div>                            
+                            </div>
                         </div>
                     </form>
                 </section>
@@ -320,14 +320,14 @@
                         let coverUrl = module.coverUrl || defaultCoverUrl;
                         let dockerTag = module.dockerhubImage || '';
                         let base = dockerTag.split('/')[0] || '';
-                        let isVerified = base.toLowerCase().includes('mercureimaging');
+                        let isVerified = dockerTag.startsWith('mercureimaging/');
                         let badge = isVerified ? verifiedSpan : '';
 
                         let tagFromImage = '';
                         if (dockerTag.includes(':')) {
-                            tagFromImage = dockerTag.split(':')[-1];
+                            tagFromImage = dockerTag.split(':').slice(-1)[0];
                         }
-                        let supportedTags = Array.isArray(module.supportedImageTags) ? module.supportedImageTags : [];
+                        let supportedTags = Array.isArray(module.supportedImageTags) ? [...module.supportedImageTags] : [];
                         if (tagFromImage && !(supportedTags.includes(tagFromImage))) {
                             supportedTags.push(tagFromImage);
                         }
@@ -342,7 +342,7 @@
                         });
 
                         let moduleItem = `
-                            <div class="module-item" data-module='${JSON.stringify(module)}'>
+                            <div class="module-item" data-module='${encodeURIComponent(JSON.stringify(module))}'>
                                 <img src="${coverUrl}" alt="${module.name} cover image" class="cover-image">
                                 <b>${module.name}${badge}</b>
                                 <p>${module.description}</p>
@@ -355,8 +355,7 @@
                     });
                 } else if (tab === 'local') {
                     let filtered_local = locallyInstalledImages.filter(image => {
-                        let name = image.split('/').pop().split(':')[0];
-                        return name.toLowerCase().includes(searchVal);
+                        return image.includes(searchVal);
                     });
                     if (filtered_local.length === 0) {
                         modulesList.append('<p>No local images found.</p>');
@@ -371,11 +370,8 @@
                             coverUrl: defaultCoverUrl
                         };
                         let moduleItem = `
-                            <div class="module-item" data-module='${JSON.stringify(module)}'>
-                                <img src="${defaultCoverUrl}" alt="${module.name} cover image" class="cover-image">
-                                <b>${module.name}</b>
-                                <p>${module.description}</p>
-                                <a href="${module.githubUrl}" target="_blank"><i class="fab fa-github"></i></a>
+                            <div class="module-item" data-module='${encodeURIComponent(JSON.stringify(module))}'>
+                                ${image}
                             </div>`;
                         modulesList.append(moduleItem);
                     });
@@ -410,12 +406,12 @@
                         alert("Error fetching available modules. Try again!");
                     },
                     success: function (modules) {
-                        onlineModules = JSON.parse(modules.online_modules);
+                        onlineModules = modules.online_modules;
                         locallyInstalledImages = modules.installed_images;
                         modulesCacheTimestamp = Date.now();
                         renderModulesTab('online');
                     },
-                    timeout: 3000
+                    timeout: 10000
                 });
                 $("#modulesmodal").addClass("is-active");
             }
@@ -442,13 +438,18 @@
             });
 
             $(document).on('click', '.module-item', function(e) {
-                let moduleData = $(this).data('module');
+                let moduleData = JSON.parse(decodeURIComponent($(this).attr('data-module')));
                 $("#addnewname").val(moduleData.name);
                 if (moduleData.dockerhubImage) {
                     let selectedTag = $(this).find('.module-tag-select').val();
                     // Note: there could be multiple ":" in the image name.
-                    let baseImage = moduleData.dockerhubImage.split(':').slice(0, -1).join(':');
-                    $("#docker_tag").val(baseImage + ':' + selectedTag);
+                    let parts = moduleData.dockerhubImage.split(':');
+                    let baseImage = parts.length > 1 ? parts.slice(0, -1).join(':') : moduleData.dockerhubImage;
+                    if (selectedTag) {
+                      $("#docker_tag").val(baseImage + ':' + selectedTag);
+                    } else {
+                      $("#docker_tag").val(moduleData.dockerhubImage);
+                    }
                 } else {
                     $("#docker_tag").val("");
                 }
