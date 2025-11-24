@@ -5,28 +5,37 @@ Modules page for the graphical user interface of mercure.
 """
 
 # Standard python includes
+import base64
 import json
 import os
 import re
+import time
 from pathlib import Path
-from typing import Dict
+from typing import Any, Dict, List, Optional
 
-# App-specific includes
-import common.config as config
-import common.helper as helper
-from common.types import Module
-from common.constants import mercure_names
+import docker
+import httpx
 from decoRouter import Router as decoRouter
+
 # Starlette-related includes
 from starlette.applications import Starlette
 from starlette.authentication import requires
 from starlette.responses import JSONResponse, PlainTextResponse, RedirectResponse
-from webinterface.common import strip_untrusted, templates
 
-import docker
+# App-specific includes
+import common.config as config
+import common.helper as helper
+from common.constants import mercure_names
+from common.types import Module
+from webinterface.common import redis, strip_untrusted, templates
 
 router = decoRouter()
 logger = config.get_logger()
+
+# In-memory cache fallback for online modules only
+_modules_cache: Dict[str, Any] = {"data": None, "timestamp": None}
+CACHE_TTL_SECONDS = 3600  # 1 hour
+CACHE_KEY = "mercure:online_modules"
 
 
 ###################################################################################
@@ -101,7 +110,6 @@ async def show_modules(request):
     template = "modules.html"
     context = {
         "request": request,
-
         "page": "modules",
         "modules": config.mercure.modules,
         "used_modules": used_modules,
@@ -205,13 +213,17 @@ async def edit_module(request):
 
     module_data = config.mercure.modules[module]
     module_persistence_name = module_data.get("persistence_folder_name", "") or module
-    module_mount_source = Path(config.mercure.persistence_folder) / module_persistence_name
+    module_mount_source = (
+        Path(config.mercure.persistence_folder) / module_persistence_name
+    )
 
     module_persistence_file = "{}"
     if Path(module_mount_source).exists():
         try:
             with open(Path(module_mount_source) / "persistence.json") as f:
-                module_persistence_file = json.dumps(json.load(f), indent=4, sort_keys=False)
+                module_persistence_file = json.dumps(
+                    json.load(f), indent=4, sort_keys=False
+                )
         except Exception:
             logger.error(f"Unable to read persistence.json at {module_mount_source}.")
 
@@ -263,6 +275,7 @@ async def edit_module_POST(request):
 
     return RedirectResponse(url="/modules/", status_code=303)
 
+
 @router.post("/edit/{module}/save_persistence")
 @requires(["authenticated", "admin"], redirect="login")
 async def save_persistence_file(request):
@@ -278,21 +291,29 @@ async def save_persistence_file(request):
 
     module_data = config.mercure.modules[name]
     module_persistence_name = module_data.get("persistence_folder_name", "") or name
-    module_mount_source = Path(config.mercure.persistence_folder) / module_persistence_name
+    module_mount_source = (
+        Path(config.mercure.persistence_folder) / module_persistence_name
+    )
 
     try:
         os.makedirs(module_mount_source, exist_ok=True)
     except Exception:
         logger.error(f"Unable to create persistence folder {module_mount_source}")
-        return JSONResponse({'code': 1, 'message': 'Unable to write persistence file.'})
+        return JSONResponse({"code": 1, "message": "Unable to write persistence file."})
     if Path(module_mount_source).exists():
         lock_exists = any(
-            f.endswith(mercure_names.LOCK) and os.path.isfile(os.path.join(module_mount_source, f))
+            f.endswith(mercure_names.LOCK)
+            and os.path.isfile(os.path.join(module_mount_source, f))
             for f in os.listdir(module_mount_source)
-            )
+        )
         if lock_exists:
             logger.info(f"Persistence for module {name} is locked. Skipping update!")
-            return JSONResponse({'code': 3, 'message': 'Cannot update the persistence file while module is running. Try again later.'})
+            return JSONResponse(
+                {
+                    "code": 3,
+                    "message": "Cannot update the persistence file while module is running. Try again later.",
+                }
+            )
 
         try:
             # check if the saved persistence file matches old persistence file from the form (UI)
@@ -300,14 +321,24 @@ async def save_persistence_file(request):
                 with open(Path(module_mount_source) / "persistence.json", "r") as f:
                     saved_persistence_file = json.load(f)
                 if data.get("old_persistence_file", "{}") != saved_persistence_file:
-                        logger.error(f"Old persistence file does not match the saved one at {module_mount_source}. Skipping update!")
-                        return JSONResponse({'code': 0, 'message': 'The persistence file has changed on disk since it was last loaded, so changes cannot be saved. Please reload the persistence file and make your update again. If this happens repeatedly, suspend processing before manually updating the persistence file.'})
+                    logger.error(
+                        f"Old persistence file does not match the saved one at {module_mount_source}. Skipping update!"
+                    )
+                    return JSONResponse(
+                        {
+                            "code": 0,
+                            "message": "The persistence file has changed on disk since it was last loaded, so changes cannot be saved. Please reload the persistence file and make your update again. If this happens repeatedly, suspend processing before manually updating the persistence file.",
+                        }
+                    )
             with open(Path(module_mount_source) / "persistence.json", "w") as f:
                 json.dump(data.get("persistence_file", "{}"), f, indent=4)
         except Exception:
             logger.error(f"Unable to write persistence.json at {module_mount_source}.")
-            return JSONResponse({'code': 1, 'message': 'Unable to write persistence file.'})
-    return JSONResponse({'code': 2, 'message': 'Persistence file saved successfully.'})
+            return JSONResponse(
+                {"code": 1, "message": "Unable to write persistence file."}
+            )
+    return JSONResponse({"code": 2, "message": "Persistence file saved successfully."})
+
 
 @router.get("/edit/{module}/refresh_persistence")
 @requires("authenticated", redirect="login")
@@ -323,7 +354,9 @@ async def refresh_persistence_file(request):
 
     module_data = config.mercure.modules[name]
     module_persistence_name = module_data.get("persistence_folder_name", "") or name
-    module_mount_source = Path(config.mercure.persistence_folder) / module_persistence_name
+    module_mount_source = (
+        Path(config.mercure.persistence_folder) / module_persistence_name
+    )
 
     if Path(module_mount_source).exists():
         try:
@@ -359,6 +392,132 @@ async def delete_module(request):
     # logger.info(f'Created rule {newrule}')
     # monitor.send_webgui_event(monitor.w_events.RULE_CREATE, request.user.display_name, newrule)
     return RedirectResponse(url="/modules", status_code=303)
+
+
+async def _fetch_online_modules() -> Optional[str]:
+    """Fetch module registry from GitHub. Returns JSON string or None on error."""
+    GITHUB_REPO = "mercure-imaging/modules-registry"
+    MODULES_JSON_PATH = "modules.json"
+    GITHUB_API_URL = (
+        f"https://api.github.com/repos/{GITHUB_REPO}/contents/{MODULES_JSON_PATH}"
+    )
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(
+                GITHUB_API_URL, headers={"User-Agent": "mercure-imaging"}
+            )
+            if response.status_code == 200:
+                content = response.json()
+                if "content" in content:
+                    base64_content = content["content"]
+                    modules_data = base64.b64decode(base64_content).decode("utf-8")
+                    return modules_data
+            elif response.status_code == 403:
+                logger.warning("GitHub API rate limit exceeded")
+            else:
+                logger.warning(
+                    f"Failed to fetch modules from GitHub: {response.status_code}"
+                )
+    except Exception as e:
+        logger.exception(f"Error fetching modules from GitHub: {e}")
+
+    return None
+
+
+def _fetch_local_images() -> Optional[List[str]]:
+    """Fetch all locally installed Docker images. Returns list of image tags."""
+    installed_images = []
+    try:
+        docker_client = docker.from_env()
+        for image in docker_client.images.list():
+            if image.tags:
+                installed_images.append(image.tags[0])
+    except Exception as e:
+        logger.error(f"Error fetching installed docker images: {e}")
+        return None
+
+    return sorted(installed_images)
+
+
+def _get_cached_online_modules() -> Optional[str]:
+    """Get cached online modules from Redis or in-memory cache. Returns JSON string or None."""
+    try:
+        # Try Redis first
+        cached_data = redis.get(CACHE_KEY)
+        if cached_data:
+            # Redis returns bytes, need to decode to string
+            if isinstance(cached_data, bytes):
+                cached_str = cached_data.decode("utf-8")
+            else:
+                cached_str = str(cached_data)
+
+            logger.debug("Retrieved online modules from Redis cache")
+            return cached_str
+    except Exception as e:
+        logger.warning(f"Redis cache read failed: {e}")
+
+    # Fallback to in-memory cache
+    if _modules_cache["data"] and _modules_cache["timestamp"]:
+        age = time.time() - _modules_cache["timestamp"]
+        if age < CACHE_TTL_SECONDS:
+            logger.debug("Retrieved online modules from in-memory cache")
+            return _modules_cache["data"]
+
+    return None
+
+
+def _set_cached_online_modules(online_modules: str) -> None:
+    """Store online modules in both Redis and in-memory cache."""
+    # Try to cache in Redis
+    try:
+        redis.setex(CACHE_KEY, CACHE_TTL_SECONDS, online_modules)
+        logger.debug("Cached online modules in Redis")
+    except Exception as e:
+        logger.warning(f"Redis cache write failed: {e}")
+
+    # Always cache in memory as fallback
+    _modules_cache["data"] = online_modules
+    _modules_cache["timestamp"] = time.time()
+    logger.debug("Cached online modules in memory")
+
+
+@router.get("/fetch_registry")
+@requires("authenticated", redirect="login")
+async def fetch_modules(request):
+    """Fetch the list of available modules from the modules registry and local images.
+    Online modules are cached for 1 hour in Redis (or in-memory if Redis unavailable).
+    Local images are fetched fresh each time."""
+
+    # Check cache for online modules
+    online_modules = _get_cached_online_modules()
+    # Always fetch local images fresh
+    local_images = _fetch_local_images()
+    warning = None
+    if local_images is None:
+        warning = "Error querying Docker daemon for local image list."
+
+    # Cache miss or expired - fetch from GitHub
+    if online_modules is None:
+        online_modules = await _fetch_online_modules()
+        if online_modules is None:
+            return JSONResponse(
+                {
+                    "online_modules": [],
+                    "installed_images": local_images,
+                    "warning": "Could not load online module list.",
+                }
+            )
+        # Cache the online modules
+        _set_cached_online_modules(online_modules)
+
+    return JSONResponse(
+        {
+            "online_modules": json.loads(online_modules),
+            "installed_images": local_images or [],
+            "warning": warning,
+        }
+    )
 
 
 modules_app = Starlette(routes=router)

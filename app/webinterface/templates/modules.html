@@ -8,6 +8,73 @@
         background: black;
         color: white;
     }
+    #modulesmodal {
+        align-items: start;
+        flex-direction: row;
+        justify-content: end;
+    }
+    #modulesmodal .modal-card {
+        max-height: 100%;
+        min-height: 100%;
+        margin-right: 0;
+    }
+    #dynamic-modules-content {
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+    #browseaddmodal {
+        padding-left: 10px;
+        padding-right: 10px;
+    }
+    .module-item {
+        background-color: #fff;
+        border: 1px solid #ddd;
+        margin: 10px 0;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        transition: transform 0.2s, box-shadow 0.2s;
+        cursor: pointer;
+    }
+    .module-item:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    }
+    .cover-image {
+        width: 100%;
+        height: 150px;
+        object-fit: cover;
+        border-bottom: 1px solid #ddd;
+        margin-bottom: 15px;
+    }
+    .verified-badge {
+        color: #209cee;
+        vertical-align: middle;
+    }
+    .tag-select-group {
+        pointer-events: none;
+        float: right;
+        cursor: default;
+        background-color: #F6F8FA;
+        border: 1px solid #edeff1;
+    }
+    .tag-logo {
+        font-size: 0.75rem;
+        pointer-events: auto;
+        color: #59636e;
+    }
+    .module-tag-select {
+        pointer-events: auto;
+        border: none;
+        box-shadow: none;
+        background: none;
+        color: #59636e;
+    }
+    .module-tag-select:focus {
+        outline: none;
+        box-shadow: none;
+        border: none;
+    }
 </style>
     <main role="main">
         <div class="container">
@@ -20,14 +87,14 @@
                     </span>
                 </div>
                 <div class="control is-expanded">
-                </div>                
+                </div>
                 {% if is_admin %}
                 <div class="">
                     <button id="show_add_modal" class="button is-success"><span class="icon"><i class="fas fa-plus"></i></span><span>Add</span></button>
                 </div>
                 {% endif %}
             </div>
-    
+
             {% for module_name, module in modules.items()|sort() %}
                 <div class="card entitycard" data-name="{{module_name}} {{module.docker_tag}}">
                     <header class="card-header has-background-light">
@@ -50,11 +117,11 @@
                                 <tr>
                                     <td>Contact:</td>
                                     <td>{{ module.contact }}</td>
-                                </tr>                                
+                                </tr>
                                 <tr>
                                     <td>Comment:</td>
                                     <td>{{ module.comment }}</td>
-                                </tr>                                
+                                </tr>
                             </table>
                             <div class="buttons is-right">
                                 {% if is_admin %}
@@ -73,7 +140,7 @@
             <nav class="pagination is-centered" role="navigation" aria-label="pagination" style="margin-top: 16px;">
                 <ul class="pagination-list" id="paginationList">
                 </ul>
-            </nav>   
+            </nav>
         </div>
 
         <div class="modal" id="addmodal">
@@ -91,10 +158,15 @@
                                        placeholder="Name of module" name="name" autofocus>
                             </p>
                         </div>
-                        <div class="field">
-                            <p class="control">
+                        <div class="field has-addons">
+                            <div class="control is-expanded">
                                 <input class="input" id="docker_tag" type="text" required pattern="[a-zA-Z0-9-:/_.@]+" placeholder="Docker tag" name="docker_tag" >
-                            </p>
+                            </div>
+                            <div class="control">
+                                <button id="browseaddmodal" class="button is-success" type="button">
+                                    <i class="fas fa-list"></i>
+                                </button>
+                            </div>
                         </div>
                         <div class="field" style="margin-top: 20px; margin-bottom: 25px;">
                             <label class="label">Module Type</label>
@@ -115,7 +187,7 @@
                                 <button id="confirmaddmodal" class="button is-success">Install</button>
                                 <a id="closeaddmodal" class="button">Cancel</a>
                                 <i class="fas fa-spin fa-spinner htmx-indicator" style="font-size: 1.5em; float: right !important;"></i>
-                            </div>                            
+                            </div>
                         </div>
                     </form>
                 </section>
@@ -141,6 +213,38 @@
             </section>
             </div>
         </div>
+        <div id="modulesmodal" class="modal">
+            <div class="modal-background"></div>
+            <div class="modal-card">
+                <header class="modal-card-head">
+                    <p class="modal-card-title">Available Modules</p>
+                </header>
+                <section class="modal-card-body">
+                    <div class="tabs is-fullwidth" id="modules-tabs">
+                        <ul>
+                            <li class="is-active" data-tab="online"><a><span class="icon is-small"><i class="fas fa-globe"></i></span> <span>Online Registry</span></a></li>
+                            <li data-tab="local"><a><span class="icon is-small"><i class="fas fa-hdd"></i></span> <span>Local Images</span></a></li>
+                        </ul>
+                    </div>
+                    <div class="control has-icons-left is-fullwidth" style="margin-bottom: 10px;">
+                        <input class="input" type="text" id="modules-search-input" placeholder="Search..." value="">
+                        <span class="icon is-small is-left">
+                            <i class="fas fa-search"></i>
+                        </span>
+                    </div>
+                    <div id="modules-warning-notification" class="notification is-warning is-light" style="display: none; margin-bottom: 10px;">
+                        <button class="delete" onclick="document.getElementById('modules-warning-notification').style.display='none';"></button>
+                        <span id="modules-warning-text"></span>
+                    </div>
+                    <div id="dynamic-modules-content"></div>
+                </section>
+                <footer class="modal-card-foot">
+                <div class="buttons">
+                    <button id="closemodulesmodal" class="button">Close</button>
+                </div>
+                </footer>
+            </div>
+        </div>
     </main>
 
     <script nonce="{{ csp_nonce }}">
@@ -160,6 +264,8 @@
 
         function showAddModal() {
             $("#addnewname").val("");
+            $("#docker_tag").val("");
+            $('#radio_mercure').prop('checked', true);
             $("#addmodal").addClass("is-active");
             $("#addnewname").focus();
         }
@@ -188,6 +294,184 @@
                 $('body').append(form);
                 form.submit();
             })
+
+            $("#closemodulesmodal").click(function() {
+                $("#modulesmodal").removeClass("is-active");
+            });
+
+            const defaultCoverUrl = "{{ url_for('static', path='favicon-32x32.png') }}";
+            let onlineModules = [];
+            let locallyInstalledImages = [];
+            let modulesCacheTimestamp = null;
+            const MODULES_CACHE_TTL = 60 * 1000;
+            const verifiedSpan = `<span title="Verified Module" class="verified-badge fa-stack fa-sm">
+                                    <span style="font-size: 1.25rem;"><i class="fas fa-certificate fa-stack-1x"></i></span>
+                                    <span style="font-size: 0.5rem;"><i class="fas fa-check fa-stack-1x fa-inverse"></i></span>`;
+
+            function renderModulesTab(tab) {
+                let modulesList = $('#dynamic-modules-content');
+                modulesList.empty();
+                let searchVal = ($('#modules-search-input').val() || '').toLowerCase();
+                if (tab === 'online') {
+                    let filtered_online = onlineModules.filter(module => {
+                        return module.name.toLowerCase().includes(searchVal) || (module.description && module.description.toLowerCase().includes(searchVal));
+                    });
+                    if (filtered_online.length === 0) {
+                        modulesList.append('<p>No online modules found.</p>');
+                        return;
+                    }
+                    filtered_online.forEach(module => {
+                        let coverUrl = module.coverUrl || defaultCoverUrl;
+                        let dockerTag = module.dockerhubImage || '';
+                        let isVerified = dockerTag.startsWith('mercureimaging/');
+                        let badge = isVerified ? verifiedSpan : '';
+
+                        let tagFromImage = '';
+                        if (dockerTag.includes(':')) {
+                            tagFromImage = dockerTag.split(':').slice(-1)[0];
+                        }
+                        let supportedTags = Array.isArray(module.supportedImageTags) ? [...module.supportedImageTags] : [];
+                        if (tagFromImage && !(supportedTags.includes(tagFromImage))) {
+                            supportedTags.push(tagFromImage);
+                        }
+                        if (supportedTags.length === 0) {
+                            supportedTags = ['latest'];
+                            tagFromImage = 'latest';
+                        }
+
+                        let selectOptions = '';
+                        supportedTags.forEach(tag => {
+                            selectOptions += `<option value="${tag}" ${tag === tagFromImage ? ' selected' : ''}> ${tag}</option>`;
+                        });
+
+                        let moduleItem = `
+                            <div class="module-item" data-module='${encodeURIComponent(JSON.stringify(module))}'>
+                                <img src="${coverUrl}" alt="${module.name} cover image" class="cover-image">
+                                <b>${module.name}${badge}</b>
+                                <p>${module.description}</p>
+                                <a href="${module.githubUrl}" target="_blank"><i class="fab fa-github"></i></a>
+                                <span class="tag-select-group tag is-light"><i class="fas fa-tag tag-logo"></i>
+                                    <select class="select module-tag-select">${selectOptions}</select>
+                                </span>
+                            </div>`;
+                        modulesList.append(moduleItem);
+                    });
+                } else if (tab === 'local') {
+                    let filtered_local = locallyInstalledImages.filter(image => {
+                        return image.toLowerCase().includes(searchVal);
+                    });
+                    if (filtered_local.length === 0) {
+                        modulesList.append('<p>No local images found.</p>');
+                        return;
+                    }
+                    filtered_local.forEach(image => {
+                        let module = {
+                            name: image.split('/').pop().split(':')[0],
+                            description: "Locally installed image",
+                            dockerhubImage: image,
+                            githubUrl: "#",
+                            coverUrl: defaultCoverUrl
+                        };
+                        let moduleItem = `
+                            <div class="module-item" data-module='${encodeURIComponent(JSON.stringify(module))}'>
+                                ${image}
+                            </div>`;
+                        modulesList.append(moduleItem);
+                    });
+                }
+                let modulesBody = $('#modulesmodal').find('.modal-card-body');
+                modulesBody.animate({scrollTop: 0}, 200);
+            }
+
+            function fetchAndCacheModules(forceReload = false) {
+                $('#modules-tabs li').removeClass('is-active');
+                $('#modules-tabs li[data-tab="online"]').addClass('is-active');
+                $("#modules-search-input").val("");
+
+                let now = Date.now();
+                if (!forceReload && modulesCacheTimestamp && (now - modulesCacheTimestamp < MODULES_CACHE_TTL) && onlineModules.length > 0) {
+                    renderModulesTab('online');
+                    $("#modulesmodal").addClass("is-active");
+                    return;
+                }
+
+                let modulesList = $('#dynamic-modules-content');
+                modulesList.empty();
+                modulesList.append('<i class="fas fa-spin fa-spinner"></i>');
+
+                $.ajax({
+                    type: 'GET',
+                    url: '/modules/fetch_registry',
+                    data: {},
+                    dataType: 'json',
+                    error: function () {
+                        $("#modulesmodal").removeClass("is-active");
+                        alert("Error fetching available modules. Try again!");
+                    },
+                    success: function (modules) {
+                        onlineModules = modules.online_modules || [];
+                        locallyInstalledImages = modules.installed_images || [];
+                        modulesCacheTimestamp = Date.now();
+
+                        // Display warning if present
+                        if (modules.warning) {
+                            $('#modules-warning-text').text(modules.warning);
+                            $('#modules-warning-notification').show();
+                        } else {
+                            $('#modules-warning-notification').hide();
+                        }
+
+                        renderModulesTab('online');
+                    },
+                    timeout: 12000
+                });
+                $("#modulesmodal").addClass("is-active");
+            }
+
+            $("#browseaddmodal").click(function(event) {
+                event.preventDefault();
+                fetchAndCacheModules();
+            });
+
+            $("#modules-search-input").on("input", function() {
+                let tab = $('#modules-tabs li.is-active').data('tab');
+                renderModulesTab(tab);
+            });
+
+            $(document).on('click', '#modules-tabs li', function() {
+                $('#modules-tabs li').removeClass('is-active');
+                $(this).addClass('is-active');
+                let tab = $(this).data('tab');
+                renderModulesTab(tab);
+            });
+
+            $(document).on('click', '.tag-select-group, .module-tag-select, .module-tag-select option', function(e) {
+                e.stopPropagation();
+            });
+
+            $(document).on('click', '.module-item', function(e) {
+                let moduleData = JSON.parse(decodeURIComponent($(this).attr('data-module')));
+                $("#addnewname").val(moduleData.name);
+                if (moduleData.dockerhubImage) {
+                    let selectedTag = $(this).find('.module-tag-select').val();
+                    // Note: there could be multiple ":" in the image name.
+                    let parts = moduleData.dockerhubImage.split(':');
+                    let baseImage = parts.length > 1 ? parts.slice(0, -1).join(':') : moduleData.dockerhubImage;
+                    if (selectedTag) {
+                      $("#docker_tag").val(baseImage + ':' + selectedTag);
+                    } else {
+                      $("#docker_tag").val(moduleData.dockerhubImage);
+                    }
+                } else {
+                    $("#docker_tag").val("");
+                }
+                if (moduleData.isMonaiModule === true) {
+                    $('#radio_monai').prop('checked', true);
+                } else {
+                    $('#radio_mercure').prop('checked', true);
+                }
+                $("#modulesmodal").removeClass("is-active");
+            });
         });
     </script>
 
