@@ -462,6 +462,8 @@ def _get_cached_online_modules() -> Optional[str]:
         age = time.time() - _modules_cache["timestamp"]
         if age < CACHE_TTL_SECONDS:
             logger.debug("Retrieved online modules from in-memory cache")
+            if not isinstance(_modules_cache["data"], str):
+                return None
             return _modules_cache["data"]
 
     return None
