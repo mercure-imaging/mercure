@@ -11,7 +11,7 @@ import os
 import re
 import time
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 import docker
 import httpx
@@ -33,7 +33,7 @@ router = decoRouter()
 logger = config.get_logger()
 
 # In-memory cache fallback for online modules only
-_modules_cache: Dict[str, any] = {"data": None, "timestamp": None}
+_modules_cache: Dict[str, Any] = {"data": None, "timestamp": None}
 CACHE_TTL_SECONDS = 3600  # 1 hour
 CACHE_KEY = "mercure:online_modules"
 
@@ -425,7 +425,7 @@ async def _fetch_online_modules() -> Optional[str]:
     return None
 
 
-def _fetch_local_images() -> List[str]:
+def _fetch_local_images() -> Optional[List[str]]:
     """Fetch all locally installed Docker images. Returns list of image tags."""
     installed_images = []
     try:
@@ -435,6 +435,7 @@ def _fetch_local_images() -> List[str]:
                 installed_images.append(image.tags[0])
     except Exception as e:
         logger.error(f"Error fetching installed docker images: {e}")
+        return None
 
     return sorted(installed_images)
 
@@ -490,20 +491,32 @@ async def fetch_modules(request):
 
     # Check cache for online modules
     online_modules = _get_cached_online_modules()
+    # Always fetch local images fresh
+    local_images = _fetch_local_images()
+    warning = None
+    if local_images is None:
+        warning = "Error querying Docker daemon for local image list."
 
     # Cache miss or expired - fetch from GitHub
     if online_modules is None:
         online_modules = await _fetch_online_modules()
         if online_modules is None:
-            return ServerErrorResponse("Unable to fetch module registry from GitHub")
+            return JSONResponse(
+                {
+                    "online_modules": [],
+                    "installed_images": local_images,
+                    "warning": "Could not load online module list.",
+                }
+            )
         # Cache the online modules
         _set_cached_online_modules(online_modules)
 
-    # Always fetch local images fresh
-    local_images = _fetch_local_images()
-
     return JSONResponse(
-        {"online_modules": json.loads(online_modules), "installed_images": local_images}
+        {
+            "online_modules": json.loads(online_modules),
+            "installed_images": local_images or [],
+            "warning": warning,
+        }
     )
 
 

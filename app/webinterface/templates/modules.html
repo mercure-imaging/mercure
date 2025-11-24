@@ -232,6 +232,10 @@
                             <i class="fas fa-search"></i>
                         </span>
                     </div>
+                    <div id="modules-warning-notification" class="notification is-warning is-light" style="display: none; margin-bottom: 10px;">
+                        <button class="delete" onclick="document.getElementById('modules-warning-notification').style.display='none';"></button>
+                        <span id="modules-warning-text"></span>
+                    </div>
                     <div id="dynamic-modules-content"></div>
                 </section>
                 <footer class="modal-card-foot">
@@ -319,7 +323,6 @@
                     filtered_online.forEach(module => {
                         let coverUrl = module.coverUrl || defaultCoverUrl;
                         let dockerTag = module.dockerhubImage || '';
-                        let base = dockerTag.split('/')[0] || '';
                         let isVerified = dockerTag.startsWith('mercureimaging/');
                         let badge = isVerified ? verifiedSpan : '';
 
@@ -355,7 +358,7 @@
                     });
                 } else if (tab === 'local') {
                     let filtered_local = locallyInstalledImages.filter(image => {
-                        return image.includes(searchVal);
+                        return image.toLowerCase().includes(searchVal);
                     });
                     if (filtered_local.length === 0) {
                         modulesList.append('<p>No local images found.</p>');
@@ -406,12 +409,21 @@
                         alert("Error fetching available modules. Try again!");
                     },
                     success: function (modules) {
-                        onlineModules = modules.online_modules;
-                        locallyInstalledImages = modules.installed_images;
+                        onlineModules = modules.online_modules || [];
+                        locallyInstalledImages = modules.installed_images || [];
                         modulesCacheTimestamp = Date.now();
+
+                        // Display warning if present
+                        if (modules.warning) {
+                            $('#modules-warning-text').text(modules.warning);
+                            $('#modules-warning-notification').show();
+                        } else {
+                            $('#modules-warning-notification').hide();
+                        }
+
                         renderModulesTab('online');
                     },
-                    timeout: 10000
+                    timeout: 12000
                 });
                 $("#modulesmodal").addClass("is-active");
             }
