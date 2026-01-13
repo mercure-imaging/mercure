@@ -20,7 +20,7 @@ def replace_tags(rule: str, tags: Dict[str, str]) -> Any:
     """Replaces all tags with format @tagname@ in the given rule string with
     the corresponding values from the currently processed series (stored
     in the second argument)."""
-    # Run the substitue operation manually instead of using
+    # Run the substitute operation manually instead of using
     # the standard string function to enforce that the values
     # read from the tags are treated as strings by default
     tags_found = []

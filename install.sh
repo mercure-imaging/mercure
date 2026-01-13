@@ -274,7 +274,7 @@ setup_nomad() {
   nomad run -detach $MERCURE_BASE/mercure-ui.nomad
 
   if [ ! -z "${BOOTSTRAP_RESULT:-}" ]; then
-    echo "Nomad ACL has been bootstrapped. Your managment key information follows. Keep this safe!"
+    echo "Nomad ACL has been bootstrapped. Your management key information follows. Keep this safe!"
     echo $BOOTSTRAP_RESULT | jq
   fi
 }
