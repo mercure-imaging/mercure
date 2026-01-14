@@ -174,10 +174,11 @@ def get_triggered_rules(
                 if rule.disabled is True:
                     continue
 
-                # If the current rule is flagged as fallback rule, remember the name
+                # If the current rule is flagged as fallback rule, remember the name and skip evaluation.
                 # (to avoid having to iterate over the rules again)
                 if rule.fallback is True:
                     fallback_rule = current_rule
+                    continue
 
                 # Check if the current rule is triggered for the provided tag set
                 if rule_evaluation.parse_rule(rule.get("rule", "False"), tagList)[0]:
@@ -191,11 +192,15 @@ def get_triggered_rules(
                 logger.error(f"Invalid rule found: {current_rule}", task_id)  # handle_error
                 continue
 
-    # If no rule has triggered but a fallback rule exists, then apply this rule
+    # If no rule has triggered but a fallback rule exists, then evaluate and apply this rule
     if (len(triggered_rules) == 0) and (fallback_rule):
-        triggered_rules[fallback_rule] = True
-        if config.mercure.rules[fallback_rule].get(mercure_rule.ACTION, "") == mercure_actions.DISCARD:
-            discard_rule = fallback_rule
+        try:
+            if rule_evaluation.parse_rule(config.mercure.rules[fallback_rule].get("rule", "False"), tagList)[0]:
+                triggered_rules[fallback_rule] = True
+                if config.mercure.rules[fallback_rule].get(mercure_rule.ACTION, "") == mercure_actions.DISCARD:
+                    discard_rule = fallback_rule
+        except Exception:
+            logger.error(f"Invalid fallback rule: {fallback_rule}", task_id)  # handle_error
 
     logger.info("Triggered rules:")
     logger.info(triggered_rules)
