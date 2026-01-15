@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-# Make defaults easily overrideable
+# Make defaults easily overridable
 MERCURE_BASE=/opt/mercure
 
 echo "Installing Python runtime environment..."

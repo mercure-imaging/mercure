@@ -117,7 +117,7 @@ def read_webgui_config() -> Config:
     webgui_config = Config((os.getenv("MERCURE_CONFIG_FOLDER") or "/opt/mercure/config") + "/webgui.env")
 
     # Note: PutSomethingRandomHere is the default value in the shipped configuration file.
-    #       The app will not start with this value, forcing the users to set their onw secret
+    #       The app will not start with this value, forcing the users to set their own secret
     #       key. Therefore, the value is used as default here as well.
     SECRET_KEY = webgui_config("SECRET_KEY", cast=Secret, default=Secret("PutSomethingRandomHere"))
     WEBGUI_PORT = webgui_config("PORT", cast=int, default=8000)
@@ -657,7 +657,7 @@ async def login_post(request) -> Response:
             return RedirectResponse(url="/", status_code=303)
     else:
         if request.client.host is None:
-            source_ip = "UNKOWN IP"
+            source_ip = "UNKNOWN IP"
         else:
             source_ip = request.client.host
         monitor.send_webgui_event(monitor.w_events.LOGIN_FAIL, form["username"], source_ip)

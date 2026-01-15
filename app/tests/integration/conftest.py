@@ -221,7 +221,7 @@ def mercure(supervisord: Callable[[Any], SupervisorManager], python_bin
     services += [MercureService("receiver", f"{here()}/app/receiver.sh --inject-errors", stopasgroup=True)]
     supervisor = supervisord(services)
 
-    def do_start(services_to_start=["bookkeeper", "reciever", "router", "processor", "dispatcher"]) -> SupervisorManager:
+    def do_start(services_to_start=["bookkeeper", "receiver", "router", "processor", "dispatcher"]) -> SupervisorManager:
         for service in services_to_start:
             supervisor.start_service(service)
         return supervisor

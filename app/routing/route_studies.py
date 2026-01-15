@@ -230,7 +230,7 @@ def check_study_series(task: TaskHasStudy, required_series: str) -> bool:
 @log_helpers.clear_task_decorator
 def route_study(study) -> bool:
     """
-    Processses the study in the folder 'study'. Loads the task file and delegates the action to helper functions
+    Processes the study in the folder 'study'. Loads the task file and delegates the action to helper functions
     """
     logger.debug(f"Route_study {study}")
     study_folder = config.mercure.studies_folder + "/" + study

@@ -134,7 +134,7 @@ def _upload_dicom_session_to_xnat(
     # Create a zip file with the dicom_path in a temporary directory
     with tempfile.TemporaryDirectory() as tmp_path:
         zip_filepath = os.path.join(tmp_path, "dicom.zip")
-        # rename *.dcm files of dicom_path incrementaly and zip them
+        # rename *.dcm files of dicom_path incrementally and zip them
         with zipfile.ZipFile(zip_filepath, "w") as zip_file:
             i = 0
             for root, dirs, files in os.walk(dicom_path):

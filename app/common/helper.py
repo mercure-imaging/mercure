@@ -193,7 +193,7 @@ class RepeatedTimer(object):
             self.exit_function(*self.args, **self.kwargs)
 
     def start(self) -> None:
-        """Starts the timer for triggering the calllback after the defined interval."""
+        """Starts the timer for triggering the callback after the defined interval."""
         if not self.is_running:
             self._timer = threading.Timer(self.interval, self._run)
             assert self._timer is not None

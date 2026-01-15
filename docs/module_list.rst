@@ -65,7 +65,7 @@ Mercure-Decompressor
 +---------------+------------------------------------------------------------------------------------+
 | Docker Tag    | mercureimaging/mercure-decompressor                                                |
 +===============+====================================================================================+
-| Description   | Module for decompressing receieved DICOMs with support for codes                   | 
+| Description   | Module for decompressing received DICOMs with support for codes                    | 
 |               |                                                                                    | 
 |               | such as JPEG2000. The module can be placed as the initial entry                    | 
 |               |                                                                                    | 

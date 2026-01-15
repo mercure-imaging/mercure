@@ -26,7 +26,7 @@ mercure should now be running inside a virtual machine and be accessible from yo
 
 .. note:: The login credentials for the first login are: Username = admin, Password = router
 
-The DICOM receiver of mercure is listening at port 11112. If you want to send DICOM images to mercure from a folder on your host computer, you can do this with the "dcmsend" tool of the `Offis DCMTK tookit <https://dicom.offis.de/dcmtk.php.en>`_ by calling
+The DICOM receiver of mercure is listening at port 11112. If you want to send DICOM images to mercure from a folder on your host computer, you can do this with the "dcmsend" tool of the `Offis DCMTK toolkit <https://dicom.offis.de/dcmtk.php.en>`_ by calling
 ::
 
     dcmsend 127.0.0.1 11112 *.dcm
