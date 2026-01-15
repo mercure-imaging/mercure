@@ -104,6 +104,13 @@ class DicomWebTarget(Target):
     http_user: Optional[str] = None
     http_password: Optional[str] = None
 
+    # New GCP Service Account auth
+    gcp_service_account_json_path: Optional[str] = None
+    gcp_auth_scopes: Optional[List[str]] = None
+
+    # Authentication method selector (for clarity and validation)
+    auth_method: Optional[Literal["token", "basic", "gcp_service_account"]] = None
+
     @property
     def short_description(self) -> str:
         return self.url

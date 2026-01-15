@@ -319,5 +319,8 @@ wheel==0.43.0
 yarl==1.18.0
     # via aiohttp
 
+google-auth>=2.16.0
+google-auth-httplib2>=0.1.0
+
 # The following packages are considered to be unsafe in a requirements file:
 # setuptools

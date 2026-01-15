@@ -6,15 +6,55 @@
     <td>URL:</td>
     <td>{{ target.url }}</td>
 </tr>
-<!-- <tr>
-    <td>Port:</td>
-    <td>{{ target.port }}</td>
-</tr>
 <tr>
-    <td>AET Target:</td>
-    <td>{{ target.aet_target }}</td>
+    <td>Authentication:</td>
+    <td>
+        {% if target.gcp_service_account_json_path %}
+            <span class="tag is-success">GCP Service Account</span>
+        {% elif target.access_token %}
+            <span class="tag is-info">Bearer Token</span>
+        {% elif target.http_user %}
+            <span class="tag is-warning">HTTP Basic Auth</span>
+        {% else %}
+            <span class="tag is-light">None</span>
+        {% endif %}
+    </td>
 </tr>
+{% if target.gcp_service_account_json_path %}
 <tr>
-    <td>AET Source:</td>
-    <td>{{ target.aet_source }}</td>
-</tr> -->
+    <td>Service Account Key:</td>
+    <td>
+        <code>{{ target.gcp_service_account_json_path.split('/')[-1] }}</code>
+        <br>
+        <small class="has-text-grey">Stored in: {{ target.gcp_service_account_json_path }}</small>
+    </td>
+</tr>
+{% endif %}
+{% if target.gcp_auth_scopes %}
+<tr>
+    <td>OAuth Scopes:</td>
+    <td>
+        {% for scope in target.gcp_auth_scopes %}
+            <span class="tag is-light">{{ scope }}</span><br>
+        {% endfor %}
+    </td>
+</tr>
+{% endif %}
+{% if target.qido_url_prefix %}
+<tr>
+    <td>QIDO-RS Prefix:</td>
+    <td>{{ target.qido_url_prefix }}</td>
+</tr>
+{% endif %}
+{% if target.wado_url_prefix %}
+<tr>
+    <td>WADO-RS Prefix:</td>
+    <td>{{ target.wado_url_prefix }}</td>
+</tr>
+{% endif %}
+{% if target.stow_url_prefix %}
+<tr>
+    <td>STOW Prefix:</td>
+    <td>{{ target.stow_url_prefix }}</td>
+</tr>
+{% endif %}

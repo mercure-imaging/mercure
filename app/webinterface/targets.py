@@ -5,6 +5,10 @@ Targets page for the graphical user interface of mercure.
 """
 
 # Standard python includes
+import json
+import os
+import shutil
+from pathlib import Path
 from typing import Union
 
 # App-specific includes
@@ -16,12 +20,15 @@ from decoRouter import Router as decoRouter
 # Starlette-related includes
 from starlette.applications import Starlette
 from starlette.authentication import requires
-from starlette.responses import PlainTextResponse, RedirectResponse, Response
+from starlette.responses import JSONResponse, PlainTextResponse, RedirectResponse, Response
 from webinterface.common import get_user_information, templates
 
 router = decoRouter()
 
 logger = config.get_logger()
+
+# Directory for storing GCP service account keys
+GCP_KEYS_DIR = Path("/opt/mercure/config/gcp-keys")
 
 
 ###################################################################################
@@ -161,6 +168,17 @@ async def targets_delete_post(request) -> Response:
     deletetarget = request.path_params["target"]
 
     if deletetarget in config.mercure.targets:
+        # If target has a GCP key file, optionally delete it
+        target = config.mercure.targets[deletetarget]
+        if hasattr(target, 'gcp_service_account_json_path') and target.gcp_service_account_json_path:
+            try:
+                key_path = Path(target.gcp_service_account_json_path)
+                if key_path.exists():
+                    key_path.unlink()
+                    logger.info(f"Deleted GCP key file: {key_path}")
+            except Exception as e:
+                logger.warning(f"Could not delete GCP key file: {e}")
+        
         del config.mercure.targets[deletetarget]
 
     try:
@@ -188,6 +206,104 @@ async def targets_test_post(request) -> Response:
     handler = target_types.get_handler(target)
     result = await handler.test_connection(target, testtarget)
     return templates.TemplateResponse(handler.test_template, {"request": request, "result": result})
+
+
+@router.post("/upload_gcp_key")
+@requires(["authenticated", "admin"], redirect="login")
+async def upload_gcp_key(request) -> JSONResponse:
+    """
+    Handles upload of GCP service account JSON key file.
+    Saves the file to /opt/mercure/config/gcp-keys/ directory.
+    """
+    try:
+        # Ensure GCP keys directory exists
+        GCP_KEYS_DIR.mkdir(parents=True, exist_ok=True, mode=0o700)
+        
+        # Parse form data
+        form = await request.form()
+        uploaded_file = form.get("gcp_json_file")
+        target_name = form.get("target_name", "unknown")
+        
+        if not uploaded_file:
+            return JSONResponse(
+                {"success": False, "error": "No file provided"},
+                status_code=400
+            )
+        
+        # Validate file is JSON
+        if not uploaded_file.filename.endswith('.json'):
+            return JSONResponse(
+                {"success": False, "error": "File must be a JSON file"},
+                status_code=400
+            )
+        
+        # Read and validate JSON content
+        file_content = await uploaded_file.read()
+        try:
+            json_data = json.loads(file_content)
+            
+            # Basic validation of service account structure
+            required_fields = ['type', 'project_id', 'private_key_id', 'private_key', 'client_email']
+            missing_fields = [field for field in required_fields if field not in json_data]
+            
+            if missing_fields:
+                return JSONResponse(
+                    {
+                        "success": False, 
+                        "error": f"Invalid service account JSON. Missing fields: {', '.join(missing_fields)}"
+                    },
+                    status_code=400
+                )
+            
+            if json_data.get('type') != 'service_account':
+                return JSONResponse(
+                    {"success": False, "error": "JSON file must be a service account key"},
+                    status_code=400
+                )
+                
+        except json.JSONDecodeError as e:
+            return JSONResponse(
+                {"success": False, "error": f"Invalid JSON file: {str(e)}"},
+                status_code=400
+            )
+        
+        # Generate safe filename based on target name and original filename
+        safe_target_name = "".join(c for c in target_name if c.isalnum() or c in ('-', '_'))
+        original_name = Path(uploaded_file.filename).stem
+        safe_original_name = "".join(c for c in original_name if c.isalnum() or c in ('-', '_'))
+        
+        filename = f"{safe_target_name}_{safe_original_name}.json"
+        file_path = GCP_KEYS_DIR / filename
+        
+        # Check if file already exists and create backup
+        if file_path.exists():
+            backup_path = GCP_KEYS_DIR / f"{filename}.backup"
+            shutil.copy2(file_path, backup_path)
+            logger.info(f"Created backup of existing key: {backup_path}")
+        
+        # Write file with restricted permissions
+        file_path.write_bytes(file_content)
+        file_path.chmod(0o600)  # Read/write for owner only
+        
+        logger.info(f"Uploaded GCP service account key: {file_path}")
+        monitor.send_webgui_event(
+            monitor.w_events.TARGET_EDIT, 
+            request.user.display_name, 
+            f"Uploaded GCP key for {target_name}"
+        )
+        
+        return JSONResponse({
+            "success": True,
+            "file_path": str(file_path),
+            "message": "File uploaded successfully"
+        })
+        
+    except Exception as e:
+        logger.error(f"Error uploading GCP key: {e}")
+        return JSONResponse(
+            {"success": False, "error": f"Server error: {str(e)}"},
+            status_code=500
+        )
 
 
 targets_app = Starlette(routes=router)

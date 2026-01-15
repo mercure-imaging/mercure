@@ -147,3 +147,8 @@ dcm_extra_tags
 
 .pytest_cache/
 .aider*
+
+# GCP Service Account Keys - DO NOT COMMIT
+new-lantern-nvra.json
+getAccessToken.py
+*-service-account*.json

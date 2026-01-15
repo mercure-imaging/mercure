@@ -10,25 +10,106 @@
             size="15">
     </div>
 </div>
- <div class="field">
-    <label class="label">Username</label>
+
+<!-- Authentication Method Selection -->
+<h1 class="title is-4" style="margin-top: 40px;">Authentication</h1>
+
+<div class="field">
+    <label class="label">Authentication Method</label>
     <div class="control">
-        <input name="http_user" class="input" required='false' autocomplete='off' placeholder="HTTPS username"
-           value="{{targets[edittarget].http_user if targets[edittarget].http_user else ''}}">
+        <div class="select">
+            <select id="auth_method_select" name="auth_method">
+                <option value="none" {% if not targets[edittarget].access_token and not targets[edittarget].http_user and not targets[edittarget].gcp_service_account_json_path %}selected{% endif %}>None</option>
+                <option value="token" {% if targets[edittarget].access_token %}selected{% endif %}>Bearer Token</option>
+                <option value="basic" {% if targets[edittarget].http_user %}selected{% endif %}>HTTP Basic Auth</option>
+                <option value="gcp_service_account" {% if targets[edittarget].gcp_service_account_json_path %}selected{% endif %}>GCP Service Account</option>
+            </select>
+        </div>
+    </div>
+    <p class="help">Select the authentication method for your DICOMweb endpoint</p>
+</div>
+
+<!-- HTTP Basic Auth Section -->
+<div id="basic_auth_section" style="display: none;">
+    <div class="field">
+        <label class="label">Username</label>
+        <div class="control">
+            <input name="http_user" class="input" autocomplete='off' placeholder="HTTPS username"
+               value="{{targets[edittarget].http_user if targets[edittarget].http_user else ''}}">
+        </div>
+    </div>
+    <div class="field">
+        <label class="label">Password</label>
+        <div class="control">
+            <input name="http_password" type="password" class="input" autocomplete='off' placeholder="HTTPS password"
+               value="{{targets[edittarget].http_password if targets[edittarget].http_password else ''}}">
+        </div>
     </div>
 </div>
-<div class="field">
-    <label class="label">Password</label>
-    <div class="control">
-        <input name="http_password" class="input" required='false' autocomplete='off' placeholder="HTTPS password"
-           value="{{targets[edittarget].http_password if targets[edittarget].http_password else ''}}">
+
+<!-- Bearer Token Section -->
+<div id="token_auth_section" style="display: none;">
+    <div class="field">
+        <label class="label">Access Token</label>
+        <div class="control">
+            <input name="access_token" class="input" autocomplete='off' placeholder="Bearer token"
+               value="{{targets[edittarget].access_token if targets[edittarget].access_token else ''}}">
+        </div>
+        <p class="help">Provide your OAuth 2.0 access token or API key</p>
     </div>
 </div>
-<div class="field">
-    <label class="label">Access Token</label>
-    <div class="control">
-        <input name="access_token" class="input" required='false' autocomplete='off' placeholder="Access token"
-           value="{{targets[edittarget].access_token if targets[edittarget].access_token else ''}}">
+
+<!-- GCP Service Account Section -->
+<div id="gcp_auth_section" style="display: none;">
+    <div class="notification is-warning">
+        <strong>GCP Service Account Authentication</strong><br>
+        Upload your Google Cloud service account JSON key file. The file will be securely stored in <code>/opt/mercure/config/gcp-keys/</code>.
+    </div>
+    
+    <div class="field">
+        <label class="label">Service Account JSON Key</label>
+        <div class="control">
+            <div class="file has-name is-fullwidth">
+                <label class="file-label">
+                    <input class="file-input" type="file" id="gcp_json_file" name="gcp_json_file" accept=".json">
+                    <span class="file-cta">
+                        <span class="file-icon">
+                            <i class="fas fa-upload"></i>
+                        </span>
+                        <span class="file-label">
+                            Choose a file…
+                        </span>
+                    </span>
+                    <span class="file-name" id="gcp_file_name">
+                        {% if targets[edittarget].gcp_service_account_json_path %}
+                            {{ targets[edittarget].gcp_service_account_json_path.split('/')[-1] }}
+                        {% else %}
+                            No file selected
+                        {% endif %}
+                    </span>
+                </label>
+            </div>
+        </div>
+        <p class="help">Upload your service account JSON key file from Google Cloud Console</p>
+    </div>
+
+    <!-- Hidden field to store the path after upload -->
+    <input type="hidden" name="gcp_service_account_json_path" id="gcp_service_account_json_path" 
+           value="{{targets[edittarget].gcp_service_account_json_path if targets[edittarget].gcp_service_account_json_path else ''}}">
+
+    <div class="field">
+        <label class="label">OAuth Scopes (Optional)</label>
+        <div class="control">
+            <input name="gcp_auth_scopes" class="input" autocomplete='off' 
+                   placeholder="https://www.googleapis.com/auth/cloud-healthcare"
+                   value="{% if targets[edittarget].gcp_auth_scopes %}{{ ','.join(targets[edittarget].gcp_auth_scopes) }}{% endif %}">
+        </div>
+        <p class="help">Comma-separated OAuth scopes. Leave empty to use default Cloud Healthcare API scope.</p>
+    </div>
+
+    <div class="field" id="upload_status_field" style="display: none;">
+        <div class="notification" id="upload_status">
+        </div>
     </div>
 </div>
 
@@ -37,21 +118,118 @@
 <div class="field">
     <label class="label">QIDO-RS</label>
     <div class="control">
-        <input name="qido_url_prefix" class="input" required='false' autocomplete='off' placeholder="QIDO-RS URL"
+        <input name="qido_url_prefix" class="input" autocomplete='off' placeholder="QIDO-RS URL"
            value="{{targets[edittarget].qido_url_prefix if targets[edittarget].qido_url_prefix else ''}}">
     </div>
 </div>
 <div class="field">
     <label class="label">WADO-RS</label>
     <div class="control">
-        <input name="wado_url_prefix" class="input" required='false' autocomplete='off' placeholder="WADO-RS URL"
+        <input name="wado_url_prefix" class="input" autocomplete='off' placeholder="WADO-RS URL"
            value="{{targets[edittarget].wado_url_prefix if targets[edittarget].wado_url_prefix else ''}}">
     </div>
 </div>
 <div class="field">
     <label class="label">STOW</label>
     <div class="control">
-        <input name="stow_url_prefix" class="input" required='false' autocomplete='off' placeholder="STOW URL"
-           value="{{targets[edittarget].wado_url_prefix if targets[edittarget].wado_url_prefix else ''}}">
+        <input name="stow_url_prefix" class="input" autocomplete='off' placeholder="STOW URL"
+           value="{{targets[edittarget].stow_url_prefix if targets[edittarget].stow_url_prefix else ''}}">
     </div>
 </div>
+
+<script>
+// Authentication method toggle logic
+document.addEventListener('DOMContentLoaded', function() {
+    const authSelect = document.getElementById('auth_method_select');
+    const basicSection = document.getElementById('basic_auth_section');
+    const tokenSection = document.getElementById('token_auth_section');
+    const gcpSection = document.getElementById('gcp_auth_section');
+    
+    function updateAuthSections() {
+        const selectedMethod = authSelect.value;
+        
+        // Hide all sections
+        basicSection.style.display = 'none';
+        tokenSection.style.display = 'none';
+        gcpSection.style.display = 'none';
+        
+        // Show selected section
+        if (selectedMethod === 'basic') {
+            basicSection.style.display = 'block';
+        } else if (selectedMethod === 'token') {
+            tokenSection.style.display = 'block';
+        } else if (selectedMethod === 'gcp_service_account') {
+            gcpSection.style.display = 'block';
+        }
+    }
+    
+    // Initialize on page load
+    updateAuthSections();
+    
+    // Update on selection change
+    authSelect.addEventListener('change', updateAuthSections);
+    
+    // File upload display
+    const fileInput = document.getElementById('gcp_json_file');
+    const fileName = document.getElementById('gcp_file_name');
+    
+    if (fileInput) {
+        fileInput.addEventListener('change', function() {
+            if (this.files && this.files[0]) {
+                fileName.textContent = this.files[0].name;
+            }
+        });
+    }
+});
+
+// Handle file upload before form submission
+document.querySelector('form').addEventListener('submit', async function(e) {
+    const authMethod = document.getElementById('auth_method_select').value;
+    const fileInput = document.getElementById('gcp_json_file');
+    const uploadStatus = document.getElementById('upload_status');
+    const uploadStatusField = document.getElementById('upload_status_field');
+    const pathInput = document.getElementById('gcp_service_account_json_path');
+    
+    // Only handle GCP service account uploads
+    if (authMethod === 'gcp_service_account' && fileInput && fileInput.files.length > 0) {
+        e.preventDefault();
+        
+        // Show upload in progress
+        uploadStatusField.style.display = 'block';
+        uploadStatus.className = 'notification is-info';
+        uploadStatus.textContent = 'Uploading service account key...';
+        
+        const formData = new FormData();
+        formData.append('gcp_json_file', fileInput.files[0]);
+        formData.append('target_name', '{{edittarget}}');
+        
+        try {
+            const response = await fetch('/targets/upload_gcp_key', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok && result.success) {
+                uploadStatus.className = 'notification is-success';
+                uploadStatus.textContent = 'File uploaded successfully!';
+                
+                // Set the path in hidden field
+                pathInput.value = result.file_path;
+                
+                // Submit the form after successful upload
+                setTimeout(() => {
+                    e.target.submit();
+                }, 1000);
+            } else {
+                uploadStatus.className = 'notification is-danger';
+                uploadStatus.textContent = 'Error: ' + (result.error || 'Upload failed');
+            }
+        } catch (error) {
+            uploadStatus.className = 'notification is-danger';
+            uploadStatus.textContent = 'Error uploading file: ' + error.message;
+        }
+    }
+});
+</script>
