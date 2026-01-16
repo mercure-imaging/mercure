@@ -14,12 +14,12 @@ BIDS-flux (Multi-site Neuroimaging)
 **Institutions involved:**
 
 * CHU Sainte-Justine (Montreal)
-* University of Catalonia (Universitat Oberta de Catalunya)
+* Alberta's Children Hospital (Calgary)
 * SickKids - The Hospital for Sick Children (Toronto)
 
 **How mercure is used:**
 
-In the BIDS-flux architecture, mercure serves as the **data ingestion and curation component** at each local research site. It handles incoming DICOM data from MRI scanners before the data flows through the rest of the pipeline:
+In the BIDS-flux architecture, mercure serves as a dicom router at each local research site, enabling custom container to be executed on each new session, and  routing dicoms to proprietary dicom-only processing for synthetic MRI. It handles incoming DICOM data from MRI scanners before the data flows through the rest of the pipeline:
 
 .. code-block:: text
 
