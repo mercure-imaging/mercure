@@ -261,7 +261,7 @@ async def rules_delete_post(request) -> Response:
 @router.post("/test")
 @requires(["authenticated", "admin"], redirect="login")
 async def rules_test(request) -> Response:
-    """Evalutes if a given routing rule is valid. The rule and testing dictionary have to be passed as form parameters."""
+    """Evaluates if a given routing rule is valid. The rule and testing dictionary have to be passed as form parameters."""
     noresult: Set[Any] = set()
     attrs_accessed = set()
     try:
@@ -313,7 +313,7 @@ async def rules_test(request) -> Response:
 @router.post("/test_completionseries")
 @requires(["authenticated", "admin"], redirect="login")
 async def rules_test_completionseries(request) -> Response:
-    """Evalutes if a given value for the series list for study completion is valid."""
+    """Evaluates if a given value for the series list for study completion is valid."""
     try:
         form = dict(await request.form())
         test_series_list = form["study_trigger_series"]
