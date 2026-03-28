@@ -439,6 +439,14 @@ install_services() {
   sudo systemctl restart mercure_worker_fast@1.service mercure_worker_fast@2.service mercure_worker_slow@1.service mercure_worker_slow@2.service
 }
 
+build_getdcmtags () {
+  sudo apt install -y build-essential qtbase5-dev dcmtk libdcmtk-dev jq
+  cd getdcmtags
+  qmake
+  make
+  cp getdcmtags ../app/bin/ubuntu$UBUNTU_VERSION/getdcmtags
+}
+
 systemd_install () {
   echo "## Performing systemd-type mercure installation..."
   create_user
@@ -446,7 +454,9 @@ systemd_install () {
   install_configuration
   sudo cp -n "$MERCURE_SRC"/installation/sudoers/* /etc/sudoers.d/
   install_packages
-  install_docker
+  if [ $HOSTTYPE != "x86_64" ]; then
+    build_getdcmtags
+  fi
   install_app_files
   install_dependencies
   install_postgres
