@@ -101,19 +101,23 @@ class PodmanRuntime(LocalContainerRuntime):
         # Podman runs on the host so folder paths need no remapping.
         cmd = ["podman", "run", "--rm"]
 
-        # Bind-mount in/out dirs.  :Z gives each container a private SELinux label.
+        # in/out dirs are unique per job (UUID-named folder) so :Z (private
+        # SELinux label) is safe and more secure.
         cmd += ["-v", f"{folder / 'in'}:{container_in_dir}:Z"]
         cmd += ["-v", f"{folder / 'out'}:{container_out_dir}:Z"]
 
-        # Additional volumes specified in the module config.
+        # Additional volumes are user-configured and may be shared across
+        # parallel runs, so use :z (shared label).
         for vol_src, vol_cfg in additional_volumes.items():
             target = vol_cfg.get("bind", vol_src)
             mode = vol_cfg.get("mode", "rw")
-            cmd += ["-v", f"{vol_src}:{target}:{mode},Z"]
+            cmd += ["-v", f"{vol_src}:{target}:{mode},z"]
 
-        # Persistence volume.
+        # Persistence folder is shared across all parallel runs of the same
+        # module, so :Z would cause the second container to relabel the
+        # directory and break SELinux access for the first.  Use :z instead.
         if persistence_mount:
-            cmd += ["-v", f"{persistence_mount[0]}:{persistence_mount[1]}:Z"]
+            cmd += ["-v", f"{persistence_mount[0]}:{persistence_mount[1]}:z"]
 
         # Environment variables.
         for k, v in environment.items():
