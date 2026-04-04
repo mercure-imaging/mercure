@@ -8,7 +8,6 @@ uid mapping is automatic so no busybox chown step is needed.
 """
 
 import json
-import os
 import subprocess
 from pathlib import Path
 from typing import Dict, Optional, Tuple
@@ -79,15 +78,14 @@ class PodmanRuntime(LocalContainerRuntime):
         for k, v in environment.items():
             cmd += ["-e", f"{k}={v}"]
 
-        # User.  With rootless Podman the host uid maps to uid 0 inside the
-        # container by default, so without --userns=keep-id, setting --user
-        # to the host uid would map it to a *subuid* on the host, meaning
-        # output files would be owned by a subuid that mercure cannot access.
-        # --userns=keep-id makes Podman map the host uid to the same uid
-        # inside the container, so file ownership is preserved correctly.
-        if not module.requires_root:
-            cmd += ["--userns=keep-id", "--user", f"{os.getuid()}:{os.getegid()}"]
-        else:
+        # With rootless Podman, omitting --user means the container process
+        # runs as uid 0 inside the container, which maps to the calling user's
+        # uid on the host.  Files written to mounted volumes are therefore
+        # owned by the mercure user — no busybox chown step needed.
+        #
+        # uid 0 inside a rootless container is bounded by the user namespace
+        # and cannot affect the host beyond what the calling user can do.
+        if module.requires_root:
             logger.debug("Executing module as root.")
 
         if config.mercure.processing_runtime:
