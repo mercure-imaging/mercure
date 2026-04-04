@@ -9,12 +9,10 @@ import base64
 import json
 import os
 import re
-import subprocess
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-import docker
 import httpx
 from decoRouter import Router as decoRouter
 
@@ -28,6 +26,7 @@ import common.config as config
 import common.helper as helper
 from common.constants import mercure_names
 from common.types import Module
+from process.runtime_base import get_runtime
 from webinterface.common import redis, strip_untrusted, templates
 
 router = decoRouter()
@@ -143,46 +142,14 @@ async def add_module(request):
     if name in config.mercure.modules:
         return BadRequestResponse("A module with this name already exists.")
 
-    if config.mercure.process_runner == "podman":
-        exists_result = subprocess.run(["podman", "image", "exists", form["docker_tag"]])
-        if exists_result.returncode != 0:
-            pull_result = subprocess.run(["podman", "pull", form["docker_tag"]], capture_output=True)
-            if pull_result.returncode != 0:
-                return ServerErrorResponse(
-                    "A container image with this tag does not exist locally or in the registry."
-                )
-    else:
-        client = docker.from_env()  # type: ignore
-        try:
-            client.images.get(form["docker_tag"])
-        except docker.errors.ImageNotFound:
-            try:
-                client.images.get_registry_data(form["docker_tag"])
-            except docker.errors.APIError as e:
-                if e.response.status_code == 403:
-                    return ServerErrorResponse(
-                        "A Docker container with this tag does not exist locally or in the Docker Hub registry."
-                    )
-                else:
-                    logger.exception(e)
-                    return ServerErrorResponse(
-                        f"Failed to retrieve Docker Registry data about this docker tag: {e}"
-                    )
-            except Exception as e:
-                logger.exception(e)
-                return ServerErrorResponse(
-                    f"Unexpected error retrieving Docker Registry data about this docker tag: {e}"
-                )
-        except docker.errors.APIError as e:
-            logger.exception(e)
-            return ServerErrorResponse(
-                f"Unable to read container list: {e}. \n Check server logs, Docker installation, and any firewall settings."
-            )
-        except Exception as e:
-            logger.exception(e)
-            return ServerErrorResponse(
-                f"Unexpected error: {e}. \n Check server logs, Docker installation, and any firewall settings."
-            )
+    try:
+        runtime = get_runtime()
+        image_error = runtime.validate_image(form["docker_tag"])
+    except Exception as e:
+        logger.exception(e)
+        return ServerErrorResponse(f"Unable to determine container runtime: {e}")
+    if image_error:
+        return ServerErrorResponse(image_error)
     if (
         form["container_type"] == "monai"
         and config.mercure.support_root_modules is not True
