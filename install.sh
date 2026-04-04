@@ -56,6 +56,7 @@ DATA_PATH=$MERCURE_BASE/data
 CONFIG_PATH=$MERCURE_BASE/config
 DB_PATH=$MERCURE_BASE/db
 MERCURE_SRC=$(readlink -f .)
+CONTAINER_RUNNER="podman"  # default runner for processing modules; use -D flag to switch to docker
 
 if [ -f "$CONFIG_PATH"/db.env ]; then 
   sudo chown $USER "$CONFIG_PATH"/db.env 
@@ -113,21 +114,22 @@ create_folders () {
 install_configuration () {
   if [ ! -f "$CONFIG_PATH"/mercure.json ]; then
     echo "## Copying configuration files..."
-    sudo chown $USER "$CONFIG_PATH" 
+    sudo chown $USER "$CONFIG_PATH"
     cp "$MERCURE_SRC"/configuration/default_bookkeeper.env "$CONFIG_PATH"/bookkeeper.env
     cp "$MERCURE_SRC"/configuration/default_mercure.json "$CONFIG_PATH"/mercure.json
     cp "$MERCURE_SRC"/configuration/default_services.json "$CONFIG_PATH"/services.json
     cp "$MERCURE_SRC"/configuration/default_webgui.env "$CONFIG_PATH"/webgui.env
     echo "POSTGRES_PASSWORD=$DB_PWD" > "$CONFIG_PATH"/db.env
 
-    if [ $INSTALL_TYPE = "systemd" ]; then 
+    if [ $INSTALL_TYPE = "systemd" ]; then
       sed -i -e "s/mercure:ChangePasswordHere@localhost/mercure:$DB_PWD@localhost/" "$CONFIG_PATH"/bookkeeper.env
     elif [ $INSTALL_TYPE = "docker" ]; then
       sed -i -e "s/mercure:ChangePasswordHere@localhost/mercure:$DB_PWD@db/" "$CONFIG_PATH"/bookkeeper.env
       sed -i -e "s/0.0.0.0:8080/bookkeeper:8080/" "$CONFIG_PATH"/mercure.json
     fi
-    
+
     sed -i -e "s/BOOKKEEPER_TOKEN_PLACEHOLDER/$BOOKKEEPER_SECRET/" "$CONFIG_PATH"/mercure.json
+    sed -i -e "s/PROCESS_RUNNER_PLACEHOLDER/$CONTAINER_RUNNER/" "$CONFIG_PATH"/mercure.json
     sed -i -e "s/PutSomethingRandomHere/$SECRET/" "$CONFIG_PATH"/webgui.env
     sudo chown -R $OWNER:$OWNER "$CONFIG_PATH"
     sudo chmod -R o-r "$CONFIG_PATH"
@@ -309,14 +311,53 @@ install_docker () {
   fi
 }
 
+install_podman () {
+  if [ ! -x "$(command -v podman)" ]; then
+    echo "## Installing Podman..."
+    sudo apt-get update
+    sudo apt-get install -y podman
+  fi
+}
+
+enable_podman_system_socket () {
+  # Used by the docker install type: enables the system-wide Podman socket so
+  # that the processor container can reach the host Podman daemon.
+  # Socket is created at /run/podman/podman.sock (rootful Podman).
+  echo "## Enabling system-level Podman socket..."
+  sudo systemctl enable --now podman.socket
+}
+
+enable_podman_user_socket () {
+  # Used by the systemd install type: enables the per-user Podman socket for the
+  # mercure user so the processor service can run rootless containers.
+  # Socket will be at /run/user/<uid>/podman/podman.sock.
+  echo "## Enabling Podman socket for mercure user..."
+  sudo loginctl enable-linger mercure
+  MERCURE_UID=$(id -u mercure)
+  sudo -u mercure XDG_RUNTIME_DIR=/run/user/$MERCURE_UID systemctl --user enable podman.socket
+  sudo -u mercure XDG_RUNTIME_DIR=/run/user/$MERCURE_UID systemctl --user start podman.socket || true
+}
+
 setup_docker () {
   local overwrite=${1:-false}
   if [ "$overwrite" = true ] || [ ! -f "$MERCURE_BASE"/docker-compose.yml ]; then
     echo "## Copying docker-compose.yml..."
     sudo cp $MERCURE_SRC/docker/docker-compose.yml $MERCURE_BASE
-    sudo sed -i -e "s/\\\${DOCKER_GID}/$(getent group docker | cut -d: -f3)/g" $MERCURE_BASE/docker-compose.yml
     sudo sed -i -e "s/\\\${UID}/$(getent passwd mercure | cut -d: -f3)/g" $MERCURE_BASE/docker-compose.yml
     sudo sed -i -e "s/\\\${GID}/$(getent passwd mercure | cut -d: -f4)/g" $MERCURE_BASE/docker-compose.yml
+
+    if [ "$CONTAINER_RUNNER" = "docker" ]; then
+      # Docker runner: mount docker socket, set docker group for socket access
+      sudo sed -i -e "s/\\\${DOCKER_GID}/$(getent group docker | cut -d: -f3)/g" $MERCURE_BASE/docker-compose.yml
+    else
+      # Podman runner: mount system Podman socket, inject CONTAINER_HOST and
+      # MERCURE_HOST_DATA_PATH so the processor container can reach the host
+      # Podman daemon and correctly remap data volume paths.
+      MERCURE_GID=$(getent passwd mercure | cut -d: -f4)
+      sudo sed -i -e "s/\\\${DOCKER_GID}/$MERCURE_GID/g" $MERCURE_BASE/docker-compose.yml
+      sudo sed -i -e "s|/var/run/docker.sock:/var/run/docker.sock|/run/podman/podman.sock:/run/podman/podman.sock|g" $MERCURE_BASE/docker-compose.yml
+      sudo sed -i -e "s|MERCURE_RUNNER: docker|MERCURE_RUNNER: docker\n    CONTAINER_HOST: unix:///run/podman/podman.sock\n    MERCURE_HOST_DATA_PATH: /opt/mercure/data|" $MERCURE_BASE/docker-compose.yml
+    fi
 
     if [[ -v MERCURE_TAG ]]; then # a custom tag was provided
       sudo sed -i "s/\\\${IMAGE_TAG}/\:$MERCURE_TAG/g" $MERCURE_BASE/docker-compose.yml
@@ -446,7 +487,12 @@ systemd_install () {
   install_configuration
   sudo cp -n "$MERCURE_SRC"/installation/sudoers/* /etc/sudoers.d/
   install_packages
-  install_docker
+  if [ "$CONTAINER_RUNNER" = "docker" ]; then
+    install_docker
+  else
+    install_podman
+    enable_podman_user_socket
+  fi
   install_app_files
   install_dependencies
   install_postgres
@@ -460,6 +506,10 @@ docker_install () {
   create_folders
   install_configuration
   install_docker
+  if [ "$CONTAINER_RUNNER" = "podman" ]; then
+    install_podman
+    enable_podman_system_socket
+  fi
   if [ $DOCKER_BUILD = true ]; then
     build_docker
   fi
@@ -541,19 +591,21 @@ while getopts ":hy" opt; do
     h )
       echo "Usage:"
       echo ""
-      echo "    install.sh -h                      Display this help message."
-      echo "    install.sh [-y] systemd [-dmbu]    Install as systemd service."
-      echo "    install.sh [-y] docker  [-dm]      Install with docker-compose."
-      echo "    install.sh [-y] nomad              Install as nomad job."
+      echo "    install.sh -h                       Display this help message."
+      echo "    install.sh [-y] systemd [-dmbDu]    Install as systemd service."
+      echo "    install.sh [-y] docker  [-dmbD]     Install with docker-compose."
+      echo "    install.sh [-y] nomad               Install as nomad job."
       echo ""
       echo "Options:   "
       echo "                      -d               Development mode."
       echo "                      -m               Install Metabase for reporting."
+      echo "                      -D               Use Docker for processing modules"
+      echo "                                       (default: Podman)."
       echo "only for systemd:"
       echo "                      -u               Update installation."
       echo "only for docker:"
       echo "                      -b               Build containers."
-      echo ""      
+      echo ""
       exit 0
       ;;
     y )
@@ -580,9 +632,9 @@ DOCKER_BUILD=false
 DO_OPERATION="install"
 INSTALL_ORTHANC=false
 INSTALL_METABASE=false
-while getopts ":dbuom" opt; do
+while getopts ":dbuomD" opt; do
   case ${opt} in
-    o ) 
+    o )
       INSTALL_ORTHANC=true
       ;;
     m )
@@ -595,10 +647,13 @@ while getopts ":dbuom" opt; do
       DO_DEV_INSTALL=true
       ;;
     b )
-      if [ $INSTALL_TYPE != "docker" ]; then 
+      if [ $INSTALL_TYPE != "docker" ]; then
         echo "Invalid option for \"$INSTALL_TYPE\": -b" 1>&2
       fi
       DOCKER_BUILD=true
+      ;;
+    D )
+      CONTAINER_RUNNER="docker"
       ;;
     \? )
       echo "Invalid Option for \"$INSTALL_TYPE\": -$OPTARG" 1>&2
@@ -623,7 +678,7 @@ fi
 if [ $FORCE_INSTALL = "y" ]; then
   echo "Forcing installation"
 else
-  read -p "Install with $INSTALL_TYPE (y/n)? " ANS
+  read -p "Install with $INSTALL_TYPE (processing runner: $CONTAINER_RUNNER) (y/n)? " ANS
   if [ "$ANS" = "y" ]; then
     echo "Installing mercure..."
   else
