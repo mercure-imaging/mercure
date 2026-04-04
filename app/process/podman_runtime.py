@@ -15,8 +15,9 @@ the processor container and set both CONTAINER_HOST and MERCURE_HOST_DATA_PATH
 
 import json
 import os
+from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import podman
 from podman.errors import APIError, ContainerError, ImageNotFound
@@ -24,7 +25,6 @@ from podman.errors import APIError, ContainerError, ImageNotFound
 import common.config as config
 from common.types import Module
 from process.runtime_base import LocalContainerRuntime, _pull_throttle
-from datetime import datetime
 
 logger = config.get_logger()
 
@@ -201,13 +201,10 @@ class PodmanRuntime(LocalContainerRuntime):
 
             result = container.wait(timeout=_CONTAINER_TIMEOUT)
 
-            logger.info("=== MODULE OUTPUT - BEGIN ========================================")
             logs = ""
             raw = container.logs(timestamps=True)
             if raw is not None:
                 logs = raw if isinstance(raw, str) else raw.decode("utf-8")
-            logger.info(logs)
-            logger.info("=== MODULE OUTPUT - END ==========================================")
 
             exit_code = result.get("StatusCode", 1) if isinstance(result, dict) else int(result or 0)
             return exit_code, logs
@@ -221,8 +218,19 @@ class PodmanRuntime(LocalContainerRuntime):
                 container.remove()
 
     # ------------------------------------------------------------------ #
-    # Image validation (used by the web UI)                               #
+    # Image operations (used by the web UI)                               #
     # ------------------------------------------------------------------ #
+
+    def list_local_images(self) -> Optional[List[str]]:
+        try:
+            images = []
+            for image in self._podman_client.images.list():
+                if image.tags:
+                    images.append(image.tags[0])
+            return sorted(images)
+        except Exception as e:
+            logger.error(f"Error listing local Podman images: {e}")
+            return None
 
     def validate_image(self, tag: str) -> Optional[str]:
         tag = self._qualify_image(tag)

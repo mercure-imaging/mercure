@@ -403,18 +403,12 @@ async def _fetch_online_modules() -> Optional[str]:
 
 
 def _fetch_local_images() -> Optional[List[str]]:
-    """Fetch all locally installed Docker images. Returns list of image tags."""
-    installed_images = []
+    """Fetch all locally available container images. Returns list of image tags."""
     try:
-        docker_client = docker.from_env()
-        for image in docker_client.images.list():
-            if image.tags:
-                installed_images.append(image.tags[0])
+        return get_runtime().list_local_images()
     except Exception as e:
-        logger.error(f"Error fetching installed docker images: {e}")
+        logger.error(f"Error fetching local images: {e}")
         return None
-
-    return sorted(installed_images)
 
 
 def _get_cached_online_modules() -> Optional[str]:
@@ -474,7 +468,7 @@ async def fetch_modules(request):
     local_images = _fetch_local_images()
     warning = None
     if local_images is None:
-        warning = "Error querying Docker daemon for local image list."
+        warning = "Error querying container runtime for local image list."
 
     # Cache miss or expired - fetch from GitHub
     if online_modules is None:

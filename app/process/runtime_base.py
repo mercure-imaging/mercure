@@ -11,7 +11,7 @@ import uuid
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple, cast
+from typing import Any, Dict, List, Optional, Tuple, cast
 
 import common.config as config
 import common.helper as helper
@@ -52,6 +52,10 @@ class ContainerRuntime(ABC):
     def validate_image(self, tag: str) -> Optional[str]:
         """Check that *tag* is accessible.  Returns an error message or None."""
         ...
+
+    def list_local_images(self) -> Optional[List[str]]:
+        """Return sorted list of locally available image tags, or None if unavailable."""
+        return None
 
 
 class LocalContainerRuntime(ContainerRuntime):
@@ -347,11 +351,11 @@ def get_runtime() -> ContainerRuntime:
     if runner == "podman" or process_runner == "podman":
         if runner == "docker" and not os.environ.get("CONTAINER_HOST"):
             # Podman runs on the host; when mercure itself runs inside Docker
-            # the processing folder paths are container-internal and the podman
-            # binary is not available in the mercure image.
-            # Exception: if CONTAINER_HOST points to a Podman socket mounted
-            # from the host, the CLI will talk to the host's Podman daemon and
-            # MERCURE_HOST_DATA_PATH must be set so volume paths can be remapped.
+            # the processing folder paths are container-internal paths, not
+            # host paths, so volume mounts would point to the wrong place.
+            # Solution: mount the host Podman socket into the processor container
+            # and set CONTAINER_HOST to its path.  podman-py connects via that
+            # socket and MERCURE_HOST_DATA_PATH maps container paths to host paths.
             raise Exception(
                 "process_runner='podman' is not supported when mercure is running "
                 "inside Docker (MERCURE_RUNNER='docker') unless CONTAINER_HOST is "

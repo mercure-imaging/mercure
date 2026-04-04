@@ -8,7 +8,7 @@ import json
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import docker
 from docker.types import Mount
@@ -146,9 +146,8 @@ class DockerRuntime(LocalContainerRuntime):
             docker_result = container.wait()
             logger.info(docker_result)
 
-            logs = ""
-            if container.logs() is not None:
-                logs = container.logs(timestamps=True).decode("utf-8")
+            raw = container.logs(timestamps=True)
+            logs = raw.decode("utf-8") if raw is not None else ""
 
             # Fix output-file ownership with a lightweight busybox container.
             try:
@@ -187,8 +186,19 @@ class DockerRuntime(LocalContainerRuntime):
                 container.remove()
 
     # ------------------------------------------------------------------ #
-    # Image validation (used by the web UI)                               #
+    # Image operations (used by the web UI)                               #
     # ------------------------------------------------------------------ #
+
+    def list_local_images(self) -> Optional[List[str]]:
+        try:
+            images = []
+            for image in self._docker_client.images.list():
+                if image.tags:
+                    images.append(image.tags[0])
+            return sorted(images)
+        except Exception as e:
+            logger.error(f"Error listing local Docker images: {e}")
+            return None
 
     def validate_image(self, tag: str) -> Optional[str]:
         try:

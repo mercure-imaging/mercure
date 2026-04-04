@@ -10,17 +10,16 @@ submitted, so process_series does not wait for the container to finish.
 import json
 import os
 from pathlib import Path
-from typing import Optional
+from typing import Optional, cast
 
 import nomad
+from jinja2 import Template
 
 import common.config as config
 import common.monitor as monitor
 from common.types import Module, Task, TaskProcessing
 from common.version import mercure_version
-from jinja2 import Template
 from process.runtime_base import ContainerRuntime
-from typing import cast
 
 logger = config.get_logger()
 
