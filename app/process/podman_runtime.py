@@ -101,19 +101,19 @@ class PodmanRuntime(LocalContainerRuntime):
         # Podman runs on the host so folder paths need no remapping.
         cmd = ["podman", "run", "--rm"]
 
-        # Bind-mount in/out dirs.  The :z label relabels for SELinux systems.
-        cmd += ["-v", f"{folder / 'in'}:{container_in_dir}:z"]
-        cmd += ["-v", f"{folder / 'out'}:{container_out_dir}:z"]
+        # Bind-mount in/out dirs.  :Z gives each container a private SELinux label.
+        cmd += ["-v", f"{folder / 'in'}:{container_in_dir}:Z"]
+        cmd += ["-v", f"{folder / 'out'}:{container_out_dir}:Z"]
 
         # Additional volumes specified in the module config.
         for vol_src, vol_cfg in additional_volumes.items():
             target = vol_cfg.get("bind", vol_src)
             mode = vol_cfg.get("mode", "rw")
-            cmd += ["-v", f"{vol_src}:{target}:{mode},z"]
+            cmd += ["-v", f"{vol_src}:{target}:{mode},Z"]
 
         # Persistence volume.
         if persistence_mount:
-            cmd += ["-v", f"{persistence_mount[0]}:{persistence_mount[1]}:z"]
+            cmd += ["-v", f"{persistence_mount[0]}:{persistence_mount[1]}:Z"]
 
         # Environment variables.
         for k, v in environment.items():
