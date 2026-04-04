@@ -9,6 +9,7 @@ uid mapping is automatic so no busybox chown step is needed.
 
 import asyncio
 import json
+import os
 import subprocess
 from datetime import datetime
 from pathlib import Path
@@ -169,10 +170,23 @@ class PodmanRuntime(LocalContainerRuntime):
     ) -> List[str]:
         cmd = ["podman", "run", "--rm"]
 
+        # When mercure runs inside Docker and talks to a host Podman socket via
+        # CONTAINER_HOST, folder is a container-internal path.
+        # MERCURE_HOST_DATA_PATH lets the operator supply the host-side
+        # equivalent of /opt/mercure/data so volume bind-mounts reach the
+        # right place on the host (same problem DockerRuntime solves via
+        # named-volume inspection).
+        host_data_path = os.environ.get("MERCURE_HOST_DATA_PATH")
+        if host_data_path:
+            real_folder = Path(host_data_path) / "processing" / folder.stem
+            logger.info(f"Using host-side folder: {real_folder}")
+        else:
+            real_folder = folder
+
         # in/out dirs are unique per job (UUID-named folder) so :Z (private
         # SELinux label) is safe and more secure.
-        cmd += ["-v", f"{folder / 'in'}:{container_in_dir}:Z"]
-        cmd += ["-v", f"{folder / 'out'}:{container_out_dir}:Z"]
+        cmd += ["-v", f"{real_folder / 'in'}:{container_in_dir}:Z"]
+        cmd += ["-v", f"{real_folder / 'out'}:{container_out_dir}:Z"]
 
         # Additional volumes are user-configured and may be shared across
         # parallel runs, so use :z (shared label).
@@ -183,8 +197,14 @@ class PodmanRuntime(LocalContainerRuntime):
 
         # Persistence folder is shared across all parallel runs of the same
         # module, so use :z (shared label) rather than :Z (private).
+        # The persistence folder is under the mercure data dir, so it also
+        # needs remapping when MERCURE_HOST_DATA_PATH is set.
         if persistence_mount:
-            cmd += ["-v", f"{persistence_mount[0]}:{persistence_mount[1]}:z"]
+            p_src = persistence_mount[0]
+            if host_data_path and p_src.startswith(config.mercure.persistence_folder):
+                rel = Path(p_src).relative_to(config.mercure.persistence_folder)
+                p_src = str(Path(host_data_path) / "persistence" / rel)
+            cmd += ["-v", f"{p_src}:{persistence_mount[1]}:z"]
 
         for k, v in environment.items():
             cmd += ["-e", f"{k}={v}"]

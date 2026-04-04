@@ -345,14 +345,18 @@ def get_runtime() -> ContainerRuntime:
         logger.debug("Processing with Nomad.")
         return NomadRuntime()
     if runner == "podman" or process_runner == "podman":
-        if runner == "docker":
+        if runner == "docker" and not os.environ.get("CONTAINER_HOST"):
             # Podman runs on the host; when mercure itself runs inside Docker
-            # the processing folder paths are container-internal and Podman is
-            # not installed in the mercure image.  Use process_runner='docker'.
+            # the processing folder paths are container-internal and the podman
+            # binary is not available in the mercure image.
+            # Exception: if CONTAINER_HOST points to a Podman socket mounted
+            # from the host, the CLI will talk to the host's Podman daemon and
+            # MERCURE_HOST_DATA_PATH must be set so volume paths can be remapped.
             raise Exception(
                 "process_runner='podman' is not supported when mercure is running "
-                "inside Docker (MERCURE_RUNNER='docker'). "
-                "Set process_runner='docker' instead."
+                "inside Docker (MERCURE_RUNNER='docker') unless CONTAINER_HOST is "
+                "set to a host Podman socket and MERCURE_HOST_DATA_PATH is set to "
+                "the host-side data directory. Use process_runner='docker' otherwise."
             )
         logger.debug("Processing with Podman.")
         return PodmanRuntime()
