@@ -79,11 +79,14 @@ class PodmanRuntime(LocalContainerRuntime):
         for k, v in environment.items():
             cmd += ["-e", f"{k}={v}"]
 
-        # User.  Rootless Podman maps the host uid automatically, but
-        # we still set --user explicitly for non-root modules so the
-        # effective uid inside the container matches the host uid.
+        # User.  With rootless Podman the host uid maps to uid 0 inside the
+        # container by default, so without --userns=keep-id, setting --user
+        # to the host uid would map it to a *subuid* on the host, meaning
+        # output files would be owned by a subuid that mercure cannot access.
+        # --userns=keep-id makes Podman map the host uid to the same uid
+        # inside the container, so file ownership is preserved correctly.
         if not module.requires_root:
-            cmd += ["--user", f"{os.getuid()}:{os.getegid()}"]
+            cmd += ["--userns=keep-id", "--user", f"{os.getuid()}:{os.getegid()}"]
         else:
             logger.debug("Executing module as root.")
 
