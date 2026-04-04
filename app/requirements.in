@@ -54,6 +54,7 @@ starlette-decoRouter
 
 # processing
 docker
+podman
 python-nomad
 
 # other
