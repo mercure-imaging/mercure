@@ -371,6 +371,208 @@ async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_p
     return processing_success
 
 
+async def podman_runtime(task: Task, folder: Path, file_count_begin: int, task_processing: TaskProcessing) -> bool:
+    if not task.process:
+        return False
+
+    module: Module = cast(Module, task_processing.module_config)
+
+    def decode_task_json(json_string: Optional[str]) -> Any:
+        if not json_string:
+            return {}
+        try:
+            return json.loads(json_string)
+        except json.decoder.JSONDecodeError:
+            logger.error(f"Unable to convert JSON string {json_string}")
+            return {}
+
+    if not module.docker_tag:
+        logger.error("No docker tag supplied")
+        return False
+
+    docker_tag: str = module.docker_tag
+    container_in_dir = "/tmp/data"
+    container_out_dir = "/tmp/output"
+
+    additional_volumes: Dict[str, Dict[str, str]] = decode_task_json(module.additional_volumes)
+    module_environment = decode_task_json(module.environment)
+    mercure_environment = dict(MERCURE_IN_DIR=container_in_dir, MERCURE_OUT_DIR=container_out_dir)
+    monai_environment = dict(MONAI_INPUTPATH=container_in_dir, MONAI_OUTPUTPATH=container_out_dir,
+                             HOLOSCAN_INPUT_PATH=container_in_dir, HOLOSCAN_OUTPUT_PATH=container_out_dir)
+    environment = {**module_environment, **mercure_environment, **monai_environment}
+    arguments = decode_task_json(module.docker_arguments)
+
+    lock_id = str(uuid.uuid1())
+    persistence_lock_file: Optional[Path] = None
+    if module.requires_persistence:
+        persistence_name = module.persistence_folder_name or task_processing.module_name
+        mount_source = str(Path(config.mercure.persistence_folder) / persistence_name)
+        mount_target = "/tmp/persistence"
+        environment["MODULE_PERSISTENCE_DIR"] = mount_target
+        logger.info("Mounting persistence folder: " + mount_source)
+        try:
+            os.makedirs(mount_source, exist_ok=True)
+        except Exception:
+            logger.error(f"Unable to create persistence folder {mount_source}")
+        if mount_source and Path(mount_source).exists():
+            persistence_lock_file = Path(mount_source) / (lock_id + mercure_names.LOCK)
+            try:
+                persistence_lock_file.touch(exist_ok=False)
+            except Exception:
+                logger.error(f"Unable to create lock file {persistence_lock_file}", task.id)
+                return False
+        else:
+            logger.error(f"Persistence folder {mount_source} not found.")
+            return False
+
+    # Check for MONAI app manifest
+    set_command: list = []
+    image_is_monai_map = False
+    try:
+        import subprocess as _sp
+        monai_result = _sp.run(
+            ["podman", "run", "--rm", "--entrypoint=", docker_tag, "cat", "/etc/monai/app.json"],
+            capture_output=True
+        )
+        if monai_result.returncode == 0:
+            monai_app_manifest = json.loads(monai_result.stdout.decode("utf-8"))
+            image_is_monai_map = True
+            set_command = monai_app_manifest["command"] if isinstance(monai_app_manifest["command"], list) else monai_app_manifest["command"].split()
+            logger.debug("Detected MONAI MAP, using command from manifest.")
+    except (json.decoder.JSONDecodeError, KeyError):
+        raise Exception("Failed to parse MONAI app manifest.")
+
+    module.requires_root = module.requires_root or image_is_monai_map
+
+    # Pull latest image (throttled to once per hour)
+    perform_image_update = True
+    if docker_tag in docker_pull_throttle:
+        timediff = datetime.now() - docker_pull_throttle[docker_tag]
+        if timediff.total_seconds() < 3600:
+            perform_image_update = False
+
+    if perform_image_update:
+        try:
+            docker_pull_throttle[docker_tag] = datetime.now()
+            logger.info("Checking for update of podman image " + docker_tag + " ...")
+            import subprocess as _sp
+            _sp.run(["podman", "pull", docker_tag], capture_output=True)
+            logger.info("Update done")
+        except Exception:
+            logger.info("Couldn't check for module update (this is normal for unpublished modules)")
+
+    processing_success = True
+    try:
+        logger.info("Now running container:")
+        logger.info({"docker_tag": docker_tag, "environment": environment, "arguments": arguments})
+
+        await monitor.async_send_task_event(
+            monitor.task_event.PROCESS_MODULE_BEGIN,
+            task.id,
+            file_count_begin,
+            task_processing.module_name,
+            "Processing module running",
+        )
+
+        (folder / "in").chmod(0o777)
+        try:
+            for k in (folder / "in").glob("**/*"):
+                k.chmod(0o666)
+        except PermissionError:
+            raise Exception("Unable to prepare input files for processor. "
+                            "The receiver may be running as root, which is no longer supported.")
+        (folder / "out").chmod(0o777)
+
+        import subprocess as _sp
+
+        cmd = ["podman", "run", "--rm"]
+        cmd += ["-v", f"{folder/'in'}:{container_in_dir}:z"]
+        cmd += ["-v", f"{folder/'out'}:{container_out_dir}:z"]
+
+        # Additional volumes
+        for vol_src, vol_cfg in additional_volumes.items():
+            target = vol_cfg.get("bind", vol_src)
+            mode = vol_cfg.get("mode", "rw")
+            cmd += ["-v", f"{vol_src}:{target}:{mode},z"]
+
+        # Persistence volume
+        if module.requires_persistence and persistence_lock_file:
+            mount_source = str(Path(config.mercure.persistence_folder) / (module.persistence_folder_name or task_processing.module_name))
+            cmd += ["-v", f"{mount_source}:/tmp/persistence:z"]
+
+        for k, v in environment.items():
+            cmd += ["-e", f"{k}={v}"]
+
+        if module.requires_root:
+            if not config.mercure.support_root_modules:
+                raise Exception("This module requires execution as root, but "
+                                "'support_root_modules' is not set to true in the configuration. Aborting.")
+            logger.debug("Executing module as root.")
+        else:
+            cmd += ["--user", f"{os.getuid()}:{os.getegid()}"]
+            logger.debug("Executing module as mercure.")
+
+        if config.mercure.processing_runtime:
+            cmd += ["--runtime", config.mercure.processing_runtime]
+
+        # Extra docker_arguments (passed as a dict of CLI flags)
+        for k, v in arguments.items():
+            cmd += [str(k), str(v)]
+
+        cmd.append(docker_tag)
+        if set_command:
+            cmd += set_command
+
+        logger.info(f"Podman command: {cmd}")
+        result = _sp.run(cmd, capture_output=True)
+
+        # Log container output
+        logs = (result.stdout + result.stderr).decode("utf-8", errors="replace")
+        logs = helper.localize_log_timestamps(logs, config)
+        logger.info("=== MODULE OUTPUT - BEGIN ========================================")
+        if not config.mercure.processing_logs.discard_logs:
+            monitor.send_process_logs(task.id, task_processing.module_name, logs)
+        logger.info(logs)
+        logger.info("=== MODULE OUTPUT - END ==========================================")
+
+        # Podman rootless maps uid automatically, no chown step needed.
+        try:
+            (folder / "out").chmod(0o755)
+            for k in (folder / "out").glob("**/*"):
+                if k.is_dir():
+                    k.chmod(0o755)
+            for k in (folder / "out").glob("**/*"):
+                if k.is_file():
+                    k.chmod(0o644)
+        except Exception as e:
+            logger.exception("Unable to set permissions on output files. " + str(e))
+
+        await monitor.async_send_task_event(
+            monitor.task_event.PROCESS_MODULE_COMPLETE,
+            task.id,
+            file_count_begin,
+            task_processing.module_name,
+            "Processing module complete",
+        )
+
+        if result.returncode != 0:
+            logger.error(f"Error while running container {docker_tag} - exit code {result.returncode}", task.id)
+            processing_success = False
+
+    except Exception:
+        logger.exception(f"Error while running podman container, tag: {docker_tag}", task.id)
+        processing_success = False
+
+    if module.requires_persistence:
+        if persistence_lock_file and persistence_lock_file.exists():
+            try:
+                persistence_lock_file.unlink()
+            except Exception:
+                logger.error(f"Error removing lock file {persistence_lock_file}", task.id)
+                return False
+    return processing_success
+
+
 @log_helpers.clear_task_decorator_async
 async def process_series(folder: Path) -> None:
     logger.info("----------------------------------------------------------------------------------")
@@ -427,6 +629,9 @@ async def process_series(folder: Path) -> None:
             logger.debug("Processing with Nomad.")
             # Use nomad if we're being run inside nomad, or we're configured to use nomad regardless
             runtime = nomad_runtime
+        elif helper.get_runner() == "podman" or config.mercure.process_runner == "podman":
+            logger.debug("Processing with Podman.")
+            runtime = podman_runtime
         elif helper.get_runner() in ("docker", "systemd"):
             logger.debug("Processing with Docker")
             # Use docker if we're being run inside docker or just by systemd
@@ -435,7 +640,7 @@ async def process_series(folder: Path) -> None:
             processing_success = False
             raise Exception("Unable to determine valid runtime for processing")
 
-        if runtime == docker_runtime:  # docker runtime might run several processing steps, need to put this event here
+        if runtime in (docker_runtime, podman_runtime):  # docker/podman runtime might run several processing steps, need to put this event here
             await monitor.async_send_task_event(
                 monitor.task_event.PROCESS_BEGIN,
                 task.id,
@@ -446,7 +651,7 @@ async def process_series(folder: Path) -> None:
                 "Processing job running",
             )
         # There are multiple processing steps
-        if runtime == docker_runtime and isinstance(task.process, list):
+        if runtime in (docker_runtime, podman_runtime) and isinstance(task.process, list):
             if task.process[0].retain_input_images:  # Keep a copy of the input files
                 shutil.copytree(folder / "in", folder / "input_files")
             logger.info("==== TASK ====", task.dict())
@@ -460,7 +665,7 @@ async def process_series(folder: Path) -> None:
                     with open(folder / "in" / mercure_names.TASKFILE, "w") as task_file:
                         json.dump(copied_task.dict(), task_file)
 
-                    processing_success = await docker_runtime(task, folder, file_count_begin, task_processing)
+                    processing_success = await runtime(task, folder, file_count_begin, task_processing)
                     if not processing_success:
                         break
                     output = handle_processor_output(task, task_processing, i, folder)
@@ -483,7 +688,7 @@ async def process_series(folder: Path) -> None:
                     #  logger.warning(f"DUMPING to {folder / 'out' / mercure_names.TASKFILE} TASK {task=}")
                     json.dump(task.dict(), task_file, indent=4)
         elif isinstance(task.process, list):
-            raise Exception("Multiple processing steps are only supported on the Docker runtime.")
+            raise Exception("Multiple processing steps are only supported on the Docker and Podman runtimes.")
         else:
             task_process = cast(TaskProcessing, task.process)
             processing_success = await runtime(task, folder, file_count_begin, task_process)

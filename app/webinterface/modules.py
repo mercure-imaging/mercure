@@ -9,6 +9,7 @@ import base64
 import json
 import os
 import re
+import subprocess
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -142,37 +143,46 @@ async def add_module(request):
     if name in config.mercure.modules:
         return BadRequestResponse("A module with this name already exists.")
 
-    client = docker.from_env()  # type: ignore
-    try:
-        client.images.get(form["docker_tag"])
-    except docker.errors.ImageNotFound:
-        try:
-            client.images.get_registry_data(form["docker_tag"])
-        except docker.errors.APIError as e:
-            if e.response.status_code == 403:
+    if config.mercure.process_runner == "podman":
+        exists_result = subprocess.run(["podman", "image", "exists", form["docker_tag"]])
+        if exists_result.returncode != 0:
+            pull_result = subprocess.run(["podman", "pull", form["docker_tag"]], capture_output=True)
+            if pull_result.returncode != 0:
                 return ServerErrorResponse(
-                    "A Docker container with this tag does not exist locally or in the Docker Hub registry."
+                    "A container image with this tag does not exist locally or in the registry."
                 )
-            else:
+    else:
+        client = docker.from_env()  # type: ignore
+        try:
+            client.images.get(form["docker_tag"])
+        except docker.errors.ImageNotFound:
+            try:
+                client.images.get_registry_data(form["docker_tag"])
+            except docker.errors.APIError as e:
+                if e.response.status_code == 403:
+                    return ServerErrorResponse(
+                        "A Docker container with this tag does not exist locally or in the Docker Hub registry."
+                    )
+                else:
+                    logger.exception(e)
+                    return ServerErrorResponse(
+                        f"Failed to retrieve Docker Registry data about this docker tag: {e}"
+                    )
+            except Exception as e:
                 logger.exception(e)
                 return ServerErrorResponse(
-                    f"Failed to retrieve Docker Registry data about this docker tag: {e}"
+                    f"Unexpected error retrieving Docker Registry data about this docker tag: {e}"
                 )
+        except docker.errors.APIError as e:
+            logger.exception(e)
+            return ServerErrorResponse(
+                f"Unable to read container list: {e}. \n Check server logs, Docker installation, and any firewall settings."
+            )
         except Exception as e:
             logger.exception(e)
             return ServerErrorResponse(
-                f"Unexpected error retrieving Docker Registry data about this docker tag: {e}"
+                f"Unexpected error: {e}. \n Check server logs, Docker installation, and any firewall settings."
             )
-    except docker.errors.APIError as e:
-        logger.exception(e)
-        return ServerErrorResponse(
-            f"Unable to read container list: {e}. \n Check server logs, Docker installation, and any firewall settings."
-        )
-    except Exception as e:
-        logger.exception(e)
-        return ServerErrorResponse(
-            f"Unexpected error: {e}. \n Check server logs, Docker installation, and any firewall settings."
-        )
     if (
         form["container_type"] == "monai"
         and config.mercure.support_root_modules is not True
