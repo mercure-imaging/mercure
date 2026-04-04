@@ -7,10 +7,12 @@ Uses the `podman` CLI via subprocess.  Designed for rootless Podman:
 uid mapping is automatic so no busybox chown step is needed.
 """
 
+import asyncio
 import json
 import subprocess
+from datetime import datetime
 from pathlib import Path
-from typing import Dict, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import common.config as config
 from common.types import Module
@@ -18,9 +20,18 @@ from process.runtime_base import LocalContainerRuntime
 
 logger = config.get_logger()
 
+# Maximum time (seconds) to wait for a processing container to exit.
+# A container that exceeds this is killed and the job fails.
+_CONTAINER_TIMEOUT = 3600  # 1 hour
+
 
 class PodmanRuntime(LocalContainerRuntime):
     """Runs processing containers via the Podman CLI."""
+
+    # With rootless Podman, uid 0 inside the container maps to the calling
+    # user's uid on the host — root-in-container cannot escape to the host.
+    # The support_root_modules gate is therefore not needed for Podman.
+    root_requires_approval = False
 
     # ------------------------------------------------------------------ #
     # Image name normalisation                                             #
@@ -66,13 +77,20 @@ class PodmanRuntime(LocalContainerRuntime):
     # ------------------------------------------------------------------ #
 
     def _pull_image(self, tag: str) -> None:
-        subprocess.run(["podman", "pull", self._qualify_image(tag)], capture_output=True, check=False)
+        subprocess.run(
+            ["podman", "pull", self._qualify_image(tag)],
+            capture_output=True,
+            check=False,
+            timeout=600,
+        )
 
     def _detect_monai(self, tag: str) -> Optional[list]:
         tag = self._qualify_image(tag)
         result = subprocess.run(
             ["podman", "run", "--rm", "--entrypoint=", tag, "cat", "/etc/monai/app.json"],
             capture_output=True,
+            check=False,
+            timeout=30,
         )
         if result.returncode != 0:
             return None  # image exists but has no MONAI manifest – that's fine
@@ -98,7 +116,57 @@ class PodmanRuntime(LocalContainerRuntime):
         persistence_mount: Optional[Tuple[str, str]],
     ) -> Tuple[int, str]:
         tag = self._qualify_image(tag)
-        # Podman runs on the host so folder paths need no remapping.
+        cmd = self._build_command(
+            tag, folder, container_in_dir, container_out_dir,
+            environment, additional_volumes, arguments, monai_command,
+            module, persistence_mount,
+        )
+        logger.info(f"Podman command: {cmd}")
+
+        proc = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT,  # merge so line ordering is preserved
+        )
+
+        log_lines: List[str] = []
+
+        async def _stream() -> None:
+            assert proc.stdout is not None
+            async for raw in proc.stdout:
+                ts = datetime.now().isoformat(timespec="seconds")
+                line = raw.decode("utf-8", errors="replace").rstrip("\n")
+                log_lines.append(f"{ts} {line}")
+            await proc.wait()
+
+        try:
+            await asyncio.wait_for(_stream(), timeout=_CONTAINER_TIMEOUT)
+        except asyncio.TimeoutError:
+            try:
+                proc.kill()
+                await proc.communicate()
+            except Exception:
+                pass
+            raise Exception(
+                f"Container {tag} timed out after {_CONTAINER_TIMEOUT}s and was killed."
+            )
+
+        exit_code = proc.returncode if proc.returncode is not None else 1
+        return exit_code, "\n".join(log_lines)
+
+    def _build_command(
+        self,
+        tag: str,
+        folder: Path,
+        container_in_dir: str,
+        container_out_dir: str,
+        environment: Dict[str, str],
+        additional_volumes: Dict,
+        arguments: Dict,
+        monai_command: Optional[list],
+        module: Module,
+        persistence_mount: Optional[Tuple[str, str]],
+    ) -> List[str]:
         cmd = ["podman", "run", "--rm"]
 
         # in/out dirs are unique per job (UUID-named folder) so :Z (private
@@ -114,12 +182,10 @@ class PodmanRuntime(LocalContainerRuntime):
             cmd += ["-v", f"{vol_src}:{target}:{mode},z"]
 
         # Persistence folder is shared across all parallel runs of the same
-        # module, so :Z would cause the second container to relabel the
-        # directory and break SELinux access for the first.  Use :z instead.
+        # module, so use :z (shared label) rather than :Z (private).
         if persistence_mount:
             cmd += ["-v", f"{persistence_mount[0]}:{persistence_mount[1]}:z"]
 
-        # Environment variables.
         for k, v in environment.items():
             cmd += ["-e", f"{k}={v}"]
 
@@ -127,16 +193,12 @@ class PodmanRuntime(LocalContainerRuntime):
         # runs as uid 0 inside the container, which maps to the calling user's
         # uid on the host.  Files written to mounted volumes are therefore
         # owned by the mercure user — no busybox chown step needed.
-        #
-        # uid 0 inside a rootless container is bounded by the user namespace
-        # and cannot affect the host beyond what the calling user can do.
         if module.requires_root:
             logger.debug("Executing module as root.")
 
         if config.mercure.processing_runtime:
             cmd += ["--runtime", config.mercure.processing_runtime]
 
-        # Extra arguments from the module config (dict of flag -> value).
         for k, v in arguments.items():
             cmd += [str(k), str(v)]
 
@@ -144,10 +206,7 @@ class PodmanRuntime(LocalContainerRuntime):
         if monai_command:
             cmd += monai_command
 
-        logger.info(f"Podman command: {cmd}")
-        result = subprocess.run(cmd, capture_output=True)
-        logs = (result.stdout + result.stderr).decode("utf-8", errors="replace")
-        return result.returncode, logs
+        return cmd
 
     # ------------------------------------------------------------------ #
     # Image validation (used by the web UI)                               #
@@ -155,12 +214,20 @@ class PodmanRuntime(LocalContainerRuntime):
 
     def validate_image(self, tag: str) -> Optional[str]:
         tag = self._qualify_image(tag)
-        if subprocess.run(["podman", "image", "exists", tag]).returncode == 0:
+        if subprocess.run(
+            ["podman", "image", "exists", tag], check=False
+        ).returncode == 0:
             return None
-        pull = subprocess.run(["podman", "pull", tag], capture_output=True)
-        if pull.returncode != 0:
-            return (
-                "A container image with this tag does not exist "
-                "locally or in the registry."
-            )
-        return None
+        pull = subprocess.run(
+            ["podman", "pull", tag], capture_output=True, check=False, timeout=600
+        )
+        if pull.returncode == 0:
+            return None
+        stderr = pull.stderr.decode("utf-8", errors="replace").lower()
+        if "unauthorized" in stderr or "403" in stderr or "authentication" in stderr:
+            return f"Access denied pulling {tag}. Check registry credentials."
+        if "not found" in stderr or "does not exist" in stderr or "no such" in stderr:
+            return f"Image {tag} not found locally or in the registry."
+        # Fall back to showing the raw error so the operator has something to act on.
+        raw = pull.stderr.decode("utf-8", errors="replace").strip()
+        return f"Failed to pull image {tag}: {raw[:300]}"

@@ -61,6 +61,11 @@ class LocalContainerRuntime(ContainerRuntime):
     and _execute; the shared run() method handles the rest.
     """
 
+    # Set to False in subclasses where running as uid 0 inside the container
+    # is inherently bounded (e.g. rootless Podman), so the support_root_modules
+    # config gate does not need to apply.
+    root_requires_approval: bool = True
+
     # ------------------------------------------------------------------ #
     # Static helpers                                                       #
     # ------------------------------------------------------------------ #
@@ -255,7 +260,7 @@ class LocalContainerRuntime(ContainerRuntime):
 
         processing_success = True
         try:
-            if module.requires_root and not config.mercure.support_root_modules:
+            if module.requires_root and self.root_requires_approval and not config.mercure.support_root_modules:
                 raise Exception(
                     "This module requires execution as root, but "
                     "'support_root_modules' is not set to true in the configuration. Aborting."
