@@ -23,13 +23,53 @@ class PodmanRuntime(LocalContainerRuntime):
     """Runs processing containers via the Podman CLI."""
 
     # ------------------------------------------------------------------ #
+    # Image name normalisation                                             #
+    # ------------------------------------------------------------------ #
+
+    @staticmethod
+    def _qualify_image(tag: str) -> str:
+        """
+        Ensure *tag* includes an explicit registry hostname.
+
+        Podman does not default to docker.io for unqualified names and may
+        interactively prompt for a registry, hanging subprocess calls.
+        This method applies the same defaulting logic Docker uses.
+
+        Examples::
+
+            ubuntu:22.04            -> docker.io/library/ubuntu:22.04
+            myorg/myimage:latest    -> docker.io/myorg/myimage:latest
+            docker.io/myorg/img     -> docker.io/myorg/img       (unchanged)
+            quay.io/biocontainers/x -> quay.io/biocontainers/x  (unchanged)
+            localhost/myimage       -> localhost/myimage          (unchanged)
+        """
+        # Preserve any digest suffix (@sha256:...) so we don't mangle it.
+        digest = ""
+        if "@" in tag:
+            tag, digest = tag.split("@", 1)
+            digest = "@" + digest
+
+        # A registry hostname is the first slash-delimited component and
+        # contains a dot or colon, or is exactly "localhost".
+        first = tag.split("/")[0]
+        if "." in first or ":" in first or first == "localhost":
+            return tag + digest  # already has a registry
+
+        # No registry — apply docker.io.  Single-component names (no slash)
+        # are official library images; multi-component names are user/org images.
+        if "/" not in tag:
+            return f"docker.io/library/{tag}{digest}"
+        return f"docker.io/{tag}{digest}"
+
+    # ------------------------------------------------------------------ #
     # LocalContainerRuntime hooks                                          #
     # ------------------------------------------------------------------ #
 
     def _pull_image(self, tag: str) -> None:
-        subprocess.run(["podman", "pull", tag], capture_output=True, check=False)
+        subprocess.run(["podman", "pull", self._qualify_image(tag)], capture_output=True, check=False)
 
     def _detect_monai(self, tag: str) -> Optional[list]:
+        tag = self._qualify_image(tag)
         result = subprocess.run(
             ["podman", "run", "--rm", "--entrypoint=", tag, "cat", "/etc/monai/app.json"],
             capture_output=True,
@@ -57,6 +97,7 @@ class PodmanRuntime(LocalContainerRuntime):
         module: Module,
         persistence_mount: Optional[Tuple[str, str]],
     ) -> Tuple[int, str]:
+        tag = self._qualify_image(tag)
         # Podman runs on the host so folder paths need no remapping.
         cmd = ["podman", "run", "--rm"]
 
@@ -109,6 +150,7 @@ class PodmanRuntime(LocalContainerRuntime):
     # ------------------------------------------------------------------ #
 
     def validate_image(self, tag: str) -> Optional[str]:
+        tag = self._qualify_image(tag)
         if subprocess.run(["podman", "image", "exists", tag]).returncode == 0:
             return None
         pull = subprocess.run(["podman", "pull", tag], capture_output=True)
