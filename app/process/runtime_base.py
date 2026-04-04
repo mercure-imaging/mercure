@@ -345,6 +345,15 @@ def get_runtime() -> ContainerRuntime:
         logger.debug("Processing with Nomad.")
         return NomadRuntime()
     if runner == "podman" or process_runner == "podman":
+        if runner == "docker":
+            # Podman runs on the host; when mercure itself runs inside Docker
+            # the processing folder paths are container-internal and Podman is
+            # not installed in the mercure image.  Use process_runner='docker'.
+            raise Exception(
+                "process_runner='podman' is not supported when mercure is running "
+                "inside Docker (MERCURE_RUNNER='docker'). "
+                "Set process_runner='docker' instead."
+            )
         logger.debug("Processing with Podman.")
         return PodmanRuntime()
     if runner in ("docker", "systemd"):
