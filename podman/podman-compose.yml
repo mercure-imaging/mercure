@@ -1,0 +1,157 @@
+x-env: &env
+  environment:
+    MERCURE_RUNNER: docker
+    CONTAINER_HOST: unix:///run/podman/podman.sock
+    MERCURE_HOST_DATA_PATH: /opt/mercure/data
+    REDIS_URL: redis://redis:6379/0
+x-volumes: &volumes
+  volumes:
+    - config:/opt/mercure/config
+    - data:/opt/mercure/data
+
+x-volumes-podman: &volumes-podman
+  volumes:
+    - config:/opt/mercure/config
+    - data:/opt/mercure/data
+    - /run/podman/podman.sock:/run/podman/podman.sock
+
+x-user: &user
+  user: "${UID}:${GID}"
+
+services:
+  ui:
+    <<: [*user, *volumes-podman, *env]
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      worker_fast:
+        condition: service_started
+      worker_slow:
+        condition: service_started
+
+    image: mercureimaging/mercure-ui${IMAGE_TAG}
+    restart: always
+    ports:
+      - "8000:8000"
+  db:
+    image: library/postgres:14-alpine
+    restart: always
+    env_file:
+      - /opt/mercure/config/db.env
+    environment:
+      POSTGRES_USER: mercure
+      POSTGRES_DB: mercure
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "15432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U mercure" ]
+
+  receiver:
+    <<: [*user, *volumes, *env]
+    image: mercureimaging/mercure-receiver${IMAGE_TAG}
+    restart: always
+    depends_on:
+      bookkeeper:
+        condition: service_healthy
+    ports:
+      - "11112:11112"
+
+  cleaner:
+    <<: [*user, *volumes, *env]
+    image: mercureimaging/mercure-cleaner${IMAGE_TAG}
+    restart: always
+    depends_on:
+      bookkeeper:
+        condition: service_healthy
+
+  dispatcher:
+    <<: [*user, *volumes, *env]
+    image: mercureimaging/mercure-dispatcher${IMAGE_TAG}
+    restart: always
+    depends_on:
+      bookkeeper:
+        condition: service_healthy
+
+  processor:
+    <<: [*user, *volumes-podman, *env]
+    image: mercureimaging/mercure-processor${IMAGE_TAG}
+    restart: always
+    depends_on:
+      bookkeeper:
+        condition: service_healthy
+
+  router:
+    <<: [*user, *volumes, *env]
+    image: mercureimaging/mercure-router${IMAGE_TAG}
+    restart: always
+    depends_on:
+      bookkeeper:
+        condition: service_healthy
+
+  bookkeeper:
+    <<: [*user, *volumes, *env]
+    image: mercureimaging/mercure-bookkeeper${IMAGE_TAG}
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+
+  redis:
+    image: redis
+    restart: always
+    command: redis-server --save 20 1
+    volumes:
+      - redis-cache:/data
+
+  worker_fast:
+    <<: [*user, *volumes]
+    image: mercureimaging/mercure-worker${IMAGE_TAG}
+    restart: always
+    depends_on:
+      - redis
+    deploy:
+      replicas: 2
+    environment:
+      WORKER_QUEUE: mercure_fast
+      REDIS_URL: redis://redis:6379/0
+
+  worker_slow:
+    <<: [*user, *volumes]
+    image: mercureimaging/mercure-worker${IMAGE_TAG}
+    restart: always
+    depends_on:
+      - redis
+    deploy:
+      replicas: 2
+    environment:
+      WORKER_QUEUE: mercure_slow
+      REDIS_URL: redis://redis:6379/0
+
+volumes:
+  db-data:
+    driver: local
+    driver_opts:
+      type: 'none'
+      o: 'bind'
+      device: '/opt/mercure/db'
+
+  data:
+    driver: local
+    driver_opts:
+      type: 'none'
+      o: 'bind'
+      device: '/opt/mercure/data'
+
+  config:
+    driver: local
+    driver_opts:
+      type: 'none'
+      o: 'bind'
+      device: '/opt/mercure/config'
+  redis-cache:
+    driver: local

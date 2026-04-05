@@ -123,7 +123,7 @@ install_configuration () {
 
     if [ $INSTALL_TYPE = "systemd" ]; then
       sed -i -e "s/mercure:ChangePasswordHere@localhost/mercure:$DB_PWD@localhost/" "$CONFIG_PATH"/bookkeeper.env
-    elif [ $INSTALL_TYPE = "docker" ]; then
+    elif [ $INSTALL_TYPE = "docker" ] || [ $INSTALL_TYPE = "podman" ]; then
       sed -i -e "s/mercure:ChangePasswordHere@localhost/mercure:$DB_PWD@db/" "$CONFIG_PATH"/bookkeeper.env
       sed -i -e "s/0.0.0.0:8080/bookkeeper:8080/" "$CONFIG_PATH"/mercure.json
     fi
@@ -388,10 +388,79 @@ build_docker () {
 }
 
 start_docker () {
-  echo "## Starting docker compose..."  
+  echo "## Starting docker compose..."
   pushd $MERCURE_BASE
   sudo docker-compose up -d
   popd
+}
+
+install_podman_compose () {
+  if [ ! -x "$(command -v podman-compose)" ]; then
+    echo "## Installing podman-compose..."
+    if sudo apt-get install -y podman-compose 2>/dev/null; then
+      :
+    else
+      # Fall back to pip3 if the distro package is unavailable or too old
+      sudo pip3 install podman-compose
+    fi
+  fi
+}
+
+setup_podman_compose () {
+  local overwrite=${1:-false}
+  if [ "$overwrite" = true ] || [ ! -f "$MERCURE_BASE"/podman-compose.yml ]; then
+    echo "## Copying podman-compose.yml..."
+    sudo cp $MERCURE_SRC/podman/podman-compose.yml $MERCURE_BASE
+    sudo sed -i -e "s/\\\${UID}/$(getent passwd mercure | cut -d: -f3)/g" $MERCURE_BASE/podman-compose.yml
+    sudo sed -i -e "s/\\\${GID}/$(getent passwd mercure | cut -d: -f4)/g" $MERCURE_BASE/podman-compose.yml
+
+    if [[ -v MERCURE_TAG ]]; then
+      sudo sed -i "s/\\\${IMAGE_TAG}/\:$MERCURE_TAG/g" $MERCURE_BASE/podman-compose.yml
+    else
+      sudo sed -i "s/\\\${IMAGE_TAG}/$IMAGE_TAG/g" $MERCURE_BASE/podman-compose.yml
+    fi
+    sudo chown $OWNER:$OWNER "$MERCURE_BASE"/podman-compose.yml
+  fi
+}
+
+start_podman_compose () {
+  echo "## Starting podman-compose..."
+  pushd $MERCURE_BASE
+  sudo podman-compose up -d
+  popd
+}
+
+podman_compose_install () {
+  echo "## Performing podman-type mercure installation..."
+  CONTAINER_RUNNER="podman"  # podman install type always uses Podman for processing
+  create_user
+  create_folders
+  install_configuration
+  install_podman
+  enable_podman_system_socket
+  install_podman_compose
+  setup_podman_compose
+  start_podman_compose
+}
+
+podman_compose_update () {
+  if [ ! -f $MERCURE_BASE/podman-compose.yml ]; then
+    echo "ERROR: $MERCURE_BASE/podman-compose.yml does not exist; is Mercure installed?"
+    exit 1
+  fi
+  if [ $FORCE_INSTALL != "y" ]; then
+    echo "Update mercure to ${MERCURE_TAG:-$VERSION} (y/n)?"
+    read -p "WARNING: Server may require manual fixes after update. Taking backups beforehand is recommended. " ANS
+    if [ "$ANS" != "y" ]; then
+      echo "Update aborted."
+      exit 0
+    fi
+  fi
+  pushd $MERCURE_BASE
+  sudo podman-compose down || true
+  popd
+  setup_podman_compose true
+  start_podman_compose
 }
 
 link_binaries() {
@@ -594,6 +663,7 @@ while getopts ":hy" opt; do
       echo "    install.sh -h                       Display this help message."
       echo "    install.sh [-y] systemd [-dmbDu]    Install as systemd service."
       echo "    install.sh [-y] docker  [-dmbD]     Install with docker-compose."
+      echo "    install.sh [-y] podman  [-u]        Install with podman-compose."
       echo "    install.sh [-y] nomad               Install as nomad job."
       echo ""
       echo "Options:   "
@@ -667,11 +737,14 @@ if [ $DO_DEV_INSTALL == true ] && [ $DO_OPERATION == "update" ]; then
   exit 1
 fi
 
-if [ $INSTALL_TYPE == "systemd" ] && [ $DO_OPERATION == "update" ]; then 
+if [ $INSTALL_TYPE == "systemd" ] && [ $DO_OPERATION == "update" ]; then
   systemd_update
   exit 0
-elif [ $INSTALL_TYPE == "docker" ] && [ $DO_OPERATION == "update" ]; then 
+elif [ $INSTALL_TYPE == "docker" ] && [ $DO_OPERATION == "update" ]; then
   docker_update
+  exit 0
+elif [ $INSTALL_TYPE == "podman" ] && [ $DO_OPERATION == "update" ]; then
+  podman_compose_update
   exit 0
 fi
 
@@ -687,14 +760,17 @@ else
   fi
 fi
 
-case "$INSTALL_TYPE" in 
+case "$INSTALL_TYPE" in
   systemd )
     systemd_install
     ;;
   docker )
     docker_install
     ;;
-  nomad ) 
+  podman )
+    podman_compose_install
+    ;;
+  nomad )
     nomad_install
     ;;
   * )
