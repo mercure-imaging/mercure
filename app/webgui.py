@@ -705,6 +705,44 @@ async def settings_edit(request) -> Response:
     return templates.TemplateResponse(template, context)
 
 
+@router.post("/settings")
+@requires(["authenticated"], redirect="login")
+async def settings_edit_post(request) -> Response:
+    """Updates the current user's own settings. Requires old password to change password."""
+    try:
+        users.read_users()
+    except Exception:
+        return PlainTextResponse("Configuration is being updated. Try again in a minute.")
+
+    own_name = request.user.display_name
+    form = dict(await request.form())
+
+    if own_name not in users.users_list:
+        return PlainTextResponse("User does not exist anymore.")
+
+    to_edit = users.users_list[own_name]
+
+    old_password = form.get("old_password", "")
+    if not users.evaluate_password(own_name, old_password):
+        return PlainTextResponse("Old password is incorrect.")
+
+    to_edit["email"] = form.get("email", to_edit.get("email", ""))
+
+    new_password = form.get("password", "")
+    if new_password:
+        to_edit["password"] = users.hash_password(new_password)
+        to_edit["change_password"] = "False"
+
+    try:
+        users.save_users()
+    except Exception:
+        return PlainTextResponse("ERROR: Unable to write user list. Try again.")
+
+    logger.info(f"User {own_name} updated own settings")
+    monitor.send_webgui_event(monitor.w_events.USER_EDIT, own_name, own_name)
+    return RedirectResponse(url="/", status_code=303)
+
+
 ###################################################################################
 # Homepage endpoints
 ###################################################################################

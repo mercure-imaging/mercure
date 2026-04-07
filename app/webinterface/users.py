@@ -226,6 +226,10 @@ async def users_edit(request) -> Response:
 
     edituser = request.path_params["user"]
 
+    # Admins must use /settings to edit their own account
+    if request.user.display_name == edituser:
+        return RedirectResponse(url="/settings", status_code=303)
+
     if edituser not in users_list:
         return RedirectResponse(url="/users", status_code=303)
 
@@ -240,15 +244,20 @@ async def users_edit(request) -> Response:
 
 
 @router.post("/edit/{user}")
-@requires(["authenticated"], redirect="login")
+@requires(["authenticated", "admin"], redirect="login")
 async def users_edit_post(request) -> Response:
-    """Updates the given user with settings passed as form parameters."""
+    """Updates the given user with settings passed as form parameters. Admin-only, cannot edit own account."""
     try:
         read_users()
     except Exception:
         return PlainTextResponse("Configuration is being updated. Try again in a minute.")
 
     edituser = request.path_params["user"]
+
+    # Admins must use /settings to edit their own account
+    if request.user.display_name == edituser:
+        return PlainTextResponse("Use /settings to edit your own account.")
+
     form = dict(await request.form())
 
     if edituser not in users_list:
@@ -260,12 +269,9 @@ async def users_edit_post(request) -> Response:
         to_edit["password"] = hash_password(form["password"])
         to_edit["change_password"] = "False"
 
-    # Only admins are allowed to change the admin status, and the current user
-    # cannot change the status for himself (which includes the settings page)
-    if request.user.is_admin and (request.user.display_name != edituser):
-        to_edit["is_admin"] = form["is_admin"]
+    to_edit["is_admin"] = form["is_admin"]
 
-    if request.user.is_admin and form.get("permissions", ""):
+    if form.get("permissions", ""):
         to_edit["permissions"] = form["permissions"]
 
     try:
@@ -275,10 +281,7 @@ async def users_edit_post(request) -> Response:
 
     logger.info(f"Edited user {edituser}")
     monitor.send_webgui_event(monitor.w_events.USER_EDIT, request.user.display_name, edituser)
-    if "own_settings" in form:
-        return RedirectResponse(url="/", status_code=303)
-    else:
-        return RedirectResponse(url="/users", status_code=303)
+    return RedirectResponse(url="/users", status_code=303)
 
 
 @router.post("/delete/{user}")
