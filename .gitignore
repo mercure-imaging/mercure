@@ -137,10 +137,6 @@ build-getdcmtags-Desktop_Qt_5_13_0_GCC_64bit-Debug/Makefile
 .vagrant
 .venv38
 
-/getdcmtags/.qmake.stash
-/getdcmtags/main.o
-/getdcmtags/getdcmtags
-/getdcmtags/Makefile
 
 # ignore temporary file with custom dicom tags to be read
 dcm_extra_tags
