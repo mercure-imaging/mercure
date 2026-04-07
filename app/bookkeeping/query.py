@@ -27,14 +27,20 @@ from starlette.responses import JSONResponse
 
 router = decoRouter()
 logger = config.get_logger()
-tz_conversion = ""
+tz_conversion_sql = ""
+tz_conversion_params: Dict = {}
 
 
 def set_timezone_conversion() -> None:
-    global tz_conversion
-    tz_conversion = ""
+    global tz_conversion_sql, tz_conversion_params
+    tz_conversion_sql = ""
+    tz_conversion_params = {}
     if config.mercure.server_time != config.mercure.local_time:
-        tz_conversion = f" AT time zone '{config.mercure.server_time}' at time zone '{config.mercure.local_time}' "
+        tz_conversion_sql = " AT time zone :server_tz at time zone :local_tz "
+        tz_conversion_params = {
+            "server_tz": config.mercure.server_time,
+            "local_tz": config.mercure.local_time,
+        }
 
 ###################################################################################
 # Query endpoints
@@ -121,32 +127,21 @@ async def get_task_events(request) -> JSONResponse:
 
     task_id = request.query_params.get("task_id", "")
     subtask_query = sqlalchemy.select(db.tasks_table.c.id).where(db.tasks_table.c.parent_id == task_id)
+    subtask_ids = [row[0] for row in await db.database.fetch_all(subtask_query)]
 
-    # Note: The space at the end is needed for the case that there are no subtasks
-    subtask_ids_str = ""
-    for row in await db.database.fetch_all(subtask_query):
-        subtask_ids_str += f"'{row[0]}',"
+    all_ids = [task_id] + subtask_ids
+    # Build numbered placeholders for the IN clause
+    id_placeholders = ", ".join(":id_" + str(i) for i in range(len(all_ids)))
+    id_params = {"id_" + str(i): v for i, v in enumerate(all_ids)}
+    del all_ids
+    query = sqlalchemy.text(
+        "SELECT *, time " + tz_conversion_sql + " as local_time FROM task_events"
+        " WHERE task_events.task_id IN (" + id_placeholders + ")"
+        " ORDER BY task_events.task_id, task_events.time"
+    )
 
-    subtask_ids_filter = ""
-    if subtask_ids_str:
-        subtask_ids_filter = "or task_events.task_id in (" + subtask_ids_str[:-1] + ")"
-
-    # Get all the task_events from task `task_id` or any of its subtasks
-    # subtask_ids = [row[0] for row in await database.fetch_all(subtask_query)]
-    # query = (
-    #     task_events.select()
-    #     .order_by(task_events.c.task_id, task_events.c.time)
-    #     .where(sqlalchemy.or_(task_events.c.task_id == task_id, task_events.c.task_id.in_(subtask_ids)))
-    # )
-
-    query_string = f"""select *, time {tz_conversion} as local_time from task_events
-        where task_events.task_id = '{task_id}' {subtask_ids_filter}
-        order by task_events.task_id, task_events.time
-        """
-    # print("SQL Query = " + query_string)
-    query = sqlalchemy.text(query_string)
-
-    results = await db.database.fetch_all(query)
+    params = {**id_params, **tz_conversion_params}
+    results = await db.database.fetch_all(query, params)
     return CustomJSONResponse(results)
 
 
@@ -214,7 +209,8 @@ async def find_task(request) -> JSONResponse:
 
     # Extract ordering information
     order_column_index = request.query_params.get("order[0][column]", "4")  # Default to time column (index 4)
-    order_direction = request.query_params.get("order[0][dir]", "desc")  # Default to descending
+    order_direction_raw = request.query_params.get("order[0][dir]", "desc")  # Default to descending
+    order_direction = "ASC" if order_direction_raw.upper() == "ASC" else "DESC"
 
     # Map datatable column index to database column
     column_mapping = {
@@ -226,7 +222,7 @@ async def find_task(request) -> JSONResponse:
     }
 
     order_column = column_mapping.get(order_column_index, column_mapping["4"])
-    order_sql = f"{order_column} {order_direction.upper()}, parent_tasks.id {order_direction.upper()}"
+    order_sql = order_column + " " + order_direction + ", parent_tasks.id " + order_direction
 
     having_term = (f"""HAVING (
                     (tag_accessionnumber ilike :search_term || '%') 
