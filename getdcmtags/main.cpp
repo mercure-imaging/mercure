@@ -253,8 +253,8 @@ bool writeTagsList(QVector<QPair<DcmTagKey, OFString>>& tags, FILE* fp, OFString
             INSERTTAG(dicent->getTagName(), pair.second,"");
         }
     }
-    return !conversionFailed;
     dcmDataDict.rdunlock();
+    return !conversionFailed;
 }
 
 
@@ -306,6 +306,12 @@ bool writeTagsFile(OFString dcmFile, OFString originalFile)
 
 bool createSeriesFolder(const OFString& path, const OFString& seriesUID) {
     OFString fullPath = path + seriesUID;
+    QString cleanParent = QDir::cleanPath(QString::fromStdString(path.c_str()));
+    QString cleanChild = QDir::cleanPath(QString::fromStdString(fullPath.c_str()));
+    if (!cleanChild.startsWith(cleanParent + "/")) {
+        std::cout << "ERROR: Path traversal detected: " << fullPath << " escapes " << path << std::endl;
+        return false;
+    }
     QDir dir(QString::fromStdString(fullPath.c_str()));
     if (!dir.exists()) {
         if (!dir.mkpath(".")) {
@@ -428,6 +434,15 @@ int main(int argc, char *argv[])
         path = origFilename.substr(0, slashPos + 1);
         origFilename.erase(0, slashPos + 1);
     }
+    // Ensure origFilename is a plain filename with no path separators
+    if (origFilename.find('/') != OFString_npos ||
+        origFilename.find('\\') != OFString_npos ||
+        origFilename.find('\0') != OFString_npos ||
+        origFilename.empty())
+    {
+        std::cout << "ERROR: Invalid filename " << argv[1] << std::endl;
+        return 1;
+    }
     OFString full_path = path + origFilename;
     DcmFileFormat dcmFile;
     
@@ -460,6 +475,14 @@ int main(int argc, char *argv[])
     readTag(DCM_SpecificCharacterSet, dataset, tagSpecificCharacterSet, full_path);
     readTag(DCM_SOPInstanceUID, dataset, tagSOPInstanceUID, full_path);
     readTag(DCM_SeriesInstanceUID, dataset, tagSeriesInstanceUID, full_path);
+
+    if (tagSeriesInstanceUID.find('/') != OFString_npos ||
+        tagSeriesInstanceUID.find('\\') != OFString_npos ||
+        tagSeriesInstanceUID.find('\0') != OFString_npos)
+    {
+        writeErrorInformationAndMove(path, origFilename, "SeriesInstanceUID contains invalid path characters\n");
+        return 1;
+    }
 
     OFString tag_read_out = "";
     bool read_success = true;
