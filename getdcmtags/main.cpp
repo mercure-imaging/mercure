@@ -390,22 +390,6 @@ int main(int argc, char *argv[])
     helperSenderAET = OFString(argv[3]);
     helperReceiverAET = OFString(argv[4]);
 
-    // Sanitize AE titles and sender address
-    auto sanitize = [](OFString& s, size_t maxLen) {
-        if (s.length() > maxLen)
-            s.erase(maxLen);
-        for (size_t i = 0; i < s.length(); i++) {
-            unsigned char c = static_cast<unsigned char>(s[i]);
-            // Allow printable ASCII (space through tilde) except backslash
-            if (c < 0x20 || c > 0x7E || c == '\\') {
-                s[i] = '_';
-            }
-        }
-    };
-    sanitize(helperSenderAddress, 256);
-    sanitize(helperSenderAET, 16);     // DICOM AE Title max 16 chars
-    sanitize(helperReceiverAET, 16);
-
     bool injectErrors = false;
     bool tagsStopEarly = false;
     if (argc > 5)
