@@ -26,7 +26,7 @@ from common.types import Module, Task, TaskProcessing
 from common.version import mercure_version
 from dispatch.send import update_fail_stage
 from docker.types import Mount
-from jinja2 import Template
+from jinja2.sandbox import SandboxedEnvironment
 
 import docker
 import nomad
@@ -47,7 +47,8 @@ async def nomad_runtime(task: Task, folder: Path, file_count_begin: int, task_pr
         return False
 
     with open("nomad/mercure-processor-template.nomad", "r") as f:
-        rendered = Template(f.read()).render(
+        sandbox = SandboxedEnvironment()
+        rendered = sandbox.from_string(f.read()).render(
             image=module.docker_tag,
             mercure_tag=mercure_version.get_image_tag(),
             constraints=module.constraints,
