@@ -264,7 +264,7 @@ bool writeForceTagsList(QVector<QPair<OFString, OFString>>& tags, FILE* fp) {
     while(iter.hasNext())
     {
         auto pair = iter.next();
-        fprintf(fp, "\"%s\": \"%s\",\n", pair.first.c_str(), escapeJSONValue(pair.second).c_str());
+        fprintf(fp, "\"%s\": \"%s\",\n", escapeJSONValue(pair.first).c_str(), escapeJSONValue(pair.second).c_str());
     }
     return true;
 }
@@ -297,7 +297,7 @@ bool writeTagsFile(OFString dcmFile, OFString originalFile)
 
     writeForceTagsList(force_tags, fp);
 
-    fprintf(fp, "\"Filename\": \"%s\"\n", originalFile.c_str());
+    fprintf(fp, "\"Filename\": \"%s\"\n", escapeJSONValue(originalFile).c_str());
     fprintf(fp, "}\n");
 
     fclose(fp);
@@ -389,6 +389,22 @@ int main(int argc, char *argv[])
     helperSenderAddress = OFString(argv[2]);
     helperSenderAET = OFString(argv[3]);
     helperReceiverAET = OFString(argv[4]);
+
+    // Sanitize AE titles and sender address
+    auto sanitize = [](OFString& s, size_t maxLen) {
+        if (s.length() > maxLen)
+            s.erase(maxLen);
+        for (size_t i = 0; i < s.length(); i++) {
+            unsigned char c = static_cast<unsigned char>(s[i]);
+            // Allow printable ASCII (space through tilde) except backslash
+            if (c < 0x20 || c > 0x7E || c == '\\') {
+                s[i] = '_';
+            }
+        }
+    };
+    sanitize(helperSenderAddress, 256);
+    sanitize(helperSenderAET, 16);     // DICOM AE Title max 16 chars
+    sanitize(helperReceiverAET, 16);
 
     bool injectErrors = false;
     bool tagsStopEarly = false;
