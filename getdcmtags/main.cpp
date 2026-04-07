@@ -305,11 +305,14 @@ bool writeTagsFile(OFString dcmFile, OFString originalFile)
 }
 
 bool createSeriesFolder(const OFString& path, const OFString& seriesUID) {
-    OFString fullPath = path + seriesUID;
-    QString cleanParent = QDir::cleanPath(QString::fromStdString(path.c_str()));
-    QString cleanChild = QDir::cleanPath(QString::fromStdString(fullPath.c_str()));
+    OFString effectivePath = path.empty() ? OFString("./") : path;
+    OFString fullPath = effectivePath + seriesUID;
+    QString cleanParent = QDir(QString::fromStdString(effectivePath.c_str())).absolutePath();
+    QString cleanChild = QDir(QString::fromStdString(fullPath.c_str())).absolutePath();
     if (!cleanChild.startsWith(cleanParent + "/")) {
-        std::cout << "ERROR: Path traversal detected: " << fullPath << " escapes " << path << std::endl;
+        std::cout << "ERROR: Path traversal detected: '" << fullPath << "' escapes '" << effectivePath << "'"<< std::endl;
+        std::cout << cleanChild.toStdString() << std::endl;
+        std::cout << cleanParent.toStdString() << std::endl;
         return false;
     }
     QDir dir(QString::fromStdString(fullPath.c_str()));
