@@ -3,7 +3,9 @@ rsync.py
 ========
 """
 
+import os
 from pathlib import Path
+from shlex import join as shlex_join, quote
 from typing import Any
 
 import common.config as config
@@ -28,10 +30,10 @@ class RsyncTargetHandler(SubprocessTargetHandler[RsyncTarget]):
         return dict(
             ssh_cmd=["ssh", "-o", "StrictHostKeyChecking=accept-new"],
             ssh_connection=f"{target.user}@{target.host}",
-            sshpass_cmd=["sshpass", "-p", target.password],
+            sshpass_cmd=["sshpass", "-e"],
         )
 
-    def _create_command(self, target: RsyncTarget, source_folder: Path, task: Task):
+    def _create_command(self, target: RsyncTarget, source_folder: Path, task: Task, **kwargs):
         cmds = self.get_commands(target)
         ssh_cmd = cmds["ssh_cmd"]
         ssh_connection = cmds["ssh_connection"]
@@ -44,7 +46,7 @@ class RsyncTargetHandler(SubprocessTargetHandler[RsyncTarget]):
             "660",
             "-rtvz",
             "-e",
-            " ".join(ssh_cmd),
+            shlex_join(ssh_cmd),
             str(source_folder),
             f"{ssh_connection}:{target.folder}",
         ]
@@ -53,7 +55,7 @@ class RsyncTargetHandler(SubprocessTargetHandler[RsyncTarget]):
             *ssh_cmd,
             ssh_connection,
             "-C",
-            f"touch '{dest_folder}/.complete'",
+            f"touch {quote(dest_folder + '/.complete')}",
         ]
 
         commands = [transfer_command, complete_command]
@@ -65,35 +67,23 @@ class RsyncTargetHandler(SubprocessTargetHandler[RsyncTarget]):
                 *ssh_cmd,
                 ssh_connection,
                 "-C",
-                "test",
-                "-x",
-                fullpath,
+                f"test -x {quote(fullpath)}",
             ]
-            # check_sane = [
-            #     *ssh_cmd,
-            #     ssh_connection,
-            #     "-C",
-            #     f"""bash -c 'set -x\nrpath="$(realpath "$1")"\n
-            #       echo "$rpath"\n[[ $rpath = $2* ]]' _ {fullpath} {target.folder}""",
-            # ]
             execute_oncomplete = [
                 *ssh_cmd,
                 ssh_connection,
                 "-C",
-                fullpath,
-                dest_folder,
-                target.get_name(),
+                f"{quote(fullpath)} {quote(dest_folder)} {quote(target.get_name())}",
             ]
             commands += [check_exists, execute_oncomplete]
 
+        env = {}
         if target.password:
+            env = {**os.environ, "SSHPASS": target.password}
             for c in commands:
                 c[:0] = sshpass_cmd
 
-        # if target.password:
-        #     complete_command = f"sshpass -p {target.password} " + complete_command
-
-        return commands, {}
+        return commands, dict(env=env) if env else {}
 
     # def send_to_target(
     #     self,
@@ -115,15 +105,13 @@ class RsyncTargetHandler(SubprocessTargetHandler[RsyncTarget]):
 
         ping_command = ["ping", "-w", "1", "-c", "1", target.host]
         connect_command = [*ssh_cmd, ssh_connection, "-C", "true"]
-        folder_command = [*ssh_cmd, ssh_connection, "-C", "test", "-d", target.folder]
+        folder_command = [*ssh_cmd, ssh_connection, "-C", f"test -d {quote(target.folder)}"]
 
         exec_command = [
             *ssh_cmd,
             ssh_connection,
             "-C",
-            "test",
-            "-x",
-            f"{target.folder}/mercure_complete.sh",
+            f"test -x {quote(target.folder + '/mercure_complete.sh')}",
         ]
 
         commands = [ping_command, connect_command, folder_command]
@@ -133,10 +121,13 @@ class RsyncTargetHandler(SubprocessTargetHandler[RsyncTarget]):
         results = []
         output = b""
         has_err = False
+        env = None
+        if target.password:
+            env = {**os.environ, "SSHPASS": target.password}
         for c in commands:
             if target.password:
                 c = sshpass_cmd + c
-            result, stdout, stderr = await async_run_exec(*c)
+            result, stdout, stderr = await async_run_exec(*c, env=env)
             output = stdout + stderr
             if result == 0:
                 results.append(True)

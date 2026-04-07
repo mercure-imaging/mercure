@@ -20,6 +20,7 @@ import sys
 import traceback
 import secrets
 from pathlib import Path
+from urllib.parse import urlparse
 from typing import Any, Dict, List, Optional, Union
 
 # App-specific includes
@@ -53,7 +54,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from starlette.responses import JSONResponse, PlainTextResponse, RedirectResponse, Response
 from starlette.routing import Route, Router
 from starlette.staticfiles import StaticFiles
-from webinterface.common import async_run, get_csp_nonce, redis, rq_fast_scheduler, templates
+from webinterface.common import async_run_exec, get_csp_nonce, redis, rq_fast_scheduler, templates
 from webinterface.dashboards.query.jobs import QueryPipeline
 
 import docker
@@ -300,16 +301,20 @@ async def show_log(request) -> Response:
             if service_name == "missing":
                 return RedirectResponse(url="/logs/" + requested_service + "?subservice=" + service_name_or_list[0],
                                         status_code=303)
+            if service_name not in service_name_or_list:
+                return PlainTextResponse("Invalid subservice", status_code=400)
+
             sub_services = service_name_or_list
+
         else:
             service_name = service_name_or_list
             sub_services = []
-
-        run_result = await async_run(
-            f"sudo journalctl -n 1000 -u "
-            f'{service_name} '
-            f"{start_date_cmd} {end_date_cmd} "
-            "-o short-iso --no-hostname"
+        
+        run_result = await async_run_exec(
+            "sudo", "journalctl", "-n", "1000", "-u",
+            service_name,
+            start_date_cmd, end_date_cmd,
+            "-o", "short-iso", "--no-hostname"
         )
         return_code = -1 if run_result[0] is None else run_result[0]
         raw_logs = run_result[1]
@@ -345,7 +350,6 @@ async def show_log(request) -> Response:
             logger.error(e)
             return_code = 1
 
-    # return_code, raw_logs = (await async_run("/usr/bin/nomad alloc logs -job -stderr -f -tail mercure router"))[:2]
     if return_code == 0:
         log_content = html.escape(str(raw_logs.decode()))
         log_content = helper.localize_log_timestamps(log_content, config)
@@ -614,11 +618,16 @@ async def self_test(request) -> Response:
     except Exception:
         return PlainTextResponse(f"Error initializing test: {traceback.format_exc()}", status_code=500)
 
-    # shutil.copytree("./test_series", tmpdir)
-    command = (f"""dcmsend {receiver_host} {receiver_port} +r +sd {tmpdir} """
-               f"""-aet "mercure" -aec "{test_id}_begin" -nuc +sp '*.dcm' -to 60""")
+    command = [
+        "dcmsend", receiver_host, receiver_port,
+        "--recurse", "--scan-directories", str(tmpdir),
+        "--aetitle", "mercure", "-aec", f"{test_id}_begin",
+        "--no-uid-checks",
+        "--scan-pattern", "*.dcm", 
+        "--timeout", "60", # 60 seconds
+    ]
     try:
-        subprocess.check_output(command, shell=True, stderr=subprocess.STDOUT)
+        subprocess.check_output(command, stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as e:
         logger.error(f"Error sending dicoms: {command}")
         return PlainTextResponse("Could not submit dicoms for test:\n" + e.output.decode("utf-8"))
@@ -765,7 +774,7 @@ async def get_service_status(runtime) -> List[Dict[str, Any]]:
                     systemd_services = [systemd_services]
 
                 for service_name in systemd_services:
-                    exit_code, _, _ = await async_run(f"systemctl is-active {service_name}")
+                    exit_code, _, _ = await async_run_exec("systemctl", "is-active", service_name)
                     if exit_code == 0:
                         running_status = True
                     else:
@@ -884,9 +893,9 @@ async def control_services(request) -> Response:
                     systemd_services = [systemd_services]
 
                 for service_name in systemd_services:
-                    command = "sudo systemctl " + action + " " + service_name
-                    logger.info(f"Executing: {command}")
-                    await async_run(command)
+                    command = ["sudo","systemctl", action, service_name]
+                    logger.info(f"Executing: {''.join(command)}")
+                    await async_run_exec(*command)
 
             elif runtime == "docker":
                 client = docker.from_env()  # type: ignore
@@ -958,6 +967,36 @@ exception_handlers = {
 app = None
 
 
+SAFE_METHODS = {"GET", "HEAD", "OPTIONS", "TRACE"}
+ORIGIN_EXEMPT_PATHS = {"/self_test_notification"}
+
+
+class OriginCheckMiddleware(BaseHTTPMiddleware):
+    """Rejects unsafe requests whose Origin does not match the Host header."""
+
+    async def dispatch(self, request, call_next):
+        if request.method not in SAFE_METHODS and request.url.path not in ORIGIN_EXEMPT_PATHS:
+            origin = request.headers.get("origin")
+            if origin is not None:
+                origin_host = urlparse(origin).netloc
+                request_host = request.headers.get("host", "")
+                if origin_host != request_host:
+                    return PlainTextResponse("Origin check failed", status_code=403)
+            else:
+                # No Origin header — fall back to Referer
+                referer = request.headers.get("referer")
+                if referer is not None:
+                    referer_host = urlparse(referer).netloc
+                    request_host = request.headers.get("host", "")
+                    if referer_host != request_host:
+                        return PlainTextResponse("Origin check failed", status_code=403)
+                # If neither Origin nor Referer is present, allow the request.
+                # This covers non-browser clients (curl, API tools) and some
+                # older browsers. SameSite=Lax on the session cookie already
+                # blocks cross-site cookie attachment in these cases.
+        return await call_next(request)
+
+
 class CSPMiddleware(BaseHTTPMiddleware):
     async def __call__(self, scope, receive, send):
         scope["csp_nonce"] = secrets.token_urlsafe()
@@ -988,6 +1027,7 @@ def create_app() -> Starlette:
     app.mount("/static", StaticFiles(directory="webinterface/statics", check_dir=False), name="static")
     app.add_middleware(AuthenticationMiddleware, backend=SessionAuthBackend())
     app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY, session_cookie="mercure_session")
+    app.add_middleware(OriginCheckMiddleware)
     app.add_middleware(CSPMiddleware)
     # print(app.state.csp_nonce)
     app.mount("/rules", rules.rules_app, name="rules")

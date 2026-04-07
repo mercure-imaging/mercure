@@ -5,6 +5,7 @@ Definitions for using TypedDicts throughout mercure.
 """
 
 import json
+import re
 import typing
 from io import TextIOWrapper
 from os import PathLike
@@ -12,7 +13,7 @@ from os import PathLike
 from typing import Any, Dict, List, Optional, Type, Union, cast
 
 from common.event_types import FailStage
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
 from typing_extensions import Literal, TypedDict
 
 # TODO: Add description for the individual classes
@@ -75,7 +76,22 @@ class DicomTarget(Target):
     @property
     def short_description(self) -> str:
         return f"{self.ip}:{self.port}"
-
+    
+    @validator("aet_target", "aet_source")
+    def valid_aet(cls, v):
+        if v and (len(v) > 16 or not re.match(r'^[a-zA-Z0-9_\-]*$', v)):
+            raise ValueError("AE title must be <= 16 alphanumeric characters")
+        return v
+    @validator("ip")
+    def valid_ip_or_hostname(cls, v):
+        if not re.match(r'^[a-zA-Z0-9.\-]+$', v):
+            raise ValueError("Invalid IP/hostname characters")
+        return v
+    @validator("port")
+    def valid_port(cls, v):
+        if not v.isdigit() or not (1 <= int(v) <= 65535):
+            raise ValueError("Invalid port number")
+        return v
 
 class DicomTLSTarget(Target):
     target_type: Literal["dicomtls"] = "dicomtls"
@@ -92,6 +108,12 @@ class DicomTLSTarget(Target):
     @property
     def short_description(self) -> str:
         return f"{self.ip}:{self.port}"
+
+    @validator("aet_target", "aet_source")
+    def valid_aet(cls, v):
+        if v and (len(v) > 16 or not re.match(r'^[a-zA-Z0-9_\-]*$', v)):
+            raise ValueError("AE title must be <= 16 alphanumeric characters")
+        return v
 
 
 class DicomWebTarget(Target):
