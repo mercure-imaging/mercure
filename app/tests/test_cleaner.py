@@ -122,8 +122,8 @@ def test_emergency_cleaning_different_disks(fs: FakeFilesystem, mercure_config):
     success_folder = Path(config.success_folder)
     discard_folder = Path(config.discard_folder)
 
-    fs.add_mount_point(success_folder, 5_000)
-    fs.add_mount_point(discard_folder, 5_000)
+    fs.add_mount_point(str(success_folder), 5_000)
+    fs.add_mount_point(str(discard_folder), 5_000)
 
     with freeze_time("2020-01-01 00:00:00") as frozen_time:  # Pretend it's January 1st
 

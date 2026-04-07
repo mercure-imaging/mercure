@@ -375,7 +375,7 @@ class TaskDispatch(BaseModel, Compat):
     status: Union[Dict[str, TaskDispatchStatus], EmptyDict] = cast(EmptyDict, {})
     retries: Optional[int] = 0
     next_retry_at: Optional[float] = 0
-    series_uid: Optional[str]
+    series_uid: Optional[str] = None
 
 
 class TaskStudy(BaseModel, Compat):
@@ -395,7 +395,7 @@ class TaskProcessing(BaseModel, Compat):
     module_config: Optional[Module]
     settings: Dict[str, Any] = {}
     retain_input_images: bool
-    output: Optional[Dict]
+    output: Optional[Dict] = None
 
 # class PydanticFile(object):
 #     def __init__(self, klass, file_name):
@@ -429,7 +429,7 @@ class Task(BaseModel, Compat):
     dispatch: Union[TaskDispatch, EmptyDict] = cast(EmptyDict, {})
     process: Union[TaskProcessing, EmptyDict, List[TaskProcessing]] = cast(EmptyDict, {})
     study: Union[TaskStudy, EmptyDict] = cast(EmptyDict, {})
-    nomad_info: Optional[Any]
+    nomad_info: Optional[Any] = None
 
     class Config:
         extra = "forbid"

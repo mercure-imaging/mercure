@@ -233,7 +233,7 @@ def parse_completion_series(task_id: str, completion_str: str, received_series: 
             parsed_str = parsed_str.replace("'" + entry + "'", " False ")
 
     # print(parsed_str)
-
+    parsed_str = parsed_str.strip()
     try:
         if UNSAFE_RULE_EVALUATION:
             result: bool = eval(parsed_str, {"__builtins__": {}}, {})

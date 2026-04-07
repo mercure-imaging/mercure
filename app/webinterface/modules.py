@@ -133,7 +133,7 @@ async def add_module(request):
     form["name"] = name.strip()
     form["docker_tag"] = form["docker_tag"].strip()
 
-    if not re.fullmatch("[0-9a-zA-Z_\-]+", name):
+    if not re.fullmatch(r"[0-9a-zA-Z_\-]+", name):
         return BadRequestResponse("Invalid module name provided.")
 
     if not re.fullmatch("[a-zA-Z0-9-:/_.@]+", form["docker_tag"]):
@@ -261,7 +261,7 @@ async def edit_module_POST(request):
     if name not in config.mercure.modules:
         return PlainTextResponse("Invalid module name - perhaps it was deleted?")
 
-    if not re.fullmatch("[0-9a-zA-Z_\-]+", name):
+    if not re.fullmatch(r"[0-9a-zA-Z_\-]+", name):
         return BadRequestResponse("Invalid module name provided.")
 
     if not re.fullmatch("[a-zA-Z0-9-:/_.@]+", form["docker_tag"]):
@@ -286,7 +286,7 @@ async def save_persistence_file(request):
     if name not in config.mercure.modules:
         return PlainTextResponse("Invalid module name - perhaps it was deleted?")
 
-    if not re.fullmatch("[0-9a-zA-Z_\-]+", name):
+    if not re.fullmatch(r"[0-9a-zA-Z_\-]+", name):
         return BadRequestResponse("Invalid module name provided.")
 
     module_data = config.mercure.modules[name]
@@ -349,7 +349,7 @@ async def refresh_persistence_file(request):
     if name not in config.mercure.modules:
         return PlainTextResponse("Invalid module name - perhaps it was deleted?")
 
-    if not re.fullmatch("[0-9a-zA-Z_\-]+", name):
+    if not re.fullmatch(r"[0-9a-zA-Z_\-]+", name):
         return BadRequestResponse("Invalid module name provided.")
 
     module_data = config.mercure.modules[name]

@@ -30,7 +30,7 @@
 
 #include "tags_list.h"
 
-#define VERSION "getdcmtags Version 0.74"
+#define VERSION "getdcmtags Version 0.75"
 
 static OFString tagSpecificCharacterSet = "";
 static OFString tagSeriesInstanceUID = "";

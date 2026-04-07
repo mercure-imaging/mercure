@@ -61,7 +61,7 @@ async def duplicate_rule(request) -> Response:
         return PlainTextResponse("Configuration is being updated. Try again in a minute.")
     form = await request.form()
     new_name = form.get("new_name", "")
-    if not re.fullmatch("[0-9a-zA-Z_\-]+", new_name):
+    if not re.fullmatch(r"[0-9a-zA-Z_\-]+", new_name):
         return BadRequestResponse("Invalid rule name provided")
 
     old_name = form.get("old_name", "")
@@ -86,7 +86,7 @@ async def add_rule(request) -> Response:
     form = dict(await request.form())
 
     newrule = form.get("name", "")
-    if not re.fullmatch("[0-9a-zA-Z_\-]+", newrule):
+    if not re.fullmatch(r"[0-9a-zA-Z_\-]+", newrule):
         return BadRequestResponse("Invalid rule name provided")
 
     if newrule in config.mercure.rules:

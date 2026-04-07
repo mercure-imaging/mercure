@@ -65,11 +65,12 @@ class DicomTargetHandler(SubprocessTargetHandler[DicomTarget]):
         command = [
             "dcmsend", str(target_ip), str(target_port),
             "+r", "+sd", str(source_folder),
-            "-aet", str(target_aet_source),
-            "-aec", str(target_aet_target),
-            "-nuc", "+sp", "*.dcm", "-to", "60",
-            "+crf", dcmsend_status_file,
         ]
+        if target_aet_source:
+            command += ["-aet", str(target_aet_source)]
+        if target_aet_target:
+            command += ["-aec", str(target_aet_target)]
+        command += ["-nuc", "+sp", "*.dcm", "-to", "60", "+crf", dcmsend_status_file]
         return command, {}
 
     def find_from_target(self, target: DicomTarget, accession: str, search_filters: Dict[str, List[str]]) -> List[Dataset]:
@@ -161,10 +162,12 @@ class DicomTLSTargetHandler(SubprocessTargetHandler[DicomTLSTarget]):
             "+cf", str(target.ca_cert),
             str(target_ip), str(target_port),
             "+sd", str(source_folder),
-            "-aet", str(target_aet_source),
-            "-aec", str(target_aet_target),
-            "+sp", "*.dcm", "-to", "60",
         ]
+        if target_aet_source:
+            command += ["-aet", str(target_aet_source)]
+        if target_aet_target:
+            command += ["-aec", str(target_aet_target)]
+        command += ["+sp", "*.dcm", "-to", "60"]
         return command, {}
 
     def handle_error(self, e, command):
