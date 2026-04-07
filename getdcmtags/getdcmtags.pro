@@ -1,4 +1,5 @@
 QT -= gui
+QT += network
 
 CONFIG -= console
 CONFIG -= app_bundle

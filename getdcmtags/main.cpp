@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <sstream>
 #include <iomanip>
 
@@ -17,9 +18,15 @@
 
 #include <QFileInfo>
 #include <QTextStream>
-#include <QVector> 
+#include <QVector>
 #include <QVectorIterator>
 #include <QCoreApplication>
+#include <QNetworkAccessManager>
+#include <QNetworkRequest>
+#include <QNetworkReply>
+#include <QUrl>
+#include <QUrlQuery>
+#include <QEventLoop>
 
 #include "tags_list.h"
 
@@ -63,27 +70,21 @@ std::string escapeJSONValue(const OFString &s)
 
 void sendBookkeeperPost(OFString filename, OFString fileUID, OFString seriesUID)
 {
-    if (bookkeeperAddress.empty())
-    {
-        return;
-    }
+    QUrl url(QString("http://%1/register-dicom").arg(QString::fromStdString(bookkeeperAddress)));
+    QNetworkRequest request(url);
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
+    request.setRawHeader("Authorization", QByteArray("Token ") + QByteArray::fromStdString(bookkeeperToken));
 
-    // Send REST call to bookkeeper instance as forked process, so that the
-    // current process can proceed and terminate
-    std::string cmd = "wget -q -T 1 -t 3 --post-data=\"filename=";
-    cmd.append(filename.c_str());
-    cmd.append("&file_uid=");
-    cmd.append(fileUID.c_str());
-    cmd.append("&series_uid=");
-    cmd.append(seriesUID.c_str());
-    cmd.append("\"");
-    cmd.append(" --header=\"Authorization: Token ");
-    cmd.append(bookkeeperToken);
-    cmd.append("\" http://");
-    cmd.append(bookkeeperAddress);
-    cmd.append("/register-dicom -O /dev/null");
+    QUrlQuery postData;
+    postData.addQueryItem("filename", QString::fromUtf8(filename.c_str()));
+    postData.addQueryItem("file_uid", QString::fromUtf8(fileUID.c_str()));
+    postData.addQueryItem("series_uid", QString::fromUtf8(seriesUID.c_str()));
 
-    system(cmd.data());
+    QNetworkAccessManager manager;
+    QEventLoop loop;
+    QObject::connect(&manager, &QNetworkAccessManager::finished, &loop, &QEventLoop::quit);
+    manager.post(request, postData.toString(QUrl::FullyEncoded).toUtf8());
+    loop.exec();
 }
 
 
@@ -568,5 +569,9 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    sendBookkeeperPost(newFilename, tagSOPInstanceUID, tagSeriesInstanceUID);
+    if (!bookkeeperAddress.empty() && fork() == 0)
+    {
+        sendBookkeeperPost(newFilename, tagSOPInstanceUID, tagSeriesInstanceUID);
+        _exit(0);
+    }
 }
