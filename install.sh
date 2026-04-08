@@ -505,7 +505,7 @@ configure_credentials() {
 
 install_services() {
   echo "## Installing services..."
-  sudo cp -n "$MERCURE_SRC"/installation/*.service /etc/systemd/system
+  sudo cp --update=none "$MERCURE_SRC"/installation/*.service /etc/systemd/system
   sudo systemctl daemon-reload
   sudo systemctl enable mercure_bookkeeper.service mercure_cleaner.service mercure_dispatcher.service mercure_receiver.service mercure_router.service mercure_ui.service mercure_processor.service
   sudo systemctl restart mercure_bookkeeper.service mercure_cleaner.service mercure_dispatcher.service mercure_receiver.service mercure_router.service mercure_ui.service mercure_processor.service
@@ -519,7 +519,7 @@ systemd_install () {
   create_user
   create_folders
   install_configuration
-  sudo cp -n "$MERCURE_SRC"/installation/sudoers/* /etc/sudoers.d/
+  sudo cp --update=none "$MERCURE_SRC"/installation/sudoers/* /etc/sudoers.d/
   install_packages
   install_docker
   install_app_files
@@ -580,7 +580,7 @@ systemd_update () {
   done
   create_folders
   install_app_files true
-  sudo cp -n "$MERCURE_SRC"/installation/sudoers/* /etc/sudoers.d/
+  sudo cp --update=none "$MERCURE_SRC"/installation/sudoers/* /etc/sudoers.d/
   install_packages
   install_dependencies
   if [ ! -f "$CONFIG_PATH"/redis.env ]; then

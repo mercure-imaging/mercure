@@ -27,7 +27,8 @@ import common.config as config
 import common.helper as helper
 from common.constants import mercure_names
 from common.types import Module
-from webinterface.common import redis, strip_untrusted, templates
+import webinterface.common as wc
+from webinterface.common import strip_untrusted, templates
 
 router = decoRouter()
 logger = config.get_logger()
@@ -444,7 +445,7 @@ def _get_cached_online_modules() -> Optional[str]:
     """Get cached online modules from Redis or in-memory cache. Returns JSON string or None."""
     try:
         # Try Redis first
-        cached_data = redis.get(CACHE_KEY)
+        cached_data = wc.redis.get(CACHE_KEY)
         if cached_data:
             # Redis returns bytes, need to decode to string
             if isinstance(cached_data, bytes):
@@ -473,7 +474,7 @@ def _set_cached_online_modules(online_modules: str) -> None:
     """Store online modules in both Redis and in-memory cache."""
     # Try to cache in Redis
     try:
-        redis.setex(CACHE_KEY, CACHE_TTL_SECONDS, online_modules)
+        wc.redis.setex(CACHE_KEY, CACHE_TTL_SECONDS, online_modules)
         logger.debug("Cached online modules in Redis")
     except Exception as e:
         logger.warning(f"Redis cache write failed: {e}")

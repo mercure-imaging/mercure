@@ -54,7 +54,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from starlette.responses import JSONResponse, PlainTextResponse, RedirectResponse, Response
 from starlette.routing import Route, Router
 from starlette.staticfiles import StaticFiles
-from webinterface.common import async_run_exec, get_csp_nonce, redis, rq_fast_scheduler, templates
+from webinterface.common import async_run_exec, get_csp_nonce, setup_redis, templates
 from webinterface.dashboards.query.jobs import QueryPipeline
 
 import docker
@@ -135,9 +135,12 @@ async def lifespan(app):
 
 
 def startup(app: Starlette):
+    import webinterface.common
+    setup_redis()
+
     state = {"redis_connected": False}
     try:
-        response = redis.ping()
+        response = webinterface.common.redis.ping()
         if response:
             logger.info("Redis connection validated.")
             state["redis_connected"] = True
@@ -147,12 +150,12 @@ def startup(app: Starlette):
         logger.error("Could not connect to Redis", exc_info=True)
 
     if state["redis_connected"]:
-        scheduled_jobs = rq_fast_scheduler.get_jobs()
+        scheduled_jobs = webinterface.common.rq_fast_scheduler.get_jobs()
         for job in scheduled_jobs:
             if job.meta.get("type") != "offpeak":
                 continue
-            rq_fast_scheduler.cancel(job)
-        rq_fast_scheduler.schedule(
+            webinterface.common.rq_fast_scheduler.cancel(job)
+        webinterface.common.rq_fast_scheduler.schedule(
             scheduled_time=datetime.datetime.utcnow(),
             func=QueryPipeline.update_all_offpeak,
             interval=60,

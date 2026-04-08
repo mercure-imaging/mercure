@@ -70,7 +70,7 @@ fi
 echo "storescp version validated (>= $required_version)."
 
 # Verify storescp was built from the required commit
-required_commit="969c4b6c"
+required_commit="969c4b6"
 if [ -n "$required_commit" ]; then
     if ! "$storescp_binary" --version 2>&1 | grep -q "$required_commit"; then
         echo "ERROR: storescp binary was not built from required commit $required_commit"
