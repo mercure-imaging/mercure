@@ -454,6 +454,52 @@ install_redis() {
   sudo systemctl restart redis.service
 }
 
+configure_credentials() {
+  echo "## Configuring service credential isolation..."
+  local systemd_ver
+  systemd_ver=$(systemctl --version | head -1 | awk '{print $2}')
+
+  local redis_drop_in
+  if [ "$systemd_ver" -ge 250 ] 2>/dev/null; then
+    echo "## Using LoadCredential for Redis (systemd $systemd_ver)"
+    redis_drop_in="$MERCURE_SRC/installation/drop-ins/redis-credentials-loadcredential.conf"
+  else
+    echo "## Using EnvironmentFile for Redis (systemd $systemd_ver)"
+    redis_drop_in="$MERCURE_SRC/installation/drop-ins/redis-credentials-envfile.conf"
+  fi
+
+  # Install Redis credential drop-in and per-service deny lists
+  local -A svc_deny=(
+    [mercure_ui]="credentials-deny-ui.conf"
+    [mercure_bookkeeper]="credentials-deny-bookkeeper.conf"
+    [mercure_worker_fast@]="credentials-deny-worker.conf"
+    [mercure_worker_slow@]="credentials-deny-worker.conf"
+    [mercure_cleaner]="credentials-deny-default.conf"
+    [mercure_dispatcher]="credentials-deny-default.conf"
+    [mercure_processor]="credentials-deny-default.conf"
+    [mercure_receiver]="credentials-deny-default.conf"
+    [mercure_router]="credentials-deny-default.conf"
+  )
+  local redis_services=("mercure_ui" "mercure_worker_fast@" "mercure_worker_slow@")
+
+  for svc in "${!svc_deny[@]}"; do
+    local drop_in_dir="/etc/systemd/system/${svc}.service.d"
+    sudo mkdir -p "$drop_in_dir"
+    sudo cp "$MERCURE_SRC/installation/drop-ins/${svc_deny[$svc]}" "$drop_in_dir/credentials.conf"
+  done
+
+  for svc in "${redis_services[@]}"; do
+    local drop_in_dir="/etc/systemd/system/${svc}.service.d"
+    sudo cp "$redis_drop_in" "$drop_in_dir/redis.conf"
+  done
+
+  # With LoadCredential, the source file should be owned by root
+  if [ "$systemd_ver" -ge 250 ] 2>/dev/null; then
+    sudo chown root:root "$CONFIG_PATH"/redis.env
+    sudo chmod 600 "$CONFIG_PATH"/redis.env
+  fi
+}
+
 install_services() {
   echo "## Installing services..."
   sudo cp -n "$MERCURE_SRC"/installation/*.service /etc/systemd/system
@@ -478,6 +524,7 @@ systemd_install () {
   install_postgres
   install_redis
   sudo chown -R mercure:mercure "$MERCURE_BASE"
+  configure_credentials
   install_services
 }
 
@@ -540,15 +587,7 @@ systemd_update () {
     sudo chmod o-r "$CONFIG_PATH"/redis.env
   fi
   install_redis
-  # Ensure Redis env is available to services that need it
-  local redis_env_line="EnvironmentFile=/opt/mercure/config/redis.env"
-  for svc in mercure_ui mercure_worker_fast@ mercure_worker_slow@; do
-    local svc_file="/etc/systemd/system/${svc}.service"
-    if [ -f "$svc_file" ] && ! grep -qF "$redis_env_line" "$svc_file"; then
-      echo "## Patching $svc_file with Redis environment..."
-      sudo sed -i "/^\[Service\]/a $redis_env_line" "$svc_file"
-    fi
-  done
+  configure_credentials
   install_services
   echo "Update complete."
 }

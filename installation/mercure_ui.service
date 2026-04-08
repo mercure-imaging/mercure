@@ -8,7 +8,6 @@ Wants=mercure_bookkeeper.service
 [Service]
 Type=simple
 WorkingDirectory=/opt/mercure/app
-EnvironmentFile=/opt/mercure/config/redis.env
 ExecStart=/opt/mercure/env/bin/python /opt/mercure/app/webgui.py
 Restart=on-failure
 RestartSec=3
