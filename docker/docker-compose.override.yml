@@ -1,17 +1,18 @@
 # This file is used to override the default configuration of docker-compose.yml to enable development.
+# In dev mode, the full config directory is mounted for convenience.
 x-env: &env
   environment:
     MERCURE_RUNNER: docker
     MERCURE_ENV: DEV
     MERCURE_CONFIG_FOLDER: /opt/mercure/config
 
-x-volumes: &volumes
+x-dev-volumes: &dev-volumes
   volumes:
     - code:/opt/mercure/app
     - config:/opt/mercure/config
     - data:/opt/mercure/data
 
-x-volumes-docker: &volumes-docker
+x-dev-volumes-docker: &dev-volumes-docker
   volumes:
     - code:/opt/mercure/app
     - config:/opt/mercure/config
@@ -21,11 +22,11 @@ x-volumes-docker: &volumes-docker
 services:
   receiver:
     image: mercureimaging/mercure-receiver${IMAGE_TAG}
-    <<: [*env, *volumes]
+    <<: [*env, *dev-volumes]
 
   ui:
     image: mercureimaging/mercure-ui${IMAGE_TAG}
-    <<: [*env, *volumes-docker]
+    <<: [*env, *dev-volumes-docker]
     environment:
       MERCURE_RUNNER: docker
       MERCURE_ENV: DEV
@@ -34,48 +35,51 @@ services:
 
   cleaner:
     image: mercureimaging/mercure-cleaner${IMAGE_TAG}
-    <<: [*env, *volumes]
+    <<: [*env, *dev-volumes]
 
   dispatcher:
     image: mercureimaging/mercure-dispatcher${IMAGE_TAG}
-    <<: [*env, *volumes]
-      
+    <<: [*env, *dev-volumes]
+
   processor:
     image: mercureimaging/mercure-processor${IMAGE_TAG}
-    <<: [*env, *volumes-docker]
+    <<: [*env, *dev-volumes-docker]
 
   router:
     image: mercureimaging/mercure-router${IMAGE_TAG}
-    <<: [*env, *volumes]
+    <<: [*env, *dev-volumes]
 
   bookkeeper:
     image: mercureimaging/mercure-bookkeeper${IMAGE_TAG}
-    <<: [*env, *volumes]
+    <<: [*env, *dev-volumes]
 
   worker_fast:
     image: mercureimaging/mercure-worker${IMAGE_TAG}
+    <<: [*env, *dev-volumes]
     restart: always
     depends_on:
       - redis
     deploy:
       replicas: 2
     environment:
+      MERCURE_RUNNER: docker
+      MERCURE_ENV: DEV
       WORKER_QUEUE: mercure_fast
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
-    <<: *volumes
 
   worker_slow:
     image: mercureimaging/mercure-worker${IMAGE_TAG}
+    <<: [*env, *dev-volumes]
     restart: always
     depends_on:
       - redis
     deploy:
       replicas: 2
     environment:
+      MERCURE_RUNNER: docker
+      MERCURE_ENV: DEV
       WORKER_QUEUE: mercure_slow
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
-    <<: *volumes
-
 
 volumes:
   db-data:
@@ -84,7 +88,7 @@ volumes:
       type: 'none'
       o: 'bind'
       device: '/opt/mercure/db'
-      
+
   code:
     driver: local
     driver_opts:

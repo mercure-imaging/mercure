@@ -339,7 +339,6 @@ setup_docker () {
     sudo sed -i -e "s/\\\${DOCKER_GID}/$(getent group docker | cut -d: -f3)/g" $MERCURE_BASE/docker-compose.yml
     sudo sed -i -e "s/\\\${UID}/$(getent passwd mercure | cut -d: -f3)/g" $MERCURE_BASE/docker-compose.yml
     sudo sed -i -e "s/\\\${GID}/$(getent passwd mercure | cut -d: -f4)/g" $MERCURE_BASE/docker-compose.yml
-    sudo sed -i -e "s/\\\${REDIS_PASSWORD}/$REDIS_PASSWORD/g" $MERCURE_BASE/docker-compose.yml
 
     if [[ -v MERCURE_TAG ]]; then # a custom tag was provided
       sudo sed -i "s/\\\${IMAGE_TAG}/\:$MERCURE_TAG/g" $MERCURE_BASE/docker-compose.yml
@@ -348,6 +347,11 @@ setup_docker () {
     fi
     sudo chown $OWNER:$OWNER "$MERCURE_BASE"/docker-compose.yml
   fi
+
+  # Write .env for compose variable interpolation (REDIS_PASSWORD)
+  echo "REDIS_PASSWORD=$REDIS_PASSWORD" | sudo tee "$MERCURE_BASE"/.env > /dev/null
+  sudo chown $OWNER:$OWNER "$MERCURE_BASE"/.env
+  sudo chmod 600 "$MERCURE_BASE"/.env
 }
 
 setup_docker_dev () {
@@ -355,7 +359,6 @@ setup_docker_dev () {
     echo "## Copying docker-compose.override.yml..."
     sudo cp $MERCURE_SRC/docker/docker-compose.override.yml $MERCURE_BASE
     sudo sed -i -e "s;MERCURE_SRC;$(readlink -f $MERCURE_SRC)/app;" "$MERCURE_BASE"/docker-compose.override.yml
-    sudo sed -i -e "s/\\\${REDIS_PASSWORD}/$REDIS_PASSWORD/g" "$MERCURE_BASE"/docker-compose.override.yml
     if [[ -v MERCURE_TAG ]]; then # a custom tag was provided
       sudo sed -i "s/\\\${IMAGE_TAG}/\:$MERCURE_TAG/g" $MERCURE_BASE/docker-compose.override.yml
     else # no custom tag was provided, use latest
