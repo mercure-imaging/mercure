@@ -17,7 +17,13 @@ import common.monitor as monitor
 from common.constants import mercure_names
 from decoRouter import Router as decoRouter
 from mypy_extensions import TypedDict
-from passlib.apps import custom_app_context as pwd_context
+from passlib.context import CryptContext
+
+pwd_context = CryptContext(
+    schemes=["argon2", "sha512_crypt"],
+    default="argon2",
+    deprecated=["sha512_crypt"],
+)
 # Starlette-related includes
 from starlette.applications import Starlette
 from starlette.authentication import requires
@@ -121,7 +127,8 @@ def save_users() -> None:
 
 
 def evaluate_password(username, password) -> bool:
-    """Check if the given password for the given user is correct. Hashed passwords are stored with salt."""
+    """Check if the given password for the given user is correct. Hashed passwords are stored with salt.
+    If the stored hash uses a deprecated scheme, it is transparently rehashed to argon2."""
     if (len(username) == 0) or (len(password) == 0):
         return False
 
@@ -133,10 +140,14 @@ def evaluate_password(username, password) -> bool:
         return False
 
     try:
-        if pwd_context.verify(password, stored_password):
-            return True
-        else:
+        valid, new_hash = pwd_context.verify_and_update(password, stored_password)
+        if not valid:
             return False
+        if new_hash is not None:
+            users_list[username]["password"] = new_hash
+            save_users()
+            logger.info(f"Rehashed password for user {username} to argon2")
+        return True
     except Exception:
         return False
 

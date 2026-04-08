@@ -44,6 +44,7 @@ itsdangerous
 python-multipart>=0.0.18
 distro
 passlib
+argon2-cffi
 sqlalchemy<=1.4.52
 databases
 # databases[postgresql]
