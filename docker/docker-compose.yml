@@ -7,7 +7,6 @@ x-build: &build
 x-env: &env
   environment:
     MERCURE_RUNNER: docker
-    REDIS_URL: redis://redis:6379/0
 x-volumes: &volumes
   volumes:
     - config:/opt/mercure/config
@@ -43,7 +42,9 @@ services:
         condition: service_started
       worker_slow:
         condition: service_started
-
+    environment:
+      MERCURE_RUNNER: docker
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
     image: mercureimaging/mercure-ui${IMAGE_TAG}
     build:
       <<: *build
@@ -138,8 +139,10 @@ services:
   redis:
     image: redis
     restart: always
-    command: redis-server --save 20 1
-    volumes: 
+    command: ["sh", "-c", "test -n \"$$REDIS_PASSWORD\" || { echo 'ERROR: REDIS_PASSWORD is not set'; exit 1; } && exec redis-server --save 20 1 --requirepass \"$$REDIS_PASSWORD\""]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    volumes:
       - redis-cache:/data
 
   worker_fast:
@@ -155,7 +158,7 @@ services:
       replicas: 2
     environment:
       WORKER_QUEUE: mercure_fast
-      REDIS_URL: redis://redis:6379/0
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
 
   worker_slow:
     <<: [*user, *volumes]
@@ -167,7 +170,7 @@ services:
       replicas: 2
     environment:
       WORKER_QUEUE: mercure_slow
-      REDIS_URL: redis://redis:6379/0
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
 
 volumes:
   db-data:

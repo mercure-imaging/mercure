@@ -23,7 +23,7 @@ if [ ! -f "app/VERSION" ]; then
 fi
 VERSION=`cat app/VERSION`
 IMAGE_TAG=":${MERCURE_TAG:-$VERSION}"
-VER_LENGTH=${#VERSION}+28
+VER_LENGTH=$(( ${#VERSION} + 28 ))
 echo ""
 echo "mercure Installer - Version $VERSION"
 for ((i=1;i<=VER_LENGTH;i++)); do
@@ -38,30 +38,50 @@ then
   echo "Running as root, but setting $OWNER as owner."
 fi
 
-SECRET="${MERCURE_SECRET:-unset}"
-if [ "$SECRET" = "unset" ]
-then
-  SECRET=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1 || true)
-fi
+generate_secret() {
+  local secret
+  secret=$(head -c 48 /dev/urandom | base64 | tr -dc 'a-zA-Z0-9' | head -c 32)
+  if [ -z "$secret" ] || [ ${#secret} -lt 32 ]; then
+    echo "ERROR: Failed to generate secret" >&2
+    exit 1
+  fi
+  echo "$secret"
+}
 
-BOOKKEEPER_SECRET=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1 || true)
+validate_secret() {
+  local name="$1" value="$2"
+  if [[ "$value" =~ [^a-zA-Z0-9] ]]; then
+    echo "ERROR: $name contains non-alphanumeric characters. Only a-z, A-Z, 0-9 are allowed."
+    exit 1
+  fi
+}
 
-DB_PWD="${MERCURE_PASSWORD:-unset}"
-if [ "$DB_PWD" = "unset" ]
-then
-  DB_PWD=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1 || true)
-fi
+SECRET="${MERCURE_SECRET:-$(generate_secret)}"
+BOOKKEEPER_SECRET=$(generate_secret)
+DB_PWD="${MERCURE_PASSWORD:-$(generate_secret)}"
+REDIS_PASSWORD="${MERCURE_REDIS_PASSWORD:-$(generate_secret)}"
+
+validate_secret "MERCURE_SECRET" "$SECRET"
+validate_secret "MERCURE_PASSWORD" "$DB_PWD"
+validate_secret "MERCURE_REDIS_PASSWORD" "$REDIS_PASSWORD"
+
 MERCURE_BASE=/opt/mercure
 DATA_PATH=$MERCURE_BASE/data
 CONFIG_PATH=$MERCURE_BASE/config
 DB_PATH=$MERCURE_BASE/db
 MERCURE_SRC=$(readlink -f .)
 
-if [ -f "$CONFIG_PATH"/db.env ]; then 
-  sudo chown $USER "$CONFIG_PATH"/db.env 
+if [ -f "$CONFIG_PATH"/db.env ]; then
+  sudo chown $USER "$CONFIG_PATH"/db.env
   source "$CONFIG_PATH"/db.env # Don't accidentally generate a new database password
-  sudo chown $OWNER "$CONFIG_PATH"/db.env 
+  sudo chown $OWNER "$CONFIG_PATH"/db.env
   DB_PWD=$POSTGRES_PASSWORD
+fi
+
+if [ -f "$CONFIG_PATH"/redis.env ]; then
+  sudo chown $USER "$CONFIG_PATH"/redis.env
+  source "$CONFIG_PATH"/redis.env # Don't accidentally generate a new Redis password
+  sudo chown $OWNER "$CONFIG_PATH"/redis.env
 fi
 
 echo "Installation folder:  $MERCURE_BASE"
@@ -119,10 +139,12 @@ install_configuration () {
     cp "$MERCURE_SRC"/configuration/default_services.json "$CONFIG_PATH"/services.json
     cp "$MERCURE_SRC"/configuration/default_webgui.env "$CONFIG_PATH"/webgui.env
     echo "POSTGRES_PASSWORD=$DB_PWD" > "$CONFIG_PATH"/db.env
-
-    if [ $INSTALL_TYPE = "systemd" ]; then 
+    if [ $INSTALL_TYPE = "systemd" ]; then
+      echo "REDIS_PASSWORD=$REDIS_PASSWORD" > "$CONFIG_PATH"/redis.env
+      echo "REDIS_URL=redis://:$REDIS_PASSWORD@localhost:6379/0" >> "$CONFIG_PATH"/redis.env
       sed -i -e "s/mercure:ChangePasswordHere@localhost/mercure:$DB_PWD@localhost/" "$CONFIG_PATH"/bookkeeper.env
     elif [ $INSTALL_TYPE = "docker" ]; then
+      echo "REDIS_PASSWORD=$REDIS_PASSWORD" > "$CONFIG_PATH"/redis.env
       sed -i -e "s/mercure:ChangePasswordHere@localhost/mercure:$DB_PWD@db/" "$CONFIG_PATH"/bookkeeper.env
       sed -i -e "s/0.0.0.0:8080/bookkeeper:8080/" "$CONFIG_PATH"/mercure.json
     fi
@@ -317,6 +339,7 @@ setup_docker () {
     sudo sed -i -e "s/\\\${DOCKER_GID}/$(getent group docker | cut -d: -f3)/g" $MERCURE_BASE/docker-compose.yml
     sudo sed -i -e "s/\\\${UID}/$(getent passwd mercure | cut -d: -f3)/g" $MERCURE_BASE/docker-compose.yml
     sudo sed -i -e "s/\\\${GID}/$(getent passwd mercure | cut -d: -f4)/g" $MERCURE_BASE/docker-compose.yml
+    sudo sed -i -e "s/\\\${REDIS_PASSWORD}/$REDIS_PASSWORD/g" $MERCURE_BASE/docker-compose.yml
 
     if [[ -v MERCURE_TAG ]]; then # a custom tag was provided
       sudo sed -i "s/\\\${IMAGE_TAG}/\:$MERCURE_TAG/g" $MERCURE_BASE/docker-compose.yml
@@ -332,6 +355,7 @@ setup_docker_dev () {
     echo "## Copying docker-compose.override.yml..."
     sudo cp $MERCURE_SRC/docker/docker-compose.override.yml $MERCURE_BASE
     sudo sed -i -e "s;MERCURE_SRC;$(readlink -f $MERCURE_SRC)/app;" "$MERCURE_BASE"/docker-compose.override.yml
+    sudo sed -i -e "s/\\\${REDIS_PASSWORD}/$REDIS_PASSWORD/g" "$MERCURE_BASE"/docker-compose.override.yml
     if [[ -v MERCURE_TAG ]]; then # a custom tag was provided
       sudo sed -i "s/\\\${IMAGE_TAG}/\:$MERCURE_TAG/g" $MERCURE_BASE/docker-compose.override.yml
     else # no custom tag was provided, use latest
@@ -353,10 +377,6 @@ start_docker () {
   popd
 }
 
-link_binaries() {
-  sudo find "$MERCURE_BASE/app/bin/ubuntu$UBUNTU_VERSION" -type f -exec ln -f -s {} "$MERCURE_BASE/app/bin" \;
-}
-
 install_app_files() {
   local overwrite=${1:-false}
   if [ $DO_DEV_INSTALL = true ]; then 
@@ -375,7 +395,7 @@ install_app_files() {
     echo "## Linking app files..."
     sudo ln -s "$MERCURE_SRC/app" "$MERCURE_BASE"
     sudo chown -h $OWNER:$OWNER ./app
-    link_binaries
+
     sudo chmod g+w "$MERCURE_SRC/app"
     # the mercure user and running user will be in each other's groups
     sudo usermod -aG $OWNER $(logname)
@@ -389,7 +409,7 @@ install_app_files() {
     if [ ! "$MERCURE_SRC" -ef "$MERCURE_BASE"/app ]; then
       sudo cp -R "$MERCURE_SRC/app" "$MERCURE_BASE"
     fi
-    link_binaries
+
     sudo chown -R $OWNER:$OWNER "$MERCURE_BASE/app"
   fi
 }
@@ -423,6 +443,17 @@ install_postgres() {
 EOM
 }
 
+install_redis() {
+  echo "## Configuring Redis authentication..."
+  # Set password on the live instance first so existing data is preserved
+  redis-cli CONFIG SET requirepass "$REDIS_PASSWORD" 2>/dev/null || true
+  echo "requirepass $REDIS_PASSWORD" | sudo tee /etc/redis/mercure.conf > /dev/null
+  if ! grep -q "include /etc/redis/mercure.conf" /etc/redis/redis.conf 2>/dev/null; then
+    echo "include /etc/redis/mercure.conf" | sudo tee -a /etc/redis/redis.conf > /dev/null
+  fi
+  sudo systemctl restart redis.service
+}
+
 install_services() {
   echo "## Installing services..."
   sudo cp -n "$MERCURE_SRC"/installation/*.service /etc/systemd/system
@@ -445,6 +476,7 @@ systemd_install () {
   install_app_files
   install_dependencies
   install_postgres
+  install_redis
   sudo chown -R mercure:mercure "$MERCURE_BASE"
   install_services
 }
@@ -489,7 +521,7 @@ systemd_update () {
     fi
   fi
   echo "Updating mercure..."
-  local services=("ui" "receiver" "bookkeeper" "dispatcher" "cleaner" "bookkeeper" )
+  local services=("ui" "receiver" "bookkeeper" "dispatcher" "cleaner" "router" "processor" "worker_fast@1" "worker_fast@2" "worker_slow@1" "worker_slow@2")
   for service in "${services[@]}"; do
     if systemctl is-active --quiet mercure_$service.service; then
       echo "ERROR: mercure_$service.service is running. Stop mercure first."
@@ -501,6 +533,22 @@ systemd_update () {
   sudo cp -n "$MERCURE_SRC"/installation/sudoers/* /etc/sudoers.d/
   install_packages
   install_dependencies
+  if [ ! -f "$CONFIG_PATH"/redis.env ]; then
+    echo "REDIS_PASSWORD=$REDIS_PASSWORD" | sudo tee "$CONFIG_PATH"/redis.env > /dev/null
+    echo "REDIS_URL=redis://:$REDIS_PASSWORD@localhost:6379/0" | sudo tee -a "$CONFIG_PATH"/redis.env > /dev/null
+    sudo chown $OWNER:$OWNER "$CONFIG_PATH"/redis.env
+    sudo chmod o-r "$CONFIG_PATH"/redis.env
+  fi
+  install_redis
+  # Ensure Redis env is available to services that need it
+  local redis_env_line="EnvironmentFile=/opt/mercure/config/redis.env"
+  for svc in mercure_ui mercure_worker_fast@ mercure_worker_slow@; do
+    local svc_file="/etc/systemd/system/${svc}.service"
+    if [ -f "$svc_file" ] && ! grep -qF "$redis_env_line" "$svc_file"; then
+      echo "## Patching $svc_file with Redis environment..."
+      sudo sed -i "/^\[Service\]/a $redis_env_line" "$svc_file"
+    fi
+  done
   install_services
   echo "Update complete."
 }
@@ -523,6 +571,11 @@ docker_update () {
     fi
   fi
   # sudo sed -E "s/(image\: mercureimaging.*?\:).*/\1foo/g" docker-compose.yml 
+  if [ ! -f "$CONFIG_PATH"/redis.env ]; then
+    echo "REDIS_PASSWORD=$REDIS_PASSWORD" | sudo tee "$CONFIG_PATH"/redis.env > /dev/null
+    sudo chown $OWNER:$OWNER "$CONFIG_PATH"/redis.env
+    sudo chmod o-r "$CONFIG_PATH"/redis.env
+  fi
   pushd $MERCURE_BASE
   sudo docker-compose down || true
   popd

@@ -4,7 +4,6 @@ x-env: &env
     MERCURE_RUNNER: docker
     MERCURE_ENV: DEV
     MERCURE_CONFIG_FOLDER: /opt/mercure/config
-    REDIS_URL: redis://redis:6379/0
 
 x-volumes: &volumes
   volumes:
@@ -27,6 +26,11 @@ services:
   ui:
     image: mercureimaging/mercure-ui${IMAGE_TAG}
     <<: [*env, *volumes-docker]
+    environment:
+      MERCURE_RUNNER: docker
+      MERCURE_ENV: DEV
+      MERCURE_CONFIG_FOLDER: /opt/mercure/config
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
 
   cleaner:
     image: mercureimaging/mercure-cleaner${IMAGE_TAG}
@@ -57,7 +61,7 @@ services:
       replicas: 2
     environment:
       WORKER_QUEUE: mercure_fast
-      REDIS_URL: redis://redis:6379/0
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
     <<: *volumes
 
   worker_slow:
@@ -69,7 +73,7 @@ services:
       replicas: 2
     environment:
       WORKER_QUEUE: mercure_slow
-      REDIS_URL: redis://redis:6379/0
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
     <<: *volumes
 
 
