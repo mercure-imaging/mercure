@@ -454,6 +454,9 @@ install_python() {
     sudo add-apt-repository -y ppa:deadsnakes/ppa
     sudo apt-get update
     sudo apt-get install -y python3.12 python3.12-dev python3.12-venv
+  else
+    # 24.04 ships Python 3.12 natively
+    sudo apt-get install -y python3.12-dev python3.12-venv
   fi
 }
 

@@ -39,5 +39,8 @@ RUN rm -f /usr/sbin/policy-rc.d
 # Create a non-root user to run install.sh (it expects a non-root $USER via logname)
 RUN useradd -m -s /bin/bash testuser && echo "testuser ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
+# Configure Docker-in-Docker to use vfs storage driver (overlay2 can't nest on overlay2)
+RUN mkdir -p /etc/docker && echo '{"storage-driver": "vfs"}' > /etc/docker/daemon.json
+
 STOPSIGNAL SIGRTMIN+3
 CMD ["/sbin/init"]
