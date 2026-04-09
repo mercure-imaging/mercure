@@ -457,6 +457,30 @@ async def configuration_edit_post(request) -> Response:
     except ValueError:
         return PlainTextResponse("Invalid JSON data transferred.")
 
+    # Block adding dangerous docker_arguments via the raw config editor
+    if not modules.privileged_containers_allowed():
+        new_modules = validated_json.get("modules", {})
+        old_modules = {name: mod.dict() if hasattr(mod, "dict") else mod
+                       for name, mod in config.mercure.modules.items()}
+        violations = []
+        for mod_name, mod_conf in new_modules.items():
+            if not isinstance(mod_conf, dict):
+                continue
+            new_args = mod_conf.get("docker_arguments", "")
+            old_args = old_modules.get(mod_name, {}).get("docker_arguments", "") or ""
+            # docker_arguments is stored as a JSON string in the config
+            new_violations = set(modules.check_docker_arguments(new_args))
+            old_violations = set(modules.check_docker_arguments(old_args))
+            added = new_violations - old_violations
+            if added:
+                violations.append(f"{mod_name}: {'; '.join(sorted(added))}")
+        if violations:
+            return PlainTextResponse(
+                "Blocked: dangerous docker_arguments added to modules via editor. "
+                "Set MERCURE_ALLOW_PRIVILEGED_CONTAINERS to override.\n\n"
+                + "\n".join(violations)
+            )
+
     try:
         config.write_configfile(validated_json)
         config.read_config()

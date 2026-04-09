@@ -47,7 +47,7 @@
             </ul>
         </div>
 
-        <form method="post">
+        <form method="post" hx-post="" hx-target="#errormodal-message" id="module-form">
             <div id="tab-content">
                 <div class="panel is-active" data-content="docker">
                     <div class="field">
@@ -92,6 +92,17 @@
                                 name="docker_arguments"
                                 value="{{module['docker_arguments']}}">
                         </p>
+                        {% if not privileged_containers_allowed %}
+                        <details style="margin-top: 6px;">
+                            <summary class="has-text-grey" style="cursor: pointer; font-size: 0.85em;">Allowed arguments</summary>
+                            <p style="font-size: 0.85em; margin-top: 4px;">
+                                {% for arg in allowed_docker_args %}<code>{{ arg }}</code>{% if not loop.last %}, {% endif %}{% endfor %}
+                            </p>
+                            <p class="has-text-grey" style="font-size: 0.8em; margin-top: 4px;">
+                                Other arguments require <code>MERCURE_ALLOW_PRIVILEGED_CONTAINERS</code> to be set.
+                            </p>
+                        </details>
+                        {% endif %}
                     </div>             
                     <div class="field" style="margin-top: 30px;">
                         <input id="gpu_support" name="gpu_support" type="checkbox"
@@ -108,6 +119,12 @@
                             <i class="fas fa-info-circle"></i>&nbsp;&nbsp;&quot;Support Root Modules&quot; must be enabled on the <a href="/configuration">Configuration</a> page before this option can be used.
                         </div>                
                         {% endif %}
+                    </div>
+                    <div class="field" style="">
+                        <input id="network_enabled" type="checkbox" name="network_enabled"
+                            class="switch is-rounded is-dark" value="True" {% if
+                            module['network_enabled']==True %}checked="checked" {% endif%} >
+                        <label for="network_enabled" title="Allow the processing container to access the network. Disabled by default for security.">Enable Network Access</label>
                     </div>
                 </div>
                 <div class="panel" data-content="persistence">
@@ -208,6 +225,24 @@
                 </p>
             </div>
         </form>
+    </div>
+
+    <div class="modal" id="errormodal">
+        <div class="modal-background"></div>
+        <div class="modal-card">
+            <header class="modal-card-head">
+                <p class="modal-card-title"><i class="fas fa-exclamation-triangle" style="color: #ff3860;"></i>&nbsp;&nbsp;Error</p>
+                <button class="delete" aria-label="close" id="close-errormodal-x"></button>
+            </header>
+            <section class="modal-card-body">
+                <div class="content">
+                    <p id="errormodal-message"></p>
+                </div>
+            </section>
+            <footer class="modal-card-foot">
+                <button class="button" id="close-errormodal">Close</button>
+            </footer>
+        </div>
     </div>
 </main>
 
@@ -363,6 +398,22 @@
         }
         return true;
     }
+
+    $('#close-errormodal, #close-errormodal-x, #errormodal > .modal-background').click(function() {
+        $('#errormodal').removeClass('is-active');
+    });
+
+    document.body.addEventListener('htmx:beforeSwap', function(evt) {
+        if (evt.detail.xhr.status >= 400 && evt.detail.requestConfig.elt.closest('#module-form')) {
+            evt.detail.shouldSwap = true;
+            evt.detail.isError = false;
+        }
+    });
+    document.querySelector('#module-form').addEventListener('htmx:afterRequest', function(evt) {
+        if (evt.detail.xhr.status >= 400) {
+            $('#errormodal').addClass('is-active');
+        }
+    });
 
     $('form').on('submit', validate);
 

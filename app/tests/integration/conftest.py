@@ -173,11 +173,11 @@ def stop_mercure(supervisor: SupervisorManager):
             except xmlrpc.client.Fault as e:
                 if e.faultCode == 10:
                     supervisor.stop_service(service['group'] + ":*")
-        # log = get_service_log(service['name'])
-        # if log:
-        log = Path(service['stdout_logfile']).read_text()
-        if log:
-            logs[service['name']] = log
+        log_file = Path(service['stdout_logfile'])
+        if log_file.exists():
+            log = log_file.read_text()
+            if log:
+                logs[service['name']] = log
     return logs
 
 

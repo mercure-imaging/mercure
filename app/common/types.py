@@ -210,6 +210,7 @@ class Module(BaseModel, Compat):
     requires_root: Optional[bool] = False
     requires_persistence: Optional[bool] = False
     persistence_folder_name: Optional[str] = ""
+    network_enabled: Optional[bool] = True
 
 
 class UnsetRule(TypedDict):

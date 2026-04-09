@@ -665,9 +665,11 @@ systemd_update () {
   install_redis
   configure_credentials
   # Migrate worker ExecStart from bare rq to worker.py wrapper (for credential loading)
-  sudo sed -i 's|ExecStart=/opt/mercure/env/bin/rq worker|ExecStart=/opt/mercure/env/bin/python /opt/mercure/app/worker.py worker|' \
-    /etc/systemd/system/mercure_worker_fast@.service \
-    /etc/systemd/system/mercure_worker_slow@.service
+  for svc_file in /etc/systemd/system/mercure_worker_fast@.service /etc/systemd/system/mercure_worker_slow@.service; do
+    if [ -f "$svc_file" ]; then
+      sudo sed -i 's|ExecStart=/opt/mercure/env/bin/rq worker|ExecStart=/opt/mercure/env/bin/python /opt/mercure/app/worker.py worker|' "$svc_file"
+    fi
+  done
   install_services
   echo "Update complete."
 }

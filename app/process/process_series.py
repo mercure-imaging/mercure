@@ -266,11 +266,18 @@ async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_p
                             "The receiver may be running as root, which is no longer supported. ")
         (folder / "out").chmod(0o777)
 
+        network_mode = "none" if not module.network_enabled else None
+
+        # Drop all capabilities by default; unsafe mode can override via docker_arguments
+        if "cap_drop" not in arguments:
+            arguments["cap_drop"] = ["ALL"]
+
         container = docker_client.containers.run(
             docker_tag,
             mounts=default_mounts,
             volumes=additional_volumes,
             environment=environment,
+            network_mode=network_mode,
             **runtime,
             **set_command,
             **arguments,

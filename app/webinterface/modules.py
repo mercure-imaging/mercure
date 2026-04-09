@@ -56,10 +56,62 @@ class BadRequestResponse(PlainTextResponse):
         self.status_code = 400
 
 
+ALLOWED_DOCKER_ARGS = {
+    "mem_limit", "memswap_limit", "cpu_period", "cpu_quota", "cpuset_cpus",
+    "shm_size", "runtime", "labels",
+    "cpu_shares", "cpuset_mems", "nano_cpus", "blkio_weight",
+    "device_read_bps", "device_write_bps", "device_read_iops", "device_write_iops",
+    "pids_limit",
+    "environment", "env",
+    "read_only",
+    "stop_signal", "stop_timeout",
+    "healthcheck",
+}
+
+
+def privileged_containers_allowed() -> bool:
+    return os.environ.get("MERCURE_ALLOW_PRIVILEGED_CONTAINERS", "").lower() in ("1", "true", "yes")
+
+
+def check_docker_arguments(docker_arguments) -> List[str]:
+    """Return list of disallowed keys found in docker_arguments, empty if clean."""
+    if not docker_arguments:
+        return []
+    if isinstance(docker_arguments, dict):
+        args = docker_arguments
+    elif isinstance(docker_arguments, str):
+        try:
+            args = json.loads(docker_arguments)
+        except (json.JSONDecodeError, TypeError):
+            return []
+        if not isinstance(args, dict):
+            return []
+    else:
+        return []
+
+    return [f"'{key}' is not allowed in docker_arguments" for key in args if key not in ALLOWED_DOCKER_ARGS]
+
+
+def validate_docker_arguments_change(old_docker_arguments: str, new_docker_arguments: str) -> None:
+    """Raise ValueError if new docker_arguments introduces disallowed options not already present."""
+    if privileged_containers_allowed():
+        return
+    old_violations = set(check_docker_arguments(old_docker_arguments))
+    new_violations = set(check_docker_arguments(new_docker_arguments))
+    added = new_violations - old_violations
+    if added:
+        raise ValueError("; ".join(sorted(added)))
+
+
 async def save_module(form, name) -> None:
     """Save the settings for the module with the given name."""
 
     # Ensure that the module settings are valid. Should happen on the client side too, but can't hurt to check again.
+
+    docker_arguments = form.get("docker_arguments", "")
+    old_module = config.mercure.modules.get(name)
+    old_docker_arguments = (old_module.docker_arguments or "") if old_module else ""
+    validate_docker_arguments_change(old_docker_arguments, docker_arguments)
 
     try:
         new_settings: Dict = json.loads(form.get("settings", "{}"))
@@ -69,7 +121,7 @@ async def save_module(form, name) -> None:
         docker_tag=form.get("docker_tag", "").strip(),
         additional_volumes=form.get("additional_volumes", ""),
         environment=form.get("environment", ""),
-        docker_arguments=form.get("docker_arguments", ""),
+        docker_arguments=docker_arguments,
         settings=new_settings,
         contact=strip_untrusted(form.get("contact", "")),
         comment=strip_untrusted(form.get("comment", "")),
@@ -78,6 +130,7 @@ async def save_module(form, name) -> None:
         requires_root=form.get("requires_root", False)
         or form.get("container_type", "mercure") == "monai",
         requires_persistence=form.get("requires_persistence", False),
+        network_enabled=form.get("network_enabled", False),
     )
     config.save_config()
 
@@ -108,12 +161,21 @@ async def show_modules(request):
         else:
             used_modules[used_module] = rule
 
+    # Check for modules with dangerous docker_arguments that will be silently stripped at runtime
+    privileged_modules = {}
+    if not privileged_containers_allowed():
+        for module_name, module in config.mercure.modules.items():
+            violations = check_docker_arguments(module.docker_arguments or "")
+            if violations:
+                privileged_modules[module_name] = violations
+
     template = "modules.html"
     context = {
         "request": request,
         "page": "modules",
         "modules": config.mercure.modules,
         "used_modules": used_modules,
+        "privileged_modules": privileged_modules,
     }
     return templates.TemplateResponse(template, context)
 
@@ -187,6 +249,8 @@ async def add_module(request):
     # monitor.send_webgui_event(monitor.w_events.RULE_CREATE, request.user.display_name, name)
     try:
         await save_module(form, name)
+    except ValueError as e:
+        return BadRequestResponse(str(e))
     except Exception as e:
         logger.exception(e)
         return ServerErrorResponse(f"Unexpected error while saving new module. {e}")
@@ -241,6 +305,8 @@ async def edit_module(request):
         "support_root_modules": config.mercure.support_root_modules,
         "module_persistence_file": module_persistence_file,
         "persistence_folder": module_mount_source,
+        "allowed_docker_args": sorted(ALLOWED_DOCKER_ARGS),
+        "privileged_containers_allowed": privileged_containers_allowed(),
     }
     return templates.TemplateResponse(template, context)
 
@@ -270,11 +336,13 @@ async def edit_module_POST(request):
 
     try:
         await save_module(form, name)
+    except ValueError as e:
+        return BadRequestResponse(str(e))
     except Exception as e:
         logger.exception(e)
         return PlainTextResponse("ERROR: Unable to write configuration. Try again.")
 
-    return RedirectResponse(url="/modules/", status_code=303)
+    return PlainTextResponse("", headers={"HX-Redirect": "/modules/"})
 
 
 @router.post("/edit/{module}/save_persistence")

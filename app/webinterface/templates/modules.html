@@ -95,6 +95,19 @@
                 {% endif %}
             </div>
 
+            {% if privileged_modules %}
+            <div class="notification is-warning" style="margin-bottom: 16px;">
+                <strong><i class="fas fa-exclamation-triangle"></i>&nbsp;&nbsp;Security Warning:</strong>
+                The following modules have risky docker_arguments. These cannot be added or modified through the web UI unless
+                <code>MERCURE_ALLOW_PRIVILEGED_CONTAINERS</code> is set:
+                <ul style="margin-top: 8px; margin-bottom: 0;">
+                {% for mod_name, violations in privileged_modules.items() %}
+                    <li><strong>{{ mod_name }}</strong>: {{ violations|join('; ') }}</li>
+                {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
             {% for module_name, module in modules.items()|sort() %}
                 <div class="card entitycard" data-name="{{module_name}} {{module.docker_tag}}">
                     <header class="card-header has-background-light">
