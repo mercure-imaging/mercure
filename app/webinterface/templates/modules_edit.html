@@ -38,6 +38,12 @@
                         <span>Orchestration</span>
                     </a>
                 </li>
+                <li data-tab="sigstore">
+                    <a>
+                        <span class="icon"><i class="fas fa-shield-alt"></i></span>
+                        <span>Sigstore</span>
+                    </a>
+                </li>
                 <li data-tab="information">
                     <a>
                         <span class="icon"><i class="fa fa-info-circle"></i></span>
@@ -181,6 +187,44 @@
                         </div>
                     </div>   
                 </div>
+                <div class="panel" data-content="sigstore">
+                    <div class="field" style="margin-bottom: 24px;">
+                        <input id="sigstore_verify" name="sigstore_verify" type="checkbox"
+                            class="switch is-rounded is-dark" value="True"
+                            {% if module['sigstore_verify'] == 'True' %}checked="checked"{% endif %}>
+                        <label for="sigstore_verify">Verify image signature with cosign before processing</label>
+                    </div>
+                    <div id="sigstore_fields" {% if module['sigstore_verify'] != 'True' %}hidden{% endif %}>
+                        <div class="field">
+                            <label class="label" for="sigstore_cert_identity">Certificate identity (keyless)</label>
+                            <p class="control">
+                                <input class="input" id="sigstore_cert_identity" type="text"
+                                    name="sigstore_cert_identity"
+                                    placeholder="e.g. https://github.com/org/repo/.github/workflows/build.yml@refs/heads/main"
+                                    value="{{module['sigstore_cert_identity']}}">
+                            </p>
+                        </div>
+                        <div class="field">
+                            <label class="label" for="sigstore_cert_oidc_issuer">OIDC issuer (keyless)</label>
+                            <p class="control">
+                                <input class="input" id="sigstore_cert_oidc_issuer" type="text"
+                                    name="sigstore_cert_oidc_issuer"
+                                    placeholder="e.g. https://token.actions.githubusercontent.com"
+                                    value="{{module['sigstore_cert_oidc_issuer']}}">
+                            </p>
+                        </div>
+                        <div class="field">
+                            <label class="label" for="sigstore_public_key">Public key path (key-based)</label>
+                            <p class="control">
+                                <input class="input" id="sigstore_public_key" type="text"
+                                    name="sigstore_public_key"
+                                    placeholder="e.g. /etc/mercure/cosign.pub"
+                                    value="{{module['sigstore_public_key']}}">
+                            </p>
+                            <p class="help">Provide either the certificate identity + OIDC issuer (keyless) or a public key path (key-based). Keyless takes precedence.</p>
+                        </div>
+                    </div>
+                </div>
                 <div class="panel" data-content="information">
                     <div class="field"">
                         <label class="label" for="comment">Comment</label>
@@ -213,6 +257,15 @@
 
 
 <script nonce="{{ csp_nonce }}">
+
+    function toggleSigstoreVerify(cb) {
+        if (cb.checked) {
+            $("#sigstore_fields").show();
+        } else {
+            $("#sigstore_fields").hide();
+        }
+    }
+    $('#sigstore_verify').click((evt) => toggleSigstoreVerify(evt.target));
 
     function toggleRequiresRoot(cb) {
         {% if support_root_modules != True %}

@@ -188,6 +188,10 @@ class Module(BaseModel, Compat):
     requires_root: Optional[bool] = False
     requires_persistence: Optional[bool] = False
     persistence_folder_name: Optional[str] = ""
+    sigstore_verify: Optional[str] = "False"
+    sigstore_cert_identity: Optional[str] = ""
+    sigstore_cert_oidc_issuer: Optional[str] = ""
+    sigstore_public_key: Optional[str] = ""
 
 
 class UnsetRule(TypedDict):

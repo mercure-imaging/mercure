@@ -181,6 +181,10 @@
                                 </label>
                             </div>
                         </div>
+                        <input type="hidden" id="add_sigstore_verify" name="sigstore_verify" value="False">
+                        <input type="hidden" id="add_sigstore_cert_identity" name="sigstore_cert_identity" value="">
+                        <input type="hidden" id="add_sigstore_cert_oidc_issuer" name="sigstore_cert_oidc_issuer" value="">
+                        <input type="hidden" id="add_sigstore_public_key" name="sigstore_public_key" value="">
                         <div class="field" style="margin-top: 20px;"><span id="addmodal_message" style="color:#ff3860;"></span></div>
                         <div class="field" style="margin-top: 25px;">
                             <div class="control">
@@ -470,6 +474,11 @@
                 } else {
                     $('#radio_mercure').prop('checked', true);
                 }
+                // Copy sigstore fields from registry entry if present
+                $("#add_sigstore_verify").val(moduleData.sigstore_verify || "False");
+                $("#add_sigstore_cert_identity").val(moduleData.sigstore_cert_identity || "");
+                $("#add_sigstore_cert_oidc_issuer").val(moduleData.sigstore_cert_oidc_issuer || "");
+                $("#add_sigstore_public_key").val(moduleData.sigstore_public_key || "");
                 $("#modulesmodal").removeClass("is-active");
             });
         });

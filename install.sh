@@ -399,10 +399,16 @@ install_packages() {
   sudo apt-get update
   sudo apt-get install -y build-essential wget git dcmtk jq inetutils-ping sshpass rsync postgresql postgresql-contrib libpq-dev git-lfs python3-wheel python3-dev python3 python3-venv sendmail libqt5core5a redis
   if [ $UBUNTU_VERSION == "24.04" ]; then
-    sudo apt-get install -y libqt6core6t64 
+    sudo apt-get install -y libqt6core6t64
   else
-    sudo apt-get install -y libqt5core5a 
+    sudo apt-get install -y libqt5core5a
   fi
+
+  echo "## Installing cosign for Sigstore image verification..."
+  COSIGN_VERSION=$(curl -s https://api.github.com/repos/sigstore/cosign/releases/latest | jq -r '.tag_name')
+  COSIGN_URL="https://github.com/sigstore/cosign/releases/download/${COSIGN_VERSION}/cosign-linux-amd64"
+  sudo curl -sSL -o /usr/local/bin/cosign "$COSIGN_URL"
+  sudo chmod +x /usr/local/bin/cosign
 }
 
 install_dependencies() {

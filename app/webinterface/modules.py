@@ -77,6 +77,10 @@ async def save_module(form, name) -> None:
         requires_root=form.get("requires_root", False)
         or form.get("container_type", "mercure") == "monai",
         requires_persistence=form.get("requires_persistence", False),
+        sigstore_verify="True" if form.get("sigstore_verify") == "True" else "False",
+        sigstore_cert_identity=form.get("sigstore_cert_identity", ""),
+        sigstore_cert_oidc_issuer=form.get("sigstore_cert_oidc_issuer", ""),
+        sigstore_public_key=form.get("sigstore_public_key", ""),
     )
     config.save_config()
 

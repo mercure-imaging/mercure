@@ -27,6 +27,7 @@ from common.version import mercure_version
 from dispatch.send import update_fail_stage
 from docker.types import Mount
 from jinja2 import Template
+from process.sigstore import SigstoreVerificationError, verify_image
 
 import docker
 import nomad
@@ -44,6 +45,18 @@ async def nomad_runtime(task: Task, folder: Path, file_count_begin: int, task_pr
 
     if not module.docker_tag:
         logger.error("No docker tag supplied")
+        return False
+
+    try:
+        verify_image(
+            module.docker_tag,
+            sigstore_verify=module.sigstore_verify,
+            sigstore_cert_identity=module.sigstore_cert_identity,
+            sigstore_cert_oidc_issuer=module.sigstore_cert_oidc_issuer,
+            sigstore_public_key=module.sigstore_public_key,
+        )
+    except SigstoreVerificationError as e:
+        logger.error(f"Sigstore verification failed: {e}", task.id)
         return False
 
     with open("nomad/mercure-processor-template.nomad", "r") as f:
@@ -215,6 +228,18 @@ async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_p
             # Don't use ERROR here because the exception will be raised for all Docker images that
             # have been built locally and are not present in the Docker Registry.
             logger.info("Couldn't check for module update (this is normal for unpublished modules)")
+
+    try:
+        verify_image(
+            docker_tag,
+            sigstore_verify=module.sigstore_verify,
+            sigstore_cert_identity=module.sigstore_cert_identity,
+            sigstore_cert_oidc_issuer=module.sigstore_cert_oidc_issuer,
+            sigstore_public_key=module.sigstore_public_key,
+        )
+    except SigstoreVerificationError as e:
+        logger.error(f"Sigstore verification failed: {e}", task.id)
+        return False
 
     # Run the container and handle errors of running the container
     processing_success = True

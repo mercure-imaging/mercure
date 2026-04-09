@@ -1,8 +1,12 @@
 FROM ubuntu:22.04
 RUN apt-get update && apt-get -y upgrade && \
     DEBIAN_FRONTEND="noninteractive" apt-get -y install \
-    tzdata build-essential wget git dcmtk jq inetutils-ping entr sshpass rsync openssh-client lsb-release lsb-core libpq-dev ca-certificates python3-wheel python3-dev python3 python3-venv libqt5core5a --no-install-recommends && \
+    tzdata build-essential wget git dcmtk jq inetutils-ping entr sshpass rsync openssh-client lsb-release lsb-core libpq-dev ca-certificates python3-wheel python3-dev python3 python3-venv libqt5core5a curl --no-install-recommends && \
     rm -rf /var/lib/apt/lists/* && \
+    COSIGN_VERSION=$(curl -s https://api.github.com/repos/sigstore/cosign/releases/latest | jq -r '.tag_name') && \
+    curl -sSL -o /usr/local/bin/cosign \
+        "https://github.com/sigstore/cosign/releases/download/${COSIGN_VERSION}/cosign-linux-amd64" && \
+    chmod +x /usr/local/bin/cosign && \
     useradd -ms /bin/bash mercure && \
     mkdir -p /opt/mercure/app/installation /opt/mercure/app/configuration
 
