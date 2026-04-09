@@ -1,27 +1,30 @@
 DCMTK_REF := 969c4b6
 IMAGE     := mercure-getdcmtags-build
 BINDIR    := ../app/bin
+DCMTKDIR  := $(BINDIR)/dcmtk
 SOURCES   := Dockerfile CMakeLists.txt main.cpp tags_list.h test.py
 
-BINARIES  := $(BINDIR)/getdcmtags $(BINDIR)/storescp $(BINDIR)/dicom.dic
+DCMTK_APPS := storescp storescu echoscu dcmsend
+BINARIES   := $(BINDIR)/getdcmtags $(addprefix $(DCMTKDIR)/,$(DCMTK_APPS) dicom.dic)
 
 all: $(BINARIES)
 	@file $(BINDIR)/getdcmtags
-	@file $(BINDIR)/storescp
-	@$(BINDIR)/storescp --version 2>&1 | head -3
+	@for b in $(DCMTK_APPS); do file $(DCMTKDIR)/$$b; done
+	@for b in $(DCMTK_APPS); do $(DCMTKDIR)/$$b --version 2>&1 | head -1; done
 
 $(BINARIES) &: $(SOURCES)
+	mkdir -p $(DCMTKDIR)
 	DOCKER_BUILDKIT=1 docker build --build-arg DCMTK_REF=$(DCMTK_REF) --target getdcmtags-builder -t $(IMAGE) .
-	docker run $(IMAGE)
+	docker run --rm $(IMAGE)
 	DOCKER_BUILDKIT=1 docker build --build-arg DCMTK_REF=$(DCMTK_REF) --target standalone-test -t $(IMAGE)-standalone .
-	docker run $(IMAGE)-standalone
-	$(eval CID := $(shell docker ps -lq))
-	docker cp $(CID):/build/getdcmtags $(BINDIR)/getdcmtags
-	docker cp $(CID):/build/storescp $(BINDIR)/storescp
-	docker cp $(CID):/build/dicom.dic $(BINDIR)/dicom.dic
-	docker rm $(CID)
+	docker run --rm $(IMAGE)-standalone
+	docker create --name mercure-build-copy $(IMAGE) true
+	docker cp mercure-build-copy:/build/getdcmtags $(BINDIR)/getdcmtags
+	for b in $(DCMTK_APPS) dicom.dic; do docker cp mercure-build-copy:/build/$$b $(DCMTKDIR)/$$b; done
+	docker rm mercure-build-copy
 
 .PHONY: all clean
 clean:
-	rm -f $(BINARIES)
-	docker rmi $(IMAGE) 2>/dev/null || true
+	rm -f $(BINDIR)/getdcmtags
+	rm -rf $(DCMTKDIR)
+	docker rmi $(IMAGE) $(IMAGE)-standalone 2>/dev/null || true

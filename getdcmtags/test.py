@@ -140,9 +140,121 @@ def test_bookkeeper(binary):
     print("  PASS")
 
 
+def test_dict_default_path(bin_dir):
+    """Test that DCMTK binaries find dicom.dic without DCMDICTPATH set."""
+    print("test_dict_default_path")
+    import os
+    import tempfile
+
+    storescu = os.path.join(bin_dir, "storescu")
+    if not os.path.isfile(storescu):
+        print(f"  SKIP: {storescu} not found")
+        return
+
+    # Run storescu --version with DCMDICTPATH explicitly unset.
+    # If the compiled-in default path is wrong, stderr will contain
+    # "no data dictionary loaded" or "Cannot open file".
+    env = {k: v for k, v in os.environ.items() if k != "DCMDICTPATH"}
+    result = subprocess.run(
+        [storescu, "--version"],
+        env=env,
+        capture_output=True,
+        timeout=5,
+    )
+    stderr = result.stderr.decode()
+    if "no data dictionary loaded" in stderr or "Cannot open file" in stderr:
+        print(f"FAIL: binary can't find dicom.dic without DCMDICTPATH")
+        print(f"  stderr: {stderr}")
+        sys.exit(1)
+    print("  PASS")
+
+
+def test_storescp_receive(bin_dir):
+    """Test that storescp --fork can receive a DICOM file without crashing."""
+    print("test_storescp_receive")
+    import os
+    import tempfile
+    import time
+    import signal
+
+    storescp = os.path.join(bin_dir, "storescp")
+    storescu = os.path.join(bin_dir, "storescu")
+    dicom_dic = os.path.join(bin_dir, "dicom.dic")
+
+    if not os.path.isfile(storescp):
+        print(f"  SKIP: {storescp} not found")
+        return
+    if not os.path.isfile(storescu):
+        print(f"  SKIP: {storescu} not found")
+        return
+
+    port = find_free_port()
+    # Don't set DCMDICTPATH — rely on the compiled-in default path
+    env = {k: v for k, v in os.environ.items() if k != "DCMDICTPATH"}
+
+    with tempfile.TemporaryDirectory() as incoming:
+        # Start storescp with --fork
+        scp = subprocess.Popen(
+            [storescp, "--fork", "--promiscuous", "-od", incoming, "+uf", str(port)],
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        try:
+            time.sleep(1)  # let it bind
+
+            if scp.poll() is not None:
+                stderr = scp.stderr.read().decode()
+                print(f"FAIL: storescp exited early (rc={scp.returncode})")
+                print(f"  stderr: {stderr}")
+                sys.exit(1)
+
+            # Send a DICOM file via storescu
+            result = subprocess.run(
+                [storescu, "127.0.0.1", str(port), "test_dcm"],
+                env=env,
+                capture_output=True,
+                timeout=15,
+            )
+
+            if result.returncode != 0:
+                print(f"FAIL: storescu exit code {result.returncode}")
+                print(f"  stderr: {result.stderr.decode()}")
+                sys.exit(1)
+
+            time.sleep(1)  # let storescp finish writing
+
+            # Verify storescp is still running (didn't crash)
+            if scp.poll() is not None:
+                stderr = scp.stderr.read().decode()
+                print(f"FAIL: storescp crashed after receive (rc={scp.returncode})")
+                print(f"  stderr: {stderr}")
+                sys.exit(1)
+
+            # Verify a file was written to incoming dir
+            received = list(Path(incoming).iterdir())
+            if not received:
+                print("FAIL: no files received in incoming directory")
+                sys.exit(1)
+
+            print(f"  received {len(received)} file(s): {[f.name for f in received]}")
+        finally:
+            scp.terminate()
+            try:
+                scp.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                scp.kill()
+                scp.wait()
+    print("  PASS")
+
+
 if __name__ == "__main__":
     binary = sys.argv[1] if len(sys.argv) > 1 else "./getdcmtags"
+    bin_dir = sys.argv[2] if len(sys.argv) > 2 else None
     print(f"Testing with binary: {binary}")
     test_basic_tags(binary)
     test_bookkeeper(binary)
+    if bin_dir:
+        test_dict_default_path(bin_dir)
+        test_storescp_receive(bin_dir)
     print("All tests passed")

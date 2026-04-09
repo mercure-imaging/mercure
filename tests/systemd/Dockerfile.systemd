@@ -1,0 +1,38 @@
+ARG UBUNTU_VERSION=24.04
+FROM ubuntu:${UBUNTU_VERSION}
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV container=docker
+
+# Install systemd and minimal dependencies needed before install.sh runs
+RUN apt-get update && apt-get install -y \
+    systemd \
+    systemd-sysv \
+    dbus \
+    lsb-release \
+    sudo \
+    git \
+    curl \
+    ca-certificates \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Remove unnecessary systemd units that cause noise/hangs in containers
+RUN rm -f /lib/systemd/system/multi-user.target.wants/* \
+    /etc/systemd/system/*.wants/* \
+    /lib/systemd/system/local-fs.target.wants/* \
+    /lib/systemd/system/sockets.target.wants/*udev* \
+    /lib/systemd/system/sockets.target.wants/*initctl* \
+    /lib/systemd/system/sysinit.target.wants/systemd-tmpfiles-setup* \
+    /lib/systemd/system/systemd-update-utmp*
+
+# Remove policy-rc.d that prevents services from starting during apt-get install.
+# This is standard in Docker images but we need services (postgresql, redis) to start
+# when install.sh runs apt-get install.
+RUN rm -f /usr/sbin/policy-rc.d
+
+# Create a non-root user to run install.sh (it expects a non-root $USER via logname)
+RUN useradd -m -s /bin/bash testuser && echo "testuser ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+
+STOPSIGNAL SIGRTMIN+3
+CMD ["/sbin/init"]

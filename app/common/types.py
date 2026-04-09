@@ -84,12 +84,12 @@ class DicomTarget(Target):
         return v
     @validator("ip")
     def valid_ip_or_hostname(cls, v):
-        if not re.match(r'^[a-zA-Z0-9.\-]+$', v):
+        if v and not re.match(r'^[a-zA-Z0-9.\-]+$', v):
             raise ValueError("Invalid IP/hostname characters")
         return v
     @validator("port")
     def valid_port(cls, v):
-        if not v.isdigit() or not (1 <= int(v) <= 65535):
+        if v and (not v.isdigit() or not (1 <= int(v) <= 65535)):
             raise ValueError("Invalid port number")
         return v
 

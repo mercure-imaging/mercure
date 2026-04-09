@@ -6,6 +6,8 @@ retention time has passed and if it is offpeak time. Offpeak is the time
 period when the cleaning has to be done, because cleaning I/O should be kept
 to minimum when receiving and sending exams.
 """
+from common.credentials import load_credentials
+load_credentials()
 
 # Standard python includes
 import asyncio

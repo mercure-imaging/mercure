@@ -9,6 +9,14 @@ error() {
 }
 trap 'error ${LINENO}' ERR
 
+# cp no-clobber flag: coreutils 9.x deprecated -n in favor of --update=none;
+# coreutils 8.x (Ubuntu 20.04) doesn't support --update=none at all.
+if cp --update=none /dev/null /dev/null 2>/dev/null; then
+  CP_NOCLOBBER="cp --update=none"
+else
+  CP_NOCLOBBER="cp -n"
+fi
+
 UBUNTU_VERSION=$(lsb_release -rs)
 if [ $UBUNTU_VERSION != "20.04" ] && [ $UBUNTU_VERSION != "22.04" ] && [ $UBUNTU_VERSION != "24.04" ]; then
   echo "Invalid operating system!"
@@ -409,7 +417,7 @@ install_app_files() {
   if [ "$overwrite" = true ] || [ ! -e "$MERCURE_BASE"/app ]; then
     echo "## Installing app files..."
     [ "$overwrite" = true ] || sudo mkdir "$MERCURE_BASE"/app
-    if [ ! "$MERCURE_SRC" -ef "$MERCURE_BASE"/app ]; then
+    if [ ! "$MERCURE_SRC/app" -ef "$MERCURE_BASE/app" ]; then
       sudo cp -R "$MERCURE_SRC/app" "$MERCURE_BASE"
     fi
 
@@ -417,17 +425,75 @@ install_app_files() {
   fi
 }
 
+build_python() {
+  # Build Python from source and install via altinstall (doesn't touch system python3)
+  local pyver=3.12.11
+  local pysrc="/tmp/Python-${pyver}"
+  local pytgz="/tmp/Python-${pyver}.tar.xz"
+  echo "## Building Python ${pyver} from source..."
+  sudo apt-get install -y libssl-dev zlib1g-dev libbz2-dev \
+    libreadline-dev libsqlite3-dev curl libncurses5-dev libncursesw5-dev \
+    xz-utils tk-dev libffi-dev liblzma-dev
+  wget -O "$pytgz" "https://www.python.org/ftp/python/${pyver}/Python-${pyver}.tar.xz"
+  tar xJf "$pytgz" -C /tmp
+  cd "$pysrc"
+  ./configure --prefix=/usr/local --enable-optimizations --with-ensurepip=install
+  make -j"$(nproc)"
+  sudo make altinstall
+  cd -
+  rm -rf "$pysrc" "$pytgz"
+}
+
+install_python() {
+  # Ensure Python 3.12 is available. 24.04 ships it natively; older releases need help.
+  if [ "$UBUNTU_VERSION" = "20.04" ]; then
+    command -v python3.12 &>/dev/null || build_python
+  elif [ "$UBUNTU_VERSION" = "22.04" ]; then
+    sudo apt-get install -y software-properties-common
+    sudo add-apt-repository -y ppa:deadsnakes/ppa
+    sudo apt-get update
+    sudo apt-get install -y python3.12 python3.12-dev python3.12-venv
+  fi
+}
+
 install_packages() {
   echo "## Installing Linux packages..."
   sudo apt-get update
-  sudo apt-get install -y build-essential wget git jq inetutils-ping sshpass rsync postgresql postgresql-contrib libpq-dev git-lfs python3-wheel python3-dev python3 python3-venv sendmail redis
+  sudo apt-get install -y build-essential wget git jq inetutils-ping sshpass rsync postgresql postgresql-contrib libpq-dev git-lfs sendmail redis
+  install_python
+}
+
+# Pick Python 3.12 (source build on 20.04, deadsnakes on 22.04, system on 24.04)
+pick_python() {
+  if command -v python3.12 &>/dev/null; then
+    echo python3.12
+  else
+    echo python3
+  fi
 }
 
 install_dependencies() {
   echo "## Installing Python runtime environment..."
+  local python
+  python=$(pick_python)
+  local need_venv=false
   if [ ! -e "$MERCURE_BASE/env" ]; then
-    sudo mkdir "$MERCURE_BASE/env" && sudo chown $USER "$MERCURE_BASE/env"
-    python3 -m venv "$MERCURE_BASE/env"
+    need_venv=true
+  elif [ -e "$MERCURE_BASE/env/bin/python3" ]; then
+    # Recreate venv if existing Python is older than what we need (e.g. 3.8 on 20.04)
+    local current_ver
+    current_ver=$("$MERCURE_BASE/env/bin/python3" -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+    local target_ver
+    target_ver=$($python -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+    if [ "$current_ver" != "$target_ver" ]; then
+      echo "## Upgrading venv Python from $current_ver to $target_ver..."
+      sudo rm -rf "$MERCURE_BASE/env"
+      need_venv=true
+    fi
+  fi
+  if [ "$need_venv" = true ]; then
+    sudo mkdir -p "$MERCURE_BASE/env" && sudo chown $USER "$MERCURE_BASE/env"
+    $python -m venv "$MERCURE_BASE/env"
   fi
 
   echo "## Installing required Python packages..."
@@ -470,6 +536,9 @@ configure_credentials() {
     echo "## Using EnvironmentFile for Redis (systemd $systemd_ver)"
     redis_drop_in="$MERCURE_SRC/installation/drop-ins/redis-credentials-envfile.conf"
   fi
+  # Note: Python services also call common.credentials.load_credentials() at
+  # startup to read $CREDENTIALS_DIRECTORY/*.env, so LoadCredential works even
+  # without EnvironmentFile=%d support.
 
   # Install Redis credential drop-in and per-service deny lists
   local -A svc_deny=(
@@ -505,7 +574,7 @@ configure_credentials() {
 
 install_services() {
   echo "## Installing services..."
-  sudo cp --update=none "$MERCURE_SRC"/installation/*.service /etc/systemd/system
+  sudo $CP_NOCLOBBER "$MERCURE_SRC"/installation/*.service /etc/systemd/system
   sudo systemctl daemon-reload
   sudo systemctl enable mercure_bookkeeper.service mercure_cleaner.service mercure_dispatcher.service mercure_receiver.service mercure_router.service mercure_ui.service mercure_processor.service
   sudo systemctl restart mercure_bookkeeper.service mercure_cleaner.service mercure_dispatcher.service mercure_receiver.service mercure_router.service mercure_ui.service mercure_processor.service
@@ -519,7 +588,7 @@ systemd_install () {
   create_user
   create_folders
   install_configuration
-  sudo cp --update=none "$MERCURE_SRC"/installation/sudoers/* /etc/sudoers.d/
+  sudo $CP_NOCLOBBER "$MERCURE_SRC"/installation/sudoers/* /etc/sudoers.d/
   install_packages
   install_docker
   install_app_files
@@ -580,7 +649,7 @@ systemd_update () {
   done
   create_folders
   install_app_files true
-  sudo cp --update=none "$MERCURE_SRC"/installation/sudoers/* /etc/sudoers.d/
+  sudo $CP_NOCLOBBER "$MERCURE_SRC"/installation/sudoers/* /etc/sudoers.d/
   install_packages
   install_dependencies
   if [ ! -f "$CONFIG_PATH"/redis.env ]; then
@@ -591,6 +660,10 @@ systemd_update () {
   fi
   install_redis
   configure_credentials
+  # Migrate worker ExecStart from bare rq to worker.py wrapper (for credential loading)
+  sudo sed -i 's|ExecStart=/opt/mercure/env/bin/rq worker|ExecStart=/opt/mercure/env/bin/python /opt/mercure/app/worker.py worker|' \
+    /etc/systemd/system/mercure_worker_fast@.service \
+    /etc/systemd/system/mercure_worker_slow@.service
   install_services
   echo "Update complete."
 }

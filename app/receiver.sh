@@ -33,7 +33,7 @@ else
 fi
 
 # Locate storescp binary (bundled static build)
-storescp_binary=bin/storescp
+storescp_binary=bin/dcmtk/storescp
 if [[ ! -f "$storescp_binary" ]] ; then
     storescp_binary="$(dirname "$0")/$storescp_binary"
 fi
@@ -161,5 +161,6 @@ then
     echo "mercure has been configured for DICOM TLS. Starting in TLS mode."
     "$storescp_binary" +tls $MERCURE_TLS_KEY $MERCURE_TLS_CERT +cf $MERCURE_TLS_CA_CERT --fork --promiscuous $transfer_syntax_option -od "$incoming" +uf -xcr "$binary $incoming/#f #r #a #c$bookkeeper$bookkeeper_api_key $@" $port
 else
-    "$storescp_binary" --fork --promiscuous $transfer_syntax_option -od "$incoming" +uf -xcr "$binary $incoming/#f #r #a #c$bookkeeper$bookkeeper_api_key $@" $port
+    echo "$storescp_binary" -d --fork --promiscuous $transfer_syntax_option -od "$incoming" +uf -xcr "$binary $incoming/#f #r #a #c$bookkeeper$bookkeeper_api_key $@" $port
+    "$storescp_binary" -d --fork --promiscuous $transfer_syntax_option -od "$incoming" +uf -xcr "$binary $incoming/#f #r #a #c$bookkeeper$bookkeeper_api_key $@" $port
 fi

@@ -3,6 +3,8 @@ webgui.py
 =========
 The web-based graphical user interface of mercure.
 """
+from common.credentials import load_credentials
+load_credentials()
 
 import asyncio
 import base64
@@ -313,14 +315,15 @@ async def show_log(request) -> Response:
             service_name = service_name_or_list
             sub_services = []
         
-        run_result = await async_run_exec(
-            "sudo", "journalctl", "-n", "1000", "-u",
-            service_name,
-            start_date_cmd, end_date_cmd,
-            "-o", "short-iso", "--no-hostname"
-        )
-        return_code = -1 if run_result[0] is None else run_result[0]
-        raw_logs = run_result[1]
+        command = ["sudo", "journalctl", "-n", "1000", "-u", service_name]
+        if start_date_cmd:
+            command.append(start_date_cmd)
+        if end_date_cmd:
+            command.append(end_date_cmd)
+
+        command.extend(["-o", "short-iso", "--no-hostname"])
+        
+        return_code, raw_logs, log_err = await async_run_exec(*command)
 
     elif runtime == "docker":
         client = docker.from_env()  # type: ignore
@@ -353,12 +356,11 @@ async def show_log(request) -> Response:
             logger.error(e)
             return_code = 1
 
-    if return_code == 0:
-        log_content = html.escape(str(raw_logs.decode()))
-        log_content = helper.localize_log_timestamps(log_content, config)
+    log_content = html.escape(str(raw_logs.decode()))
+    log_content = helper.localize_log_timestamps(log_content, config)
 
-    else:
-        log_content = "Error reading log information"
+    if return_code != 0:
+        log_content = f"Error reading log information: \n====\n{log_err}\n===\n{log_content}"
         if start_date or end_date:
             log_content = log_content + "<br /><br />Are the From/To settings valid?"
 
@@ -622,7 +624,7 @@ async def self_test(request) -> Response:
         return PlainTextResponse(f"Error initializing test: {traceback.format_exc()}", status_code=500)
 
     command = [
-        "dcmsend", receiver_host, receiver_port,
+        "bin/dcmtk/dcmsend", receiver_host, receiver_port,
         "--recurse", "--scan-directories", str(tmpdir),
         "--aetitle", "mercure", "-aec", f"{test_id}_begin",
         "--no-uid-checks",
@@ -632,7 +634,7 @@ async def self_test(request) -> Response:
     try:
         subprocess.check_output(command, stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as e:
-        logger.error(f"Error sending dicoms: {command}")
+        logger.error(f"Error sending dicoms: {' '.join(command)}")
         return PlainTextResponse("Could not submit dicoms for test:\n" + e.output.decode("utf-8"))
 
     await monitor.do_post("test-begin", dict(json=dict(id=test_id, type=test_type, rule_type=rule_type)))

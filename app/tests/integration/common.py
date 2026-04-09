@@ -9,7 +9,7 @@ import requests
 def send_dicom(ds, dest_host, dest_port) -> None:
     with tempfile.NamedTemporaryFile('w') as ds_temp:
         ds.save_as(ds_temp.name)
-        subprocess.run(["dcmsend", dest_host, str(dest_port), ds_temp.name], check=True)
+        subprocess.run(["bin/dcmtk/dcmsend", dest_host, str(dest_port), ds_temp.name], check=True)
 
 
 @dataclass
