@@ -475,10 +475,12 @@
                     $('#radio_mercure').prop('checked', true);
                 }
                 // Copy sigstore fields from registry entry if present
-                $("#add_sigstore_verify").val(moduleData.sigstore_verify || "False");
-                $("#add_sigstore_cert_identity").val(moduleData.sigstore_cert_identity || "");
-                $("#add_sigstore_cert_oidc_issuer").val(moduleData.sigstore_cert_oidc_issuer || "");
-                $("#add_sigstore_public_key").val(moduleData.sigstore_public_key || "");
+                // Registry format: { "sigstore": { "verify": "True", "cert_identity": "...", ... } }
+                let sig = moduleData.sigstore || {};
+                $("#add_sigstore_verify").val(sig.verify || "False");
+                $("#add_sigstore_cert_identity").val(sig.cert_identity || "");
+                $("#add_sigstore_cert_oidc_issuer").val(sig.cert_oidc_issuer || "");
+                $("#add_sigstore_public_key").val(sig.public_key || "");
                 $("#modulesmodal").removeClass("is-active");
             });
         });
