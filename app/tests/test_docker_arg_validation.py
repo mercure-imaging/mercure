@@ -11,7 +11,14 @@ from webinterface.modules import (
     ALLOWED_DOCKER_ARGS,
     check_docker_arguments,
     validate_docker_arguments_change,
-    privileged_containers_allowed,
+    allow_unsafe_docker_args,
+    forbid_unsafe_docker_args,
+    check_volumes,
+    validate_volumes_change,
+    get_allowed_volume_bases,
+    allow_unsafe_volumes,
+    forbid_unsafe_volumes,
+    DEFAULT_VOLUME_BASE,
 )
 
 
@@ -159,54 +166,267 @@ class TestValidateDockerArgumentsChange:
         validate_docker_arguments_change(old, new)
 
     def test_env_var_bypass(self, monkeypatch):
-        """MERCURE_ALLOW_PRIVILEGED_CONTAINERS bypasses all checks."""
-        monkeypatch.setenv("MERCURE_ALLOW_PRIVILEGED_CONTAINERS", "true")
+        """MERCURE_ALLOW_UNSAFE_DOCKER_ARGS bypasses all checks."""
+        monkeypatch.setenv("MERCURE_ALLOW_UNSAFE_DOCKER_ARGS", "true")
         validate_docker_arguments_change("", json.dumps({"privileged": True, "cap_add": ["SYS_ADMIN"]}))
 
     def test_env_var_bypass_values(self, monkeypatch):
         for val in ("1", "True", "YES", "true"):
-            monkeypatch.setenv("MERCURE_ALLOW_PRIVILEGED_CONTAINERS", val)
+            monkeypatch.setenv("MERCURE_ALLOW_UNSAFE_DOCKER_ARGS", val)
             validate_docker_arguments_change("", json.dumps({"privileged": True}))
 
     def test_env_var_not_set(self, monkeypatch):
-        monkeypatch.delenv("MERCURE_ALLOW_PRIVILEGED_CONTAINERS", raising=False)
+        monkeypatch.delenv("MERCURE_ALLOW_UNSAFE_DOCKER_ARGS", raising=False)
         with pytest.raises(ValueError):
             validate_docker_arguments_change("", json.dumps({"privileged": True}))
 
     def test_env_var_false_does_not_bypass(self, monkeypatch):
-        monkeypatch.setenv("MERCURE_ALLOW_PRIVILEGED_CONTAINERS", "false")
+        monkeypatch.setenv("MERCURE_ALLOW_UNSAFE_DOCKER_ARGS", "false")
         with pytest.raises(ValueError):
             validate_docker_arguments_change("", json.dumps({"privileged": True}))
 
 
 # ---------------------------------------------------------------------------
-# privileged_containers_allowed
+# allow_unsafe_docker_args
 # ---------------------------------------------------------------------------
 
-class TestPrivilegedContainersAllowed:
+class TestAllowUnsafeDockerArgs:
     def test_not_set(self, monkeypatch):
-        monkeypatch.delenv("MERCURE_ALLOW_PRIVILEGED_CONTAINERS", raising=False)
-        assert privileged_containers_allowed() is False
+        monkeypatch.delenv("MERCURE_ALLOW_UNSAFE_DOCKER_ARGS", raising=False)
+        assert allow_unsafe_docker_args() is False
 
     def test_empty(self, monkeypatch):
-        monkeypatch.setenv("MERCURE_ALLOW_PRIVILEGED_CONTAINERS", "")
-        assert privileged_containers_allowed() is False
+        monkeypatch.setenv("MERCURE_ALLOW_UNSAFE_DOCKER_ARGS", "")
+        assert allow_unsafe_docker_args() is False
+
+    def test_false(self, monkeypatch):
+        monkeypatch.setenv("MERCURE_ALLOW_UNSAFE_DOCKER_ARGS", "false")
+        assert allow_unsafe_docker_args() is False
+
+    def test_arbitrary_truthy(self, monkeypatch):
+        monkeypatch.setenv("MERCURE_ALLOW_UNSAFE_DOCKER_ARGS", "anything")
+        assert allow_unsafe_docker_args() is True
+
+
+# ---------------------------------------------------------------------------
+# FORBID overrides ALLOW (docker args)
+# ---------------------------------------------------------------------------
+
+class TestForbidOverridesAllowDockerArgs:
+    def test_both_set_forbid_wins(self, monkeypatch):
+        monkeypatch.setenv("MERCURE_ALLOW_UNSAFE_DOCKER_ARGS", "true")
+        monkeypatch.setenv("MERCURE_FORBID_UNSAFE_DOCKER_ARGS", "true")
+        assert allow_unsafe_docker_args() is False
+        assert forbid_unsafe_docker_args() is True
+
+    def test_allow_only(self, monkeypatch):
+        monkeypatch.setenv("MERCURE_ALLOW_UNSAFE_DOCKER_ARGS", "true")
+        monkeypatch.delenv("MERCURE_FORBID_UNSAFE_DOCKER_ARGS", raising=False)
+        assert allow_unsafe_docker_args() is True
+
+    def test_forbid_only(self, monkeypatch):
+        monkeypatch.delenv("MERCURE_ALLOW_UNSAFE_DOCKER_ARGS", raising=False)
+        monkeypatch.setenv("MERCURE_FORBID_UNSAFE_DOCKER_ARGS", "true")
+        assert allow_unsafe_docker_args() is False
+
+    def test_validate_blocked_when_both_set(self, monkeypatch):
+        monkeypatch.setenv("MERCURE_ALLOW_UNSAFE_DOCKER_ARGS", "true")
+        monkeypatch.setenv("MERCURE_FORBID_UNSAFE_DOCKER_ARGS", "true")
+        with pytest.raises(ValueError):
+            validate_docker_arguments_change("", json.dumps({"privileged": True}))
+
+
+# ---------------------------------------------------------------------------
+# check_volumes
+# ---------------------------------------------------------------------------
+
+class TestCheckVolumes:
+    def test_empty(self):
+        assert check_volumes("") == []
+
+    def test_none(self):
+        assert check_volumes(None) == []
+
+    def test_invalid_json(self):
+        assert check_volumes("not json") == []
+
+    def test_json_non_dict(self):
+        assert check_volumes("[1, 2]") == []
+
+    def test_allowed_path(self):
+        vols = json.dumps({f"{DEFAULT_VOLUME_BASE}/data": {"bind": "/data", "mode": "ro"}})
+        assert check_volumes(vols) == []
+
+    def test_allowed_path_exact(self):
+        vols = json.dumps({DEFAULT_VOLUME_BASE: {"bind": "/data", "mode": "ro"}})
+        assert check_volumes(vols) == []
+
+    def test_disallowed_path(self):
+        vols = json.dumps({"/etc/shadow": {"bind": "/data", "mode": "ro"}})
+        violations = check_volumes(vols)
+        assert len(violations) == 1
+        assert "/etc/shadow" in violations[0]
+
+    def test_multiple_mixed(self):
+        vols = json.dumps({
+            f"{DEFAULT_VOLUME_BASE}/ok": {"bind": "/a"},
+            "/etc/passwd": {"bind": "/b"},
+            "/root": {"bind": "/c"},
+        })
+        violations = check_volumes(vols)
+        assert len(violations) == 2
+
+    def test_dict_input(self):
+        assert check_volumes({f"{DEFAULT_VOLUME_BASE}/x": {"bind": "/x"}}) == []
+        violations = check_volumes({"/tmp/evil": {"bind": "/x"}})
+        assert len(violations) == 1
+
+    def test_extra_volumes_env_single(self, monkeypatch):
+        monkeypatch.setenv("MERCURE_PROCESSOR_EXTRA_VOLUMES", "/custom/path")
+        monkeypatch.delenv("MERCURE_ALLOW_UNSAFE_VOLUMES", raising=False)
+        assert check_volumes(json.dumps({"/custom/path/sub": {"bind": "/x"}})) == []
+        assert len(check_volumes(json.dumps({"/other": {"bind": "/x"}}))) == 1
+
+    def test_extra_volumes_env_multiple(self, monkeypatch):
+        monkeypatch.setenv("MERCURE_PROCESSOR_EXTRA_VOLUMES", "/data/models;/data/configs;/scratch")
+        monkeypatch.delenv("MERCURE_ALLOW_UNSAFE_VOLUMES", raising=False)
+        # Allowed: under any of the extra paths or the default base
+        assert check_volumes(json.dumps({"/data/models/brain": {"bind": "/m"}})) == []
+        assert check_volumes(json.dumps({"/data/configs": {"bind": "/c"}})) == []
+        assert check_volumes(json.dumps({"/scratch/tmp": {"bind": "/t"}})) == []
+        assert check_volumes(json.dumps({f"{DEFAULT_VOLUME_BASE}/x": {"bind": "/x"}})) == []
+        # Disallowed: not under any allowed base
+        assert len(check_volumes(json.dumps({"/etc/passwd": {"bind": "/p"}}))) == 1
+        assert len(check_volumes(json.dumps({"/data": {"bind": "/d"}}))) == 1
+
+    def test_extra_volumes_env_with_spaces(self, monkeypatch):
+        monkeypatch.setenv("MERCURE_PROCESSOR_EXTRA_VOLUMES", " /foo ; /bar ")
+        monkeypatch.delenv("MERCURE_ALLOW_UNSAFE_VOLUMES", raising=False)
+        assert check_volumes(json.dumps({"/foo/sub": {"bind": "/x"}})) == []
+        assert check_volumes(json.dumps({"/bar/sub": {"bind": "/x"}})) == []
+
+    def test_allow_unsafe_volumes_bypasses(self, monkeypatch):
+        monkeypatch.setenv("MERCURE_ALLOW_UNSAFE_VOLUMES", "true")
+        assert check_volumes(json.dumps({"/etc/shadow": {"bind": "/x"}})) == []
+
+
+# ---------------------------------------------------------------------------
+# get_allowed_volume_bases
+# ---------------------------------------------------------------------------
+
+class TestGetAllowedVolumeBases:
+    def test_default(self, monkeypatch):
+        monkeypatch.delenv("MERCURE_PROCESSOR_EXTRA_VOLUMES", raising=False)
+        monkeypatch.delenv("MERCURE_ALLOW_UNSAFE_VOLUMES", raising=False)
+        bases = get_allowed_volume_bases()
+        assert bases == [DEFAULT_VOLUME_BASE]
+
+    def test_extra_paths(self, monkeypatch):
+        monkeypatch.setenv("MERCURE_PROCESSOR_EXTRA_VOLUMES", "/foo;/bar")
+        monkeypatch.delenv("MERCURE_ALLOW_UNSAFE_VOLUMES", raising=False)
+        bases = get_allowed_volume_bases()
+        assert DEFAULT_VOLUME_BASE in bases
+        assert "/foo" in bases
+        assert "/bar" in bases
+
+    def test_extra_paths_with_spaces(self, monkeypatch):
+        monkeypatch.setenv("MERCURE_PROCESSOR_EXTRA_VOLUMES", " /foo ; /bar ; ")
+        monkeypatch.delenv("MERCURE_ALLOW_UNSAFE_VOLUMES", raising=False)
+        bases = get_allowed_volume_bases()
+        assert "/foo" in bases
+        assert "/bar" in bases
+        assert "" not in bases
+
+    def test_extra_paths_empty_segments_ignored(self, monkeypatch):
+        monkeypatch.setenv("MERCURE_PROCESSOR_EXTRA_VOLUMES", "/foo;;/bar")
+        monkeypatch.delenv("MERCURE_ALLOW_UNSAFE_VOLUMES", raising=False)
+        bases = get_allowed_volume_bases()
+        assert len(bases) == 3  # default + /foo + /bar
+
+    def test_allow_unsafe_returns_none(self, monkeypatch):
+        monkeypatch.setenv("MERCURE_ALLOW_UNSAFE_VOLUMES", "true")
+        assert get_allowed_volume_bases() is None
+
+    def test_allow_unsafe_overrides_extra(self, monkeypatch):
+        monkeypatch.setenv("MERCURE_ALLOW_UNSAFE_VOLUMES", "1")
+        monkeypatch.setenv("MERCURE_PROCESSOR_EXTRA_VOLUMES", "/foo")
+        assert get_allowed_volume_bases() is None
+
+
+# ---------------------------------------------------------------------------
+# validate_volumes_change
+# ---------------------------------------------------------------------------
+
+class TestValidateVolumesChange:
+    def test_no_change(self):
+        validate_volumes_change("", "")
+
+    def test_adding_allowed(self):
+        validate_volumes_change("", json.dumps({f"{DEFAULT_VOLUME_BASE}/x": {"bind": "/x"}}))
+
+    def test_adding_disallowed_blocked(self):
+        with pytest.raises(ValueError, match="/etc"):
+            validate_volumes_change("", json.dumps({"/etc/shadow": {"bind": "/x"}}))
+
+    def test_keeping_existing_disallowed_ok(self):
+        existing = json.dumps({"/etc/shadow": {"bind": "/x"}})
+        validate_volumes_change(existing, existing)
+
+    def test_removing_disallowed_ok(self):
+        old = json.dumps({"/etc/shadow": {"bind": "/x"}})
+        validate_volumes_change(old, "{}")
+
+    def test_allow_unsafe_bypasses(self, monkeypatch):
+        monkeypatch.setenv("MERCURE_ALLOW_UNSAFE_VOLUMES", "true")
+        validate_volumes_change("", json.dumps({"/etc/shadow": {"bind": "/x"}}))
+
+    def test_extra_volumes_allows_configured_paths(self, monkeypatch):
+        monkeypatch.setenv("MERCURE_PROCESSOR_EXTRA_VOLUMES", "/data/models;/data/configs")
+        monkeypatch.delenv("MERCURE_ALLOW_UNSAFE_VOLUMES", raising=False)
+        validate_volumes_change("", json.dumps({"/data/models/brain": {"bind": "/m"}}))
+        validate_volumes_change("", json.dumps({"/data/configs/x": {"bind": "/c"}}))
+        with pytest.raises(ValueError):
+            validate_volumes_change("", json.dumps({"/etc/passwd": {"bind": "/p"}}))
+
+
+# ---------------------------------------------------------------------------
+# allow_unsafe_volumes / forbid_unsafe_volumes
+# ---------------------------------------------------------------------------
+
+class TestAllowUnsafeVolumes:
+    def test_not_set(self, monkeypatch):
+        monkeypatch.delenv("MERCURE_ALLOW_UNSAFE_VOLUMES", raising=False)
+        monkeypatch.delenv("MERCURE_FORBID_UNSAFE_VOLUMES", raising=False)
+        assert allow_unsafe_volumes() is False
 
     def test_true(self, monkeypatch):
-        monkeypatch.setenv("MERCURE_ALLOW_PRIVILEGED_CONTAINERS", "true")
-        assert privileged_containers_allowed() is True
+        monkeypatch.setenv("MERCURE_ALLOW_UNSAFE_VOLUMES", "true")
+        monkeypatch.delenv("MERCURE_FORBID_UNSAFE_VOLUMES", raising=False)
+        assert allow_unsafe_volumes() is True
 
-    def test_one(self, monkeypatch):
-        monkeypatch.setenv("MERCURE_ALLOW_PRIVILEGED_CONTAINERS", "1")
-        assert privileged_containers_allowed() is True
+    def test_false(self, monkeypatch):
+        monkeypatch.setenv("MERCURE_ALLOW_UNSAFE_VOLUMES", "false")
+        assert allow_unsafe_volumes() is False
 
-    def test_yes(self, monkeypatch):
-        monkeypatch.setenv("MERCURE_ALLOW_PRIVILEGED_CONTAINERS", "yes")
-        assert privileged_containers_allowed() is True
+    def test_forbid_overrides_allow(self, monkeypatch):
+        monkeypatch.setenv("MERCURE_ALLOW_UNSAFE_VOLUMES", "true")
+        monkeypatch.setenv("MERCURE_FORBID_UNSAFE_VOLUMES", "true")
+        assert allow_unsafe_volumes() is False
+        assert forbid_unsafe_volumes() is True
 
-    def test_no(self, monkeypatch):
-        monkeypatch.setenv("MERCURE_ALLOW_PRIVILEGED_CONTAINERS", "no")
-        assert privileged_containers_allowed() is False
+    def test_forbid_truthy(self, monkeypatch):
+        monkeypatch.setenv("MERCURE_FORBID_UNSAFE_VOLUMES", "yes")
+        assert forbid_unsafe_volumes() is True
+
+    def test_forbid_false(self, monkeypatch):
+        monkeypatch.setenv("MERCURE_FORBID_UNSAFE_VOLUMES", "false")
+        assert forbid_unsafe_volumes() is False
+
+    def test_validate_blocked_when_both_set(self, monkeypatch):
+        monkeypatch.setenv("MERCURE_ALLOW_UNSAFE_VOLUMES", "true")
+        monkeypatch.setenv("MERCURE_FORBID_UNSAFE_VOLUMES", "true")
+        with pytest.raises(ValueError):
+            validate_volumes_change("", json.dumps({"/etc/shadow": {"bind": "/x"}}))
 
 
 # ---------------------------------------------------------------------------
@@ -271,6 +491,48 @@ class TestModuleSaveEndpoint:
                 "docker_tag": "alpine:3.11",
                 "docker_arguments": json.dumps({"privileged": True}),
                 "additional_volumes": "{}",
+                "environment": "{}",
+                "settings": "{}",
+                "contact": "",
+                "comment": "",
+                "constraints": "",
+                "resources": "",
+            },
+            follow_redirects=False,
+        )
+        assert response.status_code == 200
+        assert response.headers.get("hx-redirect") == "/modules/"
+
+    def test_save_module_blocks_disallowed_volume(self, test_client, mercure_config):
+        mercure_config()
+        response = test_client.post(
+            "/modules/edit/test_module",
+            data={
+                "docker_tag": "alpine:3.11",
+                "docker_arguments": "",
+                "additional_volumes": json.dumps({"/etc/shadow": {"bind": "/x"}}),
+                "environment": "{}",
+                "settings": "{}",
+                "contact": "",
+                "comment": "",
+                "constraints": "",
+                "resources": "",
+            },
+            follow_redirects=False,
+        )
+        assert response.status_code == 400
+        assert "/etc/shadow" in response.text
+
+    def test_save_module_allows_safe_volume(self, test_client, mercure_config):
+        mercure_config()
+        response = test_client.post(
+            "/modules/edit/test_module",
+            data={
+                "docker_tag": "alpine:3.11",
+                "docker_arguments": "",
+                "additional_volumes": json.dumps(
+                    {f"{DEFAULT_VOLUME_BASE}/data": {"bind": "/data", "mode": "ro"}}
+                ),
                 "environment": "{}",
                 "settings": "{}",
                 "contact": "",
@@ -388,12 +650,48 @@ class TestConfigEditorEndpoint:
 
     def test_config_editor_env_var_bypass(self, test_client, mercure_config, monkeypatch):
         import common.config as config
-        monkeypatch.setenv("MERCURE_ALLOW_PRIVILEGED_CONTAINERS", "true")
+        monkeypatch.setenv("MERCURE_ALLOW_UNSAFE_DOCKER_ARGS", "true")
         mercure_config()
         config.read_config()
 
         new_config = config.mercure.dict()
         new_config["modules"]["test_module"]["docker_arguments"] = json.dumps({"privileged": True})
+
+        response = test_client.post(
+            "/configuration/edit",
+            data={"editor": json.dumps(new_config)},
+            follow_redirects=False,
+        )
+        assert response.status_code == 303
+
+    def test_config_editor_blocks_disallowed_volume(self, test_client, mercure_config):
+        import common.config as config
+        mercure_config()
+        config.read_config()
+
+        new_config = config.mercure.dict()
+        new_config["modules"]["test_module"]["additional_volumes"] = json.dumps(
+            {"/etc/shadow": {"bind": "/x"}}
+        )
+
+        response = test_client.post(
+            "/configuration/edit",
+            data={"editor": json.dumps(new_config)},
+            follow_redirects=False,
+        )
+        assert response.status_code == 200
+        assert "Blocked" in response.text
+        assert "/etc/shadow" in response.text
+
+    def test_config_editor_allows_safe_volume(self, test_client, mercure_config):
+        import common.config as config
+        mercure_config()
+        config.read_config()
+
+        new_config = config.mercure.dict()
+        new_config["modules"]["test_module"]["additional_volumes"] = json.dumps(
+            {f"{DEFAULT_VOLUME_BASE}/data": {"bind": "/data"}}
+        )
 
         response = test_client.post(
             "/configuration/edit",

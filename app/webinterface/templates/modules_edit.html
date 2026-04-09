@@ -68,6 +68,17 @@
                                 name="additional_volumes"
                                 value="{{module['additional_volumes']}}">
                         </p>
+                        {% if allowed_volume_bases is not none %}
+                        <details style="margin-top: 6px;">
+                            <summary class="has-text-grey" style="cursor: pointer; font-size: 0.85em;">Allowed volume paths</summary>
+                            <p style="font-size: 0.85em; margin-top: 4px;">
+                                Host paths must be under: {% for base in allowed_volume_bases %}<code>{{ base }}</code>{% if not loop.last %}, {% endif %}{% endfor %}
+                            </p>
+                            <p class="has-text-grey" style="font-size: 0.8em; margin-top: 4px;">
+                                Set <code>MERCURE_ALLOW_UNSAFE_VOLUMES</code> or <code>MERCURE_PROCESSOR_EXTRA_VOLUMES</code> to allow additional paths.
+                            </p>
+                        </details>
+                        {% endif %}
                     </div>
                     <div class="field">
                         <label class="label" for="environment">Environment Variables</label>
@@ -92,14 +103,14 @@
                                 name="docker_arguments"
                                 value="{{module['docker_arguments']}}">
                         </p>
-                        {% if not privileged_containers_allowed %}
+                        {% if not allow_unsafe_docker_args %}
                         <details style="margin-top: 6px;">
                             <summary class="has-text-grey" style="cursor: pointer; font-size: 0.85em;">Allowed arguments</summary>
                             <p style="font-size: 0.85em; margin-top: 4px;">
                                 {% for arg in allowed_docker_args %}<code>{{ arg }}</code>{% if not loop.last %}, {% endif %}{% endfor %}
                             </p>
                             <p class="has-text-grey" style="font-size: 0.8em; margin-top: 4px;">
-                                Other arguments require <code>MERCURE_ALLOW_PRIVILEGED_CONTAINERS</code> to be set.
+                                Other arguments require <code>MERCURE_ALLOW_UNSAFE_DOCKER_ARGS</code> to be set.
                             </p>
                         </details>
                         {% endif %}

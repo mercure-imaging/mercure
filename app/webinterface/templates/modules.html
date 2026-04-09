@@ -96,12 +96,34 @@
             </div>
 
             {% if privileged_modules %}
-            <div class="notification is-warning" style="margin-bottom: 16px;">
+            <div class="notification {{ 'is-danger' if forbid_unsafe_docker_args else 'is-warning' }}" style="margin-bottom: 16px;">
                 <strong><i class="fas fa-exclamation-triangle"></i>&nbsp;&nbsp;Security Warning:</strong>
-                The following modules have risky docker_arguments. These cannot be added or modified through the web UI unless
-                <code>MERCURE_ALLOW_PRIVILEGED_CONTAINERS</code> is set:
+                The following modules have disallowed docker_arguments.
+                {% if forbid_unsafe_docker_args %}
+                    These arguments <strong>will be ignored at runtime</strong> (<code>MERCURE_FORBID_UNSAFE_DOCKER_ARGS</code> is set).
+                {% else %}
+                    These cannot be added or modified through the web UI unless
+                    <code>MERCURE_ALLOW_UNSAFE_DOCKER_ARGS</code> is set.
+                {% endif %}
                 <ul style="margin-top: 8px; margin-bottom: 0;">
                 {% for mod_name, violations in privileged_modules.items() %}
+                    <li><strong>{{ mod_name }}</strong>: {{ violations|join('; ') }}</li>
+                {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+            {% if volume_violations %}
+            <div class="notification {{ 'is-danger' if forbid_unsafe_volumes else 'is-warning' }}" style="margin-bottom: 16px;">
+                <strong><i class="fas fa-exclamation-triangle"></i>&nbsp;&nbsp;Volume Warning:</strong>
+                The following modules have volumes outside of allowed paths.
+                {% if forbid_unsafe_volumes %}
+                    These volumes <strong>will be ignored at runtime</strong> (<code>MERCURE_FORBID_UNSAFE_VOLUMES</code> is set).
+                {% else %}
+                    These cannot be added or modified through the web UI unless
+                    <code>MERCURE_ALLOW_UNSAFE_VOLUMES</code> or <code>MERCURE_PROCESSOR_EXTRA_VOLUMES</code> is configured.
+                {% endif %}
+                <ul style="margin-top: 8px; margin-bottom: 0;">
+                {% for mod_name, violations in volume_violations.items() %}
                     <li><strong>{{ mod_name }}</strong>: {{ violations|join('; ') }}</li>
                 {% endfor %}
                 </ul>
