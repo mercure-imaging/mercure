@@ -4,13 +4,17 @@ set -euo pipefail
 # Systemd installation integration tests for mercure.
 # Tests fresh install and upgrade on Ubuntu 20.04, 22.04, 24.04.
 #
-# Usage: bash run_tests.sh [--ubuntu 24.04] [--skip-upgrade] [--keep-containers] [--verbose]
-#        bash run_tests.sh --attach <container-name>   (re-attach to a kept container with port forwarding)
+# Usage: bash run_tests.sh <install|upgrade> [--ubuntu 24.04] [--keep-containers] [--verbose]
+#        bash run_tests.sh --attach <container-name>   (re-attach to a kept container)
+#
+# Containers are kept on success (for inspection/attach). On failure they are
+# removed unless --keep-containers is passed. Pre-existing containers with the
+# same name are always removed before starting.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 UBUNTU_VERSIONS=("20.04" "22.04" "24.04")
-SKIP_UPGRADE=false
+MODE=""
 KEEP_CONTAINERS=false
 VERBOSE=false
 ATTACH_CONTAINER=""
@@ -19,13 +23,13 @@ CONTAINERS_TO_CLEANUP=()
 # Parse arguments
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    install|upgrade)
+      MODE="$1"
+      shift
+      ;;
     --ubuntu)
       UBUNTU_VERSIONS=("$2")
       shift 2
-      ;;
-    --skip-upgrade)
-      SKIP_UPGRADE=true
-      shift
       ;;
     --keep-containers)
       KEEP_CONTAINERS=true
@@ -47,12 +51,18 @@ while [[ $# -gt 0 ]]; do
       ;;
     *)
       echo "Unknown option: $1"
-      echo "Usage: $0 [--ubuntu VERSION] [--skip-upgrade] [--keep-containers] [--verbose]"
+      echo "Usage: $0 <install|upgrade> [--ubuntu VERSION] [--keep-containers] [--verbose]"
       echo "       $0 --attach <container-name>"
       exit 1
       ;;
   esac
 done
+
+if [ -z "$ATTACH_CONTAINER" ] && [ -z "$MODE" ]; then
+  echo "Error: specify a mode: install or upgrade"
+  echo "Usage: $0 <install|upgrade> [--ubuntu VERSION] [--keep-containers] [--verbose]"
+  exit 1
+fi
 
 #
 # Attach mode: forward ports from an existing kept container for manual inspection.
@@ -80,11 +90,18 @@ if [ -n "$ATTACH_CONTAINER" ]; then
   echo ""
 
   docker exec -it "$ATTACH_CONTAINER" bash
+  exit $?
 fi
 
+TEST_PASSED=false
+
 cleanup() {
+  if [ "$TEST_PASSED" = true ]; then
+    echo "== Keeping containers (tests passed): ${CONTAINERS_TO_CLEANUP[*]}"
+    return
+  fi
   if [ "$KEEP_CONTAINERS" = true ]; then
-    echo "== Keeping containers for inspection: ${CONTAINERS_TO_CLEANUP[*]}"
+    echo "== Keeping containers for failure inspection: ${CONTAINERS_TO_CLEANUP[*]}"
     return
   fi
   for cid in "${CONTAINERS_TO_CLEANUP[@]}"; do
@@ -121,6 +138,24 @@ resolve_upgrade_versions() {
 }
 
 #
+# Pick the right "old" tag for a given Ubuntu version.
+# Ubuntu 20.04: the latest tag whose requirements work with Python 3.8
+# (alabaster >=0.7.14 and aiohttp >=3.11 require Python 3.9+;
+# 0.3.0-beta.2 uses alabaster 0.7.13 + aiohttp 3.8.5).
+# Others: use the default OLD_TAG.
+#
+OLD_TAG_FOR_UBUNTU_20_04="0.3.0-beta.2"
+
+old_tag_for_version() {
+  local ubuntu_version="$1"
+  if [ "$ubuntu_version" = "20.04" ]; then
+    echo "$OLD_TAG_FOR_UBUNTU_20_04"
+  else
+    echo "$OLD_TAG"
+  fi
+}
+
+#
 # Build the systemd base image for a given Ubuntu version.
 #
 build_image() {
@@ -144,6 +179,12 @@ build_image() {
 start_container() {
   local image_tag="$1"
   local container_name="$2"
+
+  # Remove pre-existing container with the same name
+  if docker inspect "$container_name" &>/dev/null; then
+    echo "== Removing pre-existing container ${container_name}..." >&2
+    docker rm -f "$container_name" >/dev/null 2>&1 || true
+  fi
 
   echo "== Starting container ${container_name}..." >&2
   docker run -d \
@@ -308,25 +349,35 @@ fixup_credentials_for_docker() {
 }
 
 #
-# Check that all mercure services are active.
+# Check that mercure services are active.
+# Usage: verify_services <container> [service ...]
+# If no services listed, checks the full current set.
 #
+CORE_SERVICES=(
+  mercure_bookkeeper
+  mercure_cleaner
+  mercure_dispatcher
+  mercure_receiver
+  mercure_router
+  mercure_ui
+  mercure_processor
+)
+ALL_SERVICES=(
+  "${CORE_SERVICES[@]}"
+  "mercure_worker_fast@1"
+  "mercure_worker_fast@2"
+  "mercure_worker_slow@1"
+  "mercure_worker_slow@2"
+)
+
 verify_services() {
   local container_name="$1"
+  shift
+  local services=("$@")
+  if [ ${#services[@]} -eq 0 ]; then
+    services=("${ALL_SERVICES[@]}")
+  fi
   local all_ok=true
-
-  local services=(
-    mercure_bookkeeper
-    mercure_cleaner
-    mercure_dispatcher
-    mercure_receiver
-    mercure_router
-    mercure_ui
-    mercure_processor
-    "mercure_worker_fast@1"
-    "mercure_worker_fast@2"
-    "mercure_worker_slow@1"
-    "mercure_worker_slow@2"
-  )
 
   echo "== Verifying mercure services..."
   for svc in "${services[@]}"; do
@@ -425,11 +476,13 @@ test_fresh_install() {
 test_upgrade() {
   local ubuntu_version="$1"
   local container_name="mercure-test-upgrade-${ubuntu_version//./-}"
+  local old_tag
+  old_tag=$(old_tag_for_version "$ubuntu_version")
 
   echo ""
   echo "============================================================"
   echo "  UPGRADE TEST — Ubuntu ${ubuntu_version}"
-  echo "  Old: ${OLD_TAG} -> New: $(cd "$REPO_ROOT" && git describe --tags --always HEAD)"
+  echo "  Old: ${old_tag} -> New: $(cd "$REPO_ROOT" && git describe --tags --always HEAD)"
   echo "============================================================"
 
   local image_tag
@@ -438,15 +491,16 @@ test_upgrade() {
   start_container "$image_tag" "$container_name"
 
   # Phase 1: Install old version
-  echo "== Phase 1: Installing old version (${OLD_TAG})..."
-  copy_repo "$container_name" "$OLD_TAG"
+  # Old versions may not have worker services, so only verify core services.
+  echo "== Phase 1: Installing old version (${old_tag})..."
+  copy_repo "$container_name" "$old_tag"
   run_install "$container_name" "-y systemd"
   fixup_credentials_for_docker "$container_name"
 
   echo "== Waiting for services to stabilize..."
   sleep 15
 
-  if ! verify_services "$container_name"; then
+  if ! verify_services "$container_name" "${CORE_SERVICES[@]}"; then
     echo "  UPGRADE TEST — Ubuntu ${ubuntu_version} — FAILED (old version services)"
     return 1
   fi
@@ -486,17 +540,17 @@ test_upgrade() {
 main() {
   local failures=0
 
-  if [ "$SKIP_UPGRADE" = false ]; then
+  if [ "$MODE" = "upgrade" ]; then
     resolve_upgrade_versions
   fi
 
   for version in "${UBUNTU_VERSIONS[@]}"; do
-    if ! test_fresh_install "$version"; then
-      echo "  FRESH INSTALL — Ubuntu ${version} — FAILED"
-      failures=$((failures + 1))
-    fi
-
-    if [ "$SKIP_UPGRADE" = false ]; then
+    if [ "$MODE" = "install" ]; then
+      if ! test_fresh_install "$version"; then
+        echo "  FRESH INSTALL — Ubuntu ${version} — FAILED"
+        failures=$((failures + 1))
+      fi
+    elif [ "$MODE" = "upgrade" ]; then
       if ! test_upgrade "$version"; then
         echo "  UPGRADE TEST — Ubuntu ${version} — FAILED"
         failures=$((failures + 1))
@@ -507,6 +561,7 @@ main() {
   echo ""
   echo "============================================================"
   if [ $failures -eq 0 ]; then
+    TEST_PASSED=true
     echo "  ALL TESTS PASSED"
   else
     echo "  ${failures} TEST(S) FAILED"

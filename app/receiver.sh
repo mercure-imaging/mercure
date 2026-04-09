@@ -153,14 +153,28 @@ else
     bookkeeper_api_key=" $bookkeeper_api_key"
 fi
 
+debug_flag=""
+for arg in "$@"; do
+    if [ "$arg" = "--debug" ]; then
+        debug_flag="-d"
+        break
+    fi
+done
+if [ -n "$DEBUG_MODE" ]; then
+    debug_flag="-d"
+fi
+if [ -n "$debug_flag" ]; then
+    echo "Debug mode enabled"
+fi
+
 echo ""
 echo "Starting receiver process on port $port, folder $incoming, bookkeeper $bookkeeper"
 
 if [ $MERCURE_TLS_ENABLED ]
 then
     echo "mercure has been configured for DICOM TLS. Starting in TLS mode."
-    "$storescp_binary" +tls $MERCURE_TLS_KEY $MERCURE_TLS_CERT +cf $MERCURE_TLS_CA_CERT --fork --promiscuous $transfer_syntax_option -od "$incoming" +uf -xcr "$binary $incoming/#f #r #a #c$bookkeeper$bookkeeper_api_key $@" $port
+    "$storescp_binary" $debug_flag +tls $MERCURE_TLS_KEY $MERCURE_TLS_CERT +cf $MERCURE_TLS_CA_CERT --fork --promiscuous $transfer_syntax_option -od "$incoming" +uf -xcr "$binary $incoming/#f #r #a #c$bookkeeper$bookkeeper_api_key $@" $port
 else
-    echo "$storescp_binary" -d --fork --promiscuous $transfer_syntax_option -od "$incoming" +uf -xcr "$binary $incoming/#f #r #a #c$bookkeeper$bookkeeper_api_key $@" $port
-    "$storescp_binary" -d --fork --promiscuous $transfer_syntax_option -od "$incoming" +uf -xcr "$binary $incoming/#f #r #a #c$bookkeeper$bookkeeper_api_key $@" $port
+    echo "$storescp_binary" $debug_flag --fork --promiscuous $transfer_syntax_option -od "$incoming" +uf -xcr "$binary $incoming/#f #r #a #c$bookkeeper$bookkeeper_api_key $@" $port
+    "$storescp_binary" $debug_flag --fork --promiscuous $transfer_syntax_option -od "$incoming" +uf -xcr "$binary $incoming/#f #r #a #c$bookkeeper$bookkeeper_api_key $@" $port
 fi
