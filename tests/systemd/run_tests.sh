@@ -206,18 +206,38 @@ copy_repo() {
 }
 
 #
+# Wait for any existing apt/dpkg locks to be released (unattended-upgrades, etc.)
+#
+wait_for_apt() {
+  local container_name="$1"
+  echo "== Waiting for apt locks to be released..."
+  local retries=60
+  while [ $retries -gt 0 ]; do
+    if docker exec "$container_name" bash -c 'fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1'; then
+      sleep 2
+      retries=$((retries - 1))
+    else
+      return 0
+    fi
+  done
+  echo "WARN: apt lock still held after 120s, proceeding anyway"
+}
+
+#
 # Run install.sh inside the container.
 #
 run_install() {
   local container_name="$1"
   local install_args="$2"
 
+  wait_for_apt "$container_name"
   echo "== Running: install.sh ${install_args}"
   local logfile="/tmp/mercure-install-${container_name}.log"
   # Run as root but with USER=testuser so install.sh skips the logname call.
   if [ "$VERBOSE" = true ]; then
     docker exec \
       -e USER=testuser \
+      -e DEBIAN_FRONTEND=noninteractive \
       -w /home/testuser/mercure \
       "$container_name" \
       bash install.sh ${install_args} \
@@ -226,6 +246,7 @@ run_install() {
   else
     docker exec \
       -e USER=testuser \
+      -e DEBIAN_FRONTEND=noninteractive \
       -w /home/testuser/mercure \
       "$container_name" \
       bash install.sh ${install_args} \

@@ -134,14 +134,13 @@ async def get_task_events(request) -> JSONResponse:
     id_placeholders = ", ".join(":id_" + str(i) for i in range(len(all_ids)))
     id_params = {"id_" + str(i): v for i, v in enumerate(all_ids)}
     del all_ids
+    params = {**id_params, **tz_conversion_params}
     query = sqlalchemy.text(
         "SELECT *, time " + tz_conversion_sql + " as local_time FROM task_events"
         " WHERE task_events.task_id IN (" + id_placeholders + ")"
         " ORDER BY task_events.task_id, task_events.time"
-    )
-
-    params = {**id_params, **tz_conversion_params}
-    results = await db.database.fetch_all(query, params)
+    ).bindparams(**params)
+    results = await db.database.fetch_all(query)
     return CustomJSONResponse(results)
 
 
