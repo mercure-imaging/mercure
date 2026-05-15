@@ -153,10 +153,11 @@ async def add_module(request):
     if (
         form["container_type"] == "monai"
         and config.mercure.support_root_modules is not True
+        and config.mercure.process_runner != "podman"
     ):
         return BadRequestResponse(
             "MONAI modules must run as root user, but the setting 'Support Root Modules' "
-            "is disabled in the mercure configuration."
+            "is disabled in the mercure configuration. "
             "Enable it on the Configuration page before installing MONAI modules."
         )
     # logger.info(f'Created rule {name}')
@@ -214,6 +215,7 @@ async def edit_module(request):
         "module_name": module,
         "settings": settings_string,
         "runtime": runtime,
+        "process_runner": config.mercure.process_runner,
         "support_root_modules": config.mercure.support_root_modules,
         "module_persistence_file": module_persistence_file,
         "persistence_folder": module_mount_source,

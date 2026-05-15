@@ -20,10 +20,10 @@ services:
     volumes:
       - config:/opt/mercure/config
       - data:/opt/mercure/data
-      - /run/podman/podman.sock:/run/podman/podman.sock
+      - /run/podman/podman.sock:/run/mercure-podman/podman.sock
     environment:
       MERCURE_RUNNER: docker
-      CONTAINER_HOST: unix:///run/podman/podman.sock
+      CONTAINER_HOST: unix:///run/mercure-podman/podman.sock
       MERCURE_HOST_DATA_PATH: /opt/mercure/data
       REDIS_URL: redis://redis:6379/0
 
@@ -31,9 +31,9 @@ services:
     volumes:
       - config:/opt/mercure/config
       - data:/opt/mercure/data
-      - /run/podman/podman.sock:/run/podman/podman.sock
+      - /run/podman/podman.sock:/run/mercure-podman/podman.sock
     environment:
       MERCURE_RUNNER: docker
-      CONTAINER_HOST: unix:///run/podman/podman.sock
+      CONTAINER_HOST: unix:///run/mercure-podman/podman.sock
       MERCURE_HOST_DATA_PATH: /opt/mercure/data
       REDIS_URL: redis://redis:6379/0
