@@ -23,7 +23,7 @@ if [ ! -f "app/VERSION" ]; then
 fi
 VERSION=`cat app/VERSION`
 IMAGE_TAG=":${MERCURE_TAG:-$VERSION}"
-VER_LENGTH=${#VERSION}+28
+VER_LENGTH=$(( ${#VERSION} + 28 ))
 echo ""
 echo "mercure Installer - Version $VERSION"
 for ((i=1;i<=VER_LENGTH;i++)); do
@@ -129,7 +129,7 @@ install_configuration () {
     fi
 
     sed -i -e "s/BOOKKEEPER_TOKEN_PLACEHOLDER/$BOOKKEEPER_SECRET/" "$CONFIG_PATH"/mercure.json
-    sed -i -e "s/PROCESS_RUNNER_PLACEHOLDER/$CONTAINER_RUNNER/" "$CONFIG_PATH"/mercure.json
+    sed -i -e "s/\"process_runner\".*:.*/\"process_runner\": \"$CONTAINER_RUNNER\",/" "$CONFIG_PATH"/mercure.json
     sed -i -e "s/PutSomethingRandomHere/$SECRET/" "$CONFIG_PATH"/webgui.env
     sudo chown -R $OWNER:$OWNER "$CONFIG_PATH"
     sudo chmod -R o-r "$CONFIG_PATH"

@@ -211,6 +211,7 @@ class LocalContainerRuntime(ContainerRuntime):
         monai_command: Optional[list],
         module: Module,
         persistence_mount: Optional[Tuple[str, str]],
+        requires_root: bool,
     ) -> Tuple[int, str]:
         """
         Run the container.  Returns (exit_code, combined_logs_string).
@@ -258,13 +259,13 @@ class LocalContainerRuntime(ContainerRuntime):
             persistence_mount = (mount_source, mount_target)
 
         monai_command: Optional[list] = self._detect_monai(docker_tag)
-        module.requires_root = module.requires_root or (monai_command is not None)
+        requires_root = bool(module.requires_root) or (monai_command is not None)
 
         self._maybe_pull(docker_tag)
 
         processing_success = True
         try:
-            if module.requires_root and self.root_requires_approval and not config.mercure.support_root_modules:
+            if requires_root and self.root_requires_approval and not config.mercure.support_root_modules:
                 raise Exception(
                     "This module requires execution as root, but "
                     "'support_root_modules' is not set to true in the configuration. Aborting."
@@ -291,6 +292,7 @@ class LocalContainerRuntime(ContainerRuntime):
                 monai_command,
                 module,
                 persistence_mount,
+                requires_root,
             )
 
             logs = helper.localize_log_timestamps(logs, config)

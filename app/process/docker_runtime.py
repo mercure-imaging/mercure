@@ -74,6 +74,7 @@ class DockerRuntime(LocalContainerRuntime):
         monai_command: Optional[list],
         module: Module,
         persistence_mount: Optional[Tuple[str, str]],
+        requires_root: bool,
     ) -> Tuple[int, str]:
         client = self._docker_client
 
@@ -112,7 +113,7 @@ class DockerRuntime(LocalContainerRuntime):
             set_command = {"entrypoint": "", "command": monai_command}
 
         user_kwargs: Dict[str, Any] = {}
-        if not module.requires_root:
+        if not requires_root:
             user_kwargs = {
                 "user": f"{os.getuid()}:{os.getegid()}",
                 "group_add": [os.getgid()],

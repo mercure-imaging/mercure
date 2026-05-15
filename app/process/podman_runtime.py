@@ -134,6 +134,7 @@ class PodmanRuntime(LocalContainerRuntime):
         monai_command: Optional[list],
         module: Module,
         persistence_mount: Optional[Tuple[str, str]],
+        requires_root: bool,
     ) -> Tuple[int, str]:
         tag = self._qualify_image(tag)
         client = self._podman_client
@@ -179,7 +180,7 @@ class PodmanRuntime(LocalContainerRuntime):
         if monai_command:
             set_command = {"entrypoint": "", "command": monai_command}
 
-        if module.requires_root:
+        if requires_root:
             logger.debug("Executing module as root.")
 
         logger.info({
@@ -215,6 +216,10 @@ class PodmanRuntime(LocalContainerRuntime):
             raise Exception(f"Image for tag {tag} not found.") from e
         finally:
             if container is not None:
+                try:
+                    container.stop(timeout=10)
+                except Exception:
+                    pass  # already stopped or never started
                 container.remove()
 
     # ------------------------------------------------------------------ #
