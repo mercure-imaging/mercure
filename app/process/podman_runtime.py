@@ -255,7 +255,7 @@ class PodmanRuntime(LocalContainerRuntime):
             return None
         except ImageNotFound:
             try:
-                client.images.pull(tag)
+                client.images.get_registry_data(tag)
                 return None
             except APIError as e:
                 err = str(e).lower()
@@ -263,9 +263,9 @@ class PodmanRuntime(LocalContainerRuntime):
                     return f"Access denied pulling {tag}. Check registry credentials."
                 if "not found" in err or "does not exist" in err or "no such" in err:
                     return f"Image {tag} not found locally or in the registry."
-                return f"Failed to pull image {tag}: {str(e)[:300]}"
+                return f"Failed to retrieve registry data for {tag}: {str(e)[:300]}"
             except Exception as e:
-                return f"Unexpected error pulling {tag}: {e}"
+                return f"Unexpected error retrieving registry data for {tag}: {e}"
         except APIError as e:
             return (
                 f"Unable to read image list: {e}. "

@@ -290,15 +290,16 @@ def test_validate_image_present_locally(mocked, monkeypatch):
 
 
 def test_validate_image_pulls_from_registry(mocked, monkeypatch):
-    """Image not local but pullable → None (no error)."""
+    """Image not local but accessible in registry → None (no error)."""
     runtime = PodmanRuntime()
     client = MagicMock()
     client.images.get.side_effect = ImageNotFound("ubuntu:22.04")
-    client.images.pull.return_value = FakePodmanImage(["docker.io/library/ubuntu:22.04"])
+    client.images.get_registry_data.return_value = MagicMock()
     monkeypatch.setattr(
         PodmanRuntime, "_podman_client", property(lambda self: client)
     )
     assert runtime.validate_image("ubuntu:22.04") is None
+    client.images.pull.assert_not_called()
 
 
 def test_validate_image_not_found(mocked, monkeypatch):
@@ -306,7 +307,7 @@ def test_validate_image_not_found(mocked, monkeypatch):
     client = MagicMock()
     client.images.get.side_effect = ImageNotFound("nonexistent:latest")
     err = APIError("not found")
-    client.images.pull.side_effect = err
+    client.images.get_registry_data.side_effect = err
     monkeypatch.setattr(
         PodmanRuntime, "_podman_client", property(lambda self: client)
     )
@@ -319,7 +320,7 @@ def test_validate_image_unauthorized(mocked, monkeypatch):
     runtime = PodmanRuntime()
     client = MagicMock()
     client.images.get.side_effect = ImageNotFound("private/image:latest")
-    client.images.pull.side_effect = APIError("unauthorized access denied")
+    client.images.get_registry_data.side_effect = APIError("unauthorized access denied")
     monkeypatch.setattr(
         PodmanRuntime, "_podman_client", property(lambda self: client)
     )

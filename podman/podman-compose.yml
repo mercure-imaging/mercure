@@ -1,5 +1,10 @@
 x-env: &env
   environment:
+    # MERCURE_RUNNER describes how mercure *itself* is deployed (inside a
+    # container, i.e. the "docker" runner model) — it is NOT the runtime used
+    # to launch processing modules.  Processing modules use Podman via the
+    # socket mounted at CONTAINER_HOST; get_runtime() selects PodmanRuntime
+    # because process_runner="podman" is set in mercure.json by the installer.
     MERCURE_RUNNER: docker
     CONTAINER_HOST: unix:///run/podman/podman.sock
     MERCURE_HOST_DATA_PATH: /opt/mercure/data
@@ -102,7 +107,7 @@ services:
         condition: service_healthy
 
   redis:
-    image: redis
+    image: redis:7-alpine
     restart: always
     command: redis-server --save 20 1
     volumes:
