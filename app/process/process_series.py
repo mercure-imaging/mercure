@@ -173,7 +173,7 @@ async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_p
     try:
         monai_app_manifest = json.loads(docker_client.containers.run(docker_tag,
                                                                      command="cat /etc/monai/app.json",
-                                                                     entrypoint="").decode('utf-8'))
+                                                                     entrypoint="", remove=True).decode('utf-8'))
         image_is_monai_map = True
         set_command = dict(entrypoint="", command=monai_app_manifest["command"])
         logger.debug("Detected MONAI MAP, using command from manifest.")
@@ -299,7 +299,7 @@ async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_p
                                                           datetime.fromisocalendar(1, 1, 1))
                 ).total_seconds() > 86400:  # noqa: 125
                 docker_client.images.pull("busybox:stable-musl")  # noqa: E117
-                docker_pull_throttle["busybox:stable_musl"] = datetime.now()
+                docker_pull_throttle["busybox:stable-musl"] = datetime.now()
         except Exception:
             logger.exception("could not pull busybox")
 

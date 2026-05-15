@@ -17,9 +17,10 @@ from app import webgui
 
 
 def spy_on(mocker, obj) -> None:
+    import importlib
     pieces = obj.split(".")
     module = ".".join(pieces[0:-1])
-    mocker.patch(obj, new=mocker.spy(eval(module), pieces[-1]))
+    mocker.patch(obj, new=mocker.spy(importlib.import_module(module), pieces[-1]))
 
 
 def spies(mocker, list_of_spies) -> None:

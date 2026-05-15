@@ -23,7 +23,7 @@ if [ ! -f "app/VERSION" ]; then
 fi
 VERSION=`cat app/VERSION`
 IMAGE_TAG=":${MERCURE_TAG:-$VERSION}"
-VER_LENGTH=${#VERSION}+28
+VER_LENGTH=$(( ${#VERSION} + 28 ))
 echo ""
 echo "mercure Installer - Version $VERSION"
 for ((i=1;i<=VER_LENGTH;i++)); do
