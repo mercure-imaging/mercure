@@ -334,8 +334,13 @@ enable_podman_user_socket () {
   echo "## Enabling Podman socket for mercure user..."
   sudo loginctl enable-linger mercure
   MERCURE_UID=$(id -u mercure)
+  # Start the user systemd instance synchronously — this guarantees the D-Bus
+  # socket at /run/user/$MERCURE_UID/bus is live before the systemctl --user
+  # calls below. Without this, loginctl enable-linger takes effect only on the
+  # next boot/login, leaving systemctl --user with no bus to connect to.
+  sudo systemctl start user@${MERCURE_UID}.service
   sudo -u mercure XDG_RUNTIME_DIR=/run/user/$MERCURE_UID systemctl --user enable podman.socket
-  sudo -u mercure XDG_RUNTIME_DIR=/run/user/$MERCURE_UID systemctl --user start podman.socket || true
+  sudo -u mercure XDG_RUNTIME_DIR=/run/user/$MERCURE_UID systemctl --user start podman.socket
 }
 
 setup_docker () {
@@ -350,13 +355,15 @@ setup_docker () {
       # Docker runner: mount docker socket, set docker group for socket access
       sudo sed -i -e "s/\\\${DOCKER_GID}/$(getent group docker | cut -d: -f3)/g" $MERCURE_BASE/docker-compose.yml
     else
-      # Podman runner: mount system Podman socket, inject CONTAINER_HOST and
-      # MERCURE_HOST_DATA_PATH so the processor container can reach the host
-      # Podman daemon and correctly remap data volume paths.
+      # Podman runner: the base file's ${DOCKER_GID} slot is used for the
+      # x-docker-user anchor; substitute it with the mercure GID so services
+      # that use *docker-user don't depend on a docker group that doesn't exist.
       MERCURE_GID=$(getent passwd mercure | cut -d: -f4)
       sudo sed -i -e "s/\\\${DOCKER_GID}/$MERCURE_GID/g" $MERCURE_BASE/docker-compose.yml
-      sudo sed -i -e "s|/var/run/docker.sock:/var/run/docker.sock|/run/podman/podman.sock:/run/podman/podman.sock|g" $MERCURE_BASE/docker-compose.yml
-      sudo sed -i -e "s|MERCURE_RUNNER: docker|MERCURE_RUNNER: docker\n    CONTAINER_HOST: unix:///run/podman/podman.sock\n    MERCURE_HOST_DATA_PATH: /opt/mercure/data|" $MERCURE_BASE/docker-compose.yml
+      # Copy the Podman overlay: swaps socket mount and injects env vars via
+      # compose anchor overrides instead of fragile in-place text patching.
+      sudo cp $MERCURE_SRC/docker/docker-compose.podman.yml $MERCURE_BASE
+      sudo chown $OWNER:$OWNER "$MERCURE_BASE"/docker-compose.podman.yml
     fi
 
     if [[ -v MERCURE_TAG ]]; then # a custom tag was provided
@@ -390,7 +397,11 @@ build_docker () {
 start_docker () {
   echo "## Starting docker compose..."
   pushd $MERCURE_BASE
-  sudo docker-compose up -d
+  if [ "$CONTAINER_RUNNER" = "podman" ] && [ -f "$MERCURE_BASE"/docker-compose.podman.yml ]; then
+    sudo docker-compose -f docker-compose.yml -f docker-compose.podman.yml up -d
+  else
+    sudo docker-compose up -d
+  fi
   popd
 }
 
@@ -636,7 +647,12 @@ docker_update () {
   fi
   if [ -f $MERCURE_BASE/docker-compose.override.yml ]; then
     echo "ERROR: $MERCURE_BASE/docker-compose.override.yml exists. Updating a dev install is not supported."
-    exit 1  
+    exit 1
+  fi
+  # Detect the active runner from the installed overlay file, not the flag
+  # (which may not be set on a plain `install.sh docker -u` invocation).
+  if [ -f $MERCURE_BASE/docker-compose.podman.yml ]; then
+    CONTAINER_RUNNER="podman"
   fi
   if [ $FORCE_INSTALL != "y" ]; then
     echo "Update mercure to ${MERCURE_TAG:-VERSION} (y/n)?"
@@ -646,7 +662,7 @@ docker_update () {
       exit 0
     fi
   fi
-  # sudo sed -E "s/(image\: mercureimaging.*?\:).*/\1foo/g" docker-compose.yml 
+  # sudo sed -E "s/(image\: mercureimaging.*?\:).*/\1foo/g" docker-compose.yml
   pushd $MERCURE_BASE
   sudo docker-compose down || true
   popd

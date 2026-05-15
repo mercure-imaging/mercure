@@ -212,7 +212,14 @@ class PodmanRuntime(LocalContainerRuntime):
             logs = ""
             raw = container.logs(timestamps=True)
             if raw is not None:
-                logs = raw if isinstance(raw, str) else raw.decode("utf-8")
+                # logs() returns bytes when stream=False (our default).
+                # Guard against Iterator[bytes] in case the SDK changes behaviour.
+                if isinstance(raw, bytes):
+                    logs = raw.decode("utf-8")
+                elif isinstance(raw, str):
+                    logs = raw
+                else:
+                    logs = b"".join(raw).decode("utf-8")
 
             exit_code = result.get("StatusCode", 1) if isinstance(result, dict) else int(result or 0)
             return exit_code, logs
@@ -223,10 +230,10 @@ class PodmanRuntime(LocalContainerRuntime):
             raise Exception(f"Image for tag {tag} not found.") from e
         finally:
             if container is not None:
-                try:
-                    container.stop(timeout=10)
-                except Exception:
-                    pass  # already stopped or never started
+                # ignore=True suppresses the 304 Not Modified response that
+                # Podman returns when stop() is called on an already-exited
+                # container — the documented way to handle this in podman-py.
+                container.stop(ignore=True)
                 container.remove()
 
     # ------------------------------------------------------------------ #
