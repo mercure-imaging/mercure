@@ -81,9 +81,16 @@ class PodmanRuntime(LocalContainerRuntime):
             tag, digest = tag.split("@", 1)
             digest = "@" + digest
 
-        first = tag.split("/")[0]
-        if "." in first or ":" in first or first == "localhost":
-            return tag + digest
+        # Faithfully implements github.com/distribution/reference splitDockerDomain:
+        # only inspect the first path component for a domain indicator when
+        # there IS a slash — a bare "image:tag" with no slash always defaults
+        # to docker.io/library/.
+        if "/" in tag:
+            first = tag.split("/")[0]
+            # A dot or colon anywhere in the first component → it's a hostname.
+            # (Colons here mean host:port, e.g. "registry.example.com:5000".)
+            if "." in first or ":" in first or first == "localhost":
+                return tag + digest
 
         if "/" not in tag:
             return f"docker.io/library/{tag}{digest}"

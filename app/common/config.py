@@ -69,7 +69,7 @@ mercure_defaults = {
     "bookkeeper": "0.0.0.0:8080",
     "offpeak_start": "22:00",
     "offpeak_end": "06:00",
-    "process_runner": "podman",
+    "process_runner": "",  # empty = auto-detect (docker/systemd → Docker, podman env → Podman)
     "targets": {},
     "rules": {},
     "modules": {},
