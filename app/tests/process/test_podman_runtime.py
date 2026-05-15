@@ -391,6 +391,7 @@ async def test_execute_uses_private_selinux_for_job_dirs(fs, mercure_config, moc
         monai_command=None,
         module=module,
         persistence_mount=None,
+        requires_root=False,
     )
 
     in_mode  = captured_volumes[str(folder / "in")]["mode"]
@@ -447,6 +448,7 @@ async def test_execute_uses_shared_selinux_for_persistence(fs, mercure_config, m
         monai_command=None,
         module=module,
         persistence_mount=(persistence_src, "/tmp/persistence"),
+        requires_root=False,
     )
 
     p_mode = captured_volumes[persistence_src]["mode"]
