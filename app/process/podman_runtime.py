@@ -40,6 +40,52 @@ class PodmanRuntime(LocalContainerRuntime):
 
     def __init__(self) -> None:
         self._client: Optional[Any] = None
+        self._check_rootful()
+
+    @staticmethod
+    def _check_rootful() -> None:
+        """
+        Refuse to proceed if Podman appears to be running in rootful mode.
+
+        Rootful Podman does NOT remap uid 0 — root inside the container IS
+        host root, just like Docker.  Our safety assumption (root_requires_approval
+        = False) only holds for rootless Podman, so we reject rootful setups.
+
+        Detection heuristics:
+          - CONTAINER_HOST pointing to the system socket (/run/podman/)
+            while the mercure process itself is non-root means we're reaching
+            a rootful daemon — containers will run as real root.
+          - mercure running as uid 0 without CONTAINER_HOST means the local
+            Podman socket is rootful (no user namespace isolation).
+        """
+        container_host = os.environ.get("CONTAINER_HOST", "")
+        is_system_socket = "/run/podman/" in container_host and "/run/user/" not in container_host
+
+        if is_system_socket:
+            logger.warning(
+                "CONTAINER_HOST points to the system Podman socket (%s). "
+                "This is a rootful Podman configuration — containers will run "
+                "as real root on the host. The 'support_root_modules' safety "
+                "gate is bypassed for Podman under the assumption of rootless "
+                "operation. Refusing to start.",
+                container_host,
+            )
+            raise RuntimeError(
+                "Rootful Podman detected (CONTAINER_HOST points to the system socket). "
+                "mercure's Podman runtime assumes rootless operation for security. "
+                "Either switch to a rootless Podman socket or use process_runner='docker'."
+            )
+
+        if os.getuid() == 0 and not container_host:
+            logger.warning(
+                "mercure is running as root (uid 0) with no CONTAINER_HOST set. "
+                "Podman will use its rootful socket — containers run as real root."
+            )
+            raise RuntimeError(
+                "Rootful Podman detected (mercure running as root). "
+                "mercure's Podman runtime assumes rootless operation for security. "
+                "Run mercure as a non-root user, or use process_runner='docker'."
+            )
 
     @property
     def _podman_client(self) -> podman.PodmanClient:

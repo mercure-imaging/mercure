@@ -103,10 +103,14 @@
                             class="switch is-rounded is-dark" value="True" {% if
                             module['requires_root']==True %}checked="checked" {% endif%} >
                         <label for="requires_root" title="This setting is required for running MONAI applications">Requires Root User</label>
-                        {% if support_root_modules != True %}
+                        {% if process_runner == 'podman' %}
+                        <div class="notification is-info is-light" id="warningroot" style="margin-top: 16px;">
+                            <i class="fas fa-info-circle"></i>&nbsp;&nbsp;Podman is the active processing runtime. Root modules run safely via user namespaces &mdash; the &quot;Support Root Modules&quot; setting has no effect.
+                        </div>
+                        {% elif support_root_modules != True %}
                         <div class="notification is-warning" id="warningroot" style="margin-top: 16px;">
                             <i class="fas fa-info-circle"></i>&nbsp;&nbsp;&quot;Support Root Modules&quot; must be enabled on the <a href="/configuration">Configuration</a> page before this option can be used.
-                        </div>                
+                        </div>
                         {% endif %}
                     </div>
                 </div>
@@ -215,7 +219,13 @@
 <script nonce="{{ csp_nonce }}">
 
     function toggleRequiresRoot(cb) {
-        {% if support_root_modules != True %}
+        {% if process_runner == 'podman' %}
+        if (cb.checked) {
+            $( "#warningroot" ).show();
+        } else {
+            $( "#warningroot" ).hide();
+        }
+        {% elif support_root_modules != True %}
         if (cb.checked) {
             $( "#warningroot" ).show();
         } else {
