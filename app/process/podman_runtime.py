@@ -15,7 +15,6 @@ the processor container and set both CONTAINER_HOST and MERCURE_HOST_DATA_PATH
 
 import json
 import os
-from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -24,7 +23,7 @@ from podman.errors import APIError, ContainerError, ImageNotFound
 
 import common.config as config
 from common.types import Module
-from process.runtime_base import LocalContainerRuntime, _pull_throttle
+from process.runtime_base import LocalContainerRuntime
 
 logger = config.get_logger()
 
@@ -116,7 +115,7 @@ class PodmanRuntime(LocalContainerRuntime):
         tag = self._qualify_image(tag)
         try:
             raw = self._podman_client.containers.run(
-                tag, command="cat /etc/monai/app.json", entrypoint=""
+                tag, command="cat /etc/monai/app.json", entrypoint="", remove=True
             )
             manifest = json.loads(raw.decode("utf-8"))
             logger.debug("Detected MONAI MAP, using command from manifest.")

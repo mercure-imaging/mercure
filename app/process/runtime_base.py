@@ -23,6 +23,8 @@ logger = config.get_logger()
 
 # Shared pull-throttle dict: maps image tag -> last pull time.
 # Module-level so it persists across runtime instances within a process.
+# Subclasses access this via LocalContainerRuntime.pull_throttle rather than
+# importing the private name directly.
 _pull_throttle: Dict[str, datetime] = {}
 
 
@@ -69,6 +71,10 @@ class LocalContainerRuntime(ContainerRuntime):
     # is inherently bounded (e.g. rootless Podman), so the support_root_modules
     # config gate does not need to apply.
     root_requires_approval: bool = True
+
+    # Shared pull-throttle dict exposed for subclasses.  Use this instead of
+    # importing the module-private _pull_throttle directly.
+    pull_throttle = _pull_throttle
 
     # ------------------------------------------------------------------ #
     # Static helpers                                                       #

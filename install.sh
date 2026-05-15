@@ -56,7 +56,7 @@ DATA_PATH=$MERCURE_BASE/data
 CONFIG_PATH=$MERCURE_BASE/config
 DB_PATH=$MERCURE_BASE/db
 MERCURE_SRC=$(readlink -f .)
-CONTAINER_RUNNER="podman"  # default runner for processing modules; use -D flag to switch to docker
+CONTAINER_RUNNER="docker"  # default runner for processing modules; use -P flag to switch to podman
 
 if [ -f "$CONFIG_PATH"/db.env ]; then 
   sudo chown $USER "$CONFIG_PATH"/db.env 
@@ -677,8 +677,8 @@ while getopts ":hy" opt; do
       echo "Usage:"
       echo ""
       echo "    install.sh -h                       Display this help message."
-      echo "    install.sh [-y] systemd [-dmbDu]    Install as systemd service."
-      echo "    install.sh [-y] docker  [-dmbD]     Install with docker-compose."
+      echo "    install.sh [-y] systemd [-dmbDPu]   Install as systemd service."
+      echo "    install.sh [-y] docker  [-dmbDP]    Install with docker-compose."
       echo "    install.sh [-y] podman  [-u]        Install with podman-compose."
       echo "    install.sh [-y] nomad               Install as nomad job."
       echo ""
@@ -686,7 +686,8 @@ while getopts ":hy" opt; do
       echo "                      -d               Development mode."
       echo "                      -m               Install Metabase for reporting."
       echo "                      -D               Use Docker for processing modules"
-      echo "                                       (default: Podman)."
+      echo "                                       (this is the default)."
+      echo "                      -P               Use Podman for processing modules."
       echo "only for systemd:"
       echo "                      -u               Update installation."
       echo "only for docker:"
@@ -718,7 +719,7 @@ DOCKER_BUILD=false
 DO_OPERATION="install"
 INSTALL_ORTHANC=false
 INSTALL_METABASE=false
-while getopts ":dbuomD" opt; do
+while getopts ":dbuomDP" opt; do
   case ${opt} in
     o )
       INSTALL_ORTHANC=true
@@ -740,6 +741,9 @@ while getopts ":dbuomD" opt; do
       ;;
     D )
       CONTAINER_RUNNER="docker"
+      ;;
+    P )
+      CONTAINER_RUNNER="podman"
       ;;
     \? )
       echo "Invalid Option for \"$INSTALL_TYPE\": -$OPTARG" 1>&2

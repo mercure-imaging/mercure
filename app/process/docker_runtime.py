@@ -16,7 +16,7 @@ from docker.types import Mount
 import common.config as config
 import common.helper as helper
 from common.types import Module
-from process.runtime_base import LocalContainerRuntime, _pull_throttle
+from process.runtime_base import LocalContainerRuntime
 
 logger = config.get_logger()
 
@@ -49,7 +49,7 @@ class DockerRuntime(LocalContainerRuntime):
     def _detect_monai(self, tag: str) -> Optional[list]:
         try:
             raw = self._docker_client.containers.run(
-                tag, command="cat /etc/monai/app.json", entrypoint=""
+                tag, command="cat /etc/monai/app.json", entrypoint="", remove=True
             )
             manifest = json.loads(raw.decode("utf-8"))
             logger.debug("Detected MONAI MAP, using command from manifest.")
@@ -155,10 +155,10 @@ class DockerRuntime(LocalContainerRuntime):
                 busybox_tag = "busybox:stable-musl"
                 if (
                     datetime.now()
-                    - _pull_throttle.get(busybox_tag, datetime.fromisocalendar(1, 1, 1))
+                    - self.pull_throttle.get(busybox_tag, datetime.fromisocalendar(1, 1, 1))
                 ).total_seconds() > 86400:
                     client.images.pull(busybox_tag)
-                    _pull_throttle[busybox_tag] = datetime.now()
+                    self.pull_throttle[busybox_tag] = datetime.now()
             except Exception:
                 logger.exception("Could not pull busybox")
 

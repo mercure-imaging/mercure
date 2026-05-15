@@ -8,25 +8,32 @@
 #
 # What this overrides vs the base file:
 #
-#   x-env              — adds CONTAINER_HOST and MERCURE_HOST_DATA_PATH so
-#                        PodmanRuntime connects to the host socket and remaps
-#                        volume paths correctly.
-#
-#   x-volumes-docker   — swaps the Docker socket mount for the system Podman
-#                        socket at /run/podman/podman.sock.
+#   ui & processor   — replaces Docker socket with the host Podman socket,
+#                      adds CONTAINER_HOST and MERCURE_HOST_DATA_PATH env vars
+#                      so PodmanRuntime connects correctly and remaps paths.
 #
 # Everything else (image tags, ports, healthchecks, service graph) is
 # inherited unchanged from docker-compose.yml.
 
-x-env: &env
-  environment:
-    MERCURE_RUNNER: docker
-    CONTAINER_HOST: unix:///run/podman/podman.sock
-    MERCURE_HOST_DATA_PATH: /opt/mercure/data
-    REDIS_URL: redis://redis:6379/0
+services:
+  ui:
+    volumes:
+      - config:/opt/mercure/config
+      - data:/opt/mercure/data
+      - /run/podman/podman.sock:/run/podman/podman.sock
+    environment:
+      MERCURE_RUNNER: docker
+      CONTAINER_HOST: unix:///run/podman/podman.sock
+      MERCURE_HOST_DATA_PATH: /opt/mercure/data
+      REDIS_URL: redis://redis:6379/0
 
-x-volumes-docker: &volumes-docker
-  volumes:
-    - config:/opt/mercure/config
-    - data:/opt/mercure/data
-    - /run/podman/podman.sock:/run/podman/podman.sock
+  processor:
+    volumes:
+      - config:/opt/mercure/config
+      - data:/opt/mercure/data
+      - /run/podman/podman.sock:/run/podman/podman.sock
+    environment:
+      MERCURE_RUNNER: docker
+      CONTAINER_HOST: unix:///run/podman/podman.sock
+      MERCURE_HOST_DATA_PATH: /opt/mercure/data
+      REDIS_URL: redis://redis:6379/0

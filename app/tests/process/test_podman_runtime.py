@@ -41,6 +41,9 @@ class FakePodmanContainer:
     def logs(self, timestamps=False):
         return self._log_output
 
+    def stop(self, ignore=False):
+        pass
+
     def remove(self):
         pass
 
