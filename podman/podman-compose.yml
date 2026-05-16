@@ -5,8 +5,14 @@ x-env: &env
     # to launch processing modules.  Processing modules use Podman via the
     # socket mounted at CONTAINER_HOST; get_runtime() selects PodmanRuntime
     # because process_runner="podman" is set in mercure.json by the installer.
+    #
+    # The host socket path (containing the real UID) is substituted by the
+    # installer.  Inside the container it is mounted at /run/mercure-podman/
+    # so that PodmanRuntime's _check_rootful() does not reject it — that
+    # check looks for the literal system socket path "/run/podman/" as a
+    # signal of rootful operation.
     MERCURE_RUNNER: docker
-    CONTAINER_HOST: unix:///run/podman/podman.sock
+    CONTAINER_HOST: unix:///run/mercure-podman/podman.sock
     MERCURE_HOST_DATA_PATH: /opt/mercure/data
     REDIS_URL: redis://redis:6379/0
 x-volumes: &volumes
@@ -18,7 +24,7 @@ x-volumes-podman: &volumes-podman
   volumes:
     - config:/opt/mercure/config
     - data:/opt/mercure/data
-    - /run/podman/podman.sock:/run/podman/podman.sock
+    - ${PODMAN_SOCKET}:/run/mercure-podman/podman.sock
 
 x-user: &user
   user: "${UID}:${GID}"

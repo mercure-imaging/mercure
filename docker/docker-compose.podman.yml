@@ -1,16 +1,21 @@
 # docker-compose.podman.yml
 # ==========================
 # Compose override for running mercure inside Docker while using the *host*
-# Podman daemon (via the system socket) for processing modules.
+# Podman daemon (via the rootless user socket) for processing modules.
 #
 # Apply on top of docker-compose.yml:
 #   docker-compose -f docker-compose.yml -f docker-compose.podman.yml up -d
 #
 # What this overrides vs the base file:
 #
-#   ui & processor   — replaces Docker socket with the host Podman socket,
+#   ui & processor   — mounts the mercure user's rootless Podman socket,
 #                      adds CONTAINER_HOST and MERCURE_HOST_DATA_PATH env vars
 #                      so PodmanRuntime connects correctly and remaps paths.
+#
+# The host socket path (${PODMAN_SOCKET}) is substituted by the installer
+# with the mercure user's rootless socket at /run/user/<UID>/podman/podman.sock.
+# Inside the container it is mounted at /run/mercure-podman/ so that
+# PodmanRuntime's _check_rootful() does not false-positive on the path.
 #
 # Everything else (image tags, ports, healthchecks, service graph) is
 # inherited unchanged from docker-compose.yml.
@@ -20,7 +25,7 @@ services:
     volumes:
       - config:/opt/mercure/config
       - data:/opt/mercure/data
-      - /run/podman/podman.sock:/run/mercure-podman/podman.sock
+      - ${PODMAN_SOCKET}:/run/mercure-podman/podman.sock
     environment:
       MERCURE_RUNNER: docker
       CONTAINER_HOST: unix:///run/mercure-podman/podman.sock
@@ -31,7 +36,7 @@ services:
     volumes:
       - config:/opt/mercure/config
       - data:/opt/mercure/data
-      - /run/podman/podman.sock:/run/mercure-podman/podman.sock
+      - ${PODMAN_SOCKET}:/run/mercure-podman/podman.sock
     environment:
       MERCURE_RUNNER: docker
       CONTAINER_HOST: unix:///run/mercure-podman/podman.sock

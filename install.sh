@@ -319,13 +319,6 @@ install_podman () {
   fi
 }
 
-enable_podman_system_socket () {
-  # Used by the docker install type: enables the system-wide Podman socket so
-  # that the processor container can reach the host Podman daemon.
-  # Socket is created at /run/podman/podman.sock (rootful Podman).
-  echo "## Enabling system-level Podman socket..."
-  sudo systemctl enable --now podman.socket
-}
 
 enable_podman_user_socket () {
   # Used by the systemd install type: enables the per-user Podman socket for the
@@ -360,9 +353,10 @@ setup_docker () {
       # that use *docker-user don't depend on a docker group that doesn't exist.
       MERCURE_GID=$(getent passwd mercure | cut -d: -f4)
       sudo sed -i -e "s/\\\${DOCKER_GID}/$MERCURE_GID/g" $MERCURE_BASE/docker-compose.yml
-      # Copy the Podman overlay: swaps socket mount and injects env vars via
-      # compose anchor overrides instead of fragile in-place text patching.
+      # Copy the Podman overlay and substitute the rootless user socket path.
       sudo cp $MERCURE_SRC/docker/docker-compose.podman.yml $MERCURE_BASE
+      MERCURE_UID=$(getent passwd mercure | cut -d: -f3)
+      sudo sed -i -e "s|\\\${PODMAN_SOCKET}|/run/user/$MERCURE_UID/podman/podman.sock|g" $MERCURE_BASE/docker-compose.podman.yml
       sudo chown $OWNER:$OWNER "$MERCURE_BASE"/docker-compose.podman.yml
     fi
 
@@ -422,8 +416,11 @@ setup_podman_compose () {
   if [ "$overwrite" = true ] || [ ! -f "$MERCURE_BASE"/podman-compose.yml ]; then
     echo "## Copying podman-compose.yml..."
     sudo cp $MERCURE_SRC/podman/podman-compose.yml $MERCURE_BASE
-    sudo sed -i -e "s/\\\${UID}/$(getent passwd mercure | cut -d: -f3)/g" $MERCURE_BASE/podman-compose.yml
-    sudo sed -i -e "s/\\\${GID}/$(getent passwd mercure | cut -d: -f4)/g" $MERCURE_BASE/podman-compose.yml
+    MERCURE_UID=$(getent passwd mercure | cut -d: -f3)
+    MERCURE_GID=$(getent passwd mercure | cut -d: -f4)
+    sudo sed -i -e "s/\\\${UID}/$MERCURE_UID/g" $MERCURE_BASE/podman-compose.yml
+    sudo sed -i -e "s/\\\${GID}/$MERCURE_GID/g" $MERCURE_BASE/podman-compose.yml
+    sudo sed -i -e "s|\\\${PODMAN_SOCKET}|/run/user/$MERCURE_UID/podman/podman.sock|g" $MERCURE_BASE/podman-compose.yml
 
     if [[ -v MERCURE_TAG ]]; then
       sudo sed -i "s/\\\${IMAGE_TAG}/\:$MERCURE_TAG/g" $MERCURE_BASE/podman-compose.yml
@@ -436,8 +433,9 @@ setup_podman_compose () {
 
 start_podman_compose () {
   echo "## Starting podman-compose..."
+  MERCURE_UID=$(id -u mercure)
   pushd $MERCURE_BASE
-  sudo podman-compose up -d
+  sudo -u mercure XDG_RUNTIME_DIR=/run/user/$MERCURE_UID podman-compose up -d
   popd
 }
 
@@ -448,7 +446,7 @@ podman_compose_install () {
   create_folders
   install_configuration
   install_podman
-  enable_podman_system_socket
+  enable_podman_user_socket
   install_podman_compose
   setup_podman_compose
   start_podman_compose
@@ -467,8 +465,9 @@ podman_compose_update () {
       exit 0
     fi
   fi
+  MERCURE_UID=$(id -u mercure)
   pushd $MERCURE_BASE
-  sudo podman-compose down || true
+  sudo -u mercure XDG_RUNTIME_DIR=/run/user/$MERCURE_UID podman-compose down || true
   popd
   setup_podman_compose true
   start_podman_compose
@@ -588,7 +587,7 @@ docker_install () {
   install_docker
   if [ "$CONTAINER_RUNNER" = "podman" ]; then
     install_podman
-    enable_podman_system_socket
+    enable_podman_user_socket
   fi
   if [ $DOCKER_BUILD = true ]; then
     build_docker
