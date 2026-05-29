@@ -1,6 +1,7 @@
 import json
 import multiprocessing
 import os
+import socket
 import subprocess
 import sys
 import tempfile
@@ -13,7 +14,6 @@ from typing import Any, Callable, Generator, Optional
 import pytest
 from common.config import mercure_defaults
 from supervisor.options import ServerOptions
-from supervisor.states import RUNNING_STATES
 from supervisor.supervisord import Supervisor
 from supervisor.xmlrpc import SupervisorTransport
 
@@ -26,6 +26,19 @@ def here() -> str:
         return os.path.abspath(os.getcwd())
     else:
         return os.path.abspath(os.path.dirname(os.getcwd()))
+
+
+def _wait_for_port(host: str, port: int, timeout: float = 30.0, interval: float = 0.25) -> None:
+    """Block until a TCP port accepts connections."""
+    deadline = time.monotonic() + timeout
+    while True:
+        try:
+            with socket.create_connection((host, port), timeout=interval):
+                return
+        except OSError:
+            if time.monotonic() >= deadline:
+                raise TimeoutError(f"Port {host}:{port} did not open within {timeout}s")
+            time.sleep(interval)
 
 
 class SupervisorManager:
@@ -71,12 +84,14 @@ serverurl=unix://{self.socket}
 [program:{service.name}]
 command={service.command}
 process_name=%(program_name)s{'_%(process_num)d' if service.numprocs>1 else ''}
-directory={os.getcwd()}
+directory={here()}/app
 autostart=false
 autorestart=false
 redirect_stderr=true
 startsecs={service.startsecs}
 stopasgroup={str(service.stopasgroup).lower()}
+killasgroup=true
+stopwaitsecs=1
 numprocs={service.numprocs}
 environment=MERCURE_CONFIG_FOLDER="{self.mercure_base}/config", MERCURE_BASEPATH="{self.mercure_base}"
 """)
@@ -141,11 +156,16 @@ environment=MERCURE_CONFIG_FOLDER="{self.mercure_base}/config", MERCURE_BASEPATH
             return
         try:
             self.transport.close()
-            self.process.terminate()
-            self.process.join()
+        except Exception:
+            pass
+        try:
+            self.process.terminate()  # SIGTERM → supervisord shuts down children
+            self.process.join(timeout=5)
+            if self.process.is_alive():
+                self.process.kill()  # escalate if still running after 5s
+                self.process.join()
         except Exception as e:
             print(e)
-            pass
 
 
 @pytest.fixture(scope="function")
@@ -167,12 +187,6 @@ def supervisord(mercure_base):
 def stop_mercure(supervisor: SupervisorManager):
     logs = {}
     for service in supervisor.all_services():
-        if service['state'] in RUNNING_STATES:
-            try:
-                supervisor.stop_service(service['name'])
-            except xmlrpc.client.Fault as e:
-                if e.faultCode == 10:
-                    supervisor.stop_service(service['group'] + ":*")
         log_file = Path(service['stdout_logfile'])
         if log_file.exists():
             log = log_file.read_text()
@@ -204,14 +218,14 @@ def mercure_base() -> Generator[Path, None, None]:
 
 
 @pytest.fixture(scope="function")
-def mercure(supervisord: Callable[[Any], SupervisorManager], python_bin
+def mercure(supervisord: Callable[[Any], SupervisorManager], python_bin, bookkeeper_port
             ) -> Generator[Callable[[Any], SupervisorManager], None, None]:
     def py_service(service, **kwargs) -> MercureService:
         if 'command' not in kwargs:
             kwargs['command'] = f"{python_bin} {here()}/app/{service}.py"
         return MercureService(service, **kwargs)
     services = [
-        py_service("bookkeeper", startsecs=6),
+        py_service("bookkeeper", startsecs=0),
         py_service("router", numprocs=5),
         py_service("processor", numprocs=2),
         py_service("dispatcher", numprocs=5),
@@ -224,6 +238,8 @@ def mercure(supervisord: Callable[[Any], SupervisorManager], python_bin
     def do_start(services_to_start=["bookkeeper", "receiver", "router", "processor", "dispatcher"]) -> SupervisorManager:
         for service in services_to_start:
             supervisor.start_service(service)
+        if "bookkeeper" in services_to_start:
+            _wait_for_port("localhost", bookkeeper_port)
         return supervisor
     yield do_start
     logs = stop_mercure(supervisor)
