@@ -307,7 +307,7 @@ async def show_log(request) -> Response:
         else:
             service_name = service_name_or_list
             sub_services = []
-        
+
         command = ["sudo", "journalctl", "-n", "1000", "-u", service_name]
         if start_timestamp:
             command.extend(["--since", f"{start_timestamp} {config.mercure.local_time}"])
@@ -315,7 +315,7 @@ async def show_log(request) -> Response:
             command.extend(["--until", f"{end_timestamp} {config.mercure.local_time}"])
 
         command.extend(["-o", "short-iso", "--no-hostname"])
-        
+
         return_code, raw_logs, log_err = await async_run_exec(*command)
 
     elif runtime == "docker":
@@ -654,7 +654,7 @@ async def self_test(request) -> Response:
         "--recurse", "--scan-directories", str(tmpdir),
         "--aetitle", "mercure", "-aec", f"{test_id}_begin",
         "--no-uid-checks",
-        "--scan-pattern", "*.dcm", 
+        "--scan-pattern", "*.dcm",
         "--timeout", "60", # 60 seconds
     ]
     try:
@@ -1006,7 +1006,7 @@ class OriginCheckMiddleware(BaseHTTPMiddleware):
     """Rejects unsafe requests whose Origin does not match the Host header."""
 
     async def dispatch(self, request, call_next):
-        if request.method not in SAFE_METHODS and request.url.path not in ORIGIN_EXEMPT_PATHS:
+        if request.method not in SAFE_METHODS and request.scope["path"] not in ORIGIN_EXEMPT_PATHS:
             origin = request.headers.get("origin")
             if origin is not None:
                 origin_host = urlparse(origin).netloc
