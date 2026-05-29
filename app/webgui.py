@@ -292,13 +292,6 @@ async def show_log(request) -> Response:
             pass
         sub_services = []
     elif runtime == "systemd":
-        start_date_cmd = ""
-        end_date_cmd = ""
-        if start_timestamp:
-            start_date_cmd = f'--since "{start_timestamp} {config.mercure.local_time}"'
-        if end_timestamp:
-            end_date_cmd = f'--until "{end_timestamp} {config.mercure.local_time}"'
-
         service_name_or_list = services.services_list[requested_service]["systemd_service"]
         if isinstance(service_name_or_list, list):
             service_name = request.query_params.get("subservice", "missing")
@@ -316,10 +309,10 @@ async def show_log(request) -> Response:
             sub_services = []
         
         command = ["sudo", "journalctl", "-n", "1000", "-u", service_name]
-        if start_date_cmd:
-            command.append(start_date_cmd)
-        if end_date_cmd:
-            command.append(end_date_cmd)
+        if start_timestamp:
+            command.extend(["--since", f"{start_timestamp} {config.mercure.local_time}"])
+        if end_timestamp:
+            command.extend(["--until", f"{end_timestamp} {config.mercure.local_time}"])
 
         command.extend(["-o", "short-iso", "--no-hostname"])
         
@@ -335,6 +328,8 @@ async def show_log(request) -> Response:
                 if service_name == "missing":
                     return RedirectResponse(url="/logs/" + requested_service + "?subservice=" + service_name_or_list[0],
                                             status_code=303)
+                if service_name not in service_name_or_list:
+                    return PlainTextResponse("Invalid subservice", status_code=400)
                 sub_services = service_name_or_list
             else:
                 service_name = service_name_or_list

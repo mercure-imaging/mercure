@@ -129,7 +129,7 @@ class DicomTargetHandler(SubprocessTargetHandler[DicomTarget]):
                 ping_response = True
 
             cecho_result, *_ = await async_run_exec(
-                "bin/dcmtk/echoscu", "-to", "2", "-aec", target_aec, "-aet", "target_aet", target_ip, target_port
+                "bin/dcmtk/echoscu", "-to", "2", "-aec", target_aec, "-aet", target_aet, target_ip, target_port
             )
             if cecho_result == 0:
                 cecho_response = True
@@ -193,9 +193,9 @@ class DicomTLSTargetHandler(SubprocessTargetHandler[DicomTLSTarget]):
             if ping_result == 0:
                 ping_response = True
 
-            cecho_command = ["bin/dcmtk/echoscu", "-to", "2", "-aec", target_aec, "-aet", target_aet, target_ip, target_port,""
-                            "+tls",tls_key, tls_cert, "+cf", ca_cert]
-            logger.info('Running %s' % cecho_command.join(' '))
+            cecho_command = ["bin/dcmtk/echoscu", "-to", "2", "-aec", target_aec, "-aet", target_aet, target_ip, target_port,
+                            "+tls", tls_key, tls_cert, "+cf", ca_cert]
+            logger.info('Running %s' % ' '.join(cecho_command))
             cecho_result, *_ = await async_run_exec(*cecho_command)
             if cecho_result == 0:
                 cecho_response = True
