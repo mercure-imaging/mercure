@@ -13,6 +13,18 @@ x-docker-user: &docker-user
 x-user: &user
   user: "${UID}:${GID}"
 
+networks:
+  datastore:
+    # Redis + DB only. No external routing.
+    internal: true
+  services:
+    # Inter-service communication (all services <-> bookkeeper).
+    internal: true
+  exposed:
+    # Port-facing services (UI, receiver).
+  egress:
+    # Services requiring outbound network access (dispatcher, processor).
+
 services:
   base:
     image: mercureimaging/mercure-base:${TAG:-latest}
@@ -44,11 +56,13 @@ services:
       - "8000:8000"
     volumes:
       - data:/opt/mercure/data
-      - /opt/mercure/config/mercure.json:/opt/mercure/config/mercure.json
-      - /opt/mercure/config/services.json:/opt/mercure/config/services.json:ro
-      - /opt/mercure/config/webgui.env:/opt/mercure/config/webgui.env:ro
-      - /opt/mercure/config/users.json:/opt/mercure/config/users.json
+      - /opt/mercure/config:/opt/mercure/config
       - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - exposed
+      - datastore
+      - services
+      - egress
 
   db:
     image: library/postgres:14-alpine
@@ -59,12 +73,12 @@ services:
       POSTGRES_USER: mercure
       POSTGRES_DB: mercure
       PGDATA: /var/lib/postgresql/data/pgdata
-    ports:
-      - "15432:5432"
     volumes:
       - db-data:/var/lib/postgresql/data
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U mercure" ]
+    networks:
+      - datastore
 
   receiver:
     <<: [*user, *env]
@@ -80,8 +94,10 @@ services:
       - "11112:11112"
     volumes:
       - data:/opt/mercure/data
-      - /opt/mercure/config/mercure.json:/opt/mercure/config/mercure.json:ro
-      - /opt/mercure/config/services.json:/opt/mercure/config/services.json:ro
+      - /opt/mercure/config:/opt/mercure/config:ro
+    networks:
+      - exposed
+      - services
 
   cleaner:
     <<: [*user, *env]
@@ -95,8 +111,9 @@ services:
         condition: service_healthy
     volumes:
       - data:/opt/mercure/data
-      - /opt/mercure/config/mercure.json:/opt/mercure/config/mercure.json:ro
-      - /opt/mercure/config/services.json:/opt/mercure/config/services.json:ro
+      - /opt/mercure/config:/opt/mercure/config:ro
+    networks:
+      - services
 
   dispatcher:
     <<: [*user, *env]
@@ -110,8 +127,10 @@ services:
         condition: service_healthy
     volumes:
       - data:/opt/mercure/data
-      - /opt/mercure/config/mercure.json:/opt/mercure/config/mercure.json:ro
-      - /opt/mercure/config/services.json:/opt/mercure/config/services.json:ro
+      - /opt/mercure/config:/opt/mercure/config:ro
+    networks:
+      - services
+      - egress
 
   processor:
     <<: [*docker-user, *env]
@@ -125,9 +144,12 @@ services:
         condition: service_healthy
     volumes:
       - data:/opt/mercure/data
-      - /opt/mercure/config/mercure.json:/opt/mercure/config/mercure.json:ro
-      - /opt/mercure/config/services.json:/opt/mercure/config/services.json:ro
+      - /opt/mercure/config:/opt/mercure/config:ro
+      - /opt/mercure/persistence:/opt/mercure/persistence
       - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - services
+      - egress
 
   router:
     <<: [*user, *env]
@@ -141,8 +163,9 @@ services:
         condition: service_healthy
     volumes:
       - data:/opt/mercure/data
-      - /opt/mercure/config/mercure.json:/opt/mercure/config/mercure.json:ro
-      - /opt/mercure/config/services.json:/opt/mercure/config/services.json:ro
+      - /opt/mercure/config:/opt/mercure/config:ro
+    networks:
+      - services
 
   bookkeeper:
     <<: [*user, *env]
@@ -156,9 +179,10 @@ services:
         condition: service_healthy
     volumes:
       - data:/opt/mercure/data
-      - /opt/mercure/config/mercure.json:/opt/mercure/config/mercure.json:ro
-      - /opt/mercure/config/services.json:/opt/mercure/config/services.json:ro
-      - /opt/mercure/config/bookkeeper.env:/opt/mercure/config/bookkeeper.env:ro
+      - /opt/mercure/config:/opt/mercure/config:ro
+    networks:
+      - datastore
+      - services
 
   redis:
     image: redis
@@ -168,6 +192,8 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
     volumes:
       - redis-cache:/data
+    networks:
+      - datastore
 
   worker_fast:
     <<: *user
@@ -185,8 +211,9 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
     volumes:
       - data:/opt/mercure/data
-      - /opt/mercure/config/mercure.json:/opt/mercure/config/mercure.json:ro
-      - /opt/mercure/config/services.json:/opt/mercure/config/services.json:ro
+      - /opt/mercure/config:/opt/mercure/config:ro
+    networks:
+      - datastore
 
   worker_slow:
     <<: *user
@@ -201,8 +228,9 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
     volumes:
       - data:/opt/mercure/data
-      - /opt/mercure/config/mercure.json:/opt/mercure/config/mercure.json:ro
-      - /opt/mercure/config/services.json:/opt/mercure/config/services.json:ro
+      - /opt/mercure/config:/opt/mercure/config:ro
+    networks:
+      - datastore
 
 volumes:
   db-data:

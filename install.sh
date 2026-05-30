@@ -124,6 +124,7 @@ create_folders () {
   if [ $INSTALL_TYPE != "systemd" ]; then
     create_folder $DB_PATH
   fi
+  create_folder "$MERCURE_BASE/persistence"
 
   if [[ ! -e $DATA_PATH ]]; then
       echo "## Creating $DATA_PATH..."
@@ -169,22 +170,22 @@ install_configuration () {
 install_nomad () {
   echo "Installing Nomad..."
   NOMAD_VERSION=1.2.0
-  if [ ! -x "$(command -v unzip)" ]; then 
+  if [ ! -x "$(command -v unzip)" ]; then
     sudo apt-get install -y unzip
   fi 
 
-  if [ ! -x "$(command -v nomad)" ]; then 
+  if [ ! -x "$(command -v nomad)" ]; then
     curl -sSL https://releases.hashicorp.com/nomad/${NOMAD_VERSION}/nomad_${NOMAD_VERSION}_linux_amd64.zip -o /tmp/nomad.zip
-    unzip -o /tmp/nomad.zip  -d /tmp 
+    unzip -o /tmp/nomad.zip  -d /tmp
     sudo install /tmp/nomad /usr/bin/nomad
     nomad -autocomplete-install
-  fi 
+  fi
   if [ ! -d /etc/nomad.d ]; then
     sudo mkdir -p /etc/nomad.d
     sudo chmod a+w /etc/nomad.d
   fi
 
-  if [ ! -f "/etc/systemd/system/nomad.service" ]; then 
+  if [ ! -f "/etc/systemd/system/nomad.service" ]; then
       (
     cat <<-EOFB
     [Unit]
@@ -203,14 +204,14 @@ EOFB
     sudo systemctl restart nomad.service
   fi
 
-  if [ ! -x "$(command -v consul)" ]; then 
+  if [ ! -x "$(command -v consul)" ]; then
     echo "Installing Consul..."
     CONSUL_VERSION=1.9.0
     curl -sSL https://releases.hashicorp.com/consul/${CONSUL_VERSION}/consul_${CONSUL_VERSION}_linux_amd64.zip -o /tmp/consul.zip
     unzip -o /tmp/consul.zip -d /tmp
     sudo install /tmp/consul /usr/bin/consul
   fi
-  if [ ! -f "/etc/systemd/system/consul.service" ]; then 
+  if [ ! -f "/etc/systemd/system/consul.service" ]; then
     (
     cat <<-EOFA
       [Unit]
@@ -285,8 +286,8 @@ setup_nomad() {
     sleep 1s;
   done;
 
-  if [ -z "${NOMAD_TOKEN:-}" ]; then 
-    if [ ! -x "$(command -v jq)" ]; then 
+  if [ -z "${NOMAD_TOKEN:-}" ]; then
+    if [ ! -x "$(command -v jq)" ]; then
       sudo apt-get install -y jq
     fi
     echo "NOMAD_TOKEN not set. Attempting to bootstrap Nomad ACL."
@@ -300,7 +301,7 @@ setup_nomad() {
       export NOMAD_TOKEN=$new_secret_id
     fi
   fi
-  nomad acl policy apply -description "Mercure anonymous policy" anonymous $MERCURE_BASE/anonymous-strict.policy.hcl 
+  nomad acl policy apply -description "Mercure anonymous policy" anonymous $MERCURE_BASE/anonymous-strict.policy.hcl
   nomad run -detach $MERCURE_BASE/mercure.nomad
   nomad run -detach $MERCURE_BASE/mercure-ui.nomad
 
@@ -332,7 +333,7 @@ install_docker () {
     sudo docker --version
   fi
 
-  if [ ! -x "$(command -v docker-compose)" ]; then 
+  if [ ! -x "$(command -v docker-compose)" ]; then
     echo "## Installing Docker-Compose..."
     sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
     sudo chmod +x /usr/local/bin/docker-compose
@@ -383,7 +384,7 @@ build_docker () {
 }
 
 start_docker () {
-  echo "## Starting docker compose..."  
+  echo "## Starting docker compose..."
   pushd $MERCURE_BASE
   sudo docker-compose up -d
   popd
@@ -391,7 +392,7 @@ start_docker () {
 
 install_app_files() {
   local overwrite=${1:-false}
-  if [ $DO_DEV_INSTALL = true ]; then 
+  if [ $DO_DEV_INSTALL = true ]; then
     if [ -e "$MERCURE_BASE"/app ]; then # app already exists
       if [ -L "$MERCURE_BASE"/app ]; then # it's already linked somewhere
         sudo unlink "$MERCURE_BASE"/app
@@ -681,10 +682,10 @@ docker_update () {
   fi
   if [ -f $MERCURE_BASE/docker-compose.override.yml ]; then
     echo "ERROR: $MERCURE_BASE/docker-compose.override.yml exists. Updating a dev install is not supported."
-    exit 1  
+    exit 1
   fi
   if [ $FORCE_INSTALL != "y" ]; then
-    echo "Update mercure to ${MERCURE_TAG:-VERSION} (y/n)?"
+    echo "Update mercure to ${MERCURE_TAG:-$VERSION} (y/n)?"
     read -p "WARNING: Server may require manual fixes after update. Taking backups beforehand is recommended. " ANS
     if [ "$ANS" != "y" ]; then
       echo "Update aborted."
@@ -697,6 +698,7 @@ docker_update () {
     sudo chown $OWNER:$OWNER "$CONFIG_PATH"/redis.env
     sudo chmod o-r "$CONFIG_PATH"/redis.env
   fi
+  create_folder "$MERCURE_BASE/persistence"
   pushd $MERCURE_BASE
   sudo docker-compose down || true
   popd
@@ -722,7 +724,7 @@ while getopts ":hy" opt; do
       echo "                      -u               Update installation."
       echo "only for docker:"
       echo "                      -b               Build containers."
-      echo ""      
+      echo ""
       exit 0
       ;;
     y )

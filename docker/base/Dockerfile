@@ -23,7 +23,8 @@ RUN chown -R mercure ./configuration && \
 COPY ./app .
 
 # The configuration and data folders is probably the only thing that mercure ACTUALLY needs to write to
-RUN chmod -R o+rx /opt/mercure/app && \
+RUN chown -R mercure /opt/mercure/app && \
+    chmod -R o+rx /opt/mercure/app && \
     chown -R mercure /opt/mercure/config && \
     mkdir -p /opt/mercure/data/incoming \
           /opt/mercure/data/studies \
