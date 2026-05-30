@@ -57,7 +57,7 @@ requests-toolbelt==1.0.0
     # via -r dev-requirements.in
 sortedcontainers==2.4.0
     # via fakeredis
-supervisor==4.2.5
+supervisor==4.3.0
     # via -r dev-requirements.in
 tomli==2.0.1
     # via
