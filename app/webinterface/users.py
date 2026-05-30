@@ -149,6 +149,7 @@ def evaluate_password(username, password) -> bool:
             logger.info(f"Rehashed password for user {username} to argon2")
         return True
     except Exception:
+        logger.exception("Error during password verification")
         return False
 
 

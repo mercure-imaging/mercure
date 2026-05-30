@@ -9,7 +9,17 @@ import common.config as config
 import process  # noqa: F401
 import pytest
 import routing  # noqa: F401
+import webinterface.users as users_module
 from bookkeeping import bookkeeper
+
+# Force passlib's argon2 backend to fully initialize before any pyfakefs fixture
+# starts. argon2-cffi 25+ lazily calls importlib.metadata("argon2-cffi") on first
+# use; pyfakefs intercepts that read and raises PackageNotFoundError because
+# .dist-info dirs are not in the fake filesystem.
+try:
+    users_module.hash_password("_passlib_warmup_")
+except Exception:
+    pass
 from common.types import Config
 from starlette.testclient import TestClient
 
@@ -103,8 +113,10 @@ def test_client(fs, mercure_config):
 
 @pytest.fixture(scope="function", autouse=True)
 def mercure_config(fs, bookkeeper_port) -> Callable[[Dict], Config]:
-    # Reset cached config timestamp so read_config() re-reads from the fresh fakefs file
+    # Reset cached timestamps so read_config() and read_users() re-read from the fresh fakefs file
     config.configuration_timestamp = 0
+    users_module.users_timestamp = 0.0
+    users_module.users_list = {}
     config_path = os.path.realpath(os.path.dirname(os.path.realpath(__file__)) + "/data/test_config.json")
 
     fs.add_real_file(config_path, target_path=config.configuration_filename, read_only=False)

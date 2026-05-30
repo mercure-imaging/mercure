@@ -17,10 +17,10 @@ from common.constants import mercure_defs
 # Starlette-related includes
 from starlette.templating import Jinja2Templates
 
-redis = None
-rq_slow_queue = None
-rq_fast_queue = None
-rq_fast_scheduler = None
+redis: Any = None
+rq_slow_queue: Any = None
+rq_fast_queue: Any = None
+rq_fast_scheduler: Any = None
 
 
 def setup_redis() -> None:

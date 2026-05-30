@@ -247,9 +247,9 @@ def trigger_notification_for_rule(
                 patient_name=task.info.patient_name or "",
             )
 
-        context = dict(body=jinja2.utils.htmlsafe_json_dumps(  # type: ignore
+        context: Dict[str, Any] = dict(body=jinja2.utils.htmlsafe_json_dumps(  # type: ignore
             parse_payload(body, event, rule_name, task_id, details, phi_data, task=task, tags_list=tags_list))[1:-1])
-        context.update(phi_data)
+        context.update(phi_data)  # type: ignore[arg-type]
 
         webhook_payload = parse_payload(
             current_rule.get("notification_payload", ""),

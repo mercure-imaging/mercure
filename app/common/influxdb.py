@@ -42,9 +42,9 @@ class Sender:
             raise TypeError('"value" must be an int or a float, not a {}'.format(
                 type(value).__name__))
 
-        message = Point(self.prefix + "." + metric).field("value", value)
+        message = Point(self.prefix + "." + metric).field("value", value)  # type: ignore[no-untyped-call]
 
-        return message
+        return message  # type: ignore[no-any-return]
 
     def send(self, metric: str, value: Union[int, float], timestamp: Optional[float] = None):
         """Send given metric and (int or float) value to InfluxDB host.
@@ -75,7 +75,7 @@ class Sender:
             if self.log_sends:
                 elapsed_time = time.time() - start_time
                 logger.info('sent message {!r} to ({}, {}, {}, {}, {}) in {:.03f} seconds'.format(
-                    message.to_line_protocol(), self.host, self.token, self.org, self.bucket, self.type, elapsed_time))
+                    message.to_line_protocol(), self.host, self.token, self.org, self.bucket, self.type, elapsed_time))  # type: ignore[no-untyped-call]
 
 
 def init(*args, **kwargs) -> None:

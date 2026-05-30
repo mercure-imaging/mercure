@@ -277,7 +277,7 @@ async def show_log(request) -> Response:
     ):
         return PlainTextResponse("Service incorrectly configured.")
 
-    return_code = -1
+    return_code: Optional[int] = -1
     raw_logs = bytes()
 
     # Get information about the type of mercure installation on the server
@@ -355,7 +355,7 @@ async def show_log(request) -> Response:
     log_content = helper.localize_log_timestamps(log_content, config)
 
     if return_code != 0:
-        log_content = f"Error reading log information: \n====\n{log_err}\n===\n{log_content}"
+        log_content = f"Error reading log information: \n====\n{log_err.decode()}\n===\n{log_content}"
         if start_date or end_date:
             log_content = log_content + "<br /><br />Are the From/To settings valid?"
 
@@ -463,7 +463,7 @@ async def configuration_edit_post(request) -> Response:
         # Check docker_arguments
         if not modules.allow_unsafe_docker_args():
             new_args = mod_conf.get("docker_arguments", "")
-            old_args = old_modules.get(mod_name, {}).get("docker_arguments", "") or ""
+            old_args = (old_modules.get(mod_name) or {}).get("docker_arguments", "") or ""  # type: ignore[attr-defined]
             new_violations = set(modules.check_docker_arguments(new_args))
             old_violations = set(modules.check_docker_arguments(old_args))
             added = new_violations - old_violations
@@ -471,7 +471,7 @@ async def configuration_edit_post(request) -> Response:
                 violations.append(f"{mod_name}: {'; '.join(sorted(added))}")
         # Check additional_volumes
         new_vols = mod_conf.get("additional_volumes", "")
-        old_vols = old_modules.get(mod_name, {}).get("additional_volumes", "") or ""
+        old_vols = (old_modules.get(mod_name) or {}).get("additional_volumes", "") or ""  # type: ignore[attr-defined]
         new_vol_violations = set(modules.check_volumes(new_vols))
         old_vol_violations = set(modules.check_volumes(old_vols))
         added_vols = new_vol_violations - old_vol_violations
@@ -675,6 +675,7 @@ async def login_post(request) -> Response:
     try:
         users.read_users()
     except Exception:
+        logger.exception("Error reading users file during login")
         return PlainTextResponse("Configuration is being updated. Try again in a minute.")
 
     form = dict(await request.form())
