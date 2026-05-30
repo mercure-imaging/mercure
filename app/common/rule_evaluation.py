@@ -5,7 +5,10 @@ Helper functions for evaluating routing rules and study-completion conditions.
 """
 
 # Standard python includes
+import os
 from typing import Any, Dict, Optional, Tuple
+
+from asteval import Interpreter
 
 # App-specific includes
 import common.monitor as monitor
@@ -14,6 +17,8 @@ from common.tags_rule_interface import TagNotFoundException, Tags
 
 # Create local logger instance
 logger = config.get_logger()
+
+UNSAFE_RULE_EVALUATION = os.environ.get("MERCURE_UNSAFE_RULE_EVALUATION", "").lower() in ("1", "true", "yes")
 
 
 def replace_tags(rule: str, tags: Dict[str, str]) -> Any:
@@ -46,9 +51,54 @@ def replace_tags(rule: str, tags: Dict[str, str]) -> Any:
 # Allow some safe builtins
 
 
-safe_eval_cmds = {"float": float, "int": int, "str": str, "len": len, "bool": bool,
-                  "sum": sum, "round": round, "max": max, "min": min, "abs": abs,
-                  "pow": pow, "chr": chr, "ord": ord}
+import math
+
+safe_eval_cmds: Dict[str, Any] = {
+    # Type constructors
+    "bool": bool, "int": int, "float": float, "str": str, "complex": complex,
+    "list": list, "tuple": tuple, "dict": dict, "set": set, "frozenset": frozenset,
+    # Aggregates and iteration
+    "len": len, "sum": sum, "min": min, "max": max, "abs": abs,
+    "all": all, "any": any, "sorted": sorted, "reversed": reversed,
+    "range": range, "enumerate": enumerate, "zip": zip, "filter": filter, "map": map,
+    # Numeric
+    "round": round, "pow": pow, "divmod": divmod,
+    # String/char
+    "chr": chr, "ord": ord, "hex": hex, "oct": oct, "bin": bin, "format": format, "repr": repr,
+    # Math
+    "sqrt": math.sqrt, "ceil": math.ceil, "floor": math.floor,
+    "log": math.log, "log10": math.log10, "log2": math.log2, "exp": math.exp,
+    "sin": math.sin, "cos": math.cos, "tan": math.tan,
+    "asin": math.asin, "acos": math.acos, "atan": math.atan, "atan2": math.atan2,
+    "pi": math.pi, "e": math.e,
+    "isinf": math.isinf, "isnan": math.isnan,
+    "fabs": math.fabs, "factorial": math.factorial, "trunc": math.trunc,
+}
+
+
+def _eval_unsafe(rule: str, tags_obj: Tags) -> Any:
+    """Evaluate a rule using Python's built-in eval() with restricted builtins."""
+    return eval(rule, {"__builtins__": {}}, {**safe_eval_cmds, "tags": tags_obj})
+
+
+def _make_interpreter(**extra_syms: Any) -> Interpreter:
+    """Create a locked-down asteval Interpreter with only our explicit builtins."""
+    aeval = Interpreter(use_numpy=False, minimal=True)
+    aeval.symtable.clear()
+    aeval.symtable.update({"True": True, "False": False, "None": None})
+    aeval.symtable.update(safe_eval_cmds)
+    aeval.symtable.update(extra_syms)
+    return aeval
+
+
+def _eval_safe(rule: str, tags_obj: Tags) -> Any:
+    """Evaluate a rule using asteval's sandboxed interpreter."""
+    aeval = _make_interpreter(tags=tags_obj)
+    result = aeval(rule)
+    if aeval.error:
+        err = aeval.error[0]
+        raise err.exc(err.msg)
+    return result
 
 
 def eval_rule(rule: str, tags_dict: Dict[str, str]) -> Any:
@@ -59,7 +109,10 @@ def eval_rule(rule: str, tags_dict: Dict[str, str]) -> Any:
     logger.info(f"Evaluated: {rule}")
     tags_obj = Tags(tags_dict)
     try:
-        result = eval(rule, {"__builtins__": {}}, {**safe_eval_cmds, "tags": tags_obj})
+        if UNSAFE_RULE_EVALUATION:
+            result = _eval_unsafe(rule, tags_obj)
+        else:
+            result = _eval_safe(rule, tags_obj)
     except SyntaxError:
         opening = rule.find("@")
         closing = rule.find("@", opening + 1)
@@ -94,7 +147,13 @@ def test_completion_series(value: str) -> str:
     if value.count("'") % 2:
         return "Series names not properly enclosed by '...'"
     try:
-        eval(value, {"__builtins__": {}}, {})
+        if UNSAFE_RULE_EVALUATION:
+            eval(value, {"__builtins__": {}}, {})
+        else:
+            aeval = _make_interpreter()
+            aeval(value)
+            if aeval.error:
+                raise aeval.error[0].exc(aeval.error[0].msg)
     except Exception:
         return "Compare syntax with example shown above."
 
@@ -174,9 +233,15 @@ def parse_completion_series(task_id: str, completion_str: str, received_series: 
             parsed_str = parsed_str.replace("'" + entry + "'", " False ")
 
     # print(parsed_str)
-
+    parsed_str = parsed_str.strip()
     try:
-        result: bool = eval(parsed_str, {"__builtins__": {}}, {})
+        if UNSAFE_RULE_EVALUATION:
+            result: bool = eval(parsed_str, {"__builtins__": {}}, {})
+        else:
+            aeval = _make_interpreter()
+            result = aeval(parsed_str)
+            if aeval.error:
+                raise aeval.error[0].exc(aeval.error[0].msg)
         return result
     except Exception:
         logger.error(

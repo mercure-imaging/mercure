@@ -14,16 +14,31 @@ from typing import Optional, Tuple, Union, Any
 import bleach
 import common.config as config
 from common.constants import mercure_defs
-from redis import Redis
-from rq import Queue
-from rq_scheduler import Scheduler
 # Starlette-related includes
 from starlette.templating import Jinja2Templates
 
-redis = Redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379/0"))
-rq_slow_queue = Queue(name="mercure_slow", connection=redis)
-rq_fast_queue = Queue(name="mercure_fast", connection=redis)
-rq_fast_scheduler = Scheduler(queue=rq_fast_queue, connection=rq_fast_queue.connection)
+redis = None
+rq_slow_queue = None
+rq_fast_queue = None
+rq_fast_scheduler = None
+
+
+def setup_redis() -> None:
+    """Initialize Redis connection and RQ queues. Must be called before using redis/rq objects."""
+    global redis, rq_slow_queue, rq_fast_queue, rq_fast_scheduler
+    from redis import Redis
+    from rq import Queue
+    from rq_scheduler import Scheduler
+
+    _redis_url = os.getenv("REDIS_URL", "")
+    if not _redis_url:
+        raise SystemExit("ERROR: REDIS_URL environment variable is not set. Cannot start without Redis authentication.")
+    if "@" not in _redis_url:
+        raise SystemExit("ERROR: REDIS_URL has no password configured. Set a Redis password before starting.")
+    redis = Redis.from_url(_redis_url)
+    rq_slow_queue = Queue(name="mercure_slow", connection=redis)
+    rq_fast_queue = Queue(name="mercure_fast", connection=redis)
+    rq_fast_scheduler = Scheduler(queue=rq_fast_queue, connection=rq_fast_queue.connection)
 
 csp_nonce = "".join(random.choices(string.ascii_letters + string.digits, k=16))
 
@@ -63,15 +78,6 @@ templates = Jinja2Templates(directory="webinterface/templates",
 
 templates.env.filters['strip_untrusted'] = strip_untrusted
 
-
-async def async_run(cmd, **params) -> Tuple[Optional[int], bytes, bytes]:
-    """Executes the given command in a way compatible with ayncio."""
-    proc = await asyncio.create_subprocess_shell(
-        cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, **params
-    )
-
-    stdout, stderr = await proc.communicate()
-    return proc.returncode, stdout, stderr
 
 
 async def async_run_exec(*args, **params) -> Tuple[Optional[int], bytes, bytes]:

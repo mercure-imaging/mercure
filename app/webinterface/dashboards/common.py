@@ -17,7 +17,7 @@ from rq import Queue, get_current_job
 from rq.job import Job
 from starlette.responses import JSONResponse, RedirectResponse
 from tests.getdcmtags import process_dicom
-from webinterface.common import redis
+import webinterface.common as wc
 
 router = decoRouter()
 logger = daiquiri.getLogger("dashboards")
@@ -88,7 +88,7 @@ class ClassBasedRQTask():
 
     @classmethod
     def queue(cls, connection=None) -> Queue:
-        return Queue(cls._queue, connection=(connection or redis))
+        return Queue(cls._queue, connection=(connection or wc.redis))
 
     def create_job(self, connection, rq_options={}, **kwargs) -> Job:
         fields = dataclasses.fields(self)

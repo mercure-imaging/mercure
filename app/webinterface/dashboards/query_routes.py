@@ -14,7 +14,8 @@ from rq.job import Job
 from starlette.authentication import requires
 from starlette.responses import JSONResponse
 # App-specific includes
-from webinterface.common import redis, templates
+import webinterface.common as wc
+from webinterface.common import templates
 
 from .common import JSONErrorResponse, router
 from .query.jobs import CheckAccessionsTask, QueryPipeline
@@ -245,7 +246,7 @@ async def check_accessions(request):
 
     if job_id:
         # Retrieve results for an existing job
-        job = Job.fetch(job_id, redis)
+        job = Job.fetch(job_id, wc.redis)
         if not job:
             return JSONResponse({"error": "Job not found"}, status_code=404)
         elif job.is_failed:
@@ -279,9 +280,9 @@ async def check_accessions(request):
         return JSONErrorResponse(f"Invalid DICOM node '{node_name}'.", status_code=400)
 
     try:
-        job = CheckAccessionsTask().create_job(connection=redis, accessions=accessions,
+        job = CheckAccessionsTask().create_job(connection=wc.redis, accessions=accessions,
                                                node=node, search_filters=search_filters)
-        CheckAccessionsTask.queue(redis).enqueue_job(job)
+        CheckAccessionsTask.queue(wc.redis).enqueue_job(job)
     except Exception as e:
         logger.exception("Error during accessions check task creation")
         return JSONErrorResponse(str(e), status_code=500)

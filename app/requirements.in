@@ -44,6 +44,7 @@ itsdangerous
 python-multipart>=0.0.18
 distro
 passlib
+argon2-cffi
 sqlalchemy<=1.4.52
 databases
 # databases[postgresql]
@@ -57,6 +58,7 @@ docker
 python-nomad
 
 # other
+asteval ~= 1.0.5
 pydicom ~= 2.4.1
 pynetdicom ~= 2.0.2
 pydantic >= 1.10.9, <2.0.0

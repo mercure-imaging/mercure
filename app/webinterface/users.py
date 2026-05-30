@@ -17,7 +17,13 @@ import common.monitor as monitor
 from common.constants import mercure_names
 from decoRouter import Router as decoRouter
 from mypy_extensions import TypedDict
-from passlib.apps import custom_app_context as pwd_context
+from passlib.context import CryptContext
+
+pwd_context = CryptContext(
+    schemes=["argon2", "sha512_crypt"],
+    default="argon2",
+    deprecated=["sha512_crypt"],
+)
 # Starlette-related includes
 from starlette.applications import Starlette
 from starlette.authentication import requires
@@ -121,7 +127,8 @@ def save_users() -> None:
 
 
 def evaluate_password(username, password) -> bool:
-    """Check if the given password for the given user is correct. Hashed passwords are stored with salt."""
+    """Check if the given password for the given user is correct. Hashed passwords are stored with salt.
+    If the stored hash uses a deprecated scheme, it is transparently rehashed to argon2."""
     if (len(username) == 0) or (len(password) == 0):
         return False
 
@@ -133,10 +140,14 @@ def evaluate_password(username, password) -> bool:
         return False
 
     try:
-        if pwd_context.verify(password, stored_password):
-            return True
-        else:
+        valid, new_hash = pwd_context.verify_and_update(password, stored_password)
+        if not valid:
             return False
+        if new_hash is not None:
+            users_list[username]["password"] = new_hash
+            save_users()
+            logger.info(f"Rehashed password for user {username} to argon2")
+        return True
     except Exception:
         return False
 
@@ -226,6 +237,10 @@ async def users_edit(request) -> Response:
 
     edituser = request.path_params["user"]
 
+    # Admins must use /settings to edit their own account
+    if request.user.display_name == edituser:
+        return RedirectResponse(url="/settings", status_code=303)
+
     if edituser not in users_list:
         return RedirectResponse(url="/users", status_code=303)
 
@@ -240,15 +255,20 @@ async def users_edit(request) -> Response:
 
 
 @router.post("/edit/{user}")
-@requires(["authenticated"], redirect="login")
+@requires(["authenticated", "admin"], redirect="login")
 async def users_edit_post(request) -> Response:
-    """Updates the given user with settings passed as form parameters."""
+    """Updates the given user with settings passed as form parameters. Admin-only, cannot edit own account."""
     try:
         read_users()
     except Exception:
         return PlainTextResponse("Configuration is being updated. Try again in a minute.")
 
     edituser = request.path_params["user"]
+
+    # Admins must use /settings to edit their own account
+    if request.user.display_name == edituser:
+        return PlainTextResponse("Use /settings to edit your own account.")
+
     form = dict(await request.form())
 
     if edituser not in users_list:
@@ -260,12 +280,9 @@ async def users_edit_post(request) -> Response:
         to_edit["password"] = hash_password(form["password"])
         to_edit["change_password"] = "False"
 
-    # Only admins are allowed to change the admin status, and the current user
-    # cannot change the status for himself (which includes the settings page)
-    if request.user.is_admin and (request.user.display_name != edituser):
-        to_edit["is_admin"] = form["is_admin"]
+    to_edit["is_admin"] = form["is_admin"]
 
-    if request.user.is_admin and form.get("permissions", ""):
+    if form.get("permissions", ""):
         to_edit["permissions"] = form["permissions"]
 
     try:
@@ -275,10 +292,7 @@ async def users_edit_post(request) -> Response:
 
     logger.info(f"Edited user {edituser}")
     monitor.send_webgui_event(monitor.w_events.USER_EDIT, request.user.display_name, edituser)
-    if "own_settings" in form:
-        return RedirectResponse(url="/", status_code=303)
-    else:
-        return RedirectResponse(url="/users", status_code=303)
+    return RedirectResponse(url="/users", status_code=303)
 
 
 @router.post("/delete/{user}")

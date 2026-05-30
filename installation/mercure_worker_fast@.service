@@ -6,7 +6,7 @@ After=network.target mercure_ui.service
 [Service]
 Type=simple
 WorkingDirectory=/opt/mercure/app
-ExecStart=/opt/mercure/env/bin/rq worker mercure_fast
+ExecStart=/opt/mercure/env/bin/python /opt/mercure/app/worker.py worker mercure_fast
 ExecReload=/bin/kill -s HUP $MAINPID
 ExecStop=/bin/kill -s TERM $MAINPID
 User=mercure

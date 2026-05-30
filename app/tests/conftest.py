@@ -76,11 +76,9 @@ def receiver_port():
 
 
 @pytest.fixture(scope="function")
-def test_client(fs):
+def test_client(fs, mercure_config):
     """Create a TestClient for the dicomweb app."""
-    # dicomweb_app.add_middleware(AuthenticationMiddleware, backend=webgui.SessionAuthBackend())
-    # dicomweb_app.add_middleware(SessionMiddleware, secret_key="asdfasdfasdf", session_cookie="mercure_session")
-    # print(dicomweb_app.router.routes)
+    mercure_config()
     webgui.DEBUG_MODE = True
     webgui.SECRET_KEY = "asdfasdf"
     app = webgui.create_app()
@@ -105,7 +103,8 @@ def test_client(fs):
 
 @pytest.fixture(scope="function", autouse=True)
 def mercure_config(fs, bookkeeper_port) -> Callable[[Dict], Config]:
-    # TODO: config from previous calls seems to leak in here
+    # Reset cached config timestamp so read_config() re-reads from the fresh fakefs file
+    config.configuration_timestamp = 0
     config_path = os.path.realpath(os.path.dirname(os.path.realpath(__file__)) + "/data/test_config.json")
 
     fs.add_real_file(config_path, target_path=config.configuration_filename, read_only=False)

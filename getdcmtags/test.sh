@@ -1,9 +1,11 @@
 #!/bin/bash
 set -euo pipefail
 
-echo "Testing"
+BINARY="${1:-./getdcmtags}"
+
+echo "Testing with binary: $BINARY"
 cp test_dcm test_dcm_copy
-./getdcmtags test_dcm_copy sender_address sender_aet receiver_aet 0.0.0.0 asdf --set-tag forceKey=forcedValue
+$BINARY test_dcm_copy sender_address sender_aet receiver_aet 0.0.0.0 asdf --set-tag forceKey=forcedValue
 uid="1.2.276.0.7230010.3.1.3.9022104837472469675953272569912339663578"
 if [ ! -e $uid/$uid#test_dcm_copy.tags ]; then
     echo "Failed to create tags file"
@@ -15,7 +17,7 @@ check_key() {
     local key="$1"
     local expected_value="$2"
     local actual_value=$(jq -r ".$key // \"__NULL__\"" "$uid/$uid#test_dcm_copy.tags")
-    
+
     if [ "$actual_value" == "__NULL__" ]; then
         cat $uid/$uid#test_dcm_copy.tags
         echo "Key '$key' not found in the JSON file."

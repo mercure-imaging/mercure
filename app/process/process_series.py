@@ -26,7 +26,7 @@ from common.types import Module, Task, TaskProcessing
 from common.version import mercure_version
 from dispatch.send import update_fail_stage
 from docker.types import Mount
-from jinja2 import Template
+from jinja2.sandbox import SandboxedEnvironment
 
 import docker
 import nomad
@@ -47,7 +47,8 @@ async def nomad_runtime(task: Task, folder: Path, file_count_begin: int, task_pr
         return False
 
     with open("nomad/mercure-processor-template.nomad", "r") as f:
-        rendered = Template(f.read()).render(
+        sandbox = SandboxedEnvironment()
+        rendered = sandbox.from_string(f.read()).render(
             image=module.docker_tag,
             mercure_tag=mercure_version.get_image_tag(),
             constraints=module.constraints,
@@ -265,11 +266,40 @@ async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_p
                             "The receiver may be running as root, which is no longer supported. ")
         (folder / "out").chmod(0o777)
 
+        network_mode = "none" if not module.network_enabled else None
+
+        # Runtime enforcement: strip disallowed docker_arguments if MERCURE_FORBID_UNSAFE_DOCKER_ARGS is set
+        from webinterface.modules import forbid_unsafe_docker_args, ALLOWED_DOCKER_ARGS
+        if forbid_unsafe_docker_args():
+            stripped = [k for k in arguments if k not in ALLOWED_DOCKER_ARGS]
+            for k in stripped:
+                del arguments[k]
+            if stripped:
+                logger.warning(f"Stripped disallowed docker_arguments at runtime: {stripped}")
+
+        # Runtime enforcement: strip disallowed volumes if MERCURE_FORBID_UNSAFE_VOLUMES is set
+        from webinterface.modules import forbid_unsafe_volumes, get_allowed_volume_bases
+        if forbid_unsafe_volumes():
+            allowed_bases = get_allowed_volume_bases()
+            if allowed_bases is not None:
+                stripped_vols = [p for p in additional_volumes
+                                if not any(os.path.realpath(p) == b or os.path.realpath(p).startswith(b + "/")
+                                           for b in allowed_bases)]
+                for p in stripped_vols:
+                    del additional_volumes[p]
+                if stripped_vols:
+                    logger.warning(f"Stripped disallowed volumes at runtime: {stripped_vols}")
+
+        # Drop all capabilities by default; unsafe mode can override via docker_arguments
+        if "cap_drop" not in arguments:
+            arguments["cap_drop"] = ["ALL"]
+
         container = docker_client.containers.run(
             docker_tag,
             mounts=default_mounts,
             volumes=additional_volumes,
             environment=environment,
+            network_mode=network_mode,
             **runtime,
             **set_command,
             **arguments,

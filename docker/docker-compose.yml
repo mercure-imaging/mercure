@@ -1,26 +1,40 @@
+x-build: &build
+  context: ..
+  args:
+    VERSION_TAG: ${TAG:-latest}
+    BASE_IMAGE_NAME: mercureimaging/mercure-base
+
 x-env: &env
   environment:
     MERCURE_RUNNER: docker
-    REDIS_URL: redis://redis:6379/0
-x-volumes: &volumes
-  volumes:
-    - config:/opt/mercure/config
-    - data:/opt/mercure/data
-
-x-volumes-docker: &volumes-docker
-  volumes:
-    - config:/opt/mercure/config
-    - data:/opt/mercure/data
-    - /var/run/docker.sock:/var/run/docker.sock
 
 x-docker-user: &docker-user
   user: "${UID}:${DOCKER_GID}"
 x-user: &user
   user: "${UID}:${GID}"
 
+networks:
+  datastore:
+    # Redis + DB only. No external routing.
+    internal: true
+  services:
+    # Inter-service communication (all services <-> bookkeeper).
+    internal: true
+  exposed:
+    # Port-facing services (UI, receiver).
+  egress:
+    # Services requiring outbound network access (dispatcher, processor).
+
 services:
+  base:
+    image: mercureimaging/mercure-base:${TAG:-latest}
+    build:
+      context: ..
+      dockerfile: docker/base/Dockerfile
+    profiles: [build]
+
   ui:
-    <<: [*docker-user, *volumes-docker, *env]
+    <<: [*docker-user, *env]
     depends_on:
       db:
         condition: service_healthy
@@ -30,11 +44,26 @@ services:
         condition: service_started
       worker_slow:
         condition: service_started
-      
+    environment:
+      MERCURE_RUNNER: docker
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
     image: mercureimaging/mercure-ui${IMAGE_TAG}
+    build:
+      <<: *build
+      dockerfile: docker/ui/Dockerfile
     restart: always
     ports:
       - "8000:8000"
+    volumes:
+      - data:/opt/mercure/data
+      - /opt/mercure/config:/opt/mercure/config
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - exposed
+      - datastore
+      - services
+      - egress
+
   db:
     image: library/postgres:14-alpine
     restart: always
@@ -44,73 +73,134 @@ services:
       POSTGRES_USER: mercure
       POSTGRES_DB: mercure
       PGDATA: /var/lib/postgresql/data/pgdata
-    ports:
-      - "15432:5432"
     volumes:
       - db-data:/var/lib/postgresql/data
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U mercure" ]
+    networks:
+      - datastore
 
   receiver:
-    <<: [*user, *volumes, *env]
+    <<: [*user, *env]
     image: mercureimaging/mercure-receiver${IMAGE_TAG}
+    build:
+      <<: *build
+      dockerfile: docker/receiver/Dockerfile
     restart: always
     depends_on:
       bookkeeper:
         condition: service_healthy
     ports:
       - "11112:11112"
+    volumes:
+      - data:/opt/mercure/data
+      - /opt/mercure/config:/opt/mercure/config:ro
+    networks:
+      - exposed
+      - services
 
   cleaner:
-    <<: [*user, *volumes, *env]
+    <<: [*user, *env]
     image: mercureimaging/mercure-cleaner${IMAGE_TAG}
+    build:
+      <<: *build
+      dockerfile: docker/cleaner/Dockerfile
     restart: always
     depends_on:
       bookkeeper:
         condition: service_healthy
+    volumes:
+      - data:/opt/mercure/data
+      - /opt/mercure/config:/opt/mercure/config:ro
+    networks:
+      - services
 
   dispatcher:
-    <<: [*user, *volumes, *env]
+    <<: [*user, *env]
     image: mercureimaging/mercure-dispatcher${IMAGE_TAG}
+    build:
+      <<: *build
+      dockerfile: docker/dispatcher/Dockerfile
     restart: always
     depends_on:
       bookkeeper:
         condition: service_healthy
+    volumes:
+      - data:/opt/mercure/data
+      - /opt/mercure/config:/opt/mercure/config:ro
+    networks:
+      - services
+      - egress
 
   processor:
-    <<: [*docker-user, *volumes-docker, *env]
+    <<: [*docker-user, *env]
     image: mercureimaging/mercure-processor${IMAGE_TAG}
+    build:
+      <<: *build
+      dockerfile: docker/processor/Dockerfile
     restart: always
     depends_on:
       bookkeeper:
         condition: service_healthy
+    volumes:
+      - data:/opt/mercure/data
+      - /opt/mercure/config:/opt/mercure/config:ro
+      - /opt/mercure/persistence:/opt/mercure/persistence
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - services
+      - egress
 
   router:
-    <<: [*user, *volumes, *env]
+    <<: [*user, *env]
     image: mercureimaging/mercure-router${IMAGE_TAG}
+    build:
+      <<: *build
+      dockerfile: docker/router/Dockerfile
     restart: always
     depends_on:
       bookkeeper:
         condition: service_healthy
+    volumes:
+      - data:/opt/mercure/data
+      - /opt/mercure/config:/opt/mercure/config:ro
+    networks:
+      - services
 
   bookkeeper:
-    <<: [*user, *volumes, *env]
+    <<: [*user, *env]
     image: mercureimaging/mercure-bookkeeper${IMAGE_TAG}
+    build:
+      <<: *build
+      dockerfile: docker/bookkeeper/Dockerfile
     restart: always
     depends_on:
       db:
         condition: service_healthy
-  
+    volumes:
+      - data:/opt/mercure/data
+      - /opt/mercure/config:/opt/mercure/config:ro
+    networks:
+      - datastore
+      - services
+
   redis:
     image: redis:7-alpine
     restart: always
-    command: redis-server --save 20 1
-    volumes: 
+    command: ["sh", "-c", "test -n \"$$REDIS_PASSWORD\" || { echo 'ERROR: REDIS_PASSWORD is not set'; exit 1; } && exec redis-server --save 20 1 --requirepass \"$$REDIS_PASSWORD\""]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    volumes:
       - redis-cache:/data
+    networks:
+      - datastore
 
   worker_fast:
-    <<: [*user, *volumes]
+    <<: *user
     image: mercureimaging/mercure-worker${IMAGE_TAG}
+    build:
+      <<: *build
+      dockerfile: docker/worker/Dockerfile
     restart: always
     depends_on:
       - redis
@@ -118,10 +208,15 @@ services:
       replicas: 2
     environment:
       WORKER_QUEUE: mercure_fast
-      REDIS_URL: redis://redis:6379/0
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+    volumes:
+      - data:/opt/mercure/data
+      - /opt/mercure/config:/opt/mercure/config:ro
+    networks:
+      - datastore
 
   worker_slow:
-    <<: [*user, *volumes]
+    <<: *user
     image: mercureimaging/mercure-worker${IMAGE_TAG}
     restart: always
     depends_on:
@@ -130,7 +225,12 @@ services:
       replicas: 2
     environment:
       WORKER_QUEUE: mercure_slow
-      REDIS_URL: redis://redis:6379/0
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+    volumes:
+      - data:/opt/mercure/data
+      - /opt/mercure/config:/opt/mercure/config:ro
+    networks:
+      - datastore
 
 volumes:
   db-data:
@@ -147,11 +247,5 @@ volumes:
       o: 'bind'
       device: '/opt/mercure/data'
 
-  config:
-    driver: local
-    driver_opts:
-      type: 'none'
-      o: 'bind'
-      device: '/opt/mercure/config'
   redis-cache:
     driver: local
