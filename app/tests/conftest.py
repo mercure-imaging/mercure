@@ -11,6 +11,15 @@ import pytest
 import routing  # noqa: F401
 import webinterface.users as users_module
 from bookkeeping import bookkeeper
+
+# Force passlib's argon2 backend to fully initialize before any pyfakefs fixture
+# starts. argon2-cffi 25+ lazily calls importlib.metadata("argon2-cffi") on first
+# use; pyfakefs intercepts that read and raises PackageNotFoundError because
+# .dist-info dirs are not in the fake filesystem.
+try:
+    users_module.hash_password("_passlib_warmup_")
+except Exception:
+    pass
 from common.types import Config
 from starlette.testclient import TestClient
 
