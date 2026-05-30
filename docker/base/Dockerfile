@@ -1,7 +1,7 @@
 FROM ubuntu:22.04
 RUN apt-get update && apt-get -y upgrade && \
     DEBIAN_FRONTEND="noninteractive" apt-get -y install \
-    tzdata build-essential wget git dcmtk jq inetutils-ping entr sshpass rsync openssh-client lsb-release lsb-core libpq-dev ca-certificates python3-wheel python3-dev python3 python3-venv libqt5core5a --no-install-recommends && \
+    tzdata build-essential wget git jq inetutils-ping entr sshpass rsync openssh-client lsb-release lsb-core libpq-dev ca-certificates python3-wheel python3-dev python3 python3-venv --no-install-recommends && \
     rm -rf /var/lib/apt/lists/* && \
     useradd -ms /bin/bash mercure && \
     mkdir -p /opt/mercure/app/installation /opt/mercure/app/configuration
@@ -22,10 +22,9 @@ RUN chown -R mercure ./configuration && \
 # This fixes the issue that every code update rebuilds Conda
 COPY ./app .
 
-RUN ln -s /opt/mercure/app/bin/ubuntu22.04/getdcmtags /opt/mercure/app/bin/getdcmtags
-
 # The configuration and data folders is probably the only thing that mercure ACTUALLY needs to write to
-RUN chmod -R o+rx /opt/mercure/app && \
+RUN chown -R mercure /opt/mercure/app && \
+    chmod -R o+rx /opt/mercure/app && \
     chown -R mercure /opt/mercure/config && \
     mkdir -p /opt/mercure/data/incoming \
           /opt/mercure/data/studies \

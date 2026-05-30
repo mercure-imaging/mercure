@@ -3,8 +3,9 @@ builtin.py
 ==========
 """
 
+import os
 from pathlib import Path
-from shlex import split
+from shlex import quote, split
 from typing import Dict, Generator, List
 
 import common.config as config
@@ -12,7 +13,7 @@ from common.constants import mercure_names
 from common.types import DicomTarget, DicomTLSTarget, DummyTarget, SftpTarget, Task
 from dispatch.process_dcmsend_result import parse as parse_dcmsend_result
 from pydicom import Dataset
-from webinterface.common import async_run
+from webinterface.common import async_run_exec
 from webinterface.dicom_client import DicomClientCouldNotFind, SimpleDicomClient
 
 from .base import ProgressInfo, SubprocessTargetHandler, TargetHandler
@@ -41,7 +42,7 @@ class DicomTargetHandler(SubprocessTargetHandler[DicomTarget]):
     display_name = "DICOM"
     can_pull = True
 
-    def _create_command(self, target: DicomTarget, source_folder: Path, task: Task):
+    def _create_command(self, target: DicomTarget, source_folder: Path, task: Task, **kwargs):
         target_ip = target.ip
         if target_ip == "sender":
             # If results should be looped back to the original sender of the task, insert
@@ -61,10 +62,15 @@ class DicomTargetHandler(SubprocessTargetHandler[DicomTarget]):
             target_aet_target = task.info.receiver_aet
 
         dcmsend_status_file = str(Path(source_folder) / mercure_names.SENDLOG)
-        command = split(
-            (f"""dcmsend {target_ip} {target_port} +r +sd {source_folder} -aet {target_aet_source} """
-             f"""-aec {target_aet_target} -nuc +sp '*.dcm' -to 60 +crf {dcmsend_status_file}""")
-        )
+        command = [
+            "bin/dcmtk/dcmsend", str(target_ip), str(target_port),
+            "+r", "+sd", str(source_folder),
+        ]
+        if target_aet_source:
+            command += ["-aet", str(target_aet_source)]
+        if target_aet_target:
+            command += ["-aec", str(target_aet_target)]
+        command += ["-nuc", "+sp", "*.dcm", "-to", "60", "+crf", dcmsend_status_file]
         return command, {}
 
     def find_from_target(self, target: DicomTarget, accession: str, search_filters: Dict[str, List[str]]) -> List[Dataset]:
@@ -118,12 +124,12 @@ class DicomTargetHandler(SubprocessTargetHandler[DicomTarget]):
         logger.info(f"Testing target {target_name}")
 
         if target_ip and target_port and not loopback_mode:
-            ping_result, *_ = await async_run(f"ping -w 1 -c 1 {target_ip}")
+            ping_result, *_ = await async_run_exec("ping", "-w", "1", "-c", "1", target_ip)
             if ping_result == 0:
                 ping_response = True
 
-            cecho_result, *_ = await async_run(
-                f"echoscu -to 2 -aec {target_aec} -aet {target_aet} {target_ip} {target_port}"
+            cecho_result, *_ = await async_run_exec(
+                "bin/dcmtk/echoscu", "-to", "2", "-aec", target_aec, "-aet", target_aet, target_ip, target_port
             )
             if cecho_result == 0:
                 cecho_response = True
@@ -139,7 +145,7 @@ class DicomTLSTargetHandler(SubprocessTargetHandler[DicomTLSTarget]):
     icon = "fa-database"
     display_name = "DICOM+TLS"
 
-    def _create_command(self, target: DicomTLSTarget, source_folder: Path, task: Task):
+    def _create_command(self, target: DicomTLSTarget, source_folder: Path, task: Task, **kwargs):
         target_ip = target.ip
         target_port = target.port or 104
         target_aet_target = target.aet_target or ""
@@ -150,10 +156,18 @@ class DicomTLSTargetHandler(SubprocessTargetHandler[DicomTLSTarget]):
         if target.pass_receiver_aet:
             target_aet_target = task.info.receiver_aet
 
-        command = split(
-            f"""storescu +tls {target.tls_key} {target.tls_cert} +cf {target.ca_cert} {target_ip} {target_port} """
-            f"""+sd {source_folder} -aet {target_aet_source} -aec {target_aet_target} +sp '*.dcm' -to 60"""
-        )
+        command = [
+            "bin/dcmtk/storescu",
+            "+tls", str(target.tls_key), str(target.tls_cert),
+            "+cf", str(target.ca_cert),
+            str(target_ip), str(target_port),
+            "+sd", str(source_folder),
+        ]
+        if target_aet_source:
+            command += ["-aet", str(target_aet_source)]
+        if target_aet_target:
+            command += ["-aec", str(target_aet_target)]
+        command += ["+sp", "*.dcm", "-to", "60"]
         return command, {}
 
     def handle_error(self, e, command):
@@ -175,14 +189,14 @@ class DicomTLSTargetHandler(SubprocessTargetHandler[DicomTLSTarget]):
         logger.info(f"Testing TLS target {target_name}")
 
         if target_ip and target_port:
-            ping_result, *_ = await async_run(f"ping -w 1 -c 1 {target_ip}")
+            ping_result, *_ = await async_run_exec("ping","-w", "1", "-c", "1", target_ip)
             if ping_result == 0:
                 ping_response = True
 
-            cecho_command = (f"echoscu -to 2 -aec {target_aec} -aet {target_aet} {target_ip}"
-                             f" {target_port} +tls {tls_key} {tls_cert} +cf {ca_cert}")
-            logger.info('Running %s' % cecho_command)
-            cecho_result, *_ = await async_run(cecho_command)
+            cecho_command = ["bin/dcmtk/echoscu", "-to", "2", "-aec", target_aec, "-aet", target_aet, target_ip, target_port,
+                            "+tls", tls_key, tls_cert, "+cf", ca_cert]
+            logger.info('Running %s' % ' '.join(cecho_command))
+            cecho_result, *_ = await async_run_exec(*cecho_command)
             if cecho_result == 0:
                 cecho_response = True
 
@@ -196,35 +210,44 @@ class SftpTargetHandler(SubprocessTargetHandler[SftpTarget]):
     test_template = "targets/sftp-test.html"
     icon = "fa-server"
     display_name = "SFTP"
+    sftp_base_command = ["sftp", "-o", "StrictHostKeyChecking=accept-new"]
+    
+    def _create_command(self, target: SftpTarget, source_folder: Path, task: Task, **kwargs):
+        temp_dir: Path = kwargs["temp_dir"]
 
-    def _create_command(self, target: SftpTarget, source_folder: Path, task: Task):
-        command = (
-            "sftp -o StrictHostKeyChecking=no "
-            + f""" "{target.user}@{target.host}:{target.folder}" """
-            + f""" <<- EOF
-                    mkdir "{target.folder}/{source_folder.stem}"
-                    put -f -r "{source_folder}"
-                    !touch "/tmp/.complete"
-                    put -f "/tmp/.complete" "{target.folder}/{source_folder.stem}/.complete"
-EOF"""
-        )
+        dest = quote(f"{target.folder}/{source_folder.stem}")
+        complete_marker = quote(str(temp_dir / ".complete"))
+        batch_file = temp_dir / "sftp_batch"
+        batch_file.write_text("\n".join([
+            f"mkdir {dest}",
+            f"put -f -r {quote(str(source_folder))}",
+            f"!touch {complete_marker}",
+            f"put -f {complete_marker} {dest}/.complete",
+        ]))
+        
+        command = [
+            *self.sftp_base_command,
+            "-b", str(batch_file),
+            f"{target.user}@{target.host}:{target.folder}",
+        ]
+        env = {}
         if target.password:
-            command = f"sshpass -p {target.password} " + command
-        return split(command), dict(shell=True, executable="/bin/bash")
+            env["SSHPASS"] = target.password
+            command = ["sshpass", "-e"] + command
+        return command, dict(env={**os.environ, **env} if env else {})
 
     async def test_connection(self, target: SftpTarget, target_name: str):
-        ping_response = False
-        ping_result, *_ = await async_run(f"ping -w 1 -c 1 {target.host}")
-        ping_response = True if ping_result == 0 else False
-        response = False
-        stderr = b""
+        ping_result, *_ = await async_run_exec("ping", "-w", "1", "-c", "1", target.host)
+        ping_response = ping_result == 0
 
-        command = "sftp -o StrictHostKeyChecking=no " + f""" "{target.user}@{target.host}:{target.folder}" <<< "" """
+        sftp_args = [*self.sftp_base_command, "-o", "BatchMode=yes",
+                      f"{target.user}@{target.host}:{target.folder}"]
+        env = None
         if target.password:
-            command = f"sshpass -p {target.password} " + command
-        logger.debug(command)
-        result, stdout, stderr = await async_run(command, shell=True, executable="/bin/bash")
-        response = True if result == 0 else False
+            env = {**os.environ, "SSHPASS": target.password}
+            sftp_args = ["sshpass", "-e"] + sftp_args
+        result, stdout, stderr = await async_run_exec(*sftp_args, env=env)
+        response = result == 0
         return dict(ping=ping_response, loggedin=response, err=stderr.decode("utf-8") if not response else "")
 
 

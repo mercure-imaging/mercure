@@ -4,6 +4,7 @@ version = "0.1.0"
 requires-python = ">=3.10,<3.13"
 dependencies = [
     "aiofiles>=23.2.1",
+    "asteval>=1.0.5",
     "aiohttp>=3.10.11",
     "aiosqlite~=0.20.0",
     "alembic>=1.13.1",
@@ -72,3 +73,7 @@ dev = [
     "requests-toolbelt>=1.0.0",
     "supervisor>=4.2.5",
 ]
+
+[tool.mypy]  
+plugins = ["sqlmypy"]
+ignore_missing_imports = true

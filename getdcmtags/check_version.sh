@@ -3,28 +3,25 @@
 source_version=$(grep -oP '#define VERSION "getdcmtags Version \K.*(?=")' ../getdcmtags/main.cpp)
 echo "Source version: $source_version"
 
-binary_version_2004=$(strings ../app/bin/ubuntu20.04/getdcmtags | grep -oP "getdcmtags Version \K.*" )
-echo "Binary version for Ubuntu 20.04: $binary_version_2004"
-
-binary_version_2204=$(strings ../app/bin/ubuntu22.04/getdcmtags | grep -oP "getdcmtags Version \K.*" )
-echo "Binary version for Ubuntu 22.04: $binary_version_2204"
-
-binary_version_2404=$(strings ../app/bin/ubuntu24.04/getdcmtags | grep -oP "getdcmtags Version \K.*" )
-echo "Binary version for Ubuntu 24.04: $binary_version_2404"
+binary_version=$(strings ../app/bin/getdcmtags | grep -oP "getdcmtags Version \K.*" )
+echo "Binary version: $binary_version"
 
 echo ""
-if [ "$binary_version_2004" != "$source_version" ]; then
-    echo "Versions do not match!"
-    exit 1
-fi
-if [ "$binary_version_2204" != "$source_version" ]; then
-    echo "Versions do not match!"
-    exit 1
-fi
-if [ "$binary_version_2404" != "$source_version" ]; then
+if [ "$binary_version" != "$source_version" ]; then
     echo "Versions do not match!"
     exit 1
 fi
 
-echo "All versions match."
+echo "Versions match."
+
+echo ""
+echo "storescp binary:"
+if [ -f ../app/bin/storescp ]; then
+    ../app/bin/storescp --version 2>&1 | head -5
+    echo "storescp binary OK"
+else
+    echo "ERROR: storescp binary not found"
+    exit 1
+fi
+
 exit 0

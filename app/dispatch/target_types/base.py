@@ -75,7 +75,7 @@ class TargetHandler(Generic[TargetTypeVar]):
 
 
 class SubprocessTargetHandler(TargetHandler[TargetTypeVar]):
-    def _create_command(self, target: TargetTypeVar, source_folder: Path, task: Task):
+    def _create_command(self, target: TargetTypeVar, source_folder: Path, task: Task, **kwargs):
         return ("", {})
 
     def subprocess_success_check(self, command: list) -> None:
@@ -98,24 +98,24 @@ class SubprocessTargetHandler(TargetHandler[TargetTypeVar]):
             shutil.copytree(source_folder, tmp_folder, ignore=shutil.ignore_patterns(*target.file_filter.split(",")))
             source_folder = tmp_folder
             filter_used = True
-        commands, opts = self._create_command(target, source_folder, task)
-        if not isinstance(commands[0], list):
-            commands = [commands]
-        result = ""
-        logger.info(f"Sending {source_folder} to target {dispatch_info.target_name}")
-        for command in commands:
-            try:
-                logger.info(f"Running command {' '.join(command)}")
-                output = check_output(
-                    command, encoding="utf-8", stderr=subprocess.STDOUT, **opts
-                )
-                self.subprocess_success_check(command)
-                result += output
-                logger.info(output)
-            # return result  # type: ignore  # Mypy doesn't know that check_output returns a string here?
-            except CalledProcessError as e:
-                self.handle_error(e, command)
-                raise
+        with tempfile.TemporaryDirectory() as temp_dir:
+            commands, opts = self._create_command(target, source_folder, task, temp_dir=Path(temp_dir))
+            if not isinstance(commands[0], list):
+                commands = [commands]
+            result = ""
+            logger.info(f"Sending {source_folder} to target {dispatch_info.target_name}")
+            for command in commands:
+                try:
+                    logger.info(f"Running command {' '.join(command)}")
+                    output = check_output(
+                        command, encoding="utf-8", stderr=subprocess.STDOUT, **opts
+                    )
+                    self.subprocess_success_check(command)
+                    result += output
+                    logger.info(output)
+                except CalledProcessError as e:
+                    self.handle_error(e, command)
+                    raise
         if filter_used and tmp_dir.exists():
             logger.info(f"Removing temporary folder {tmp_dir}")
             shutil.rmtree(tmp_dir)

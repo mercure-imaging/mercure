@@ -162,8 +162,13 @@ def task_will_dispatch_to(task, config, fake_process) -> None:
         t = config.targets[target_item]
         # type: ignore
         result_file_path = f"/var/outgoing/{task.id}/sent.txt"
-        expect_command = (f"dcmsend {t.ip} {t.port} +r +sd /var/outgoing/{task.id} "
-                          f"-aet -aec {t.aet_target} -nuc +sp *.dcm -to 60 +crf {result_file_path}")
+        aet_args = ""
+        if t.aet_source:
+            aet_args += f" -aet {t.aet_source}"
+        if t.aet_target:
+            aet_args += f" -aec {t.aet_target}"
+        expect_command = (f"bin/dcmtk/dcmsend {t.ip} {t.port} +r +sd /var/outgoing/{task.id}"
+                          f"{aet_args} -nuc +sp *.dcm -to 60 +crf {result_file_path}")
 
         fake_process.register(expect_command, callback=fake_check_output, callback_kwargs={"result_file": result_file_path})  # type: ignore
         common.monitor.configure("dispatcher", "test", config.bookkeeper)
@@ -355,7 +360,7 @@ def test_route_series_with_bad_tags(fs: FakeFilesystem, mercure_config, mocked, 
 
     new_task_id = "new-task-" + str(uuid.uuid1())
     # mocked.patch("uuid.uuid1", new=lambda: task_id)
-    tags = b'{"BadTag": "\xb1d\u0000 Garbage"}'
+    tags = b'{"BadTag": "\xb1d\\u0000 Garbage"}'
     mock_incoming_uid(config, fs, series_uid, {}, force_tags_output=tags)
 
     common.monitor.configure("router", "test", config.bookkeeper)
@@ -392,7 +397,7 @@ def test_route_series_fail_with_bad_tags(fs: FakeFilesystem, mercure_config, moc
 
     new_task_id = "new-task-" + str(uuid.uuid1())
     # mocked.patch("uuid.uuid1", new=lambda: task_id)
-    tags = b'{"BadTag": "dGar\u0000\xb1bage"}'
+    tags = b'{"BadTag": "dGar\\u0000\xb1bage"}'
     mock_incoming_uid(config, fs, series_uid, {}, force_tags_output=tags)
 
     common.monitor.configure("router", "test", config.bookkeeper)

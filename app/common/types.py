@@ -5,6 +5,7 @@ Definitions for using TypedDicts throughout mercure.
 """
 
 import json
+import re
 import typing
 from io import TextIOWrapper
 from os import PathLike
@@ -12,7 +13,7 @@ from os import PathLike
 from typing import Any, Dict, List, Optional, Type, Union, cast
 
 from common.event_types import FailStage
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
 from typing_extensions import Literal, TypedDict
 
 # TODO: Add description for the individual classes
@@ -75,7 +76,22 @@ class DicomTarget(Target):
     @property
     def short_description(self) -> str:
         return f"{self.ip}:{self.port}"
-
+    
+    @validator("aet_target", "aet_source")
+    def valid_aet(cls, v):
+        if v and (len(v) > 16 or not re.match(r'^[a-zA-Z0-9_\-]*$', v)):
+            raise ValueError("AE title must be <= 16 alphanumeric characters")
+        return v
+    @validator("ip")
+    def valid_ip_or_hostname(cls, v):
+        if v and not re.match(r'^[a-zA-Z0-9.\-]+$', v):
+            raise ValueError("Invalid IP/hostname characters")
+        return v
+    @validator("port")
+    def valid_port(cls, v):
+        if v and (not v.isdigit() or not (1 <= int(v) <= 65535)):
+            raise ValueError("Invalid port number")
+        return v
 
 class DicomTLSTarget(Target):
     target_type: Literal["dicomtls"] = "dicomtls"
@@ -92,6 +108,12 @@ class DicomTLSTarget(Target):
     @property
     def short_description(self) -> str:
         return f"{self.ip}:{self.port}"
+
+    @validator("aet_target", "aet_source")
+    def valid_aet(cls, v):
+        if v and (len(v) > 16 or not re.match(r'^[a-zA-Z0-9_\-]*$', v)):
+            raise ValueError("AE title must be <= 16 alphanumeric characters")
+        return v
 
 
 class DicomWebTarget(Target):
@@ -188,6 +210,7 @@ class Module(BaseModel, Compat):
     requires_root: Optional[bool] = False
     requires_persistence: Optional[bool] = False
     persistence_folder_name: Optional[str] = ""
+    network_enabled: Optional[bool] = True
 
 
 class UnsetRule(TypedDict):
@@ -353,7 +376,7 @@ class TaskDispatch(BaseModel, Compat):
     status: Union[Dict[str, TaskDispatchStatus], EmptyDict] = cast(EmptyDict, {})
     retries: Optional[int] = 0
     next_retry_at: Optional[float] = 0
-    series_uid: Optional[str]
+    series_uid: Optional[str] = None
 
 
 class TaskStudy(BaseModel, Compat):
@@ -373,7 +396,7 @@ class TaskProcessing(BaseModel, Compat):
     module_config: Optional[Module]
     settings: Dict[str, Any] = {}
     retain_input_images: bool
-    output: Optional[Dict]
+    output: Optional[Dict] = None
 
 # class PydanticFile(object):
 #     def __init__(self, klass, file_name):
@@ -407,7 +430,7 @@ class Task(BaseModel, Compat):
     dispatch: Union[TaskDispatch, EmptyDict] = cast(EmptyDict, {})
     process: Union[TaskProcessing, EmptyDict, List[TaskProcessing]] = cast(EmptyDict, {})
     study: Union[TaskStudy, EmptyDict] = cast(EmptyDict, {})
-    nomad_info: Optional[Any]
+    nomad_info: Optional[Any] = None
 
     class Config:
         extra = "forbid"

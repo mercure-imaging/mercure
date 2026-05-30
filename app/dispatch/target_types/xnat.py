@@ -17,7 +17,7 @@ import common.config as config
 import pyxnat
 from common.types import Task, TaskDispatch, XnatTarget
 from pydicom import dcmread
-from webinterface.common import async_run
+from webinterface.common import async_run_exec
 
 from .base import TargetHandler
 from .registry import handler_for
@@ -69,9 +69,7 @@ class XnatTargetHandler(TargetHandler[XnatTarget]):
             ping_ok = False
 
             if target.host:
-                ping_result, *_ = await async_run(
-                    f"ping -w 1 -c 1 {get_domain(target.host)}"
-                )
+                ping_result, *_ = await async_run_exec("ping","-w","1","-c","1", get_domain(target.host))
                 if ping_result == 0:
                     ping_ok = True
 

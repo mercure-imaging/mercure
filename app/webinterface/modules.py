@@ -27,7 +27,8 @@ import common.config as config
 import common.helper as helper
 from common.constants import mercure_names
 from common.types import Module
-from webinterface.common import redis, strip_untrusted, templates
+import webinterface.common as wc
+from webinterface.common import strip_untrusted, templates
 
 router = decoRouter()
 logger = config.get_logger()
@@ -55,10 +56,142 @@ class BadRequestResponse(PlainTextResponse):
         self.status_code = 400
 
 
+ALLOWED_DOCKER_ARGS = {
+    "mem_limit", "memswap_limit", "cpu_period", "cpu_quota", "cpuset_cpus",
+    "shm_size", "runtime", "labels",
+    "cpu_shares", "cpuset_mems", "nano_cpus", "blkio_weight",
+    "device_read_bps", "device_write_bps", "device_read_iops", "device_write_iops",
+    "pids_limit",
+    "environment", "env",
+    "read_only",
+    "stop_signal", "stop_timeout",
+    "healthcheck",
+}
+
+
+DEFAULT_VOLUME_BASE = "/opt/mercure/processor_volumes"
+
+
+def _env_truthy(name: str) -> bool:
+    """Return True if env var is set to anything other than empty or 'false'."""
+    val = os.environ.get(name, "")
+    return bool(val) and val.lower() != "false"
+
+
+def forbid_unsafe_docker_args() -> bool:
+    return _env_truthy("MERCURE_FORBID_UNSAFE_DOCKER_ARGS")
+
+
+def allow_unsafe_docker_args() -> bool:
+    return _env_truthy("MERCURE_ALLOW_UNSAFE_DOCKER_ARGS") and not forbid_unsafe_docker_args()
+
+
+def forbid_unsafe_volumes() -> bool:
+    return _env_truthy("MERCURE_FORBID_UNSAFE_VOLUMES")
+
+
+def allow_unsafe_volumes() -> bool:
+    return _env_truthy("MERCURE_ALLOW_UNSAFE_VOLUMES") and not forbid_unsafe_volumes()
+
+
+def get_allowed_volume_bases() -> Optional[List[str]]:
+    """Return list of allowed volume base paths, or None if all volumes are allowed.
+
+    By default only paths under /opt/mercure/processor_volumes are allowed.
+    MERCURE_PROCESSOR_EXTRA_VOLUMES can be:
+      - semicolon-separated paths (e.g. '/foo;/bar') to allow those paths in addition to the default
+    MERCURE_ALLOW_UNSAFE_VOLUMES bypasses all volume path checks.
+    """
+    if allow_unsafe_volumes():
+        return None
+    extra = os.environ.get("MERCURE_PROCESSOR_EXTRA_VOLUMES", "").strip()
+    bases = [DEFAULT_VOLUME_BASE]
+    if extra:
+        bases.extend(p.strip() for p in extra.split(";") if p.strip())
+    return bases
+
+
+def check_volumes(additional_volumes) -> List[str]:
+    """Return list of violations for additional_volumes, empty if clean."""
+    allowed_bases = get_allowed_volume_bases()
+    if allowed_bases is None:
+        return []
+
+    if not additional_volumes:
+        return []
+    if isinstance(additional_volumes, dict):
+        vols = additional_volumes
+    elif isinstance(additional_volumes, str):
+        try:
+            vols = json.loads(additional_volumes)
+        except (json.JSONDecodeError, TypeError):
+            return []
+        if not isinstance(vols, dict):
+            return []
+    else:
+        return []
+
+    violations = []
+    for host_path in vols:
+        resolved = os.path.realpath(host_path)
+        if not any(resolved == base or resolved.startswith(base + "/") for base in allowed_bases):
+            violations.append(f"volume '{host_path}' is not under an allowed path ({', '.join(allowed_bases)})")
+    return violations
+
+
+def validate_volumes_change(old_volumes: str, new_volumes: str) -> None:
+    """Raise ValueError if new additional_volumes introduces disallowed paths not already present."""
+    if get_allowed_volume_bases() is None:
+        return
+    old_violations = set(check_volumes(old_volumes))
+    new_violations = set(check_volumes(new_volumes))
+    added = new_violations - old_violations
+    if added:
+        raise ValueError("; ".join(sorted(added)))
+
+
+def check_docker_arguments(docker_arguments) -> List[str]:
+    """Return list of disallowed keys found in docker_arguments, empty if clean."""
+    if not docker_arguments:
+        return []
+    if isinstance(docker_arguments, dict):
+        args = docker_arguments
+    elif isinstance(docker_arguments, str):
+        try:
+            args = json.loads(docker_arguments)
+        except (json.JSONDecodeError, TypeError):
+            return []
+        if not isinstance(args, dict):
+            return []
+    else:
+        return []
+
+    return [f"'{key}' is not allowed in docker_arguments" for key in args if key not in ALLOWED_DOCKER_ARGS]
+
+
+def validate_docker_arguments_change(old_docker_arguments: str, new_docker_arguments: str) -> None:
+    """Raise ValueError if new docker_arguments introduces disallowed options not already present."""
+    if allow_unsafe_docker_args():
+        return
+    old_violations = set(check_docker_arguments(old_docker_arguments))
+    new_violations = set(check_docker_arguments(new_docker_arguments))
+    added = new_violations - old_violations
+    if added:
+        raise ValueError("; ".join(sorted(added)))
+
+
 async def save_module(form, name) -> None:
     """Save the settings for the module with the given name."""
 
     # Ensure that the module settings are valid. Should happen on the client side too, but can't hurt to check again.
+
+    docker_arguments = form.get("docker_arguments", "")
+    additional_volumes = form.get("additional_volumes", "")
+    old_module = config.mercure.modules.get(name)
+    old_docker_arguments = (old_module.docker_arguments or "") if old_module else ""
+    old_volumes = (old_module.additional_volumes or "") if old_module else ""
+    validate_docker_arguments_change(old_docker_arguments, docker_arguments)
+    validate_volumes_change(old_volumes, additional_volumes)
 
     try:
         new_settings: Dict = json.loads(form.get("settings", "{}"))
@@ -68,7 +201,7 @@ async def save_module(form, name) -> None:
         docker_tag=form.get("docker_tag", "").strip(),
         additional_volumes=form.get("additional_volumes", ""),
         environment=form.get("environment", ""),
-        docker_arguments=form.get("docker_arguments", ""),
+        docker_arguments=docker_arguments,
         settings=new_settings,
         contact=strip_untrusted(form.get("contact", "")),
         comment=strip_untrusted(form.get("comment", "")),
@@ -77,6 +210,7 @@ async def save_module(form, name) -> None:
         requires_root=form.get("requires_root", False)
         or form.get("container_type", "mercure") == "monai",
         requires_persistence=form.get("requires_persistence", False),
+        network_enabled=form.get("network_enabled", False),
     )
     config.save_config()
 
@@ -107,12 +241,29 @@ async def show_modules(request):
         else:
             used_modules[used_module] = rule
 
+    # Check for modules with dangerous docker_arguments or disallowed volumes
+    privileged_modules = {}
+    if not allow_unsafe_docker_args():
+        for module_name, module in config.mercure.modules.items():
+            violations = check_docker_arguments(module.docker_arguments or "")
+            if violations:
+                privileged_modules[module_name] = violations
+    volume_violations = {}
+    for module_name, module in config.mercure.modules.items():
+        violations = check_volumes(module.additional_volumes or "")
+        if violations:
+            volume_violations[module_name] = violations
+
     template = "modules.html"
     context = {
         "request": request,
         "page": "modules",
         "modules": config.mercure.modules,
         "used_modules": used_modules,
+        "privileged_modules": privileged_modules,
+        "volume_violations": volume_violations,
+        "forbid_unsafe_docker_args": forbid_unsafe_docker_args(),
+        "forbid_unsafe_volumes": forbid_unsafe_volumes(),
     }
     return templates.TemplateResponse(template, context)
 
@@ -133,7 +284,7 @@ async def add_module(request):
     form["name"] = name.strip()
     form["docker_tag"] = form["docker_tag"].strip()
 
-    if not re.fullmatch("[0-9a-zA-Z_\-]+", name):
+    if not re.fullmatch(r"[0-9a-zA-Z_\-]+", name):
         return BadRequestResponse("Invalid module name provided.")
 
     if not re.fullmatch("[a-zA-Z0-9-:/_.@]+", form["docker_tag"]):
@@ -186,6 +337,8 @@ async def add_module(request):
     # monitor.send_webgui_event(monitor.w_events.RULE_CREATE, request.user.display_name, name)
     try:
         await save_module(form, name)
+    except ValueError as e:
+        return BadRequestResponse(str(e))
     except Exception as e:
         logger.exception(e)
         return ServerErrorResponse(f"Unexpected error while saving new module. {e}")
@@ -240,6 +393,10 @@ async def edit_module(request):
         "support_root_modules": config.mercure.support_root_modules,
         "module_persistence_file": module_persistence_file,
         "persistence_folder": module_mount_source,
+        "allowed_docker_args": sorted(ALLOWED_DOCKER_ARGS),
+        "allow_unsafe_docker_args": allow_unsafe_docker_args(),
+        "allow_unsafe_volumes": allow_unsafe_volumes(),
+        "allowed_volume_bases": get_allowed_volume_bases(),
     }
     return templates.TemplateResponse(template, context)
 
@@ -261,7 +418,7 @@ async def edit_module_POST(request):
     if name not in config.mercure.modules:
         return PlainTextResponse("Invalid module name - perhaps it was deleted?")
 
-    if not re.fullmatch("[0-9a-zA-Z_\-]+", name):
+    if not re.fullmatch(r"[0-9a-zA-Z_\-]+", name):
         return BadRequestResponse("Invalid module name provided.")
 
     if not re.fullmatch("[a-zA-Z0-9-:/_.@]+", form["docker_tag"]):
@@ -269,11 +426,13 @@ async def edit_module_POST(request):
 
     try:
         await save_module(form, name)
+    except ValueError as e:
+        return BadRequestResponse(str(e))
     except Exception as e:
         logger.exception(e)
         return PlainTextResponse("ERROR: Unable to write configuration. Try again.")
 
-    return RedirectResponse(url="/modules/", status_code=303)
+    return PlainTextResponse("", headers={"HX-Redirect": "/modules/"})
 
 
 @router.post("/edit/{module}/save_persistence")
@@ -286,7 +445,7 @@ async def save_persistence_file(request):
     if name not in config.mercure.modules:
         return PlainTextResponse("Invalid module name - perhaps it was deleted?")
 
-    if not re.fullmatch("[0-9a-zA-Z_\-]+", name):
+    if not re.fullmatch(r"[0-9a-zA-Z_\-]+", name):
         return BadRequestResponse("Invalid module name provided.")
 
     module_data = config.mercure.modules[name]
@@ -349,7 +508,7 @@ async def refresh_persistence_file(request):
     if name not in config.mercure.modules:
         return PlainTextResponse("Invalid module name - perhaps it was deleted?")
 
-    if not re.fullmatch("[0-9a-zA-Z_\-]+", name):
+    if not re.fullmatch(r"[0-9a-zA-Z_\-]+", name):
         return BadRequestResponse("Invalid module name provided.")
 
     module_data = config.mercure.modules[name]
@@ -444,7 +603,7 @@ def _get_cached_online_modules() -> Optional[str]:
     """Get cached online modules from Redis or in-memory cache. Returns JSON string or None."""
     try:
         # Try Redis first
-        cached_data = redis.get(CACHE_KEY)
+        cached_data = wc.redis.get(CACHE_KEY)
         if cached_data:
             # Redis returns bytes, need to decode to string
             if isinstance(cached_data, bytes):
@@ -473,7 +632,7 @@ def _set_cached_online_modules(online_modules: str) -> None:
     """Store online modules in both Redis and in-memory cache."""
     # Try to cache in Redis
     try:
-        redis.setex(CACHE_KEY, CACHE_TTL_SECONDS, online_modules)
+        wc.redis.setex(CACHE_KEY, CACHE_TTL_SECONDS, online_modules)
         logger.debug("Cached online modules in Redis")
     except Exception as e:
         logger.warning(f"Redis cache write failed: {e}")

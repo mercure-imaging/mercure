@@ -26,7 +26,7 @@ from redis import Redis
 from rq import Queue, get_current_job
 from rq.job import Dependency, Job, JobStatus
 from tests.getdcmtags import process_dicom
-from webinterface.common import redis, rq_fast_queue, rq_slow_queue
+import webinterface.common as wc
 from webinterface.dashboards.common import ClassBasedRQTask
 
 # Starlette-related includes
@@ -60,7 +60,7 @@ def query_dummy(job_id, job_kwargs):
 @dataclass
 class CheckAccessionsTask(ClassBasedRQTask):
     type: str = "check_accessions"
-    _queue: str = rq_fast_queue.name
+    _queue: str = "mercure_fast"
 
     def execute(self, *, accessions: List[str], node: Union[DicomTarget, DicomWebTarget],
                 search_filters: Dict[str, List[str]] = {}):
@@ -95,7 +95,7 @@ class GetAccessionTask(ClassBasedRQTask):
     type: str = "get_accession"
     paused: bool = False
     offpeak: bool = False
-    _queue: str = rq_slow_queue.name
+    _queue: str = "mercure_slow"
 
     @classmethod
     def get_accession(cls, job_id, accession: str, node: Union[DicomTarget, DicomWebTarget],
@@ -178,7 +178,7 @@ class MainTask(ClassBasedRQTask):
     total: int = 0
     paused: bool = False
     offpeak: bool = False
-    _queue: str = rq_slow_queue.name
+    _queue: str = "mercure_slow"
 
     def execute(self, *, accessions, subjobs, path: str, destination: Optional[str], move_promptly: bool,
                 node: Union[DicomTarget, DicomWebTarget], force_rule: Optional[str] = None) -> str:
@@ -220,8 +220,8 @@ class QueryPipeline():
     job: Job
     connection: Redis
 
-    def __init__(self, job: Union[Job, str], connection: Redis = redis):
-        self.connection = connection
+    def __init__(self, job: Union[Job, str], connection: Optional[Redis] = None):
+        self.connection = connection or wc.redis
         if isinstance(job, str):
             if not (result := Job.fetch(job, connection=self.connection)):
                 raise Exception("Invalid Job ID")
@@ -238,7 +238,7 @@ class QueryPipeline():
         """
         Create a job to process the given accessions and store them in the specified destination path.
         """
-        connection = redis_server or redis
+        connection = redis_server or wc.redis
         get_accession_jobs: List[Job] = []
         check_job = CheckAccessionsTask().create_job(connection,
                                                      accessions=accessions,
@@ -418,25 +418,26 @@ class QueryPipeline():
         return cast(datetime, self.job.enqueued_at)
 
     @classmethod
-    def get_all(cls, type: str = "batch", connection: Redis = redis) -> Generator['QueryPipeline', None, None]:
+    def get_all(cls, type: str = "batch", connection: Optional[Redis] = None) -> Generator['QueryPipeline', None, None]:
         """
         Get all jobs of a given type from the queue
         """
+        connection = connection or wc.redis
         job_ids = set()
 
         registries = [
-            rq_slow_queue.started_job_registry,     # Returns StartedJobRegistry
-            rq_slow_queue.deferred_job_registry,    # Returns DeferredJobRegistry
-            rq_slow_queue.finished_job_registry,    # Returns FinishedJobRegistry
-            rq_slow_queue.failed_job_registry,      # Returns FailedJobRegistry
-            rq_slow_queue.scheduled_job_registry,   # Returns ScheduledJobRegistry
-            rq_slow_queue.canceled_job_registry,    # Returns CanceledJobRegistry
+            wc.rq_slow_queue.started_job_registry,     # Returns StartedJobRegistry
+            wc.rq_slow_queue.deferred_job_registry,    # Returns DeferredJobRegistry
+            wc.rq_slow_queue.finished_job_registry,    # Returns FinishedJobRegistry
+            wc.rq_slow_queue.failed_job_registry,      # Returns FailedJobRegistry
+            wc.rq_slow_queue.scheduled_job_registry,   # Returns ScheduledJobRegistry
+            wc.rq_slow_queue.canceled_job_registry,    # Returns CanceledJobRegistry
         ]
         for registry in registries:
             for j_id in registry.get_job_ids():
                 job_ids.add(j_id)
 
-        for j_id in rq_slow_queue.job_ids:
+        for j_id in wc.rq_slow_queue.job_ids:
             job_ids.add(j_id)
 
         jobs = (Job.fetch(j_id, connection) for j_id in job_ids)

@@ -8,4 +8,3 @@ build-docker.sh
 push-docker.sh
 index.html.*
 env
-app/bin/getdcmtags

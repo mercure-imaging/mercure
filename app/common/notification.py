@@ -21,7 +21,7 @@ from common import monitor
 # App-specific includes
 from common.constants import mercure_events
 from common.types import Rule, Task, TaskProcessing
-from jinja2 import Template
+from jinja2.sandbox import SandboxedEnvironment
 
 from .helper import loop
 
@@ -82,7 +82,8 @@ def parse_payload(
         **dict(rule=rule_name, task_id=task_id, event=event.name, details=details),
         **context,
     }
-    return Template(payload_parsed).render(context)
+    sandbox = SandboxedEnvironment()
+    return sandbox.from_string(payload_parsed).render(context)
 
 
 def send_webhook(url: str, payload: str) -> None:

@@ -11,10 +11,7 @@
         <h1 class="title is-4">Edit User - {{edituser}}</h1>
         {% endif %}
 
-        <form method="post" action="/users/edit/{{edituser}}">
-            {% if own_settings is defined %}
-            <input type="hidden" name="own_settings" value="True">
-            {% endif %}
+        <form method="post" action="{% if own_settings is defined %}/settings{% else %}/users/edit/{{edituser}}{% endif %}">
             <div class="field">
                 <label class="label">Email</label>
                 <div class="control">
@@ -22,8 +19,17 @@
                         value="{{edituser_info['email']}}">
                 </div>
             </div>
+            {% if own_settings is defined %}
             <div class="field">
-                <label class="label">Password</label>
+                <label class="label">Old Password</label>
+                <div class="control">
+                    <input name="old_password" class="input" autocomplete='off' type="password"
+                        placeholder="Required to save changes" value="">
+                </div>
+            </div>
+            {% endif %}
+            <div class="field">
+                <label class="label">{% if own_settings is defined %}New Password{% else %}Password{% endif %}</label>
                 <div class="control">
                     <input name="password" class="input" autocomplete='off' type="password"
                         placeholder="Leave empty to keep current password" value="">
@@ -34,7 +40,7 @@
                 <label class="label">Administrator</label>
                 <div class="select">
                     <div class="control">
-                        <select name="is_admin" {% if user==edituser %}disabled{% endif %}>
+                        <select name="is_admin">
                             <option value="False" {% if edituser_info['is_admin']!='True' %}selected{% endif %}>No
                             </option>
                             <option value="True" {% if edituser_info['is_admin']=='True' %}selected{% endif %}>Yes
@@ -42,9 +48,6 @@
                         </select>
                     </div>
                 </div>
-                {% if user==edituser %}
-                <p class="help has-text-grey-light">You cannot change your own status.</p>
-                {% endif %}
             </div>
             <div class="field">
                 <label class="label">Permissions</label>

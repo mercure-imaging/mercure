@@ -1,5 +1,6 @@
 #!/bin/bash
 set -euo pipefail
+export DEBIAN_FRONTEND="${DEBIAN_FRONTEND:-noninteractive}"
 
 error() {
   local parent_lineno="$1"
@@ -8,6 +9,14 @@ error() {
   exit "${code}"
 }
 trap 'error ${LINENO}' ERR
+
+# cp no-clobber flag: coreutils 9.x deprecated -n in favor of --update=none;
+# coreutils 8.x (Ubuntu 20.04) doesn't support --update=none at all.
+if cp --update=none /dev/null /dev/null 2>/dev/null; then
+  CP_NOCLOBBER="cp --update=none"
+else
+  CP_NOCLOBBER="cp -n"
+fi
 
 UBUNTU_VERSION=$(lsb_release -rs)
 if [ $UBUNTU_VERSION != "20.04" ] && [ $UBUNTU_VERSION != "22.04" ] && [ $UBUNTU_VERSION != "24.04" ]; then
@@ -38,30 +47,50 @@ then
   echo "Running as root, but setting $OWNER as owner."
 fi
 
-SECRET="${MERCURE_SECRET:-unset}"
-if [ "$SECRET" = "unset" ]
-then
-  SECRET=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1 || true)
-fi
+generate_secret() {
+  local secret
+  secret=$(head -c 48 /dev/urandom | base64 | tr -dc 'a-zA-Z0-9' | head -c 32)
+  if [ -z "$secret" ] || [ ${#secret} -lt 32 ]; then
+    echo "ERROR: Failed to generate secret" >&2
+    exit 1
+  fi
+  echo "$secret"
+}
 
-BOOKKEEPER_SECRET=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1 || true)
+validate_secret() {
+  local name="$1" value="$2"
+  if [[ "$value" =~ [^a-zA-Z0-9] ]]; then
+    echo "ERROR: $name contains non-alphanumeric characters. Only a-z, A-Z, 0-9 are allowed."
+    exit 1
+  fi
+}
 
-DB_PWD="${MERCURE_PASSWORD:-unset}"
-if [ "$DB_PWD" = "unset" ]
-then
-  DB_PWD=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1 || true)
-fi
+SECRET="${MERCURE_SECRET:-$(generate_secret)}"
+BOOKKEEPER_SECRET=$(generate_secret)
+DB_PWD="${MERCURE_PASSWORD:-$(generate_secret)}"
+REDIS_PASSWORD="${MERCURE_REDIS_PASSWORD:-$(generate_secret)}"
+
+validate_secret "MERCURE_SECRET" "$SECRET"
+validate_secret "MERCURE_PASSWORD" "$DB_PWD"
+validate_secret "MERCURE_REDIS_PASSWORD" "$REDIS_PASSWORD"
+
 MERCURE_BASE=/opt/mercure
 DATA_PATH=$MERCURE_BASE/data
 CONFIG_PATH=$MERCURE_BASE/config
 DB_PATH=$MERCURE_BASE/db
 MERCURE_SRC=$(readlink -f .)
 
-if [ -f "$CONFIG_PATH"/db.env ]; then 
-  sudo chown $USER "$CONFIG_PATH"/db.env 
+if [ -f "$CONFIG_PATH"/db.env ]; then
+  sudo chown $USER "$CONFIG_PATH"/db.env
   source "$CONFIG_PATH"/db.env # Don't accidentally generate a new database password
-  sudo chown $OWNER "$CONFIG_PATH"/db.env 
+  sudo chown $OWNER "$CONFIG_PATH"/db.env
   DB_PWD=$POSTGRES_PASSWORD
+fi
+
+if [ -f "$CONFIG_PATH"/redis.env ]; then
+  sudo chown $USER "$CONFIG_PATH"/redis.env
+  source "$CONFIG_PATH"/redis.env # Don't accidentally generate a new Redis password
+  sudo chown $OWNER "$CONFIG_PATH"/redis.env
 fi
 
 echo "Installation folder:  $MERCURE_BASE"
@@ -95,6 +124,7 @@ create_folders () {
   if [ $INSTALL_TYPE != "systemd" ]; then
     create_folder $DB_PATH
   fi
+  create_folder "$MERCURE_BASE/persistence"
 
   if [[ ! -e $DATA_PATH ]]; then
       echo "## Creating $DATA_PATH..."
@@ -119,10 +149,12 @@ install_configuration () {
     cp "$MERCURE_SRC"/configuration/default_services.json "$CONFIG_PATH"/services.json
     cp "$MERCURE_SRC"/configuration/default_webgui.env "$CONFIG_PATH"/webgui.env
     echo "POSTGRES_PASSWORD=$DB_PWD" > "$CONFIG_PATH"/db.env
-
-    if [ $INSTALL_TYPE = "systemd" ]; then 
+    if [ $INSTALL_TYPE = "systemd" ]; then
+      echo "REDIS_PASSWORD=$REDIS_PASSWORD" > "$CONFIG_PATH"/redis.env
+      echo "REDIS_URL=redis://:$REDIS_PASSWORD@localhost:6379/0" >> "$CONFIG_PATH"/redis.env
       sed -i -e "s/mercure:ChangePasswordHere@localhost/mercure:$DB_PWD@localhost/" "$CONFIG_PATH"/bookkeeper.env
     elif [ $INSTALL_TYPE = "docker" ]; then
+      echo "REDIS_PASSWORD=$REDIS_PASSWORD" > "$CONFIG_PATH"/redis.env
       sed -i -e "s/mercure:ChangePasswordHere@localhost/mercure:$DB_PWD@db/" "$CONFIG_PATH"/bookkeeper.env
       sed -i -e "s/0.0.0.0:8080/bookkeeper:8080/" "$CONFIG_PATH"/mercure.json
     fi
@@ -138,22 +170,22 @@ install_configuration () {
 install_nomad () {
   echo "Installing Nomad..."
   NOMAD_VERSION=1.2.0
-  if [ ! -x "$(command -v unzip)" ]; then 
+  if [ ! -x "$(command -v unzip)" ]; then
     sudo apt-get install -y unzip
   fi 
 
-  if [ ! -x "$(command -v nomad)" ]; then 
+  if [ ! -x "$(command -v nomad)" ]; then
     curl -sSL https://releases.hashicorp.com/nomad/${NOMAD_VERSION}/nomad_${NOMAD_VERSION}_linux_amd64.zip -o /tmp/nomad.zip
-    unzip -o /tmp/nomad.zip  -d /tmp 
+    unzip -o /tmp/nomad.zip  -d /tmp
     sudo install /tmp/nomad /usr/bin/nomad
     nomad -autocomplete-install
-  fi 
+  fi
   if [ ! -d /etc/nomad.d ]; then
     sudo mkdir -p /etc/nomad.d
     sudo chmod a+w /etc/nomad.d
   fi
 
-  if [ ! -f "/etc/systemd/system/nomad.service" ]; then 
+  if [ ! -f "/etc/systemd/system/nomad.service" ]; then
       (
     cat <<-EOFB
     [Unit]
@@ -172,14 +204,14 @@ EOFB
     sudo systemctl restart nomad.service
   fi
 
-  if [ ! -x "$(command -v consul)" ]; then 
+  if [ ! -x "$(command -v consul)" ]; then
     echo "Installing Consul..."
     CONSUL_VERSION=1.9.0
     curl -sSL https://releases.hashicorp.com/consul/${CONSUL_VERSION}/consul_${CONSUL_VERSION}_linux_amd64.zip -o /tmp/consul.zip
     unzip -o /tmp/consul.zip -d /tmp
     sudo install /tmp/consul /usr/bin/consul
   fi
-  if [ ! -f "/etc/systemd/system/consul.service" ]; then 
+  if [ ! -f "/etc/systemd/system/consul.service" ]; then
     (
     cat <<-EOFA
       [Unit]
@@ -254,8 +286,8 @@ setup_nomad() {
     sleep 1s;
   done;
 
-  if [ -z "${NOMAD_TOKEN:-}" ]; then 
-    if [ ! -x "$(command -v jq)" ]; then 
+  if [ -z "${NOMAD_TOKEN:-}" ]; then
+    if [ ! -x "$(command -v jq)" ]; then
       sudo apt-get install -y jq
     fi
     echo "NOMAD_TOKEN not set. Attempting to bootstrap Nomad ACL."
@@ -269,7 +301,7 @@ setup_nomad() {
       export NOMAD_TOKEN=$new_secret_id
     fi
   fi
-  nomad acl policy apply -description "Mercure anonymous policy" anonymous $MERCURE_BASE/anonymous-strict.policy.hcl 
+  nomad acl policy apply -description "Mercure anonymous policy" anonymous $MERCURE_BASE/anonymous-strict.policy.hcl
   nomad run -detach $MERCURE_BASE/mercure.nomad
   nomad run -detach $MERCURE_BASE/mercure-ui.nomad
 
@@ -301,7 +333,7 @@ install_docker () {
     sudo docker --version
   fi
 
-  if [ ! -x "$(command -v docker-compose)" ]; then 
+  if [ ! -x "$(command -v docker-compose)" ]; then
     echo "## Installing Docker-Compose..."
     sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
     sudo chmod +x /usr/local/bin/docker-compose
@@ -325,6 +357,11 @@ setup_docker () {
     fi
     sudo chown $OWNER:$OWNER "$MERCURE_BASE"/docker-compose.yml
   fi
+
+  # Write .env for compose variable interpolation (REDIS_PASSWORD)
+  echo "REDIS_PASSWORD=$REDIS_PASSWORD" | sudo tee "$MERCURE_BASE"/.env > /dev/null
+  sudo chown $OWNER:$OWNER "$MERCURE_BASE"/.env
+  sudo chmod 600 "$MERCURE_BASE"/.env
 }
 
 setup_docker_dev () {
@@ -347,19 +384,15 @@ build_docker () {
 }
 
 start_docker () {
-  echo "## Starting docker compose..."  
+  echo "## Starting docker compose..."
   pushd $MERCURE_BASE
   sudo docker-compose up -d
   popd
 }
 
-link_binaries() {
-  sudo find "$MERCURE_BASE/app/bin/ubuntu$UBUNTU_VERSION" -type f -exec ln -f -s {} "$MERCURE_BASE/app/bin" \;
-}
-
 install_app_files() {
   local overwrite=${1:-false}
-  if [ $DO_DEV_INSTALL = true ]; then 
+  if [ $DO_DEV_INSTALL = true ]; then
     if [ -e "$MERCURE_BASE"/app ]; then # app already exists
       if [ -L "$MERCURE_BASE"/app ]; then # it's already linked somewhere
         sudo unlink "$MERCURE_BASE"/app
@@ -375,7 +408,7 @@ install_app_files() {
     echo "## Linking app files..."
     sudo ln -s "$MERCURE_SRC/app" "$MERCURE_BASE"
     sudo chown -h $OWNER:$OWNER ./app
-    link_binaries
+
     sudo chmod g+w "$MERCURE_SRC/app"
     # the mercure user and running user will be in each other's groups
     sudo usermod -aG $OWNER $(logname)
@@ -386,30 +419,86 @@ install_app_files() {
   if [ "$overwrite" = true ] || [ ! -e "$MERCURE_BASE"/app ]; then
     echo "## Installing app files..."
     [ "$overwrite" = true ] || sudo mkdir "$MERCURE_BASE"/app
-    if [ ! "$MERCURE_SRC" -ef "$MERCURE_BASE"/app ]; then
+    if [ ! "$MERCURE_SRC/app" -ef "$MERCURE_BASE/app" ]; then
       sudo cp -R "$MERCURE_SRC/app" "$MERCURE_BASE"
     fi
-    link_binaries
+
     sudo chown -R $OWNER:$OWNER "$MERCURE_BASE/app"
+  fi
+}
+
+build_python() {
+  # Build Python from source and install via altinstall (doesn't touch system python3)
+  local pyver=3.12.11
+  local pysrc="/tmp/Python-${pyver}"
+  local pytgz="/tmp/Python-${pyver}.tar.xz"
+  echo "## Building Python ${pyver} from source..."
+  sudo apt-get install -y libssl-dev zlib1g-dev libbz2-dev \
+    libreadline-dev libsqlite3-dev curl libncurses5-dev libncursesw5-dev \
+    xz-utils tk-dev libffi-dev liblzma-dev
+  wget -O "$pytgz" "https://www.python.org/ftp/python/${pyver}/Python-${pyver}.tar.xz"
+  tar xJf "$pytgz" -C /tmp
+  cd "$pysrc"
+  ./configure --prefix=/usr/local --enable-optimizations --with-ensurepip=install
+  make -j"$(nproc)"
+  sudo make altinstall
+  cd -
+  rm -rf "$pysrc" "$pytgz"
+}
+
+install_python() {
+  # Ensure Python 3.12 is available. 24.04 ships it natively; older releases need help.
+  if [ "$UBUNTU_VERSION" = "20.04" ]; then
+    command -v python3.12 &>/dev/null || build_python
+  elif [ "$UBUNTU_VERSION" = "22.04" ]; then
+    sudo apt-get install -y software-properties-common
+    sudo add-apt-repository -y ppa:deadsnakes/ppa
+    sudo apt-get update
+    sudo apt-get install -y python3.12 python3.12-dev python3.12-venv
+  else
+    # 24.04 ships Python 3.12 natively
+    sudo apt-get install -y python3.12-dev python3.12-venv
   fi
 }
 
 install_packages() {
   echo "## Installing Linux packages..."
   sudo apt-get update
-  sudo apt-get install -y build-essential wget git dcmtk jq inetutils-ping sshpass rsync postgresql postgresql-contrib libpq-dev git-lfs python3-wheel python3-dev python3 python3-venv sendmail libqt5core5a redis
-  if [ $UBUNTU_VERSION == "24.04" ]; then
-    sudo apt-get install -y libqt6core6t64 
+  sudo apt-get install -y build-essential wget git jq inetutils-ping sshpass rsync postgresql postgresql-contrib libpq-dev git-lfs sendmail redis
+  install_python
+}
+
+# Pick Python 3.12 (source build on 20.04, deadsnakes on 22.04, system on 24.04)
+pick_python() {
+  if command -v python3.12 &>/dev/null; then
+    echo python3.12
   else
-    sudo apt-get install -y libqt5core5a 
+    echo python3
   fi
 }
 
 install_dependencies() {
   echo "## Installing Python runtime environment..."
+  local python
+  python=$(pick_python)
+  local need_venv=false
   if [ ! -e "$MERCURE_BASE/env" ]; then
-    sudo mkdir "$MERCURE_BASE/env" && sudo chown $USER "$MERCURE_BASE/env"
-    python3 -m venv "$MERCURE_BASE/env"
+    need_venv=true
+  elif [ -e "$MERCURE_BASE/env/bin/python3" ]; then
+    # Recreate venv if existing Python is older than what we need (e.g. 3.8 on 20.04)
+    local current_ver
+    current_ver=$("$MERCURE_BASE/env/bin/python3" -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+    local target_ver
+    target_ver=$($python -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+    if [ "$current_ver" != "$target_ver" ]; then
+      echo "## Upgrading venv Python from $current_ver to $target_ver..."
+      sudo rm -rf "$MERCURE_BASE/env"
+      need_venv=true
+    fi
+  fi
+  if [ "$need_venv" = true ]; then
+    sudo mkdir -p "$MERCURE_BASE/env" && sudo chown $USER "$MERCURE_BASE/env"
+    $python -m venv "$MERCURE_BASE/env"
   fi
 
   echo "## Installing required Python packages..."
@@ -428,9 +517,69 @@ install_postgres() {
 EOM
 }
 
+install_redis() {
+  echo "## Configuring Redis authentication..."
+  # Set password on the live instance first so existing data is preserved
+  redis-cli CONFIG SET requirepass "$REDIS_PASSWORD" 2>/dev/null || true
+  echo "requirepass $REDIS_PASSWORD" | sudo tee /etc/redis/mercure.conf > /dev/null
+  if ! grep -q "include /etc/redis/mercure.conf" /etc/redis/redis.conf 2>/dev/null; then
+    echo "include /etc/redis/mercure.conf" | sudo tee -a /etc/redis/redis.conf > /dev/null
+  fi
+  sudo systemctl restart redis.service
+}
+
+configure_credentials() {
+  echo "## Configuring service credential isolation..."
+  local systemd_ver
+  systemd_ver=$(systemctl --version | head -1 | awk '{print $2}')
+
+  local redis_drop_in
+  if [ "$systemd_ver" -ge 250 ] 2>/dev/null; then
+    echo "## Using LoadCredential for Redis (systemd $systemd_ver)"
+    redis_drop_in="$MERCURE_SRC/installation/drop-ins/redis-credentials-loadcredential.conf"
+  else
+    echo "## Using EnvironmentFile for Redis (systemd $systemd_ver)"
+    redis_drop_in="$MERCURE_SRC/installation/drop-ins/redis-credentials-envfile.conf"
+  fi
+  # Note: Python services also call common.credentials.load_credentials() at
+  # startup to read $CREDENTIALS_DIRECTORY/*.env, so LoadCredential works even
+  # without EnvironmentFile=%d support.
+
+  # Install Redis credential drop-in and per-service deny lists
+  local -A svc_deny=(
+    [mercure_ui]="credentials-deny-ui.conf"
+    [mercure_bookkeeper]="credentials-deny-bookkeeper.conf"
+    [mercure_worker_fast@]="credentials-deny-worker.conf"
+    [mercure_worker_slow@]="credentials-deny-worker.conf"
+    [mercure_cleaner]="credentials-deny-default.conf"
+    [mercure_dispatcher]="credentials-deny-default.conf"
+    [mercure_processor]="credentials-deny-default.conf"
+    [mercure_receiver]="credentials-deny-default.conf"
+    [mercure_router]="credentials-deny-default.conf"
+  )
+  local redis_services=("mercure_ui" "mercure_worker_fast@" "mercure_worker_slow@")
+
+  for svc in "${!svc_deny[@]}"; do
+    local drop_in_dir="/etc/systemd/system/${svc}.service.d"
+    sudo mkdir -p "$drop_in_dir"
+    sudo cp "$MERCURE_SRC/installation/drop-ins/${svc_deny[$svc]}" "$drop_in_dir/credentials.conf"
+  done
+
+  for svc in "${redis_services[@]}"; do
+    local drop_in_dir="/etc/systemd/system/${svc}.service.d"
+    sudo cp "$redis_drop_in" "$drop_in_dir/redis.conf"
+  done
+
+  # With LoadCredential, the source file should be owned by root
+  if [ "$systemd_ver" -ge 250 ] 2>/dev/null; then
+    sudo chown root:root "$CONFIG_PATH"/redis.env
+    sudo chmod 600 "$CONFIG_PATH"/redis.env
+  fi
+}
+
 install_services() {
   echo "## Installing services..."
-  sudo cp -n "$MERCURE_SRC"/installation/*.service /etc/systemd/system
+  sudo $CP_NOCLOBBER "$MERCURE_SRC"/installation/*.service /etc/systemd/system
   sudo systemctl daemon-reload
   sudo systemctl enable mercure_bookkeeper.service mercure_cleaner.service mercure_dispatcher.service mercure_receiver.service mercure_router.service mercure_ui.service mercure_processor.service
   sudo systemctl restart mercure_bookkeeper.service mercure_cleaner.service mercure_dispatcher.service mercure_receiver.service mercure_router.service mercure_ui.service mercure_processor.service
@@ -444,13 +593,15 @@ systemd_install () {
   create_user
   create_folders
   install_configuration
-  sudo cp -n "$MERCURE_SRC"/installation/sudoers/* /etc/sudoers.d/
+  sudo $CP_NOCLOBBER "$MERCURE_SRC"/installation/sudoers/* /etc/sudoers.d/
   install_packages
   install_docker
   install_app_files
   install_dependencies
   install_postgres
+  install_redis
   sudo chown -R mercure:mercure "$MERCURE_BASE"
+  configure_credentials
   install_services
 }
 
@@ -494,7 +645,7 @@ systemd_update () {
     fi
   fi
   echo "Updating mercure..."
-  local services=("ui" "receiver" "bookkeeper" "dispatcher" "cleaner" "bookkeeper" )
+  local services=("ui" "receiver" "bookkeeper" "dispatcher" "cleaner" "router" "processor" "worker_fast@1" "worker_fast@2" "worker_slow@1" "worker_slow@2")
   for service in "${services[@]}"; do
     if systemctl is-active --quiet mercure_$service.service; then
       echo "ERROR: mercure_$service.service is running. Stop mercure first."
@@ -503,9 +654,23 @@ systemd_update () {
   done
   create_folders
   install_app_files true
-  sudo cp -n "$MERCURE_SRC"/installation/sudoers/* /etc/sudoers.d/
+  sudo $CP_NOCLOBBER "$MERCURE_SRC"/installation/sudoers/* /etc/sudoers.d/
   install_packages
   install_dependencies
+  if [ ! -f "$CONFIG_PATH"/redis.env ]; then
+    echo "REDIS_PASSWORD=$REDIS_PASSWORD" | sudo tee "$CONFIG_PATH"/redis.env > /dev/null
+    echo "REDIS_URL=redis://:$REDIS_PASSWORD@localhost:6379/0" | sudo tee -a "$CONFIG_PATH"/redis.env > /dev/null
+    sudo chown $OWNER:$OWNER "$CONFIG_PATH"/redis.env
+    sudo chmod o-r "$CONFIG_PATH"/redis.env
+  fi
+  install_redis
+  configure_credentials
+  # Migrate worker ExecStart from bare rq to worker.py wrapper (for credential loading)
+  for svc_file in /etc/systemd/system/mercure_worker_fast@.service /etc/systemd/system/mercure_worker_slow@.service; do
+    if [ -f "$svc_file" ]; then
+      sudo sed -i 's|ExecStart=/opt/mercure/env/bin/rq worker|ExecStart=/opt/mercure/env/bin/python /opt/mercure/app/worker.py worker|' "$svc_file"
+    fi
+  done
   install_services
   echo "Update complete."
 }
@@ -517,10 +682,10 @@ docker_update () {
   fi
   if [ -f $MERCURE_BASE/docker-compose.override.yml ]; then
     echo "ERROR: $MERCURE_BASE/docker-compose.override.yml exists. Updating a dev install is not supported."
-    exit 1  
+    exit 1
   fi
   if [ $FORCE_INSTALL != "y" ]; then
-    echo "Update mercure to ${MERCURE_TAG:-VERSION} (y/n)?"
+    echo "Update mercure to ${MERCURE_TAG:-$VERSION} (y/n)?"
     read -p "WARNING: Server may require manual fixes after update. Taking backups beforehand is recommended. " ANS
     if [ "$ANS" != "y" ]; then
       echo "Update aborted."
@@ -528,6 +693,12 @@ docker_update () {
     fi
   fi
   # sudo sed -E "s/(image\: mercureimaging.*?\:).*/\1foo/g" docker-compose.yml 
+  if [ ! -f "$CONFIG_PATH"/redis.env ]; then
+    echo "REDIS_PASSWORD=$REDIS_PASSWORD" | sudo tee "$CONFIG_PATH"/redis.env > /dev/null
+    sudo chown $OWNER:$OWNER "$CONFIG_PATH"/redis.env
+    sudo chmod o-r "$CONFIG_PATH"/redis.env
+  fi
+  create_folder "$MERCURE_BASE/persistence"
   pushd $MERCURE_BASE
   sudo docker-compose down || true
   popd
@@ -553,7 +724,7 @@ while getopts ":hy" opt; do
       echo "                      -u               Update installation."
       echo "only for docker:"
       echo "                      -b               Build containers."
-      echo ""      
+      echo ""
       exit 0
       ;;
     y )

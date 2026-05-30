@@ -3,6 +3,8 @@ webgui.py
 =========
 The web-based graphical user interface of mercure.
 """
+from common.credentials import load_credentials
+load_credentials()
 
 import asyncio
 import base64
@@ -20,6 +22,7 @@ import sys
 import traceback
 import secrets
 from pathlib import Path
+from urllib.parse import urlparse
 from typing import Any, Dict, List, Optional, Union
 
 # App-specific includes
@@ -53,7 +56,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from starlette.responses import JSONResponse, PlainTextResponse, RedirectResponse, Response
 from starlette.routing import Route, Router
 from starlette.staticfiles import StaticFiles
-from webinterface.common import async_run, get_csp_nonce, redis, rq_fast_scheduler, templates
+from webinterface.common import async_run_exec, get_csp_nonce, setup_redis, templates
 from webinterface.dashboards.query.jobs import QueryPipeline
 
 import docker
@@ -134,9 +137,12 @@ async def lifespan(app):
 
 
 def startup(app: Starlette):
+    import webinterface.common
+    setup_redis()
+
     state = {"redis_connected": False}
     try:
-        response = redis.ping()
+        response = webinterface.common.redis.ping()
         if response:
             logger.info("Redis connection validated.")
             state["redis_connected"] = True
@@ -146,12 +152,12 @@ def startup(app: Starlette):
         logger.error("Could not connect to Redis", exc_info=True)
 
     if state["redis_connected"]:
-        scheduled_jobs = rq_fast_scheduler.get_jobs()
+        scheduled_jobs = webinterface.common.rq_fast_scheduler.get_jobs()
         for job in scheduled_jobs:
             if job.meta.get("type") != "offpeak":
                 continue
-            rq_fast_scheduler.cancel(job)
-        rq_fast_scheduler.schedule(
+            webinterface.common.rq_fast_scheduler.cancel(job)
+        webinterface.common.rq_fast_scheduler.schedule(
             scheduled_time=datetime.datetime.utcnow(),
             func=QueryPipeline.update_all_offpeak,
             interval=60,
@@ -286,13 +292,6 @@ async def show_log(request) -> Response:
             pass
         sub_services = []
     elif runtime == "systemd":
-        start_date_cmd = ""
-        end_date_cmd = ""
-        if start_timestamp:
-            start_date_cmd = f'--since "{start_timestamp} {config.mercure.local_time}"'
-        if end_timestamp:
-            end_date_cmd = f'--until "{end_timestamp} {config.mercure.local_time}"'
-
         service_name_or_list = services.services_list[requested_service]["systemd_service"]
         if isinstance(service_name_or_list, list):
             service_name = request.query_params.get("subservice", "missing")
@@ -300,19 +299,24 @@ async def show_log(request) -> Response:
             if service_name == "missing":
                 return RedirectResponse(url="/logs/" + requested_service + "?subservice=" + service_name_or_list[0],
                                         status_code=303)
+            if service_name not in service_name_or_list:
+                return PlainTextResponse("Invalid subservice", status_code=400)
+
             sub_services = service_name_or_list
+
         else:
             service_name = service_name_or_list
             sub_services = []
 
-        run_result = await async_run(
-            f"sudo journalctl -n 1000 -u "
-            f'{service_name} '
-            f"{start_date_cmd} {end_date_cmd} "
-            "-o short-iso --no-hostname"
-        )
-        return_code = -1 if run_result[0] is None else run_result[0]
-        raw_logs = run_result[1]
+        command = ["sudo", "journalctl", "-n", "1000", "-u", service_name]
+        if start_timestamp:
+            command.extend(["--since", f"{start_timestamp} {config.mercure.local_time}"])
+        if end_timestamp:
+            command.extend(["--until", f"{end_timestamp} {config.mercure.local_time}"])
+
+        command.extend(["-o", "short-iso", "--no-hostname"])
+
+        return_code, raw_logs, log_err = await async_run_exec(*command)
 
     elif runtime == "docker":
         client = docker.from_env()  # type: ignore
@@ -324,6 +328,8 @@ async def show_log(request) -> Response:
                 if service_name == "missing":
                     return RedirectResponse(url="/logs/" + requested_service + "?subservice=" + service_name_or_list[0],
                                             status_code=303)
+                if service_name not in service_name_or_list:
+                    return PlainTextResponse("Invalid subservice", status_code=400)
                 sub_services = service_name_or_list
             else:
                 service_name = service_name_or_list
@@ -345,13 +351,11 @@ async def show_log(request) -> Response:
             logger.error(e)
             return_code = 1
 
-    # return_code, raw_logs = (await async_run("/usr/bin/nomad alloc logs -job -stderr -f -tail mercure router"))[:2]
-    if return_code == 0:
-        log_content = html.escape(str(raw_logs.decode()))
-        log_content = helper.localize_log_timestamps(log_content, config)
+    log_content = html.escape(str(raw_logs.decode()))
+    log_content = helper.localize_log_timestamps(log_content, config)
 
-    else:
-        log_content = "Error reading log information"
+    if return_code != 0:
+        log_content = f"Error reading log information: \n====\n{log_err}\n===\n{log_content}"
         if start_date or end_date:
             log_content = log_content + "<br /><br />Are the From/To settings valid?"
 
@@ -447,6 +451,37 @@ async def configuration_edit_post(request) -> Response:
         validated_json = json.loads(editor_json)
     except ValueError:
         return PlainTextResponse("Invalid JSON data transferred.")
+
+    # Block adding dangerous docker_arguments or disallowed volumes via the raw config editor
+    new_modules = validated_json.get("modules", {})
+    old_modules = {name: mod.dict() if hasattr(mod, "dict") else mod
+                   for name, mod in config.mercure.modules.items()}
+    violations = []
+    for mod_name, mod_conf in new_modules.items():
+        if not isinstance(mod_conf, dict):
+            continue
+        # Check docker_arguments
+        if not modules.allow_unsafe_docker_args():
+            new_args = mod_conf.get("docker_arguments", "")
+            old_args = old_modules.get(mod_name, {}).get("docker_arguments", "") or ""
+            new_violations = set(modules.check_docker_arguments(new_args))
+            old_violations = set(modules.check_docker_arguments(old_args))
+            added = new_violations - old_violations
+            if added:
+                violations.append(f"{mod_name}: {'; '.join(sorted(added))}")
+        # Check additional_volumes
+        new_vols = mod_conf.get("additional_volumes", "")
+        old_vols = old_modules.get(mod_name, {}).get("additional_volumes", "") or ""
+        new_vol_violations = set(modules.check_volumes(new_vols))
+        old_vol_violations = set(modules.check_volumes(old_vols))
+        added_vols = new_vol_violations - old_vol_violations
+        if added_vols:
+            violations.append(f"{mod_name}: {'; '.join(sorted(added_vols))}")
+    if violations:
+        return PlainTextResponse(
+            "Blocked: disallowed changes to modules via editor.\n\n"
+            + "\n".join(violations)
+        )
 
     try:
         config.write_configfile(validated_json)
@@ -614,13 +649,18 @@ async def self_test(request) -> Response:
     except Exception:
         return PlainTextResponse(f"Error initializing test: {traceback.format_exc()}", status_code=500)
 
-    # shutil.copytree("./test_series", tmpdir)
-    command = (f"""dcmsend {receiver_host} {receiver_port} +r +sd {tmpdir} """
-               f"""-aet "mercure" -aec "{test_id}_begin" -nuc +sp '*.dcm' -to 60""")
+    command = [
+        "bin/dcmtk/dcmsend", receiver_host, receiver_port,
+        "--recurse", "--scan-directories", str(tmpdir),
+        "--aetitle", "mercure", "-aec", f"{test_id}_begin",
+        "--no-uid-checks",
+        "--scan-pattern", "*.dcm",
+        "--timeout", "60", # 60 seconds
+    ]
     try:
-        subprocess.check_output(command, shell=True, stderr=subprocess.STDOUT)
+        subprocess.check_output(command, stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as e:
-        logger.error(f"Error sending dicoms: {command}")
+        logger.error(f"Error sending dicoms: {' '.join(command)}")
         return PlainTextResponse("Could not submit dicoms for test:\n" + e.output.decode("utf-8"))
 
     await monitor.do_post("test-begin", dict(json=dict(id=test_id, type=test_type, rule_type=rule_type)))
@@ -705,6 +745,44 @@ async def settings_edit(request) -> Response:
     return templates.TemplateResponse(template, context)
 
 
+@router.post("/settings")
+@requires(["authenticated"], redirect="login")
+async def settings_edit_post(request) -> Response:
+    """Updates the current user's own settings. Requires old password to change password."""
+    try:
+        users.read_users()
+    except Exception:
+        return PlainTextResponse("Configuration is being updated. Try again in a minute.")
+
+    own_name = request.user.display_name
+    form = dict(await request.form())
+
+    if own_name not in users.users_list:
+        return PlainTextResponse("User does not exist anymore.")
+
+    to_edit = users.users_list[own_name]
+
+    old_password = form.get("old_password", "")
+    if not users.evaluate_password(own_name, old_password):
+        return PlainTextResponse("Old password is incorrect.")
+
+    to_edit["email"] = form.get("email", to_edit.get("email", ""))
+
+    new_password = form.get("password", "")
+    if new_password:
+        to_edit["password"] = users.hash_password(new_password)
+        to_edit["change_password"] = "False"
+
+    try:
+        users.save_users()
+    except Exception:
+        return PlainTextResponse("ERROR: Unable to write user list. Try again.")
+
+    logger.info(f"User {own_name} updated own settings")
+    monitor.send_webgui_event(monitor.w_events.USER_EDIT, own_name, own_name)
+    return RedirectResponse(url="/", status_code=303)
+
+
 ###################################################################################
 # Homepage endpoints
 ###################################################################################
@@ -727,7 +805,7 @@ async def get_service_status(runtime) -> List[Dict[str, Any]]:
                     systemd_services = [systemd_services]
 
                 for service_name in systemd_services:
-                    exit_code, _, _ = await async_run(f"systemctl is-active {service_name}")
+                    exit_code, _, _ = await async_run_exec("systemctl", "is-active", service_name)
                     if exit_code == 0:
                         running_status = True
                     else:
@@ -846,9 +924,9 @@ async def control_services(request) -> Response:
                     systemd_services = [systemd_services]
 
                 for service_name in systemd_services:
-                    command = "sudo systemctl " + action + " " + service_name
-                    logger.info(f"Executing: {command}")
-                    await async_run(command)
+                    command = ["sudo","systemctl", action, service_name]
+                    logger.info(f"Executing: {''.join(command)}")
+                    await async_run_exec(*command)
 
             elif runtime == "docker":
                 client = docker.from_env()  # type: ignore
@@ -920,6 +998,36 @@ exception_handlers = {
 app = None
 
 
+SAFE_METHODS = {"GET", "HEAD", "OPTIONS", "TRACE"}
+ORIGIN_EXEMPT_PATHS = {"/self_test_notification"}
+
+
+class OriginCheckMiddleware(BaseHTTPMiddleware):
+    """Rejects unsafe requests whose Origin does not match the Host header."""
+
+    async def dispatch(self, request, call_next):
+        if request.method not in SAFE_METHODS and request.scope["path"] not in ORIGIN_EXEMPT_PATHS:
+            origin = request.headers.get("origin")
+            if origin is not None:
+                origin_host = urlparse(origin).netloc
+                request_host = request.headers.get("host", "")
+                if origin_host != request_host:
+                    return PlainTextResponse("Origin check failed", status_code=403)
+            else:
+                # No Origin header — fall back to Referer
+                referer = request.headers.get("referer")
+                if referer is not None:
+                    referer_host = urlparse(referer).netloc
+                    request_host = request.headers.get("host", "")
+                    if referer_host != request_host:
+                        return PlainTextResponse("Origin check failed", status_code=403)
+                # If neither Origin nor Referer is present, allow the request.
+                # This covers non-browser clients (curl, API tools) and some
+                # older browsers. SameSite=Lax on the session cookie already
+                # blocks cross-site cookie attachment in these cases.
+        return await call_next(request)
+
+
 class CSPMiddleware(BaseHTTPMiddleware):
     async def __call__(self, scope, receive, send):
         scope["csp_nonce"] = secrets.token_urlsafe()
@@ -950,6 +1058,7 @@ def create_app() -> Starlette:
     app.mount("/static", StaticFiles(directory="webinterface/statics", check_dir=False), name="static")
     app.add_middleware(AuthenticationMiddleware, backend=SessionAuthBackend())
     app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY, session_cookie="mercure_session")
+    app.add_middleware(OriginCheckMiddleware)
     app.add_middleware(CSPMiddleware)
     # print(app.state.csp_nonce)
     app.mount("/rules", rules.rules_app, name="rules")
