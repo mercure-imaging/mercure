@@ -675,6 +675,7 @@ async def login_post(request) -> Response:
     try:
         users.read_users()
     except Exception:
+        logger.exception("Error reading users file during login")
         return PlainTextResponse("Configuration is being updated. Try again in a minute.")
 
     form = dict(await request.form())
