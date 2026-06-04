@@ -307,7 +307,24 @@
                             class="switch is-rounded is-dark" value="True" {% if
                             rules[rule]['processing_retain_images']==True %}checked="checked" {% endif%}>
                         <label for="processing_retain_images">Retain Input Images</label>
-                    </div>                    
+                    </div>
+                    <div class="field" style="margin-top: 15px;">
+                        <label class="label">Dynamic Routing</label>
+                        <input id="dynamic_routing" type="checkbox" name="dynamic_routing"
+                            class="switch is-rounded is-dark" value="True" {% if
+                            rules[rule]['dynamic_routing']==True %}checked="checked" {% endif%}>
+                        <label for="dynamic_routing">Allow module to override dispatch target via result.json</label>
+                    </div>
+                    <div class="field" id="dynamic_routing_targets_field" style="display: none;">
+                        <label class="label">Allowed Dynamic Targets <span class="has-text-grey-light has-text-weight-normal">(empty = all targets allowed)</span></label>
+                        <div class="control">
+                            <select multiple id="dynamic_routing_allowed_targets" name="dynamic_routing_allowed_targets">
+                                {% for t in targets %}
+                                <option value="{{t}}" {% if rules[rule]['dynamic_routing_allowed_targets'] and t in rules[rule]['dynamic_routing_allowed_targets'] %}selected{% endif%}>{{ t }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
                 </div>
                 <div class="panel" data-content="routing">
                     <div class="field">
@@ -580,7 +597,17 @@
     $('form').on('submit', validate);
     $('#rule').on('keyup', (evt)=> evt.target.value = evt.target.value.replace(/[{}\n]/g, ''))
     $('#study_trigger_series').on('keyup', (evt)=> evt.target.value = evt.target.value.replace(/[{}\x22\n]/g, ''))
-    
+
+    function toggleDynamicRoutingTargets() {
+        if ($('#dynamic_routing').is(':checked')) {
+            $('#dynamic_routing_targets_field').show();
+        } else {
+            $('#dynamic_routing_targets_field').hide();
+        }
+    }
+    $('#dynamic_routing').on('change', toggleDynamicRoutingTargets);
+    toggleDynamicRoutingTargets();
+
     function toggleTestRule() {
         if($("#testrule").is(":visible")) {
             $("#testrule").hide();
@@ -665,10 +692,18 @@
         var targetSelector = new Choices('#target', {
           removeItemButton: true, searchEnabled: true,
           placeholder: true,
-          placeholderValue: "Click to select target(s)",          
+          placeholderValue: "Click to select target(s)",
           noResultsText: 'No matching targets found',
-          noChoicesText: 'No other targets to choose from',          
-        });        
+          noChoicesText: 'No other targets to choose from',
+        });
+
+        var dynamicRoutingTargetSelector = new Choices('#dynamic_routing_allowed_targets', {
+          removeItemButton: true, searchEnabled: true,
+          placeholder: true,
+          placeholderValue: "Click to select allowed target(s)",
+          noResultsText: 'No matching targets found',
+          noChoicesText: 'No other targets to choose from',
+        });
 
         var quickviews = bulmaQuickview.attach();
 
