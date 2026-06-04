@@ -143,3 +143,8 @@ dcm_extra_tags
 
 .pytest_cache/
 .aider*
+
+# Claude Code configuration (local dev tooling)
+.claude/
+AGENTS.md
+CLAUDE.md

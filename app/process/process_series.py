@@ -22,7 +22,8 @@ import common.monitor as monitor
 import common.notification as notification
 from common.constants import mercure_events, mercure_names
 from common.event_types import FailStage
-from common.types import Module, Task, TaskProcessing
+from common.helper import get_now_str
+from common.types import Module, Task, TaskDispatch, TaskDispatchStatus, TaskProcessing
 from common.version import mercure_version
 from dispatch.send import update_fail_stage
 from docker.types import Mount
@@ -552,6 +553,14 @@ async def process_series(folder: Path) -> None:
             # Remember the number of DCM files in the output folder (for logging purpose)
             file_count_complete = len(list((folder / "out").glob(mercure_names.DCMFILTER)))
 
+            # Apply dynamic routing if enabled - module output can override dispatch targets
+            if processing_success and task is not None:
+                should_dispatch = apply_dynamic_routing(task, outputs, folder)
+                if should_dispatch and task.dispatch:
+                    needs_dispatching = True
+                elif not should_dispatch:
+                    needs_dispatching = False
+
             # Push the results either to the success or error folder
             move_results(task_id, folder, lock, processing_success, needs_dispatching)
             shutil.rmtree(folder, ignore_errors=True)
@@ -636,6 +645,80 @@ def handle_processor_output(task: Task, task_processing: TaskProcessing, index: 
     logger.info(output)
     monitor.send_processor_output(task, task_processing, index, output)
     return output
+
+
+def apply_dynamic_routing(task: Task, outputs: list, folder: Path) -> bool:
+    """Check processing output for __mercure_routing directive and update dispatch targets.
+
+    Returns True if dispatching should proceed, False if module requested discard.
+    """
+    if not outputs:
+        return True
+
+    _, final_output = outputs[-1]
+    if not final_output or not isinstance(final_output, dict):
+        return True
+
+    routing_directive = final_output.get("__mercure_routing")
+    if not routing_directive or not isinstance(routing_directive, dict):
+        return True
+
+    applied_rule_name = task.info.get("applied_rule")
+    if not applied_rule_name:
+        return True
+
+    applied_rule = config.mercure.rules.get(applied_rule_name)
+    if not applied_rule or not applied_rule.dynamic_routing:
+        return True
+
+    if routing_directive.get("discard", False):
+        logger.info(f"Module requested discard via __mercure_routing for task {task.id}")
+        task.dispatch = {}
+        _rewrite_task_file(task, folder)
+        return False
+
+    requested_targets = routing_directive.get("target")
+    if not requested_targets:
+        return True
+
+    if isinstance(requested_targets, str):
+        requested_targets = [requested_targets]
+    if not isinstance(requested_targets, list):
+        return True
+
+    # Validate against whitelist if configured
+    allowed_targets = applied_rule.dynamic_routing_allowed_targets
+    if allowed_targets:
+        if isinstance(allowed_targets, str):
+            allowed_targets = [allowed_targets]
+        if any(t not in allowed_targets for t in requested_targets):
+            logger.warning(f"Dynamic routing target not in allowed list, falling back to static target")
+            return True
+
+    # Validate targets exist in config
+    if any(t not in config.mercure.targets for t in requested_targets):
+        logger.error(f"Dynamic routing target does not exist in config, falling back to static target", task.id)
+        return True
+
+    logger.info(f"Applying dynamic routing: targets={requested_targets}")
+    task.dispatch = TaskDispatch(
+        target_name=requested_targets,
+        status={t: TaskDispatchStatus(state="waiting", time=get_now_str()) for t in requested_targets},
+        retries=None,
+        next_retry_at=None,
+    )
+    _rewrite_task_file(task, folder)
+    return True
+
+
+def _rewrite_task_file(task: Task, folder: Path) -> None:
+    """Rewrite the task file in the output folder with updated dispatch info."""
+    taskfile_path = folder / "out" / mercure_names.TASKFILE
+    try:
+        with open(taskfile_path, "w") as f:
+            json.dump(task.dict(), f, indent=4)
+    except Exception:
+        logger.error(f"Failed to rewrite task file at {taskfile_path}", task.id)
 
 
 def move_results(
