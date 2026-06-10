@@ -439,3 +439,167 @@ async def test_dynamic_routing_adds_dispatch_to_process_only(
 
     assert task_data["dispatch"]["target_name"] == ["test_target"]
     assert task_data["dispatch"]["status"]["test_target"]["state"] == "waiting"
+
+
+# --- Tests: Conditional alternate target ---
+
+@pytest.mark.asyncio
+async def test_condition_routes_to_alternate_target(
+    fs, mercure_config: Callable[[Dict], Config], mocked: MockerFixture
+):
+    """When module sets condition=true, task is dispatched to the configured alternate target."""
+    partial = {
+        "modules": {
+            "classifier_module": Module(docker_tag="busybox:stable", settings={}).dict(),
+        },
+        "rules": {
+            "catchall": Rule(
+                rule="True",
+                action="both",
+                target="dummy",
+                action_trigger="series",
+                study_trigger_condition="timeout",
+                processing_module="classifier_module",
+                dynamic_routing=True,
+                conditional_alternate_target="test_target",
+            ).dict()
+        },
+    }
+    config = mercure_config({"process_runner": "docker", **partial})
+
+    task_id = str(uuid.uuid1())
+    create_and_route(fs, mocked, task_id, config)
+
+    setup_docker_mocks(mocked, make_fake_processor_with_routing(fs, mocked, {"use_alternate_target": True}))
+    await processor.run_processor()
+
+    outgoing_tasks = list(Path("/var/outgoing").iterdir())
+    assert len(outgoing_tasks) == 1
+
+    with open(outgoing_tasks[0] / "task.json") as f:
+        task_data = json.load(f)
+
+    assert task_data["dispatch"]["target_name"] == "test_target"
+    assert task_data["dispatch"]["status"]["test_target"]["state"] == "waiting"
+
+
+@pytest.mark.asyncio
+async def test_condition_false_uses_primary_target(
+    fs, mercure_config: Callable[[Dict], Config], mocked: MockerFixture
+):
+    """When condition is absent/false, dispatch uses the normal primary target."""
+    partial = {
+        "modules": {
+            "classifier_module": Module(docker_tag="busybox:stable", settings={}).dict(),
+        },
+        "rules": {
+            "catchall": Rule(
+                rule="True",
+                action="both",
+                target="dummy",
+                action_trigger="series",
+                study_trigger_condition="timeout",
+                processing_module="classifier_module",
+                dynamic_routing=True,
+                conditional_alternate_target="test_target",
+            ).dict()
+        },
+    }
+    config = mercure_config({"process_runner": "docker", **partial})
+
+    task_id = str(uuid.uuid1())
+    create_and_route(fs, mocked, task_id, config)
+
+    # Module sets condition=false (or omits it) — should use primary target
+    setup_docker_mocks(mocked, make_fake_processor_with_routing(fs, mocked, {"use_alternate_target": False}))
+    await processor.run_processor()
+
+    outgoing_tasks = list(Path("/var/outgoing").iterdir())
+    assert len(outgoing_tasks) == 1
+
+    with open(outgoing_tasks[0] / "task.json") as f:
+        task_data = json.load(f)
+
+    assert task_data["dispatch"]["target_name"] == ["dummy"]
+
+
+@pytest.mark.asyncio
+async def test_condition_with_explicit_target_prefers_target(
+    fs, mercure_config: Callable[[Dict], Config], mocked: MockerFixture
+):
+    """When both condition and explicit target are present, explicit target wins."""
+    partial = {
+        "modules": {
+            "classifier_module": Module(docker_tag="busybox:stable", settings={}).dict(),
+        },
+        "rules": {
+            "catchall": Rule(
+                rule="True",
+                action="both",
+                target="dummy",
+                action_trigger="series",
+                study_trigger_condition="timeout",
+                processing_module="classifier_module",
+                dynamic_routing=True,
+                conditional_alternate_target="test_target",
+            ).dict()
+        },
+    }
+    config = mercure_config({"process_runner": "docker", **partial})
+
+    task_id = str(uuid.uuid1())
+    create_and_route(fs, mocked, task_id, config)
+
+    # Module sets both condition AND explicit target — target takes precedence
+    setup_docker_mocks(mocked, make_fake_processor_with_routing(
+        fs, mocked, {"use_alternate_target": True, "target": "dummy"}
+    ))
+    await processor.run_processor()
+
+    outgoing_tasks = list(Path("/var/outgoing").iterdir())
+    assert len(outgoing_tasks) == 1
+
+    with open(outgoing_tasks[0] / "task.json") as f:
+        task_data = json.load(f)
+
+    # Explicit target "dummy" should be used, not conditional_alternate_target "test_target"
+    assert task_data["dispatch"]["target_name"] == ["dummy"]
+
+
+@pytest.mark.asyncio
+async def test_condition_on_process_only_rule_adds_dispatch(
+    fs, mercure_config: Callable[[Dict], Config], mocked: MockerFixture
+):
+    """For a process-only rule, condition=true adds dispatch to the alternate target."""
+    partial = {
+        "modules": {
+            "classifier_module": Module(docker_tag="busybox:stable", settings={}).dict(),
+        },
+        "rules": {
+            "catchall": Rule(
+                rule="True",
+                action="process",
+                action_trigger="series",
+                study_trigger_condition="timeout",
+                processing_module="classifier_module",
+                dynamic_routing=True,
+                conditional_alternate_target="test_target",
+            ).dict()
+        },
+    }
+    config = mercure_config({"process_runner": "docker", **partial})
+
+    task_id = str(uuid.uuid1())
+    create_and_route(fs, mocked, task_id, config)
+
+    setup_docker_mocks(mocked, make_fake_processor_with_routing(fs, mocked, {"use_alternate_target": True}))
+    await processor.run_processor()
+
+    outgoing_tasks = list(Path("/var/outgoing").iterdir())
+    assert len(outgoing_tasks) == 1
+
+    with open(outgoing_tasks[0] / "task.json") as f:
+        task_data = json.load(f)
+
+    assert task_data["dispatch"]["target_name"] == "test_target"
+    assert task_data["dispatch"]["status"]["test_target"]["state"] == "waiting"

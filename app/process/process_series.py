@@ -679,6 +679,18 @@ def apply_dynamic_routing(task: Task, outputs: list, folder: Path) -> bool:
 
     requested_targets = routing_directive.get("target")
     if not requested_targets:
+        # No explicit target override - check for simple condition-based alternate
+        if routing_directive.get("use_alternate_target", False):
+            alt_target = applied_rule.conditional_alternate_target
+            if alt_target and alt_target in config.mercure.targets:
+                logger.info(f"Condition triggered, routing to alternate target: {alt_target}")
+                task.dispatch = TaskDispatch(
+                    target_name=alt_target,
+                    status={t: TaskDispatchStatus(state="waiting", time=get_now_str()) for t in [alt_target]},
+                )
+                _rewrite_task_file(task, folder)
+            elif alt_target:
+                logger.warning(f"Conditional alternate target '{alt_target}' not found in config")
         return True
 
     if isinstance(requested_targets, str):
