@@ -25,7 +25,7 @@
         {% for target_name, target in targets.items()|sort() %}
         <div class="card entitycard" data-name="{{ target_name }}">
             <header class="card-header has-background-light">
-                <p class="card-header-title card-toggle">
+                <p class="card-header-title card-toggle" tabindex="0" role="button" aria-expanded="false">
                     <span class="icon has-tooltip-left has-tooltip-success" data-tooltip="{{get_target_handler(target).display_name}} Target"><i class="fas {{get_target_handler(target).icon}} fa-lg"></i></span>
                     &nbsp;&nbsp;{{ target_name }}<span style="margin-left:auto; font-weight: 200;"> {{target.short_description}}</span>
                     {% if target.direction=='pull' %}&nbsp;<span class="icon has-tooltip-right has-tooltip-link" data-tooltip="Can Query"><i class="has-text-grey fas fa-download"></i></span>{%elif target.direction=='push'%}&nbsp;<span class="icon has-tooltip-right has-tooltip-link" data-tooltip="Can Store"><i class="has-text-grey fas fa-upload"></i></span>{%elif target.direction=='both'%}&nbsp;<span class="icon has-tooltip-right has-tooltip-link" data-tooltip="Can Store and Query"><i class="has-text-grey fas fa-server"></i></span>{%endif%}
@@ -81,7 +81,7 @@
             </header>
             <section class="modal-card-body">
                 <div class="field">
-                    Are you sure to delete the target? This cannot be undone.
+                    Are you sure to delete the target "<strong id="delete-item-name"></strong>"? This cannot be undone.
                 </div>
                 <div class="field" style="margin-top: 20px;">
                     <p class="control">
@@ -143,7 +143,13 @@
         let cardToggles = document.getElementsByClassName('card-toggle');
         for (let i = 0; i < cardToggles.length; i++) {
             cardToggles[i].addEventListener('click', e => {
-                e.currentTarget.parentElement.parentElement.childNodes[3].classList.toggle('is-hidden');
+                let content = e.currentTarget.parentElement.parentElement.childNodes[3];
+                content.classList.toggle('is-hidden');
+                let title = e.currentTarget.closest('header').querySelector('.card-header-title');
+                if (title) title.setAttribute('aria-expanded', !content.classList.contains('is-hidden'));
+            });
+            cardToggles[i].addEventListener('keydown', e => {
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.currentTarget.click(); }
             });
         }
         paginate(document.getElementsByClassName('entitycard'))
@@ -159,6 +165,7 @@
 
     function confirmDelete(val) {
         targetToDelete = val;
+        $("#delete-item-name").text(val);
         $("#deletemodal").addClass("is-active");
     }
     $('.delete-button').click((evt) => confirmDelete(evt.target.closest('button').value))

@@ -30,7 +30,7 @@
         {% for rule_name,rule in rules.items()|sort() %}
         <div class="card entitycard" data-name="{{rule_name}}">
             <header class="card-header has-background-light ">
-                <p class="card-header-title card-toggle {% if rule.disabled %}has-text-grey-light{% endif %}">
+                <p class="card-header-title card-toggle {% if rule.disabled %}has-text-grey-light{% endif %}" tabindex="0" role="button" aria-expanded="false">
                     <span class="icon {% if rule.disabled %}has-text-grey-light{% endif %} has-tooltip-left {% if not rule.disabled %}has-tooltip-success{% endif %}"
                     data-tooltip=
                     {% if rule.disabled==True %}
@@ -130,7 +130,7 @@
             </header>
             <section class="modal-card-body">
                 <div class="field">
-                    Are you sure to delete the rule? This cannot be undone.
+                    Are you sure to delete the rule "<strong id="delete-item-name"></strong>"? This cannot be undone.
                 </div>
                 <div class="field" style="margin-top: 20px;">
                     <p class="control">
@@ -198,7 +198,13 @@
         let cardToggles = document.getElementsByClassName('card-toggle');
         for (let i = 0; i < cardToggles.length; i++) {
             cardToggles[i].addEventListener('click', e => {
-                e.currentTarget.parentElement.parentElement.childNodes[3].classList.toggle('is-hidden');
+                let content = e.currentTarget.parentElement.parentElement.childNodes[3];
+                content.classList.toggle('is-hidden');
+                let title = e.currentTarget.closest('header').querySelector('.card-header-title');
+                if (title) title.setAttribute('aria-expanded', !content.classList.contains('is-hidden'));
+            });
+            cardToggles[i].addEventListener('keydown', e => {
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.currentTarget.click(); }
             });
         }
         paginate(document.getElementsByClassName('entitycard'))
@@ -226,6 +232,7 @@
     function confirmDelete(evt) {
         $("#deletemodal").addClass("is-active");
         ruleToDelete = evt.target.closest('button').value;
+        $("#delete-item-name").text(ruleToDelete);
     }
     $('.confirm-me').click(confirmDelete)
 

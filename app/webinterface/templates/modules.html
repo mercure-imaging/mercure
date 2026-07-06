@@ -133,7 +133,7 @@
             {% for module_name, module in modules.items()|sort() %}
                 <div class="card entitycard" data-name="{{module_name}} {{module.docker_tag}}">
                     <header class="card-header has-background-light">
-                        <p class="card-header-title card-toggle">
+                        <p class="card-header-title card-toggle" tabindex="0" role="button" aria-expanded="false">
                             <span class="icon"><i class="fas fa-cogs fa-lg"></i></span>&nbsp;&nbsp;{{ module_name }}
                             <span style="margin-left: auto; font-weight: 200;">{{module.docker_tag|truncate(50, True)}}</span>
                         </p>
@@ -237,7 +237,7 @@
                 </header>
                 <section class="modal-card-body">
                     <div class="field">
-                        Are you sure to delete the module? This cannot be undone.
+                        Are you sure to delete the module "<strong id="delete-item-name"></strong>"? This cannot be undone.
                     </div>
                     <div class="field" style="margin-top: 20px;">
                         <p class="control">
@@ -291,7 +291,13 @@
             let cardToggles = document.getElementsByClassName('card-toggle');
             for (let i = 0; i < cardToggles.length; i++) {
                 cardToggles[i].addEventListener('click', e => {
-                    e.currentTarget.parentElement.parentElement.childNodes[3].classList.toggle('is-hidden');
+                    let content = e.currentTarget.parentElement.parentElement.childNodes[3];
+                    content.classList.toggle('is-hidden');
+                    let title = e.currentTarget.closest('header').querySelector('.card-header-title');
+                    if (title) title.setAttribute('aria-expanded', !content.classList.contains('is-hidden'));
+                });
+                cardToggles[i].addEventListener('keydown', e => {
+                    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.currentTarget.click(); }
                 });
             }
             paginate(document.getElementsByClassName('entitycard'))
@@ -309,6 +315,7 @@
 
         function confirmDelete(val) {
             moduleToDelete = val;
+            $("#delete-item-name").text(val);
             $("#deletemodal").addClass("is-active");
         }
 

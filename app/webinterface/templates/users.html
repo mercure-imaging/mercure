@@ -24,7 +24,7 @@
         {% for user_name, user_item in users.items()|sort() %}
         <div class="card entitycard" data-name="{{user_name}} {{user_item.email}}">
             <header class="card-header has-background-light">
-                <p class="card-header-title card-toggle">
+                <p class="card-header-title card-toggle" tabindex="0" role="button" aria-expanded="false">
                     <span class="icon"><i class="fas {% if user_item.is_admin=="True" %}fa-user-shield{% else %}fa-user{% endif %} fa-lg"></i></span>&nbsp;&nbsp;{{ user_name }}
                 </p>
                 <a class="card-header-icon card-toggle">
@@ -78,7 +78,7 @@
             </header>
             <section class="modal-card-body">
                 <div class="field">
-                    Are you sure to delete the user? This cannot be undone.
+                    Are you sure to delete the user "<strong id="delete-item-name"></strong>"? This cannot be undone.
                 </div>
                 <div class="field" style="margin-top: 20px;">
                     <p class="control">
@@ -129,7 +129,13 @@
         let cardToggles = document.getElementsByClassName('card-toggle');
         for (let i = 0; i < cardToggles.length; i++) {
             cardToggles[i].addEventListener('click', e => {
-                e.currentTarget.parentElement.parentElement.childNodes[3].classList.toggle('is-hidden');
+                let content = e.currentTarget.parentElement.parentElement.childNodes[3];
+                content.classList.toggle('is-hidden');
+                let title = e.currentTarget.closest('header').querySelector('.card-header-title');
+                if (title) title.setAttribute('aria-expanded', !content.classList.contains('is-hidden'));
+            });
+            cardToggles[i].addEventListener('keydown', e => {
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.currentTarget.click(); }
             });
         }
         paginate(document.getElementsByClassName('entitycard'))
@@ -145,6 +151,7 @@
     var userToDelete = "";
 
     function confirmDelete(val) {
+        $("#delete-item-name").text(val);
         $("#deletemodal").addClass("is-active");
         userToDelete = val;
     }
