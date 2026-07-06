@@ -164,7 +164,7 @@
                                             class="fas fa-pen"></i></span><span>Edit</span></a>
                                     <button class="button is-danger delete-button" value="{{module_name}}"
                                             {% if module_name in used_modules%}disabled
-                                            title="Cannot delete because target is used by rule '{{ used_module }}'" {% endif %}><span class="icon"><i
+                                            title="Cannot delete because module is used by rule '{{ used_module }}'" {% endif %}><span class="icon"><i
                                             class="fas fa-trash-alt"></i></span><span>Delete</span></button>
                                 {% endif %}
                             </div>

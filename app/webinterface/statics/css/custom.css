@@ -326,7 +326,6 @@ table.dataTable tbody tr.selected th, table.dataTable tbody tr.selected td {
 }
 
 .dataTables_scrollBody::-webkit-scrollbar-thumb:hover {
-  background: #2f2f2f;
   background: rgb(219,219,219);
   border: 3px solid transparent;
   background-clip: content-box;
@@ -494,20 +493,12 @@ table.dataTable tbody tr.selected th, table.dataTable tbody tr.selected td {
   background-color: #2f2f2f !important;
 }
 
-.jse-context-menu-pointer {
-  /*background-color: #4d4d4d !important;  */
-}
-
 .jse-context-menu-pointer.jse-selected {
   background-color: #3273dc !important; 
 }
 
 .jse-context-menu-pointer:hover {
   background-color: #2f2f2f !important;    
-}
-
-.jse-insert-area {
-  /*outline-color: #0a0a0a !important;*/
 }
 
 .jse-dropdown-items {
@@ -551,17 +542,11 @@ body {
   background-color: rgba(0, 0, 0, 0.0) !important;
 }
 
-.queueArchiveFilterButton::before {
-}
-
 .queueArchiveFilterButton-Checked::before {
   margin-right: 8px;
   font-family: "Font Awesome 5 Free"; 
   font-weight: 900; 
   content: "\f00c";
-}
-
-.queueArchiveFilter {
 }
 
 .select select[multiple] option::before {
