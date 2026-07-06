@@ -221,7 +221,7 @@ class QueryPipeline():
     connection: Redis
 
     def __init__(self, job: Union[Job, str], connection: Optional[Redis] = None):
-        self.connection = connection or wc.redis
+        self.connection = connection or wc.redis  # type: ignore[assignment]
         if isinstance(job, str):
             if not (result := Job.fetch(job, connection=self.connection)):
                 raise Exception("Invalid Job ID")
@@ -422,9 +422,10 @@ class QueryPipeline():
         """
         Get all jobs of a given type from the queue
         """
-        connection = connection or wc.redis
+        connection = connection or wc.redis  # type: ignore[assignment]
         job_ids = set()
 
+        assert wc.rq_slow_queue is not None
         registries = [
             wc.rq_slow_queue.started_job_registry,     # Returns StartedJobRegistry
             wc.rq_slow_queue.deferred_job_registry,    # Returns DeferredJobRegistry

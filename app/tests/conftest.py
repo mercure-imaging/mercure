@@ -1,4 +1,6 @@
 
+import importlib
+import importlib.metadata
 import os
 import socket
 import uuid
@@ -11,9 +13,20 @@ import pytest
 import routing  # noqa: F401
 from bookkeeping import bookkeeper
 from common.types import Config
+from pyfakefs.fake_filesystem_unittest import Patcher
 from starlette.testclient import TestClient
 
 from app import webgui
+
+
+@pytest.fixture
+def fs(request):
+    """Override default pyfakefs fixture to allow importlib.metadata access.
+    This is needed so argon2-cffi package metadata remains available for passlib."""
+    patcher = Patcher(additional_skip_names=[importlib, importlib.metadata])
+    patcher.setUp()
+    yield patcher.fs
+    patcher.tearDown()
 
 
 def spy_on(mocker, obj) -> None:

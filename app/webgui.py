@@ -142,16 +142,18 @@ def startup(app: Starlette):
 
     state = {"redis_connected": False}
     try:
-        response = webinterface.common.redis.ping()
-        if response:
-            logger.info("Redis connection validated.")
-            state["redis_connected"] = True
-        else:
-            raise Exception("Redis connection failed")
+        if webinterface.common.redis:
+            response = webinterface.common.redis.ping()
+            if response:
+                logger.info("Redis connection validated.")
+                state["redis_connected"] = True
+            else:
+                raise Exception("Redis connection failed")
     except Exception:
         logger.error("Could not connect to Redis", exc_info=True)
 
     if state["redis_connected"]:
+        assert webinterface.common.rq_fast_scheduler is not None
         scheduled_jobs = webinterface.common.rq_fast_scheduler.get_jobs()
         for job in scheduled_jobs:
             if job.meta.get("type") != "offpeak":
@@ -316,7 +318,7 @@ async def show_log(request) -> Response:
 
         command.extend(["-o", "short-iso", "--no-hostname"])
 
-        return_code, raw_logs, log_err = await async_run_exec(*command)
+        return_code, raw_logs, log_err = await async_run_exec(*command)  # type: ignore[assignment]
 
     elif runtime == "docker":
         client = docker.from_env()  # type: ignore
@@ -355,7 +357,7 @@ async def show_log(request) -> Response:
     log_content = helper.localize_log_timestamps(log_content, config)
 
     if return_code != 0:
-        log_content = f"Error reading log information: \n====\n{log_err}\n===\n{log_content}"
+        log_content = f"Error reading log information: \n====\n{log_err!r}\n===\n{log_content}"
         if start_date or end_date:
             log_content = log_content + "<br /><br />Are the From/To settings valid?"
 
@@ -454,7 +456,7 @@ async def configuration_edit_post(request) -> Response:
 
     # Block adding dangerous docker_arguments or disallowed volumes via the raw config editor
     new_modules = validated_json.get("modules", {})
-    old_modules = {name: mod.dict() if hasattr(mod, "dict") else mod
+    old_modules: Dict = {name: mod.dict() if hasattr(mod, "dict") else mod
                    for name, mod in config.mercure.modules.items()}
     violations = []
     for mod_name, mod_conf in new_modules.items():

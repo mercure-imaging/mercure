@@ -603,16 +603,17 @@ def _get_cached_online_modules() -> Optional[str]:
     """Get cached online modules from Redis or in-memory cache. Returns JSON string or None."""
     try:
         # Try Redis first
-        cached_data = wc.redis.get(CACHE_KEY)
-        if cached_data:
-            # Redis returns bytes, need to decode to string
-            if isinstance(cached_data, bytes):
-                cached_str = cached_data.decode("utf-8")
-            else:
-                cached_str = str(cached_data)
+        if wc.redis:
+            cached_data = wc.redis.get(CACHE_KEY)
+            if cached_data:
+                # Redis returns bytes, need to decode to string
+                if isinstance(cached_data, bytes):
+                    cached_str = cached_data.decode("utf-8")
+                else:
+                    cached_str = str(cached_data)
 
-            logger.debug("Retrieved online modules from Redis cache")
-            return cached_str
+                logger.debug("Retrieved online modules from Redis cache")
+                return cached_str
     except Exception as e:
         logger.warning(f"Redis cache read failed: {e}")
 
@@ -632,8 +633,9 @@ def _set_cached_online_modules(online_modules: str) -> None:
     """Store online modules in both Redis and in-memory cache."""
     # Try to cache in Redis
     try:
-        wc.redis.setex(CACHE_KEY, CACHE_TTL_SECONDS, online_modules)
-        logger.debug("Cached online modules in Redis")
+        if wc.redis:
+            wc.redis.setex(CACHE_KEY, CACHE_TTL_SECONDS, online_modules)
+            logger.debug("Cached online modules in Redis")
     except Exception as e:
         logger.warning(f"Redis cache write failed: {e}")
 
