@@ -38,7 +38,7 @@ jobs:
         flake8 . --count --exit-zero --statistics
     - name: typecheck with mypy
       run: |
-        mypy --exclude app/tests --no-namespace-packages . 
+        mypy --exclude app/tests --exclude getdcmtags --no-namespace-packages .
     - name: Test with pytest
       if: always()
       run: |

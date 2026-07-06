@@ -316,4 +316,4 @@ yarl==1.18.0
     # via aiohttp
 
 # The following packages are considered to be unsafe in a requirements file:
-setuptools
+setuptools<71
