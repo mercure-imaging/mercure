@@ -185,18 +185,19 @@
             }
         }
 
+        var searchTimeout;
         searchInput.addEventListener('input', function() {
-            const searchTerm = this.value.toLowerCase();
-            Array.from(ruleCards).forEach( card => {
-                const ruleName = card.getAttribute('data-name').toLowerCase();
-                if (ruleName.includes(searchTerm)) {
-                    card.style.display = 'block';
-                } else {
-                    card.style.display = 'none';
-                }
-            });
-            currentPage = 1;
-            showPage(currentPage);
+            clearTimeout(searchTimeout);
+            var self = this;
+            searchTimeout = setTimeout(function() {
+                const searchTerm = self.value.toLowerCase();
+                Array.from(ruleCards).forEach( card => {
+                    const ruleName = card.getAttribute('data-name').toLowerCase();
+                    card.style.display = ruleName.includes(searchTerm) ? 'block' : 'none';
+                });
+                currentPage = 1;
+                showPage(currentPage);
+            }, 200);
         });
         showPage(currentPage);
     }
@@ -297,8 +298,16 @@
             setTimeout(()=>$(new_div).find(".cm-line").attr("placeholder",el.attr("placeholder")), 1000);
           }          
           // }
-        }))        
-      });        
+        }))
+
+        // Global: close modals on Escape key or background click
+        $(document).on('keydown', function(e) {
+            if (e.key === 'Escape') { $('.modal.is-active').removeClass('is-active'); }
+        });
+        $('.modal-background').on('click', function() {
+            $(this).closest('.modal').removeClass('is-active');
+        });
+      });
 </script>
 </body>
 </html>

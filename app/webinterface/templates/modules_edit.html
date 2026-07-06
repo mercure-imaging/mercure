@@ -513,5 +513,20 @@
 
 </script>
 
+<script nonce="{{ csp_nonce }}">
+    (function() {
+        var formDirty = false;
+        var form = document.querySelector('form[method="post"]');
+        if (form) {
+            form.addEventListener('input', function() { formDirty = true; });
+            form.addEventListener('change', function() { formDirty = true; });
+            form.addEventListener('submit', function() { formDirty = false; });
+        }
+        window.addEventListener('beforeunload', function(e) {
+            if (formDirty) { e.preventDefault(); e.returnValue = ''; }
+        });
+    })();
+</script>
+
 
 {% endblock %}

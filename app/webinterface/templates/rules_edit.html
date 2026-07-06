@@ -597,8 +597,8 @@
         return true;
     }
     $('form').on('submit', validate);
-    $('#rule').on('keyup', (evt)=> evt.target.value = evt.target.value.replace(/[{}\n]/g, ''))
-    $('#study_trigger_series').on('keyup', (evt)=> evt.target.value = evt.target.value.replace(/[{}\x22\n]/g, ''))
+    $('#rule').on('keyup input paste', (evt)=> evt.target.value = evt.target.value.replace(/[{}\n]/g, ''))
+    $('#study_trigger_series').on('keyup input paste', (evt)=> evt.target.value = evt.target.value.replace(/[{}\x22\n]/g, ''))
 
     function toggleAlternateTarget() {
         if ($('#use_alternate_target').is(':checked')) {
@@ -947,6 +947,21 @@
     var bulmaTagsInstances = bulmaTagsinput.attach();
     window.setTimeout(function(){$("#modules_list input").attr("readonly","true")},200)   
     // bulmaTagsInstances[0].container.getElementsByTagName("input")[0].setAttribute("readonly",1)
+</script>
+
+<script nonce="{{ csp_nonce }}">
+    (function() {
+        var formDirty = false;
+        var form = document.querySelector('form[method="post"]');
+        if (form) {
+            form.addEventListener('input', function() { formDirty = true; });
+            form.addEventListener('change', function() { formDirty = true; });
+            form.addEventListener('submit', function() { formDirty = false; });
+        }
+        window.addEventListener('beforeunload', function(e) {
+            if (formDirty) { e.preventDefault(); e.returnValue = ''; }
+        });
+    })();
 </script>
 
 {% endblock %}
