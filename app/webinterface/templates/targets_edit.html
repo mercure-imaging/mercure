@@ -136,7 +136,7 @@
         if (form) {
             form.addEventListener('input', function() { formDirty = true; });
             form.addEventListener('change', function() { formDirty = true; });
-            form.addEventListener('submit', function() { formDirty = false; });
+            form.addEventListener('submit', function() { formDirty = false; sessionStorage.setItem('mercure_saved', '1'); });
         }
         window.addEventListener('beforeunload', function(e) {
             if (formDirty) { e.preventDefault(); e.returnValue = ''; }

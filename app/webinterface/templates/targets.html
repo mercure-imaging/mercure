@@ -63,6 +63,13 @@
             </div>
         </div>
         {% endfor %}
+        {% if not targets %}
+        <div class="has-text-centered" style="padding: 60px 20px;">
+            <span class="icon is-large has-text-grey-light"><i class="fas fa-bullseye fa-3x"></i></span>
+            <p class="title is-5 has-text-grey" style="margin-top: 20px;">No targets configured yet</p>
+            <p class="has-text-grey" style="margin-bottom: 20px;">Add a target to define where DICOM studies are routed.</p>
+        </div>
+        {% endif %}
         <nav class="pagination is-centered" role="navigation" aria-label="pagination" style="margin-top: 16px;">
             <ul class="pagination-list" id="paginationList">
             </ul>

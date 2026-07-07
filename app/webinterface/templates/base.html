@@ -203,6 +203,14 @@
     }
     window.paginate = paginate;
     $(document).ready(function () {
+      // Show success notification if redirected after save
+      if (sessionStorage.getItem('mercure_saved')) {
+          sessionStorage.removeItem('mercure_saved');
+          var notice = $('<div class="notification is-success" style="position:fixed;top:60px;right:20px;z-index:9999;min-width:250px;"><button class="delete"></button><i class="fas fa-check"></i>&nbsp; Changes saved successfully.</div>');
+          $('body').append(notice);
+          notice.find('.delete').on('click', function() { notice.remove(); });
+          setTimeout(function() { notice.fadeOut(400, function() { notice.remove(); }); }, 4000);
+      }
       // Check for click events on the navbar burger icon
       $(".navbar-burger").click(function () {
         // Toggle the "is-active" class on both the "navbar-burger" and the "navbar-menu"
