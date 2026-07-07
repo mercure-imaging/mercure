@@ -167,6 +167,7 @@
         })
 
         $('#confirmmodal').click(function () {
+            $(this).addClass('is-loading');
             $("#deletemodal").removeClass("is-active");
             var url = '/users/delete/' + userToDelete;
             var form = $('<form action="' + url + '" method="post"></form>');

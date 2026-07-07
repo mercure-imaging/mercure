@@ -268,7 +268,7 @@ body {
 }
 
 .greenlink {
-  color: hsl(141, 71%, 48%);
+  color: hsl(141, 71%, 48%) !important;
 }
 
 .loadingspinner {

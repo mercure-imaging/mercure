@@ -5,7 +5,13 @@
 {% block content %}
 <main role="main">
     <div class="container">
-        <h1 class="title is-4">Processing Modules - {{module_name}}</h1>
+        <nav class="breadcrumb is-small" aria-label="breadcrumbs" style="margin-bottom: 8px;">
+            <ul>
+                <li><a class="greenlink" href="/modules">Modules</a></li>
+                <li class="is-active"><a href="#">{{module_name}}</a></li>
+            </ul>
+        </nav>
+        <h1 class="title is-4">Edit Module</h1>
 
         <div class="notification is-danger" id="erroralert" style="display: none;">
             <i class="fas fa-bug"></i>&nbsp;&nbsp;Error in configuration detected. Please check input fields for correct

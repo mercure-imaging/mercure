@@ -12,7 +12,13 @@
 {% block content %}
 <main role="main">
     <div class="container">
-        <h1 class="title is-4">Edit Rule - {{rule}}</h1>
+        <nav class="breadcrumb is-small" aria-label="breadcrumbs" style="margin-bottom: 8px;">
+            <ul>
+                <li><a class="greenlink" href="/rules">Rules</a></li>
+                <li class="is-active"><a href="#">{{rule}}</a></li>
+            </ul>
+        </nav>
+        <h1 class="title is-4">Edit Rule</h1>
 
         <div class="notification is-danger" id="erroralert" style="display: none;">
             <i class="fas fa-bug"></i>&nbsp;&nbsp;Error in configuration detected. Please check input fields for correct
@@ -644,14 +650,16 @@
     $('#closetestcompletionseries').click(closeTestCompletionSeries);
 
     function copyTag(value) {
-        $("#copyinput").val(value);
-        $("#copyinput").css("display", "block");
-
-        var copyText = document.getElementById("copyinput");
-        copyText.select();
-        document.execCommand("copy");
-
-        $("#copyinput").css("display", "none");
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(value);
+        } else {
+            $("#copyinput").val(value);
+            $("#copyinput").css("display", "block");
+            var copyText = document.getElementById("copyinput");
+            copyText.select();
+            document.execCommand("copy");
+            $("#copyinput").css("display", "none");
+        }
     }
     $('.tag-copy').click((evt)=>copyTag(evt.target.value))
     $(function () {
