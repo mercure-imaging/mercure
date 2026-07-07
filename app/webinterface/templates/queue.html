@@ -653,7 +653,7 @@
                     titleAttr: 'Deselect all',
                 },
                 {
-                    text: '<i class="fas fa-code"></i>',
+                    text: '<i class="fas fa-code" aria-hidden="true"></i><span class="is-sr-only">Job information</span>',
                     titleAttr: 'Job information',
                     action: function ( e, dt, node, config ) {
                         var jid = $('#jobs_processing').DataTable().rows( { selected: true } ).data()[0][5];
@@ -661,7 +661,7 @@
                     }
                 },
                 {
-                    text: '<i class="fas fa-redo-alt"></i>',
+                    text: '<i class="fas fa-redo-alt" aria-hidden="true"></i><span class="is-sr-only">Restart processing</span>',
                     titleAttr: 'Restart processing with original files',
                     action: function ( e, dt, node, config ) {
                         var jid = $('#jobs_processing').DataTable().rows( { selected: true } ).data()[0][5];
@@ -669,7 +669,7 @@
                     }
                 },
                 {
-                    text: '<i class="fas fa-trash-alt"></i>',
+                    text: '<i class="fas fa-trash-alt" aria-hidden="true"></i><span class="is-sr-only">Cancel</span>',
                     titleAttr: 'Cancel job',
                     action: function ( e, dt, node, config ) {
                         alert("Coming soon!");                    
@@ -677,7 +677,7 @@
                 }
             ],
             dom: 'Bfrtip',
-            "scrollY": "740px",
+            "scrollY": "calc(100vh - 350px)",
             "scrollX": false,
             "scrollCollapse": true,   
         } );        
@@ -710,7 +710,7 @@
                     titleAttr: 'Deselect all',
                 },
                 {
-                    text: '<i class="fas fa-code"></i>',
+                    text: '<i class="fas fa-code" aria-hidden="true"></i><span class="is-sr-only">Job information</span>',
                     titleAttr: 'Job information',
                     action: function ( e, dt, node, config ) {
                         var jid = $('#jobs_routing').DataTable().rows( { selected: true } ).data()[0][5];
@@ -718,7 +718,7 @@
                     }
                 },
                 {
-                    text: '<i class="fas fa-trash-alt"></i>',
+                    text: '<i class="fas fa-trash-alt" aria-hidden="true"></i><span class="is-sr-only">Cancel</span>',
                     titleAttr: 'Cancel job',
                     action: function ( e, dt, node, config ) {
                         alert("Coming soon!");                    
@@ -726,7 +726,7 @@
                 },
             ],
             dom: 'Bfrtip',
-            "scrollY": "740px",
+            "scrollY": "calc(100vh - 350px)",
             "scrollX": false,
             "scrollCollapse": true,              
         } );
@@ -761,7 +761,7 @@
                     titleAttr: 'Deselect all',
                 },
                 {
-                    text: '<i class="fas fa-code"></i>',
+                    text: '<i class="fas fa-code" aria-hidden="true"></i><span class="is-sr-only">Job information</span>',
                     titleAttr: 'Job information',
                     action: function ( e, dt, node, config ) {
                         var jid = $('#jobs_studies').DataTable().rows( { selected: true } ).data()[0][0];
@@ -769,7 +769,7 @@
                     }
                 },
                 {
-                    text: '<i class="fas fa-trash-alt"></i>',
+                    text: '<i class="fas fa-trash-alt" aria-hidden="true"></i><span class="is-sr-only">Cancel</span>',
                     titleAttr: 'Cancel study',
                     action: function ( e, dt, node, config ) {
                         alert("Coming soon!");                    
@@ -814,7 +814,7 @@
                 }
             ],
             dom: 'Bfrtip',
-            "scrollY": "740px",
+            "scrollY": "calc(100vh - 350px)",
             "scrollX": false,
             "scrollCollapse": true,            
         } );
@@ -853,7 +853,7 @@
                     titleAttr: 'Deselect all',
                 },
                 {
-                    text: '<i class="fas fa-code"></i>',
+                    text: '<i class="fas fa-code" aria-hidden="true"></i><span class="is-sr-only">Job information</span>',
                     titleAttr: 'Job information',
                     action: function ( e, dt, node, config ) {
                         var jid = $('#jobs_fail').DataTable().rows( { selected: true } ).data()[0][4];
@@ -871,7 +871,7 @@
             ],
             /*dom: 'Bfrtipf',*/
             dom: '<"columns"<"column"B><"column"f>><"columns"<"column queuetablepadding"rt>><"columns"<"column"i><"column"p><"column"f>>',
-            "scrollY": "740px",
+            "scrollY": "calc(100vh - 350px)",
             "scrollX": false,
             "scrollCollapse": true,
             "order": [[5, 'desc'], [4, 'desc']],
@@ -946,7 +946,7 @@
                     ]
                 },
                 {
-                    text: '<i class="fas fa-code"></i>',
+                    text: '<i class="fas fa-code" aria-hidden="true"></i><span class="is-sr-only">Job information</span>',
                     titleAttr: 'Job information',
                     action: function ( e, dt, node, config ) {
                         var jid = $('#jobs_archive').DataTable().rows( { selected: true } ).data()[0].task_id;
@@ -980,7 +980,7 @@
             ],
             dom: '<"columns"<"column"B>><"columns"<"column queuetablepadding"rt>><"columns"<"column"i><"column"p><"column"f>>',
             /*dom: 'Brtip',*/
-            "scrollY": "740px",
+            "scrollY": "calc(100vh - 350px)",
             "scrollX": false,
             "scrollCollapse": true,
             "order": [[4, 'desc'], [5, 'desc']],
@@ -1011,7 +1011,7 @@
                 "emptyTable": "No events found."
             },
             dom: 'Bfrtp',
-            "scrollY": "740px",
+            "scrollY": "calc(100vh - 350px)",
             "scrollX": true,
             "scrollCollapse": true,   
             "drawCallback": function (settings) {

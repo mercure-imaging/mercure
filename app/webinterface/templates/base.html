@@ -138,10 +138,29 @@
     function paginate(cards, items_per_page=12) {
         const paginationList = document.getElementById('paginationList');
         const searchInput = document.getElementById('searchInput');
-        searchInput.value = '';
         const ruleCards = cards;
-        const itemsPerPage = items_per_page; // Adjust this value to change items per page
-        let currentPage = 1;
+        const itemsPerPage = items_per_page;
+
+        // Restore state from URL params
+        const params = new URLSearchParams(window.location.search);
+        let currentPage = parseInt(params.get('page')) || 1;
+        const savedSearch = params.get('q') || '';
+        searchInput.value = savedSearch;
+
+        // Apply saved search filter on load
+        if (savedSearch) {
+            Array.from(ruleCards).forEach(card => {
+                card.style.display = card.getAttribute('data-name').toLowerCase().includes(savedSearch.toLowerCase()) ? 'block' : 'none';
+            });
+        }
+
+        function updateURL() {
+            const p = new URLSearchParams();
+            if (currentPage > 1) p.set('page', currentPage);
+            if (searchInput.value) p.set('q', searchInput.value);
+            var qs = p.toString();
+            history.replaceState(null, '', window.location.pathname + (qs ? '?' + qs : ''));
+        }
 
         function showPage(page) {
             const startIndex = (page - 1) * itemsPerPage;
@@ -179,6 +198,7 @@
                 a.addEventListener('click', () => {
                     currentPage = i;
                     showPage(currentPage);
+                    updateURL();
                 });
                 li.appendChild(a);
                 paginationList.appendChild(li);
@@ -197,6 +217,7 @@
                 });
                 currentPage = 1;
                 showPage(currentPage);
+                updateURL();
             }, 200);
         });
         showPage(currentPage);
@@ -311,6 +332,19 @@
         // Global: close modals on Escape key or background click
         $(document).on('keydown', function(e) {
             if (e.key === 'Escape') { $('.modal.is-active').removeClass('is-active'); }
+            // Focus trap: keep Tab within active modal
+            if (e.key === 'Tab') {
+                var modal = document.querySelector('.modal.is-active .modal-card');
+                if (!modal) return;
+                var focusable = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+                if (!focusable.length) return;
+                var first = focusable[0], last = focusable[focusable.length - 1];
+                if (e.shiftKey) {
+                    if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+                } else {
+                    if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+                }
+            }
         });
         $('.modal-background').on('click', function() {
             $(this).closest('.modal').removeClass('is-active');
