@@ -733,8 +733,8 @@
         // Restore tab from URL hash on load
         if (location.hash) {
             var tab = location.hash.substring(1);
-            var tabEl = $('#tabs li[data-tab="' + tab + '"]');
-            if (tabEl.length) { tabEl.click(); }
+            var tabItem = $('#tabs li[data-tab="' + tab + '"]');
+            if (tabItem.length) { tabItem.click(); }
         }
 
         $('#add-module').click(function() {
