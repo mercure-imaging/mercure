@@ -719,7 +719,15 @@
 
             $('#tab-content div.panel').removeClass('is-active');
             $('div.panel[data-content="' + tab + '"]').addClass('is-active');
+            history.replaceState(null, '', '#' + tab);
         });
+
+        // Restore tab from URL hash on load
+        if (location.hash) {
+            var tab = location.hash.substring(1);
+            var tabEl = $('#tabs li[data-tab="' + tab + '"]');
+            if (tabEl.length) { tabEl.click(); }
+        }
 
         $('#add-module').click(function() {
             bulmaTagsInstances[0].addTag($("#processing_module").val());
