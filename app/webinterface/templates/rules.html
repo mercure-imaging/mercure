@@ -107,7 +107,55 @@
                             <td>{{ rule.comment }}</td>
                         </tr>
                     </table>
-                    <div class="buttons is-right">
+                    <div class="pipeline-flow">
+                        <div class="pipeline-section">
+                            <span class="pipeline-section-label">trigger</span>
+                            <span class="pipeline-node pipeline-node--filter"><i class="fas fa-filter"></i>&nbsp;{{ rule.action_trigger }}</span>
+                        </div>
+                        <span class="pipeline-arrow">&rarr;</span>
+                        {% if rule.action in ['process', 'both'] %}
+                        {% if rule.processing_module %}
+                        <div class="pipeline-section">
+                            <span class="pipeline-section-label">process</span>
+                            {% if rule.processing_module is string %}
+                                <span class="pipeline-node pipeline-node--process"><i class="fa fa-microchip"></i>&nbsp;{{ rule.processing_module }}</span>
+                            {% else %}
+                                {% for mod in rule.processing_module if mod %}
+                                    <span class="pipeline-node pipeline-node--process"><i class="fa fa-microchip"></i>&nbsp;{{ mod }}</span>
+                                    {% if not loop.last %}<span class="pipeline-arrow">&rarr;</span>{% endif %}
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        {% if rule.action == 'both' %}<span class="pipeline-arrow">&rarr;</span>{% endif %}
+                        {% endif %}
+                        {% endif %}
+                        {% if rule.action in ['route', 'both'] %}
+                        <div class="pipeline-section">
+                            <span class="pipeline-section-label">route</span>
+                            {% if rule.target is string and rule.target %}
+                                <span class="pipeline-node pipeline-node--target"><i class="fa fa-directions"></i>&nbsp;{{ rule.target }}</span>
+                            {% elif rule.target is iterable and rule.target is not string %}
+                                {% for t in rule.target if t %}
+                                    <span class="pipeline-node pipeline-node--target"><i class="fa fa-directions"></i>&nbsp;{{ t }}</span>
+                                    {% if not loop.last %}<span class="pipeline-separator">+</span>{% endif %}
+                                {% endfor %}
+                            {% endif %}
+                            {% if rule.conditional_alternate_target %}
+                                <span class="pipeline-separator">|</span>
+                                <span class="pipeline-node pipeline-node--alternate" title="Conditional alternate target"><i class="fa fa-directions"></i>&nbsp;{{ rule.conditional_alternate_target }}</span>
+                            {% endif %}
+                        </div>
+                        {% elif rule.action == 'discard' %}
+                        <div class="pipeline-section">
+                            <span class="pipeline-node pipeline-node--discard"><i class="fas fa-ban"></i>&nbsp;discard</span>
+                        </div>
+                        {% elif rule.action == 'notification' %}
+                        <div class="pipeline-section">
+                            <span class="pipeline-node pipeline-node--notify"><i class="fas fa-bell"></i>&nbsp;notify only</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="buttons is-right" style="margin-top: 12px;">
                         {% if is_admin %}
                         <a class="button duplicate-me" data-value='{{rule_name}}'><span class="icon"><i class="fas fa-copy"></i></span><span>Duplicate</span></a>
                         <a class="button is-success" href="/rules/edit/{{rule_name}}"><span class="icon"><i class="fas fa-pen"></i></span><span>Edit</span></a>

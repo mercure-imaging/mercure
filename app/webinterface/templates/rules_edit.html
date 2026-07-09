@@ -20,6 +20,8 @@
         </nav>
         <h1 class="title is-4">Edit Rule</h1>
 
+        <div id="pipeline-preview" class="pipeline-flow" style="margin-bottom: 12px;"></div>
+
         <div class="notification is-danger" id="erroralert" style="display: none;">
             <i class="fas fa-bug"></i>&nbsp;&nbsp;Error in configuration detected. Please check input fields for correct
             syntax.
@@ -794,6 +796,80 @@
         $("#action").trigger('change');
         $("#action_trigger").trigger('change');
         $("#study_trigger_condition").trigger('change');
+
+        // Pipeline preview
+        function updatePipelinePreview() {
+            var action = $('#action').val();
+            var trigger = $('#action_trigger').val() || 'series';
+            var modules = [];
+            var modInput = document.getElementById('processing_module_list');
+            if (modInput && modInput.value) modules = modInput.value.split(',').filter(Boolean);
+            var targets = [];
+            $('#target option:selected').each(function() { if(this.value) targets.push(this.value); });
+            var altTarget = $('#conditional_alternate_target').val();
+            var useAlt = $('#use_alternate_target').is(':checked');
+
+            var html = '';
+
+            // Trigger section
+            html += '<div class="pipeline-section">';
+            html += '<span class="pipeline-section-label">trigger</span>';
+            html += '<span class="pipeline-node pipeline-node--filter"><i class="fas fa-filter"></i>&nbsp;' + trigger + '</span>';
+            html += '</div>';
+
+            // Processing section
+            if (action === 'process' || action === 'both') {
+                html += '<span class="pipeline-arrow">&rarr;</span>';
+                html += '<div class="pipeline-section">';
+                html += '<span class="pipeline-section-label">process</span>';
+                if (modules.length === 0) {
+                    html += '<span class="pipeline-node pipeline-node--process" style="opacity:0.4;"><i class="fa fa-microchip"></i>&nbsp;none</span>';
+                } else {
+                    modules.forEach(function(m, i) {
+                        html += '<span class="pipeline-node pipeline-node--process"><i class="fa fa-microchip"></i>&nbsp;' + m + '</span>';
+                        if (i < modules.length - 1) html += '<span class="pipeline-arrow">&rarr;</span>';
+                    });
+                }
+                html += '</div>';
+            }
+
+            // Routing section
+            if (action === 'route' || action === 'both') {
+                html += '<span class="pipeline-arrow">&rarr;</span>';
+                html += '<div class="pipeline-section">';
+                html += '<span class="pipeline-section-label">route</span>';
+                if (targets.length === 0) {
+                    html += '<span class="pipeline-node pipeline-node--target" style="opacity:0.4;"><i class="fa fa-directions"></i>&nbsp;none</span>';
+                } else {
+                    targets.forEach(function(t, i) {
+                        html += '<span class="pipeline-node pipeline-node--target"><i class="fa fa-directions"></i>&nbsp;' + t + '</span>';
+                        if (i < targets.length - 1) html += '<span class="pipeline-separator">+</span>';
+                    });
+                }
+                if (useAlt && altTarget) {
+                    html += '<span class="pipeline-separator">|</span>';
+                    html += '<span class="pipeline-node pipeline-node--alternate"><i class="fa fa-directions"></i>&nbsp;' + altTarget + '</span>';
+                }
+                html += '</div>';
+            } else if (action === 'discard') {
+                html += '<span class="pipeline-arrow">&rarr;</span>';
+                html += '<div class="pipeline-section">';
+                html += '<span class="pipeline-node pipeline-node--discard"><i class="fas fa-ban"></i>&nbsp;discard</span>';
+                html += '</div>';
+            } else if (action === 'notification') {
+                html += '<span class="pipeline-arrow">&rarr;</span>';
+                html += '<div class="pipeline-section">';
+                html += '<span class="pipeline-node pipeline-node--notify"><i class="fas fa-bell"></i>&nbsp;notify</span>';
+                html += '</div>';
+            }
+
+            $('#pipeline-preview').html(html);
+        }
+
+        $('#action, #action_trigger, #target, #use_alternate_target, #conditional_alternate_target').on('change', updatePipelinePreview);
+        // Poll for module tag changes (bulma-tagsinput doesn't expose reliable events)
+        setInterval(updatePipelinePreview, 500);
+        updatePipelinePreview();
 
         var dropdown = document.querySelector('.dropdown');
         dropdown.addEventListener('click', function (event) {

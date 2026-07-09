@@ -723,3 +723,62 @@ tr:hover td.dt-control::before {
 #persistence_file_control > .json_container {
   height: 400px;
 }
+
+/* Pipeline flow visualization */
+.pipeline-flow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px 16px;
+  background: #f8f8f8;
+  border-radius: 6px;
+  border: 1px solid #eee;
+}
+
+.pipeline-section {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: rgba(0,0,0,0.03);
+}
+
+.pipeline-section-label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  color: #999;
+  letter-spacing: 0.5px;
+  margin-right: 2px;
+}
+
+.pipeline-node {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.pipeline-node--filter { background-color: #363636; }
+.pipeline-node--process { background-color: #3273dc; }
+.pipeline-node--target { background-color: hsl(141, 71%, 48%); }
+.pipeline-node--alternate { background-color: #ff9800; }
+.pipeline-node--discard { background-color: #ff3860; }
+.pipeline-node--notify { background-color: #7957d5; }
+
+.pipeline-arrow {
+  color: #b5b5b5;
+  font-size: 1.1rem;
+  margin: 0 4px;
+}
+
+.pipeline-separator {
+  color: #b5b5b5;
+  font-size: 0.8rem;
+  margin: 0 2px;
+}
