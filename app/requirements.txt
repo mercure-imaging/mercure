@@ -20,7 +20,7 @@ alabaster==0.7.16
     # via sphinx
 alembic==1.13.1
     # via -r requirements.in
-anyio==4.4.0
+anyio==4.14.2
     # via
     #   httpx
     #   starlette
