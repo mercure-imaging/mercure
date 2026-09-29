@@ -380,13 +380,31 @@ setup_docker_dev () {
 
 build_docker () {
   echo "## Building mercure docker containers..."  
-  sudo $MERCURE_SRC/build-docker.sh -y
+  sudo $MERCURE_SRC/docker-build.sh -y
+}
+
+# The service Dockerfiles are built FROM mercureimaging/mercure-base, so make sure
+# that image exists before `docker-compose up` — if a service image pull fails,
+# compose falls back to building, which requires the base image.
+ensure_docker_base () {
+  local tag=${MERCURE_TAG:-latest}
+  if sudo docker image inspect "mercureimaging/mercure-base:$tag" >/dev/null 2>&1; then
+    return
+  fi
+  if sudo docker pull "mercureimaging/mercure-base:$tag" >/dev/null 2>&1; then
+    return
+  fi
+  echo "## Base image not found, building locally..."
+  pushd "$MERCURE_SRC"
+  sudo docker build -t "mercureimaging/mercure-base:$tag" -t mercureimaging/mercure-base:latest -f docker/base/Dockerfile .
+  popd
 }
 
 start_docker () {
   echo "## Starting docker compose..."
   pushd $MERCURE_BASE
-  sudo docker-compose up -d
+  # Pass the repo location through so compose resolves build contexts correctly
+  sudo MERCURE_SRC="$MERCURE_SRC" docker-compose up -d
   popd
 }
 
@@ -618,6 +636,7 @@ docker_install () {
   if [ $DO_DEV_INSTALL = true ]; then
     setup_docker_dev
   fi
+  ensure_docker_base
   start_docker
 }
 

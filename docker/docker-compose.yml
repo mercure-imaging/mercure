@@ -1,5 +1,7 @@
 x-build: &build
-  context: ..
+  # Default context is the repo root relative to this file's location (repo/docker).
+  # install.sh runs compose from $MERCURE_BASE and exports MERCURE_SRC to override this.
+  context: ${MERCURE_SRC:-..}
   args:
     VERSION_TAG: ${TAG:-latest}
     BASE_IMAGE_NAME: mercureimaging/mercure-base
@@ -29,7 +31,7 @@ services:
   base:
     image: mercureimaging/mercure-base:${TAG:-latest}
     build:
-      context: ..
+      context: ${MERCURE_SRC:-..}
       dockerfile: docker/base/Dockerfile
     profiles: [build]
 
