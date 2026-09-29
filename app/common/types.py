@@ -248,6 +248,9 @@ class Rule(BaseModel, Compat):
     notification_trigger_completion: bool = True
     notification_trigger_completion_on_request: bool = False
     notification_trigger_error: bool = True
+    dynamic_routing: bool = False
+    dynamic_routing_allowed_targets: Union[str, List[str]] = ""
+    conditional_alternate_target: str = ""
 
 
 class ProcessingLogsConfig(BaseModel):

@@ -133,7 +133,7 @@
             {% for module_name, module in modules.items()|sort() %}
                 <div class="card entitycard" data-name="{{module_name}} {{module.docker_tag}}">
                     <header class="card-header has-background-light">
-                        <p class="card-header-title card-toggle">
+                        <p class="card-header-title card-toggle" tabindex="0" role="button" aria-expanded="false">
                             <span class="icon"><i class="fas fa-cogs fa-lg"></i></span>&nbsp;&nbsp;{{ module_name }}
                             <span style="margin-left: auto; font-weight: 200;">{{module.docker_tag|truncate(50, True)}}</span>
                         </p>
@@ -164,7 +164,7 @@
                                             class="fas fa-pen"></i></span><span>Edit</span></a>
                                     <button class="button is-danger delete-button" value="{{module_name}}"
                                             {% if module_name in used_modules%}disabled
-                                            title="Cannot delete because target is used by rule '{{ used_module }}'" {% endif %}><span class="icon"><i
+                                            title="Cannot delete because module is used by rule '{{ used_module }}'" {% endif %}><span class="icon"><i
                                             class="fas fa-trash-alt"></i></span><span>Delete</span></button>
                                 {% endif %}
                             </div>
@@ -172,6 +172,13 @@
                     </div>
                 </div>
             {% endfor %}
+            {% if not modules %}
+            <div class="has-text-centered" style="padding: 60px 20px;">
+                <span class="icon is-large has-text-grey-light"><i class="fas fa-cogs fa-3x"></i></span>
+                <p class="title is-5 has-text-grey" style="margin-top: 20px;">No processing modules configured yet</p>
+                <p class="has-text-grey" style="margin-bottom: 20px;">Add a module to enable DICOM processing.</p>
+            </div>
+            {% endif %}
             <nav class="pagination is-centered" role="navigation" aria-label="pagination" style="margin-top: 16px;">
                 <ul class="pagination-list" id="paginationList">
                 </ul>
@@ -237,7 +244,7 @@
                 </header>
                 <section class="modal-card-body">
                     <div class="field">
-                        Are you sure to delete the module? This cannot be undone.
+                        Are you sure to delete the module "<strong id="delete-item-name"></strong>"? This cannot be undone.
                     </div>
                     <div class="field" style="margin-top: 20px;">
                         <p class="control">
@@ -291,7 +298,13 @@
             let cardToggles = document.getElementsByClassName('card-toggle');
             for (let i = 0; i < cardToggles.length; i++) {
                 cardToggles[i].addEventListener('click', e => {
-                    e.currentTarget.parentElement.parentElement.childNodes[3].classList.toggle('is-hidden');
+                    let content = e.currentTarget.parentElement.parentElement.childNodes[3];
+                    content.classList.toggle('is-hidden');
+                    let title = e.currentTarget.closest('header').querySelector('.card-header-title');
+                    if (title) title.setAttribute('aria-expanded', !content.classList.contains('is-hidden'));
+                });
+                cardToggles[i].addEventListener('keydown', e => {
+                    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.currentTarget.click(); }
                 });
             }
             paginate(document.getElementsByClassName('entitycard'))
@@ -309,6 +322,7 @@
 
         function confirmDelete(val) {
             moduleToDelete = val;
+            $("#delete-item-name").text(val);
             $("#deletemodal").addClass("is-active");
         }
 
@@ -323,6 +337,7 @@
             })
 
             $('#confirmdeletemodal').click(function () {
+                $(this).addClass('is-loading');
                 $("#deletemodal").removeClass("is-active");
                 var url = '/modules/delete/' + moduleToDelete;
                 var form = $('<form action="' + url + '" method="post"></form>');

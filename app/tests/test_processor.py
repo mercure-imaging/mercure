@@ -270,7 +270,7 @@ async def test_process_series(fs, mercure_config: Callable[[Dict], Config], mock
     print("FAKE RUN CALLS", fake_run.call_args_list)
     fake_run.assert_has_calls(
         [
-            call('busybox:stable', command='cat /etc/monai/app.json', entrypoint=''),
+            call('busybox:stable', command='cat /etc/monai/app.json', entrypoint='', remove=True),
             call(
                 config.modules["test_module"].docker_tag,
                 environment={'HOLOSCAN_INPUT_PATH': '/tmp/data', 'HOLOSCAN_OUTPUT_PATH': '/tmp/output',

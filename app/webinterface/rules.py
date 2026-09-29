@@ -211,6 +211,8 @@ async def rules_edit_post(request) -> Response:
         processing_module=processing_module,
         processing_settings=new_processing_settings,
         processing_retain_images=form.get("processing_retain_images", "False"),
+        dynamic_routing=bool(form.get("conditional_alternate_target")) and bool(form.get("use_alternate_target")),
+        conditional_alternate_target=form.get("conditional_alternate_target", "") if form.get("use_alternate_target") else "",
         notification_webhook=form.get("notification_webhook", ""),
         notification_email=form.get("notification_email", ""),
         notification_payload=notification_payload,
