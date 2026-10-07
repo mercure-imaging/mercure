@@ -38,7 +38,7 @@ Job Archive
 
 The "Archive" tab allows reviewing the status of the last series/studies that have completed processing/routing or that have been discarded because no rule had triggered. Using the search box shown above the table, it is furthermore possible to search for specific cases by patient name, medical record number (MRN), or accession number (ACC). By clicking the filter button (top left above the table), it is possible to restrict the search to only study-level jobs.
 
-.. note:: For study-level jobs, there will be a separate job with scope "SERIES" for each individual series as well as one joint job with scope "STUDY". This is because the indiviudal series initially get collected and then assigned to the STUDY job. 
+.. note:: For study-level jobs, there will be a separate job with scope "SERIES" for each individual series as well as one joint job with scope "STUDY". This is because the individual series initially get collected and then assigned to the STUDY job. 
 
 Additional information about the jobs can be displayed by selecting one job in the table and clicking on the buttons above the table. 
 
