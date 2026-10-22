@@ -2,7 +2,7 @@ DCMTK_REF := 969c4b6
 IMAGE     := mercure-getdcmtags-build
 BINDIR    := ../app/bin
 DCMTKDIR  := $(BINDIR)/dcmtk
-SOURCES   := Dockerfile CMakeLists.txt main.cpp tags_list.h test.py
+SOURCES   := Dockerfile CMakeLists.txt main.cpp tags_list.h test.py test_dcm test_latin1.dcm test_utf8.dcm
 
 DCMTK_APPS := storescp storescu echoscu dcmsend
 BINARIES   := $(BINDIR)/getdcmtags $(addprefix $(DCMTKDIR)/,$(DCMTK_APPS) dicom.dic)
@@ -23,7 +23,11 @@ $(BINARIES) &: $(SOURCES)
 	for b in $(DCMTK_APPS) dicom.dic; do docker cp mercure-build-copy:/build/$$b $(DCMTKDIR)/$$b; done
 	docker rm mercure-build-copy
 
-.PHONY: all clean
+.PHONY: all clean memorycheck
+memorycheck:
+	DOCKER_BUILDKIT=1 docker build --build-arg DCMTK_REF=$(DCMTK_REF) --target memorycheck -t $(IMAGE)-memorycheck .
+	docker run --rm --ulimit core=0 $(IMAGE)-memorycheck
+
 clean:
 	rm -f $(BINDIR)/getdcmtags
 	rm -rf $(DCMTKDIR)
