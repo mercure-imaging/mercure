@@ -16,8 +16,8 @@ echo "Versions match."
 
 echo ""
 echo "storescp binary:"
-if [ -f ../app/bin/storescp ]; then
-    ../app/bin/storescp --version 2>&1 | head -5
+if [ -f ../app/bin/dcmtk/storescp ]; then
+    ../app/bin/dcmtk/storescp --version 2>&1 | head -5
     echo "storescp binary OK"
 else
     echo "ERROR: storescp binary not found"
