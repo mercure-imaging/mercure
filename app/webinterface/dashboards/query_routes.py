@@ -104,7 +104,7 @@ async def get_job_info(request):
     subjob_info = sorted(subjob_info, key=lambda x: x['created_at_dt'])
 
     # generate a bunch of dummy data for testing purposes
-    return templates.TemplateResponse("dashboards/query_job_fragment.html",
+    return templates.TemplateResponse(request, "dashboards/query_job_fragment.html",
                                       {"request": request, "job": job, "subjob_info": subjob_info})
 
 
@@ -235,7 +235,7 @@ async def query(request):
         "page": "tools",
         "tab": "query"
     }
-    return templates.TemplateResponse(template, context)
+    return templates.TemplateResponse(request, template, context)
 
 
 @router.post("/query/check_accessions")

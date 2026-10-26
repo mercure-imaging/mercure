@@ -77,7 +77,7 @@ async def show_queues(request):
         "processing_suspended": processing_suspended,
         "routing_suspended": routing_suspended,
     }
-    return templates.TemplateResponse(template, context)
+    return templates.TemplateResponse(request, template, context)
 
 
 @router.get("/jobs/processing")

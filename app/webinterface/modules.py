@@ -265,7 +265,7 @@ async def show_modules(request):
         "forbid_unsafe_docker_args": forbid_unsafe_docker_args(),
         "forbid_unsafe_volumes": forbid_unsafe_volumes(),
     }
-    return templates.TemplateResponse(template, context)
+    return templates.TemplateResponse(request, template, context)
 
 
 @router.post("/")
@@ -398,7 +398,7 @@ async def edit_module(request):
         "allow_unsafe_volumes": allow_unsafe_volumes(),
         "allowed_volume_bases": get_allowed_volume_bases(),
     }
-    return templates.TemplateResponse(template, context)
+    return templates.TemplateResponse(request, template, context)
 
 
 @router.post("/edit/{module}")

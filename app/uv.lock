@@ -247,7 +247,6 @@ requires-dist = [
     { name = "daiquiri", specifier = ">=3.2.5.1" },
     { name = "databases", extras = ["aiopg"], specifier = "<=0.8.0" },
     { name = "dataclasses", marker = "python_full_version < '3.7'" },
-    { name = "dicomweb-client", specifier = ">=0.59.1" },
     { name = "distro", specifier = ">=1.9.0" },
     { name = "docker", specifier = ">=7.1.0" },
     { name = "freezegun", specifier = ">=1.4.0" },
@@ -263,8 +262,8 @@ requires-dist = [
     { name = "lxml", specifier = ">=4.9.1" },
     { name = "mako", specifier = ">=1.2.2" },
     { name = "mypy", specifier = "<1.9.0" },
+    { name = "numpy", specifier = ">=1.26,<2" },
     { name = "passlib", specifier = ">=1.7.4" },
-    { name = "pillow", specifier = ">=10.0.1" },
     { name = "psycopg2", specifier = ">=2.9.9" },
     { name = "pydantic", specifier = ">=1.10.9,<2.0.0" },
     { name = "pydicom", specifier = "~=2.4.1" },
@@ -278,12 +277,13 @@ requires-dist = [
     { name = "python-nomad", specifier = ">=2.0.1" },
     { name = "pyxnat", specifier = ">=1.6.2" },
     { name = "requests", specifier = ">=2.32.4" },
+    { name = "retrying", specifier = ">=1.3.4" },
     { name = "rq", specifier = "~=1.16.2" },
     { name = "rq-scheduler", specifier = "~=0.13.1" },
     { name = "sphinx", specifier = "==5.0.0" },
     { name = "sphinx-rtd-theme", specifier = ">=2.0.0" },
     { name = "sqlalchemy", specifier = "<=1.4.52" },
-    { name = "starlette", specifier = ">=0.40.0" },
+    { name = "starlette", specifier = ">=1.3.1,<1.8" },
     { name = "starlette-auth-toolkit", specifier = ">=0.5.0" },
     { name = "starlette-decorouter", specifier = ">=1.0.0" },
     { name = "types-bleach", specifier = ">=6.2.0.20241123" },
@@ -1765,14 +1765,15 @@ wheels = [
 
 [[package]]
 name = "starlette"
-version = "0.41.0"
+version = "1.7.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
+    { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/78/53/c3a36690a923706e7ac841f649c64f5108889ab1ec44218dac45771f252a/starlette-0.41.0.tar.gz", hash = "sha256:39cbd8768b107d68bfe1ff1672b38a2c38b49777de46d2a592841d58e3bf7c2a", size = 2573755, upload-time = "2024-10-15T17:32:04.224Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/7b/2b/3850dc6bf7ef71b088962eba31dafc6cffd2f96e577ebb0bb316df96da3e/starlette-1.7.0.tar.gz", hash = "sha256:c79f74ea63cff761804fbbfb182f1e0b440c2d07b164d24700c5a1bab5d6ff5d", size = 2736246, upload-time = "2026-09-23T07:30:26.35Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/35/c6/a4443bfabf5629129512ca0e07866c4c3c094079ba4e9b2551006927253c/starlette-0.41.0-py3-none-any.whl", hash = "sha256:a0193a3c413ebc9c78bff1c3546a45bb8c8bcb4a84cae8747d650a65bd37210a", size = 73216, upload-time = "2024-10-15T17:32:02.931Z" },
+    { url = "https://files.pythonhosted.org/packages/4e/d6/1ec1b290f9e0fb067899b61e1d37a30c923068bad260b216dbe37a7d2967/starlette-1.7.0-py3-none-any.whl", hash = "sha256:67f8e99895493dd2911a03f11314af6ceebeae4e704bb9f43dfc6a9db151c93e", size = 78980, upload-time = "2026-09-23T07:30:24.567Z" },
 ]
 
 [[package]]

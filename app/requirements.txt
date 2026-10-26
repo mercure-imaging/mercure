@@ -267,7 +267,7 @@ sqlalchemy==1.4.52
     #   -r requirements.in
     #   alembic
     #   databases
-starlette==0.41.0
+starlette==1.7.0
     # via
     #   -r requirements.in
     #   starlette-auth-toolkit
@@ -296,6 +296,7 @@ typing-extensions==4.12.2
     #   mypy
     #   pydantic
     #   reactivex
+    #   starlette
 urllib3==2.2.2
     # via
     #   -r requirements.in

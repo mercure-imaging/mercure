@@ -150,7 +150,7 @@ async def upload(request):
         "datasets": existing_datasets,
         "tab": "upload",
     }
-    return templates.TemplateResponse(template, context)
+    return templates.TemplateResponse(request, template, context)
 
 
 @router.get("/dataset/{dataset_id}")

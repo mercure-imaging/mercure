@@ -56,7 +56,7 @@ async def show_targets(request) -> Response:
         "get_target_handler": target_types.get_handler,
     }
     context.update(get_user_information(request))
-    return templates.TemplateResponse(template, context)
+    return templates.TemplateResponse(request, template, context)
 
 
 @router.post("/")
@@ -115,7 +115,7 @@ async def targets_edit(request) -> Response:
         ],
     }
     context.update(get_user_information(request))
-    return templates.TemplateResponse(template, context)
+    return templates.TemplateResponse(request, template, context)
 
 
 @router.post("/edit/{target}")
@@ -187,7 +187,7 @@ async def targets_test_post(request) -> Response:
 
     handler = target_types.get_handler(target)
     result = await handler.test_connection(target, testtarget)
-    return templates.TemplateResponse(handler.test_template, {"request": request, "result": result})
+    return templates.TemplateResponse(request, handler.test_template, {"request": request, "result": result})
 
 
 targets_app = Starlette(routes=router)

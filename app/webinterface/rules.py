@@ -48,7 +48,7 @@ async def rules(request) -> Response:
         "page": "rules",
         "rules": config.mercure.rules,
     }
-    return templates.TemplateResponse(template, context)
+    return templates.TemplateResponse(request, template, context)
 
 
 @router.post("/duplicate")
@@ -151,7 +151,7 @@ async def rules_edit(request) -> Response:
     }
 
     template = "rules_edit.html"
-    return templates.TemplateResponse(template, context)
+    return templates.TemplateResponse(request, template, context)
 
 
 @router.post("/edit/{rule}")

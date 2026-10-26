@@ -22,7 +22,7 @@ async def tasks(request):
         "page": "tools",
         "tab": "tasks",
     }
-    return templates.TemplateResponse(template, context)
+    return templates.TemplateResponse(request, template, context)
 
 
 
@@ -35,4 +35,4 @@ async def tests(request):
         "page": "tools",
         "tab": "tests",
     }
-    return templates.TemplateResponse(template, context)
+    return templates.TemplateResponse(request, template, context)

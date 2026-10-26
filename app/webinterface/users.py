@@ -195,7 +195,7 @@ async def show_users(request) -> Response:
 
     template = "users.html"
     context = {"request": request, "page": "users", "users": users_list}
-    return templates.TemplateResponse(template, context)
+    return templates.TemplateResponse(request, template, context)
 
 
 @router.post("/")
@@ -251,7 +251,7 @@ async def users_edit(request) -> Response:
         "edituser": edituser,
         "edituser_info": users_list[edituser],
     }
-    return templates.TemplateResponse(template, context)
+    return templates.TemplateResponse(request, template, context)
 
 
 @router.post("/edit/{user}")
