@@ -53,8 +53,6 @@ struct DicomResult {
 };
 
 
-static DcmSpecificCharacterSet charsetConverter;
-
 #define DO_ERROR(cfg, n) \
     ((cfg).testInjectError == n)
 
@@ -201,7 +199,7 @@ void writeErrorInformation(OFString dcmFile, OFString errorString)
 }
 
 
-static void insertTag(FILE* fp, const char* name, const OFString& value, const OFString& dcmFile, const DicomResult& result)
+static void insertTag(FILE* fp, const char* name, const OFString& value, const OFString& dcmFile, const DicomResult& result, DcmSpecificCharacterSet& charsetConverter)
 {
     OFString converted;
     if (result.conversionNeeded)
@@ -323,16 +321,16 @@ bool readExtraTags(DcmDataset* dataset, OFString path_info, DicomResult& result)
 }
 
 
-void writeTagsList(std::vector<std::pair<DcmTagKey, OFString>>& tags, FILE* fp, const OFString& dcmFile, const DicomResult& result) {
+void writeTagsList(std::vector<std::pair<DcmTagKey, OFString>>& tags, FILE* fp, const OFString& dcmFile, const DicomResult& result, DcmSpecificCharacterSet& charsetConverter) {
 
     const DcmDataDictionary &globalDataDict = dcmDataDict.rdlock();
     for (const auto& pair : tags)
     {
         const DcmDictEntry *dicent = globalDataDict.findEntry(pair.first, NULL);
         if (dicent == NULL) {
-            insertTag(fp, pair.first.toString().c_str(), pair.second, dcmFile, result);
+            insertTag(fp, pair.first.toString().c_str(), pair.second, dcmFile, result, charsetConverter);
         } else {
-            insertTag(fp, dicent->getTagName(), pair.second, dcmFile, result);
+            insertTag(fp, dicent->getTagName(), pair.second, dcmFile, result, charsetConverter);
         }
     }
     dcmDataDict.rdunlock();
@@ -348,7 +346,7 @@ bool writeForceTagsList(const std::vector<std::pair<OFString, OFString>>& tags, 
 }
 
 
-bool writeTagsFile(OFString dcmFile, OFString originalFile, const Config& cfg, DicomResult& result)
+bool writeTagsFile(OFString dcmFile, OFString originalFile, const Config& cfg, DicomResult& result, DcmSpecificCharacterSet& charsetConverter)
 {
     OFString filename = dcmFile + ".tags";
     FILE *fp = fopen(filename.c_str(), "w+");
@@ -361,16 +359,16 @@ bool writeTagsFile(OFString dcmFile, OFString originalFile, const Config& cfg, D
 
     try {
         fprintf(fp, "{\n");
-        insertTag(fp, "SpecificCharacterSet", result.specificCharacterSet, dcmFile, result);
-        insertTag(fp, "SeriesInstanceUID", result.seriesInstanceUID, dcmFile, result);
-        insertTag(fp, "SOPInstanceUID", result.sopInstanceUID, dcmFile, result);
+        insertTag(fp, "SpecificCharacterSet", result.specificCharacterSet, dcmFile, result, charsetConverter);
+        insertTag(fp, "SeriesInstanceUID", result.seriesInstanceUID, dcmFile, result, charsetConverter);
+        insertTag(fp, "SOPInstanceUID", result.sopInstanceUID, dcmFile, result, charsetConverter);
 
-        insertTag(fp, "SenderAddress", cfg.senderAddress, dcmFile, result);
-        insertTag(fp, "SenderAET", cfg.senderAET, dcmFile, result);
-        insertTag(fp, "ReceiverAET", cfg.receiverAET, dcmFile, result);
+        insertTag(fp, "SenderAddress", cfg.senderAddress, dcmFile, result, charsetConverter);
+        insertTag(fp, "SenderAET", cfg.senderAET, dcmFile, result, charsetConverter);
+        insertTag(fp, "ReceiverAET", cfg.receiverAET, dcmFile, result, charsetConverter);
 
-        writeTagsList(result.mainTags, fp, dcmFile, result);
-        writeTagsList(result.additionalTags, fp, dcmFile, result);
+        writeTagsList(result.mainTags, fp, dcmFile, result, charsetConverter);
+        writeTagsList(result.additionalTags, fp, dcmFile, result, charsetConverter);
 
         writeForceTagsList(cfg.forceTags, fp);
 
@@ -450,6 +448,11 @@ DcmTagKey calculateUntilTag(const DicomResult& result) {
 
 int main(int argc, char *argv[])
 {
+    // Must be destroyed before DCMTK's OFiconvCleanupHelper runs at exit, so it
+    // is a local (not a namespace-scope or function-local static): see
+    // OFiconv_cleanup() / _citrus_csmapper_close().
+    DcmSpecificCharacterSet charsetConverter;
+
     if (!charsetConverter.isConversionAvailable())
     {
         std::cout << std::endl;
@@ -668,7 +671,7 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    if (DO_ERROR(cfg, 7) || !writeTagsFile(seriesFolder + newFilename, origFilename, cfg, result))
+    if (DO_ERROR(cfg, 7) || !writeTagsFile(seriesFolder + newFilename, origFilename, cfg, result, charsetConverter))
     {
         OFString errorString = "Unable to write tagsfile file for ";
         errorString.append(newFilename);
