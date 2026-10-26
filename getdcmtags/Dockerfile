@@ -140,6 +140,57 @@ RUN cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug \
 # glibc-linked, symbolised getdcmtags with static DCMTK/oficonv inside
 CMD ["/app/build/getdcmtags", "--version"]
 
+# ── Alternate build: AddressSanitizer (+ UBSan) ──────────────────────────────
+# Complements `memorycheck`: memcheck cannot see stack/global buffer overruns,
+# intra-block heap overruns, or use-after-return, and it needs a glibc binary.
+# DCMTK/oficonv are instrumented too, so overruns inside DCMTK are attributed
+# correctly.  libasan/libubsan are linked statically so the binary runs on the
+# host without an ASan runtime.
+#
+#   make asan        # build, extract to build-asan/, run the scenario suite
+#   python3 audit_memory.py --binary build-asan/getdcmtags --tool asan
+#
+# Note ASan's leak check is on by default; getdcmtags is a short-lived process,
+# so leaks are set off by the audit script (ASAN_OPTIONS=detect_leaks=0) and
+# leak reporting is left to `make memorycheck`.
+FROM ubuntu:24.04 AS asan
+
+ARG DCMTK_REF=969c4b6
+ARG SANITIZE="address,undefined -fno-sanitize-recover=address"
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential cmake git ca-certificates zlib1g-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN git clone --filter=blob:none --no-checkout \
+        https://github.com/DCMTK/dcmtk.git /deps/dcmtk-src \
+    && git -C /deps/dcmtk-src checkout "${DCMTK_REF}"
+
+RUN cmake -S /deps/dcmtk-src -B /deps/dcmtk-build \
+    -DCMAKE_BUILD_TYPE=Debug -DBUILD_SHARED_LIBS=OFF -DBUILD_APPS=OFF \
+    -DCMAKE_INSTALL_PREFIX=/deps/dcmtk-install \
+    -DCMAKE_C_FLAGS="-O1 -g -fno-omit-frame-pointer -fsanitize=${SANITIZE}" \
+    -DCMAKE_CXX_FLAGS="-O1 -g -fno-omit-frame-pointer -fsanitize=${SANITIZE}" \
+    -DDCMTK_MODULES="ofstd;oflog;oficonv;dcmdata" \
+    -DDCMTK_WITH_OPENSSL=OFF -DDCMTK_WITH_ZLIB=ON \
+    -DDCMTK_WITH_PNG=OFF -DDCMTK_WITH_TIFF=OFF -DDCMTK_WITH_XML=OFF \
+    -DDCMTK_WITH_SNDFILE=OFF -DDCMTK_WITH_WRAP=OFF -DDCMTK_WITH_DOXYGEN=OFF \
+    -DDCMTK_WITH_ICONV=OFF -DDCMTK_WITH_STDLIBC_ICONV=OFF \
+    -DDCMTK_ENABLE_CHARSET_CONVERSION=oficonv -DDCMTK_ENABLE_BUILTIN_OFICONV_DATA=ON \
+    && cmake --build /deps/dcmtk-build --parallel 4 \
+    && cmake --install /deps/dcmtk-build \
+    && rm -rf /deps/dcmtk-build /deps/dcmtk-src
+
+WORKDIR /app
+COPY CMakeLists.txt main.cpp tags_list.h ./
+RUN cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug \
+    -DCMAKE_PREFIX_PATH=/deps/dcmtk-install \
+    -DCMAKE_CXX_FLAGS="-O1 -g -fno-omit-frame-pointer -fsanitize=${SANITIZE}" \
+    -DCMAKE_EXE_LINKER_FLAGS="-L/deps/dcmtk-install/lib -fsanitize=${SANITIZE} -static-libasan -static-libubsan" \
+    && cmake --build build --parallel 4
+
+CMD ["/app/build/getdcmtags", "--version"]
+
 # ── Stage 3: Verify binaries work without DCMTK installed ───────────────────
 # Layout mirrors runtime: CWD has bin/dcmtk/{storescp,storescu,...,dicom.dic}
 # and bin/getdcmtags. No DCMDICTPATH is set, so the compiled-in default

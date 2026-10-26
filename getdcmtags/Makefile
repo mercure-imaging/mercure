@@ -43,12 +43,8 @@ $(DEBUGBIN): $(MEM_IMAGE)
 	docker rm $$id
 	@file $@
 
-# Builds the glibc debug binary if needed, then runs Valgrind over it.
-# Latin-1 is the charset that leaves a csmapper open at exit; ISO_IR 192 is
-# UTF-8->UTF-8 and takes the persistent-mapper fast path, so it is clean by
-# design.  Non-zero exit == memory errors found.
-# To only (re)build the binary, without running Valgrind:
-#   make build-debug/getdcmtags
+# Builds the glibc debug binary if needed, then runs Valgrind over one Latin-1
+# file.  Fast smoke test for the exit-time use-after-free
 memorycheck: $(DEBUGBIN)
 	@command -v valgrind >/dev/null 2>&1 || { echo "valgrind is not installed"; exit 1; }
 	d=$$(mktemp -d); \
@@ -66,8 +62,29 @@ memorycheck: $(DEBUGBIN)
 	fi; \
 	echo "PASS: no memory errors"
 
-.PHONY: all memorycheck
+# ── AddressSanitizer (+ UBSan) build ───────────────────────────────────────
+# Complements memorycheck: ASan sees stack/global/intra-block overruns and
+# use-after-return, which memcheck does not.  DCMTK is instrumented too -- that
+# matters here, because  exit-time use-after-free could happen *inside* oficonv:
+# ASan can only trap reads/writes made by instrumented code, so an ASan build
+# that links a non-instrumented libdcmtk stays silent about it.  libasan is
+# linked statically so the binary runs on the host.
+ASAN_IMAGE := mercure-getdcmtags-asan
+ASANBIN    := build-asan/getdcmtags
+
+$(ASAN_IMAGE): Dockerfile CMakeLists.txt main.cpp tags_list.h
+	DOCKER_BUILDKIT=1 docker build --build-arg DCMTK_REF=$(DCMTK_REF) \
+	    --target asan -t $(ASAN_IMAGE) .
+
+$(ASANBIN): $(ASAN_IMAGE)
+	mkdir -p $(@D)
+	id=$$(docker create $(ASAN_IMAGE)); \
+	docker cp $$id:/app/build/getdcmtags $@; \
+	docker rm $$id
+	@file $@
+
+.PHONY: all memorycheck 
 clean:
 	rm -f $(BINDIR)/getdcmtags
-	rm -rf $(DCMTKDIR) $(DEBUGDIR)
-	docker rmi $(IMAGE) $(IMAGE)-standalone $(MEM_IMAGE) 2>/dev/null || true
+	rm -rf $(DCMTKDIR) $(DEBUGDIR) build-asan .scratch
+	docker rmi $(IMAGE) $(IMAGE)-standalone $(MEM_IMAGE) $(ASAN_IMAGE) 2>/dev/null || true
