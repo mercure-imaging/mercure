@@ -88,7 +88,7 @@ def _instance(study: str, series: str) -> Dataset:
     ds.SeriesInstanceUID = series
     ds.AccessionNumber = "VENDOR1"
     ds.PatientID = "MERCURE"
-    ds.Modality = "OT"
+    ds.Modality = "OT"  # codespell:ignore  (DICOM "Other" modality)
     ds.StudyDate = "20260101"
     ds.Rows = ds.Columns = 8
     ds.BitsAllocated = ds.BitsStored = 8
