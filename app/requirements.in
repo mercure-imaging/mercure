@@ -63,8 +63,13 @@ asteval ~= 1.0.5
 pydicom ~= 2.4.1
 pynetdicom ~= 2.0.2
 pydantic >= 1.10.9, <2.0.0
-pillow >= 10.0.1
-dicomweb-client
+# dicomweb-client is vendored in app/dicomweb_client (see app/dicomweb_client/VENDORED.md).
+# It was the only reason mercure pulled in Pillow, which mercure never uses. The dependencies the
+# vendored code needs are declared here explicitly instead of arriving transitively.
+# numpy is kept <2 to preserve the currently pinned 1.26.x; the vendored code uses np.prod, so a
+# later move to numpy 2 only needs pydicom validated.
+numpy >= 1.26, < 2
+retrying >= 1.3.4
 boto3
 freezegun
 certifi>=2024.07.04

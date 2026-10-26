@@ -1,0 +1,86 @@
+diff -ru '--exclude=__pycache__' '--exclude=LICENSE' '--exclude=MERCURE.patch' '--exclude=VENDORED.md' /tmp/pristine/__init__.py app/dicomweb_client/__init__.py
+--- /tmp/pristine/__init__.py	2026-10-26 20:19:50.461713136 +0000
++++ app/dicomweb_client/__init__.py	2026-10-26 20:33:52.919378419 +0000
+@@ -1,13 +1,10 @@
+-import importlib.metadata
+-
+ from dicomweb_client.api import DICOMwebClient, DICOMfileClient
+ from dicomweb_client.protocol import DICOMClient
+ from dicomweb_client.uri import URI, URISuffix, URIType
+ 
+-try:
+-    __version__ = importlib.metadata.version(__name__)
+-except importlib.metadata.PackageNotFoundError:
+-    __version__ = '0.0.0'
++# MERCURE PATCH: this copy is not pip-installed, so importlib.metadata would report either
++# '0.0.0' or the version of an unrelated installed dicomweb-client distribution.
++__version__ = '0.60.1'
+ 
+ __all__ = [
+     'DICOMClient',
+diff -ru '--exclude=__pycache__' '--exclude=LICENSE' '--exclude=MERCURE.patch' '--exclude=VENDORED.md' /tmp/pristine/file.py app/dicomweb_client/file.py
+--- /tmp/pristine/file.py	2026-10-26 20:19:50.461713136 +0000
++++ app/dicomweb_client/file.py	2026-10-26 20:19:50.547712067 +0000
+@@ -26,8 +26,27 @@
+ 
+ import numpy as np
+ import requests
+-from PIL import Image
+-from PIL.ImageCms import ImageCmsProfile, createProfile
++# MERCURE PATCH: Pillow is optional in this vendored copy.
++# Mercure never renders frames, so the package must stay importable (and usable for
++# store / search / retrieve) without Pillow installed.
++try:
++    from PIL import Image
++    from PIL.ImageCms import ImageCmsProfile, createProfile
++
++    HAS_PIL = True
++except ImportError:
++    Image = None
++    ImageCmsProfile = None
++    createProfile = None
++    HAS_PIL = False
++
++
++def _require_pil():
++    if not HAS_PIL:
++        raise RuntimeError(
++            'Pillow is required for rendered/frame retrieval, which is not '
++            'supported by the vendored copy of dicomweb_client'
++        )
+ from pydicom import config as pydicom_config
+ from pydicom.datadict import dictionary_VR, keyword_for_tag, tag_for_keyword
+ from pydicom.dataelem import DataElement
+@@ -3273,6 +3292,7 @@
+         Only rendering of single-frame image instances is currently supported.
+ 
+         """  # noqa: E501
++        _require_pil()
+         url = self._get_instances_url(
+             study_instance_uid=study_instance_uid,
+             series_instance_uid=series_instance_uid,
+@@ -3529,6 +3549,7 @@
+             Frames
+ 
+         """  # noqa: E501
++        _require_pil()
+         logger.info(
+             f'iterate over frames of instance "{sop_instance_uid}" of '
+             f'series "{series_instance_uid}" of study "{study_instance_uid}"'
+@@ -3673,6 +3694,7 @@
+             Frames
+ 
+         """  # noqa: E501
++        _require_pil()
+         logger.info(
+             f'retrieve frames of instance "{sop_instance_uid}" of '
+             f'series "{series_instance_uid}" of study "{study_instance_uid}"'
+@@ -3821,6 +3843,7 @@
+             Rendered representation of frames
+ 
+         """  # noqa: E501
++        _require_pil()
+         logger.info(
+             f'retrieve rendered frames of instance "{sop_instance_uid}" of '
+             f'series "{series_instance_uid}" of study "{study_instance_uid}"'
+Only in /tmp/pristine: py.typed
