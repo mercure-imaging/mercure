@@ -12,6 +12,8 @@ raises from 1.0 on. See ``test_template_response_uses_request_first_argument`` f
 counterpart, which also covers the call sites that need live server state to reach over HTTP.
 """
 import ast
+import functools
+import os
 import pathlib
 import warnings
 
@@ -133,21 +135,47 @@ def test_server_error_page_is_rendered(test_client, monkeypatch):
     assert response.headers["content-type"].startswith("text/html")
 
 
+_EXCLUDED_DIRS = frozenset({"tests", "dicomweb_client"})
+
+
+def _project_python_files(directory: pathlib.Path):
+    """Yield the first-party ``*.py`` files under ``directory``, sorted.
+
+    Walks with ``os.walk`` so that unwanted trees are *pruned* rather than listed and discarded:
+    ``.venv`` holds ~5300 third-party files, and every ``app/tests`` test runs on the pyfakefs
+    filesystem (the autouse ``mercure_config`` fixture asks for ``fs``), where a real-directory
+    passthrough walk of that tree costs ~13s, against ~0.2s for the ~120 files that matter. It also
+    kept old dependencies' SyntaxWarnings alive in the suite output.
+    """
+    for dirpath, dirnames, filenames in os.walk(directory):
+        dirnames[:] = sorted(
+            name for name in dirnames
+            if not name.startswith(".") and name != "__pycache__" and name not in _EXCLUDED_DIRS
+        )
+        for name in sorted(filenames):
+            if name.endswith(".py"):
+                yield pathlib.Path(dirpath) / name
+
+
+@functools.lru_cache(maxsize=None)
 def _template_response_calls(directory: pathlib.Path):
-    """Yield (file, lineno) for every ``*.TemplateResponse(...)`` call under ``directory``."""
-    for path in sorted(directory.rglob("*.py")):
-        if "tests" in path.relative_to(directory).parts or "dicomweb_client" in path.relative_to(directory).parts:
-            continue
+    """Return ((file, node), ...) for every ``*.TemplateResponse(...)`` call under ``directory``.
+
+    Cached: two tests scan the same tree, and parsing it is the whole cost of this check.
+    """
+    found = []
+    for path in _project_python_files(directory):
         tree = ast.parse(path.read_text(), filename=str(path))
         for node in ast.walk(tree):
             if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) \
                     and node.func.attr == "TemplateResponse":
-                yield path, node
+                found.append((path, node))
+    return tuple(found)
 
 
 def test_all_template_response_call_sites_are_found():
     """Guards the static check itself against silently matching nothing."""
-    calls = list(_template_response_calls(APP_DIR))
+    calls = _template_response_calls(APP_DIR)
     assert len(calls) >= 24, f"expected the 24 known TemplateResponse call sites, found {len(calls)}"
 
 

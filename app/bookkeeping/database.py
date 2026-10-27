@@ -9,6 +9,7 @@ import bookkeeping.config as bk_config
 import common.monitor as monitor
 import databases
 # Standard python includes
+import json
 import sqlalchemy
 from common import config
 from sqlalchemy.sql import func
@@ -37,6 +38,37 @@ processor_logs_table: sqlalchemy.Table
 processor_outputs_table: sqlalchemy.Table
 
 
+class SqliteJSON(sqlalchemy.TypeDecorator):
+    """Store JSON as TEXT when running on SQLite.
+
+    PostgreSQL's JSONB accepts a Python dict as-is; SQLite has no equivalent, so binding a dict
+    hands it to the sqlite3 driver raw, which fails with "Error binding parameter 3 - probably
+    unsupported type". The bookkeeper writes whole task payloads this way, so on SQLite every
+    POST /update-task returned 500 and the persisted task state silently stopped changing.
+    """
+
+    impl = sqlalchemy.Text
+    cache_ok = True
+
+    def bind_processor(self, dialect):
+        def process(value):
+            if value is None or isinstance(value, str):
+                return value
+            return json.dumps(value)
+        return process
+
+    def result_processor(self, dialect, coltype):
+        def process(value):
+            if value is None:
+                return value
+            try:
+                return json.loads(value)
+            except (TypeError, ValueError):
+                # Not JSON: hand back what is stored, as JSONB would hand back a non-document.
+                return value
+        return process
+
+
 def init_database(url=None, schema=None) -> databases.Database:
     global database, metadata, mercure_events, webgui_events, dicom_files, dicom_series, task_events
     global file_events, dicom_series_map, series_sequence_data, tasks_table, tests_table
@@ -44,8 +76,8 @@ def init_database(url=None, schema=None) -> databases.Database:
 
     database = databases.Database(url or bk_config.DATABASE_URL)
     metadata = sqlalchemy.MetaData(schema=(schema or bk_config.DATABASE_SCHEMA))
-    # SQLite does not support JSONB natively, so we use TEXT instead
-    JSONB = sqlalchemy.types.Text() if 'sqlite://' in (url or bk_config.DATABASE_URL) else sqlalchemy.dialects.postgresql.JSONB
+    # SQLite does not support JSONB natively, so serialise through TEXT instead
+    JSONB = SqliteJSON() if 'sqlite://' in (url or bk_config.DATABASE_URL) else sqlalchemy.dialects.postgresql.JSONB
 
     mercure_events = sqlalchemy.Table(
         "mercure_events",
