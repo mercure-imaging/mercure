@@ -41,7 +41,7 @@ dependencies = [
     "pydantic>=1.10.9,<2.0.0",
     "pydicom~=2.4.5",
     "pyfakefs==5.3.5",
-    "pynetdicom~=2.0.2",
+    "pynetdicom~=3.0.4",
     "pytest>=8.2.2,<9",
     "pytest-mock>=3.14.0",
     "pytest-subprocess>=1.5.0",

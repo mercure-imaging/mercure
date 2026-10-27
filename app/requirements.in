@@ -63,7 +63,7 @@ python-nomad
 # other
 asteval ~= 1.0.9
 pydicom ~= 2.4.5
-pynetdicom ~= 2.0.2
+pynetdicom ~= 3.0.4
 pydantic >= 1.10.9, <2.0.0
 # dicomweb-client is vendored in app/dicomweb_client (see app/dicomweb_client/VENDORED.md).
 # It was the only reason mercure pulled in Pillow, which mercure never uses. The dependencies the
