@@ -54,7 +54,7 @@ dependencies = [
     "rq~=1.16.2",
     "rq-scheduler~=0.13.1",
     "sphinx==5.0.0",
-    "sphinx-rtd-theme>=2.0.0",
+    "sphinx-rtd-theme>=3.1.0",
     "sqlalchemy<=1.4.52",
     "starlette>=1.3.1,<1.8",
     "starlette-auth-toolkit>=0.5.0",
