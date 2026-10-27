@@ -80,7 +80,7 @@ lxml>=6.1.3
 pyxnat
 urllib3 >= 2.8.0
 aiosqlite~=0.20.0
-rq ~= 1.16.2
+rq ~= 2.12.0
 rq-scheduler ~= 0.13.1
 httpx
 bleach >= 6.4.0
