@@ -8,7 +8,7 @@ async-timeout==4.0.3
     # via
     #   -c requirements.txt
     #   redis
-certifi==2024.7.4
+certifi==2026.10.23
     # via
     #   -c requirements.txt
     #   requests
