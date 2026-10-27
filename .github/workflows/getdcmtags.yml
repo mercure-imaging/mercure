@@ -1,0 +1,25 @@
+name: getdcmtags memory checks
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'getdcmtags/**'
+      - '.github/workflows/getdcmtags.yml'
+  pull_request:
+    branches: [master]
+    paths:
+      - 'getdcmtags/**'
+      - '.github/workflows/getdcmtags.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  memorycheck:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and test the pinned DCMTK backend with Valgrind
+        run: make -C getdcmtags memorycheck

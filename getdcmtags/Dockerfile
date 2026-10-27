@@ -84,10 +84,49 @@ RUN mkdir -p /app/build && cmake -S /app -B /app/build \
     && strip /app/build/getdcmtags \
     && cp /app/build/getdcmtags /build/getdcmtags
 
-COPY test.py test_dcm ./
+COPY test.py test_dcm test_latin1.dcm test_utf8.dcm ./
 # Create bin/dcmtk/ layout so the compiled-in default dict path resolves from CWD
 RUN mkdir -p bin && ln -s /build bin/dcmtk
 CMD ["sh", "-c", "python3 test.py /app/build/getdcmtags /build && echo '=== All checks passed ==='"]
+
+# Debug builds use glibc so Valgrind can track allocations inside DCMTK/oficonv.
+# Keep the charset backend and revision identical to the release build.
+FROM ubuntu:24.04 AS memorycheck
+
+ARG DCMTK_REF=DCMTK-3.7.0
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential cmake git ca-certificates zlib1g-dev python3 valgrind \
+    && rm -rf /var/lib/apt/lists/*
+RUN git clone https://github.com/DCMTK/dcmtk.git /deps/dcmtk-src \
+    && git -C /deps/dcmtk-src checkout "${DCMTK_REF}"
+RUN cmake -S /deps/dcmtk-src -B /deps/dcmtk-build \
+    -DCMAKE_BUILD_TYPE=Debug -DBUILD_SHARED_LIBS=OFF -DBUILD_APPS=OFF \
+    -DCMAKE_INSTALL_PREFIX=/deps/dcmtk-install \
+    -DDCMTK_MODULES="ofstd;oflog;oficonv;dcmdata;dcmnet;dcmtls" \
+    -DDCMTK_WITH_OPENSSL=OFF -DDCMTK_WITH_ZLIB=ON \
+    -DDCMTK_WITH_PNG=OFF -DDCMTK_WITH_TIFF=OFF -DDCMTK_WITH_XML=OFF \
+    -DDCMTK_WITH_SNDFILE=OFF -DDCMTK_WITH_WRAP=OFF -DDCMTK_WITH_DOXYGEN=OFF \
+    -DDCMTK_WITH_ICONV=OFF -DDCMTK_WITH_STDLIBC_ICONV=OFF \
+    -DDCMTK_ENABLE_CHARSET_CONVERSION=oficonv -DDCMTK_ENABLE_BUILTIN_OFICONV_DATA=ON \
+    && find /deps/dcmtk-build -name 'osconfig.h' -exec \
+       sed -i 's|#define DCM_DICT_DEFAULT_PATH .*|#define DCM_DICT_DEFAULT_PATH "bin/dcmtk/dicom.dic"|' {} + \
+    && cmake --build /deps/dcmtk-build --parallel 4 \
+    && cmake --install /deps/dcmtk-build
+
+WORKDIR /app
+RUN mkdir -p bin/dcmtk \
+    && for app in storescp storescu; do \
+         g++ -g -O0 -I/deps/dcmtk-install/include \
+             /deps/dcmtk-src/dcmnet/apps/${app}.cc -L/deps/dcmtk-install/lib \
+             -ldcmnet -ldcmtls -ldcmdata -loflog -lofstd -loficonv -lz -lpthread -o bin/dcmtk/${app} || exit 1; \
+       done \
+    && cp /deps/dcmtk-src/dcmdata/data/dicom.dic bin/dcmtk/
+COPY CMakeLists.txt main.cpp tags_list.h ./
+RUN cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=/deps/dcmtk-install \
+    -DCMAKE_EXE_LINKER_FLAGS="-L/deps/dcmtk-install/lib" \
+    && cmake --build build --parallel 4
+COPY test.py test_dcm test_latin1.dcm test_utf8.dcm ./
+CMD ["python3", "test.py", "build/getdcmtags", "bin/dcmtk", "--valgrind"]
 
 # ── Stage 3: Verify binaries work without DCMTK installed ───────────────────
 # Layout mirrors runtime: CWD has bin/dcmtk/{storescp,storescu,...,dicom.dic}
@@ -100,6 +139,6 @@ RUN apk add --no-cache python3
 WORKDIR /app
 COPY --from=getdcmtags-builder /build/getdcmtags bin/getdcmtags
 COPY --from=getdcmtags-builder /build/storescp /build/storescu /build/echoscu /build/dcmsend /build/dicom.dic bin/dcmtk/
-COPY test.py test_dcm ./
+COPY test.py test_dcm test_latin1.dcm test_utf8.dcm ./
 
 CMD ["sh", "-c", "python3 test.py bin/getdcmtags bin/dcmtk && echo '=== Standalone test passed ==='"]
