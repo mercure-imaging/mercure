@@ -1,5 +1,7 @@
 -c requirements.txt
-supervisor
+# >=4.3.0: 4.2.5 imports pkg_resources, which is why setuptools<71 used to be hand-patched into the
+# generated dev-requirements.txt. 4.3.0 dropped the import, so nothing needs setuptools now.
+supervisor >= 4.3.0
 fakeredis
 pytest
 pytest-asyncio
