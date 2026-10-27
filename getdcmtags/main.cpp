@@ -28,7 +28,7 @@
 
 #include "tags_list.h"
 
-#define VERSION "getdcmtags Version 0.76"
+#define VERSION "getdcmtags Version 0.77"
 
 
 struct Config {
