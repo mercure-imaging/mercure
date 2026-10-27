@@ -61,7 +61,7 @@ jobs:
       # https://github.com/docker/metadata-action
       - name: Extract Docker metadata
         id: meta-base
-        uses: docker/metadata-action@98669ae865ea3cffbcbaa878cf57c20bbf1c6c38
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302
         with:
           images: ${{ env.REGISTRY }}/${{ env.REPO }}/${{ env.IMAGE_PREFIX }}-base
           # Tag set written out on purpose. Without an explicit `tags:` input the published tags
@@ -123,7 +123,7 @@ jobs:
           password: ${{ env.TOKEN }}
       - name: Extract Docker metadata
         id: meta
-        uses: docker/metadata-action@98669ae865ea3cffbcbaa878cf57c20bbf1c6c38
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302
         with:
           images: ${{ env.REGISTRY }}/${{ env.REPO }}/${{ env.IMAGE_PREFIX }}-${{ matrix.image }}
           # Tag set written out on purpose. Without an explicit `tags:` input the published tags
@@ -191,7 +191,7 @@ jobs:
           
       - name: Extract Docker metadata
         id: meta
-        uses: docker/metadata-action@98669ae865ea3cffbcbaa878cf57c20bbf1c6c38
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302
         with:
           images: ${{ env.REGISTRY }}/${{ env.REPO }}/${{ matrix.image }}
           # Tag set written out on purpose. Without an explicit `tags:` input the published tags
