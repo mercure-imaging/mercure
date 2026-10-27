@@ -40,7 +40,7 @@ dependencies = [
     "psycopg2>=2.9.9",
     "pydantic>=1.10.9,<2.0.0",
     "pydicom~=2.4.5",
-    "pyfakefs==5.3.5",
+    "pyfakefs==6.2.0",
     "pynetdicom~=2.0.2",
     "pytest>=8.2.2,<9",
     "pytest-mock>=3.14.0",
