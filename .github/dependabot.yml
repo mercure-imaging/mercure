@@ -32,9 +32,17 @@ updates:
     # Only affects version updates. Five (the default) is easy to saturate with cosmetic bumps,
     # which then queues a real advisory behind them.
     open-pull-requests-limit: 15
-    # Explicit rather than "auto": "auto" means widen for libraries, and this repo ships an
-    # application, so every bump should also raise the floor in the .in file.
-    versioning-strategy: increase
+    # The .in files state what the maintainers allow; Dependabot may move the resolved version
+    # inside that range, but may not rewrite the range. This is not cosmetic: with the default
+    # "auto"/"increase" behaviour Dependabot opened PRs that turned `pydantic >=1.10.9,<2.0.0`
+    # into `>=2.14.1,<3.0.0`, `sqlalchemy<=1.4.52` into 2.0.x and `sphinx==5.0.0` into 8.x -
+    # architecture decisions presented as routine bumps, and CI passed them because CI installs
+    # the lockfile. Raising a ceiling is a migration; do it by hand with pip-compile --upgrade.
+    #
+    # Consequence to remember: if an advisory is only fixed above a ceiling we declared, security
+    # updates cannot fix it either and the alert stays open for a human. That is the correct
+    # outcome, not a malfunction.
+    versioning-strategy: lockfile-only
     cooldown:
       # Don't chase a release the day it lands. (3 days is already the product default; stated
       # so the intent survives whoever edits this file next.)
@@ -54,7 +62,7 @@ updates:
           - patch
           - minor
     ignore:
-      # Each entry mirrors a deliberate ceiling in app/requirements.in and app/pyproject.toml.
+      # Each entry mirrors a deliberate ceiling in app/requirements.in.
       # Careful: ignore conditions filter security updates too, so keep these narrow and delete
       # each one as soon as the migration it describes has happened.
       - dependency-name: starlette
@@ -112,11 +120,13 @@ updates:
     commit-message:
       prefix: build
     ignore:
-      # ubuntu:22.04 is where the appliance gets Python 3.10. Moving to 24.04 (3.12) is a planned
-      # migration with starlette/numpy/pyproject consequences, not a drive-by tag bump.
+      # This image is where the appliance gets its Python: 22.04 ships 3.10, 23.10 ships 3.11 and
+      # 24.04 ships 3.12. Dependabot offered 23.10, which is an interim release that is already
+      # end-of-life. Stay on the 22.04 LTS line; moving to 24.04 is a planned migration with
+      # starlette/numpy consequences, and starts by editing this line.
       - dependency-name: ubuntu
         versions:
-          - ">=24.04"
+          - ">=23.04"
 
 # --------------------------------------------------------------------------------------
 # Deliberately not configured, and why:
@@ -136,9 +146,10 @@ updates:
 # * app/bin/getdcmtags - a bundled DCMTK-based binary. Same blind spot, and no registry to watch:
 #   tracked by hand against DCMTK advisories.
 #
-# * app/pyproject.toml - a hand-kept mirror of requirements.in (PEP 621). If Dependabot starts
-#   opening PRs against it as a second manifest, that is the moment to decide whether pyproject
-#   becomes the source of truth or gets trimmed to metadata only.
+# * app/pyproject.toml - metadata only. It deliberately declares no dependencies, so that
+#   requirements.in and dev-requirements.in stay the only place a version range is written down.
+#   requires-python still lives here and is still read: it is one of the two signals that keep
+#   Dependabot resolving for Python 3.10.
 #
 # * labels / assignees / reviewers left unset: labels must already exist in the repo and assignees
 #   need write access. For automated routing prefer a .github/CODEOWNERS entry for
