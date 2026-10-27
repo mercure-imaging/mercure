@@ -69,11 +69,12 @@ jobs:
           # defaults have shifted across majors. Keep this in sync with what installers pull:
           # `latest` plus the release tag, and the un-prefixed form when the tag has a `v`.
           # (0.4.2b on Docker Hub is the non-semver case: the semver lines are skipped for it.)
+          # The validation-build line is what a workflow_dispatch run resolves to; a manual
+          # run can never push, so it is never published.
           tags: |
             type=raw,value=latest,enable=${{ github.event_name == 'release' }}
             type=raw,value=${{ github.event.release.tag_name }},enable=${{ github.event_name == 'release' }}
             type=semver,pattern={{version}},enable=${{ github.event_name == 'release' }}
-            # Only ever produced by a manual run, and a manual run cannot push (see push: above).
             type=raw,value=validation-build,enable=${{ github.event_name == 'workflow_dispatch' }}
 
       # Build and push Docker image with Buildx (don't push on PR)
@@ -130,11 +131,12 @@ jobs:
           # defaults have shifted across majors. Keep this in sync with what installers pull:
           # `latest` plus the release tag, and the un-prefixed form when the tag has a `v`.
           # (0.4.2b on Docker Hub is the non-semver case: the semver lines are skipped for it.)
+          # The validation-build line is what a workflow_dispatch run resolves to; a manual
+          # run can never push, so it is never published.
           tags: |
             type=raw,value=latest,enable=${{ github.event_name == 'release' }}
             type=raw,value=${{ github.event.release.tag_name }},enable=${{ github.event_name == 'release' }}
             type=semver,pattern={{version}},enable=${{ github.event_name == 'release' }}
-            # Only ever produced by a manual run, and a manual run cannot push (see push: above).
             type=raw,value=validation-build,enable=${{ github.event_name == 'workflow_dispatch' }}
       # Build and push Docker image with Buildx (don't push on PR)
       # https://github.com/docker/build-push-action
@@ -197,11 +199,12 @@ jobs:
           # defaults have shifted across majors. Keep this in sync with what installers pull:
           # `latest` plus the release tag, and the un-prefixed form when the tag has a `v`.
           # (0.4.2b on Docker Hub is the non-semver case: the semver lines are skipped for it.)
+          # The validation-build line is what a workflow_dispatch run resolves to; a manual
+          # run can never push, so it is never published.
           tags: |
             type=raw,value=latest,enable=${{ github.event_name == 'release' }}
             type=raw,value=${{ github.event.release.tag_name }},enable=${{ github.event_name == 'release' }}
             type=semver,pattern={{version}},enable=${{ github.event_name == 'release' }}
-            # Only ever produced by a manual run, and a manual run cannot push (see push: above).
             type=raw,value=validation-build,enable=${{ github.event_name == 'workflow_dispatch' }}
 
       # Build and push Docker image with Buildx (don't push on PR)
