@@ -40,7 +40,7 @@ jobs:
       id-token: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
         with:
           repository: mercure-imaging/mercure
       # Workaround: https://github.com/docker/build-push-action/issues/461
@@ -105,7 +105,7 @@ jobs:
       id-token: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
         with:
           repository: mercure-imaging/mercure
       # Workaround: https://github.com/docker/build-push-action/issues/461
@@ -172,7 +172,7 @@ jobs:
       id-token: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
         with:
           repository: mercure-imaging/mercure
       # Workaround: https://github.com/docker/build-push-action/issues/461
