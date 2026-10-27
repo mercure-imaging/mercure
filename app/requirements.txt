@@ -31,7 +31,11 @@ argon2-cffi-bindings==25.1.0
 asteval==1.0.8
     # via -r requirements.in
 async-timeout==4.0.3
-    # via aiopg
+    # via
+    #   aiohttp
+    #   aiopg
+    #   asyncpg
+    #   redis
 asyncpg==0.29.0
     # via -r requirements.in
 attrs==23.2.0
@@ -46,7 +50,7 @@ botocore==1.34.123
     # via
     #   boto3
     #   s3transfer
-certifi==2024.7.4
+certifi==2026.10.18
     # via
     #   -r requirements.in
     #   httpcore
@@ -65,7 +69,7 @@ crontab==1.0.1
     # via rq-scheduler
 daiquiri==3.2.5.1
     # via -r requirements.in
-databases[aiopg]==0.8.0
+databases==0.8.0
     # via -r requirements.in
 dicomweb-client==0.59.1
     # via -r requirements.in
@@ -77,6 +81,10 @@ docutils==0.18.1
     # via
     #   sphinx
     #   sphinx-rtd-theme
+exceptiongroup==1.3.1
+    # via
+    #   anyio
+    #   pytest
 freezegun==1.4.0
     # via
     #   -r requirements.in
@@ -231,6 +239,8 @@ rq-scheduler==0.13.1
     # via -r requirements.in
 s3transfer==0.10.0
     # via boto3
+setuptools==84.2.1
+    # via influxdb-client
 six==1.16.0
     # via
     #   python-dateutil
@@ -276,6 +286,10 @@ starlette-auth-toolkit==0.5.0
     # via -r requirements.in
 starlette-decorouter==1.0.0
     # via -r requirements.in
+tomli==2.5.0
+    # via
+    #   mypy
+    #   pytest
 types-bleach==6.2.0.20241123
     # via -r requirements.in
 types-html5lib==1.1.11.20241018
@@ -293,9 +307,12 @@ typing-extensions==4.12.2
     #   -r requirements.in
     #   aiosqlite
     #   alembic
+    #   anyio
+    #   exceptiongroup
     #   mypy
     #   pydantic
     #   reactivex
+    #   uvicorn
 urllib3==2.2.2
     # via
     #   -r requirements.in
@@ -314,6 +331,3 @@ wheel==0.43.0
     # via -r requirements.in
 yarl==1.18.0
     # via aiohttp
-
-# The following packages are considered to be unsafe in a requirements file:
-setuptools<71
