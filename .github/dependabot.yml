@@ -120,13 +120,14 @@ updates:
     commit-message:
       prefix: build
     ignore:
-      # This image is where the appliance gets its Python: 22.04 ships 3.10, 23.10 ships 3.11 and
-      # 24.04 ships 3.12. Dependabot offered 23.10, which is an interim release that is already
-      # end-of-life. Stay on the 22.04 LTS line; moving to 24.04 is a planned migration with
-      # starlette/numpy consequences, and starts by editing this line.
+      # This image is where the appliance gets its Python: 22.04 ships 3.10, 22.10/23.x ship 3.11,
+      # 24.04 ships 3.12. Dependabot offered 23.10 and then 22.10 - both interim releases that are
+      # already end-of-life - so a floor alone is not enough: stay pinned to exactly 22.04 and make
+      # the move to the next LTS a deliberate edit of this line.
       - dependency-name: ubuntu
         versions:
-          - ">=23.04"
+          - "<22.04"
+          - ">22.04"
 
 # --------------------------------------------------------------------------------------
 # Deliberately not configured, and why:
