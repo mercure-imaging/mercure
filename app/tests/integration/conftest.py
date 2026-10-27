@@ -1,6 +1,7 @@
 import json
 import multiprocessing
 import os
+import signal
 import socket
 import subprocess
 import sys
@@ -41,6 +42,31 @@ def _wait_for_port(host: str, port: int, timeout: float = 30.0, interval: float 
             time.sleep(interval)
 
 
+def pid_alive(pid: int) -> bool:
+    """Whether the process still exists. A zombie is considered gone: it holds no port."""
+    if pid <= 0:
+        return False
+    try:
+        # /proc/<pid>/stat is "(comm) state ...", and comm may contain spaces and parentheses
+        state = Path(f"/proc/{pid}/stat").read_text().rsplit(")", 1)[1].split()[0]
+        return state != "Z"
+    except (OSError, IndexError):
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return False
+        except PermissionError:
+            return True
+        return True
+
+
+def kill_pid(pid: int) -> None:
+    try:
+        os.kill(pid, signal.SIGKILL)
+    except (ProcessLookupError, PermissionError):
+        pass
+
+
 class SupervisorManager:
     process: Optional[multiprocessing.Process] = None
     config_path: Optional[Path] = None
@@ -48,6 +74,9 @@ class SupervisorManager:
     def __init__(self, mercure_base: Path) -> None:
         self.mercure_base = mercure_base
         self.socket = mercure_base / "supervisor.sock"
+        # every pid supervisord was ever seen running, so teardown can sweep even if supervisord
+        # itself is already gone and can no longer answer over RPC
+        self.child_pids: set = set()
 
     def create_config(self, services) -> None:
         self.config_path = self.mercure_base / 'supervisord.conf'
@@ -119,6 +148,16 @@ environment=MERCURE_CONFIG_FOLDER="{self.mercure_base}/config", MERCURE_BASEPATH
 
     def start_service(self, name) -> None:
         self.rpc.supervisor.startProcess(name)
+        self.remember_child_pids()
+
+    def remember_child_pids(self) -> None:
+        try:
+            for service in self.all_services():
+                pid = service.get("pid") or 0
+                if pid:
+                    self.child_pids.add(int(pid))
+        except Exception:
+            pass
 
     def stop_service(self, name) -> None:
         self.rpc.supervisor.stopProcess(name)
@@ -144,28 +183,62 @@ environment=MERCURE_CONFIG_FOLDER="{self.mercure_base}/config", MERCURE_BASEPATH
         thread.start()
         return thread
 
-    def wait_for_start(self) -> None:
-        while True:
-            if Path(self.socket).exists():
-                break
-            else:
-                time.sleep(0.1)
+    def wait_for_start(self, timeout: float = 30.0) -> None:
+        deadline = time.monotonic() + timeout
+        while not Path(self.socket).exists():
+            if time.monotonic() >= deadline:
+                raise TimeoutError(f"supervisord did not create {self.socket} within {timeout}s")
+            if self.process is not None and not self.process.is_alive():
+                raise TimeoutError("supervisord exited before it was ready")
+            time.sleep(0.1)
 
     def stop(self) -> None:
         if not self.process:
             return
+
+        # Collect the children while the RPC socket still answers.
+        self.remember_child_pids()
+
+        # Terminating supervisord first is what used to happen here: the children are in their own
+        # sessions, so they were reparented to init and kept their listening ports, which made a
+        # later run fail with "address already in use". supervisord knows each program's
+        # stopasgroup/killasgroup, so it has to be asked first.
+        try:
+            self.rpc.supervisor.stopAllProcesses()
+        except Exception as e:
+            print(f"stopAllProcesses failed: {e}")
+
+        self.wait_for_children_gone(timeout=15.0)
+
         try:
             self.transport.close()
         except Exception:
             pass
+
         try:
-            self.process.terminate()  # SIGTERM → supervisord shuts down children
+            self.process.terminate()
             self.process.join(timeout=5)
             if self.process.is_alive():
                 self.process.kill()  # escalate if still running after 5s
                 self.process.join()
         except Exception as e:
             print(e)
+
+        # Last resort: a child that outlived supervisord must not survive into the next test.
+        self.wait_for_children_gone(timeout=2.0)
+        stragglers = [pid for pid in self.child_pids if pid_alive(pid)]
+        for pid in stragglers:
+            kill_pid(pid)
+        if stragglers:
+            print(f"forced SIGKILL on {len(stragglers)} orphaned service process(es): "
+                  f"{sorted(stragglers)}")
+
+    def wait_for_children_gone(self, timeout: float) -> None:
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            if not any(pid_alive(pid) for pid in self.child_pids):
+                return
+            time.sleep(0.1)
 
 
 @pytest.fixture(scope="function")
