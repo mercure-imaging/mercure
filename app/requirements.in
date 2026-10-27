@@ -48,7 +48,7 @@ python-multipart>=0.0.32
 distro
 passlib
 argon2-cffi
-sqlalchemy<=1.4.52
+sqlalchemy<=2.0.55
 databases
 # databases[postgresql]
 databases[aiopg]<=0.8.0
