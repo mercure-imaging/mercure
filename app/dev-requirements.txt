@@ -8,6 +8,8 @@ async-timeout==4.0.3
     # via
     #   -c requirements.txt
     #   redis
+backports-asyncio-runner==1.2.0
+    # via pytest-asyncio
 certifi==2026.10.23
     # via
     #   -c requirements.txt
@@ -50,7 +52,7 @@ pytest==8.4.2
     #   -r dev-requirements.in
     #   pytest-asyncio
     #   pytest-xdist
-pytest-asyncio==0.24.0
+pytest-asyncio==1.4.1
     # via -r dev-requirements.in
 pytest-xdist==3.8.0
     # via -r dev-requirements.in
@@ -77,6 +79,7 @@ typing-extensions==4.12.2
     #   -c requirements.txt
     #   exceptiongroup
     #   fakeredis
+    #   pytest-asyncio
 urllib3==2.8.0
     # via
     #   -c requirements.txt
