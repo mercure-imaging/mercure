@@ -39,10 +39,19 @@ jobs:
     - name: typecheck with mypy
       run: |
         mypy --exclude app/tests --exclude getdcmtags --exclude app/dicomweb_client --no-namespace-packages .
-    - name: Test with pytest
+    # Split in two on purpose. The test files that need no live services run across all CPUs
+    # (~100s -> ~35s on a 4-core runner). app/tests/integration stays serial: it starts
+    # supervisord-managed services that share one Redis (127.0.0.1:6379) through the fixed queue
+    # names mercure_fast/mercure_slow, so concurrent runs would pick up each other's jobs. Its
+    # temp dirs and ports are already per-test, so Redis is the only thing to fix to parallelise it.
+    - name: Test with pytest (parallel)
       if: always()
       run: |
-        python -m pytest -vvv
+        python -m pytest -vvv -n auto --ignore=app/tests/integration
+    - name: Test with pytest (integration, serial)
+      if: always()
+      run: |
+        python -m pytest -vvv app/tests/integration
     - name: Check getdcmtags version
       run: |
         cd getdcmtags && ./check_version.sh

@@ -20,6 +20,8 @@ exceptiongroup==1.3.1
     # via
     #   -c requirements.txt
     #   pytest
+execnet==2.1.2
+    # via pytest-xdist
 fakeredis==2.25.1
     # via -r dev-requirements.in
 idna==3.20
@@ -47,7 +49,10 @@ pytest==8.4.2
     #   -c requirements.txt
     #   -r dev-requirements.in
     #   pytest-asyncio
+    #   pytest-xdist
 pytest-asyncio==0.24.0
+    # via -r dev-requirements.in
+pytest-xdist==3.8.0
     # via -r dev-requirements.in
 redis==5.0.4
     # via

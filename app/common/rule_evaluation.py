@@ -101,6 +101,18 @@ def _eval_safe(rule: str, tags_obj: Tags) -> Any:
     return result
 
 
+def _log_safe(value: Any) -> str:
+    """Render a tag or rule value so that it can safely be written to the log.
+
+    Tags read from a malformed DICOM file are decoded with ``errors="surrogateescape"``, which puts
+    lone surrogates into the string. Those are not utf-8 encodable, so logging them raw breaks the log
+    handler (and, when the suite runs in parallel, pytest-xdist's report serialization).
+    ``backslashreplace`` keeps the value readable and the line encodable, exactly like the terminal
+    does when it prints one of these strings.
+    """
+    return str(value).encode("utf-8", "backslashreplace").decode("utf-8")
+
+
 def eval_rule(rule: str, tags_dict: Dict[str, str]) -> Any:
     """Parses the given rule, replaces all tag variables with values from the given tags dictionary, and
     evaluates the rule. If the rule is invalid, an exception will be raised."""
@@ -119,8 +131,8 @@ def eval_rule(rule: str, tags_dict: Dict[str, str]) -> Any:
         if opening > -1 and closing > 1:
             raise TagNotFoundException(f"No such tag '{rule[opening+1:closing]}' in tags list.")
         raise
-    logger.info(", ".join([f"{tag} = \"{tags_dict[tag]}\"" for tag in tags_obj.tags_accessed()]))
-    logger.info(f"Result: {result}")
+    logger.info(", ".join([f'{tag} = "{_log_safe(tags_dict[tag])}"' for tag in tags_obj.tags_accessed()]))
+    logger.info(f"Result: {_log_safe(result)}")
     return result, tags_obj.tags_accessed()
 
 

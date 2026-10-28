@@ -5,4 +5,7 @@ supervisor >= 4.3.0
 fakeredis
 pytest
 pytest-asyncio
+# run the test files that do not need live services on several CPUs: pytest -n auto
+# (app/tests/integration stays serial: it shares one Redis with fixed queue names)
+pytest-xdist
 requests-toolbelt

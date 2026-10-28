@@ -114,6 +114,29 @@ def test_client(fs, mercure_config):
     return client
 
 
+# Directories under ``app`` that must not be mapped into the fake filesystem. ``.venv`` alone holds
+# ~14k files in ~2500 directories; mapping it makes pyfakefs create a fake node for every one of
+# them per test (any ``os.path.exists`` reaching into site-packages, e.g. from
+# ``inspect.getsourcefile`` inside pytest-asyncio, triggers the lazy load of the whole tree), which
+# cost ~0.3s per test. Nothing in the suite reads installed-package files through the fake
+# filesystem: package metadata goes through importlib, which the ``fs`` fixture keeps real.
+_APP_TREE_EXCLUDED = {".venv", "venv", "__pycache__", ".mypy_cache", ".pytest_cache", ".ruff_cache"}
+
+
+# Evaluated at import time, i.e. while the real filesystem is still in place (``os`` and ``pathlib``
+# are patched from the ``fs`` fixture onwards, so the listing cannot be taken inside the fixture).
+_APP_DIR = os.path.abspath(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+_APP_TREE_ENTRIES = [
+    os.path.join(_APP_DIR, name) for name in sorted(os.listdir(_APP_DIR))
+    if name not in _APP_TREE_EXCLUDED
+]
+
+
+def add_app_source_tree(fs) -> None:
+    """Map the first-party source tree (``app``) into the fake filesystem, minus caches and venvs."""
+    fs.add_real_paths(_APP_TREE_ENTRIES, read_only=True, lazy_dir_read=True)
+
+
 @pytest.fixture(scope="function", autouse=True)
 def mercure_config(fs, bookkeeper_port) -> Callable[[Dict], Config]:
     # Reset cached config timestamp so read_config() re-reads from the fresh fakefs file
@@ -140,8 +163,7 @@ HOST=0.0.0.0
 DATABASE_URL={config.mercure.bookkeeper}"""
     fs.create_file(bookkeeper.bk_config.config_filename, contents=bookkeeper_env)
 
-    fs.add_real_directory(os.path.abspath(os.path.dirname(os.path.realpath(__file__)) + '/..'))
-    # fs.add_real_file(os.path.abspath(os.path.dirname(os.path.realpath(__file__)) + '/..'), read_only=True)
+    add_app_source_tree(fs)
     return set_config
 
 
