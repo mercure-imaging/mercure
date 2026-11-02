@@ -87,8 +87,15 @@ def test_case_process(mercure, mercure_config, mercure_base, receiver_port, book
 
 
 @pytest.fixture(scope='function')
-def inject_error():
-    inject_path = _app() / "dcm_inject_error"
+def inject_error(mercure_base):
+    """Write the error-injection control file where the receiver will look for it.
+
+    ``getdcmtags`` reads ``./dcm_inject_error`` relative to its working directory, which the
+    supervisord config sets to this test's ``mercure_base`` (see
+    ``SupervisorManager.create_config``). Writing it there instead of into ``app/`` keeps concurrent
+    tests from overwriting each other's injection.
+    """
+    inject_path = Path(mercure_base) / "dcm_inject_error"
 
     def inject(error_n):
         inject_path.write_text(str(error_n))
@@ -149,12 +156,12 @@ def test_case_error_real(mercure, mercure_config, mercure_base, receiver_port, b
     try:
         supervisor = mercure(["receiver"])
         ds = [create_minimal_dicom(None, None, additional_tags={'PatientName': 'Greg'}) for _ in range(1)]
-        Path(_app() / "dcm_inject_error").write_text("3")
+        (mercure_base / "dcm_inject_error").write_text("3")
 
         for d in ds:
             send_dicom(d, "localhost", receiver_port)
 
-        Path(_app() / "dcm_inject_error").unlink()
+        (mercure_base / "dcm_inject_error").unlink()
         wait_for(lambda: is_dicoms_in_folder(mercure_base / "data" / "incoming" / "error", ds),
                  msg="DICOMs not in incoming/error/")
         supervisor.start_service("router:*")
@@ -163,4 +170,6 @@ def test_case_error_real(mercure, mercure_config, mercure_base, receiver_port, b
         assert "Unable to read extra_tags file" in (
             next(d for d in (mercure_base / "data" / "error").glob('*.error')).read_text())
     finally:
-        Path(_app() / "dicom_extra_tags").unlink(missing_ok=True)
+        # the file receiver.sh writes for getdcmtags; per-test since the services run out of
+        # mercure_base, so this only tidies up this test's own tree
+        (mercure_base / "dcm_extra_tags").unlink(missing_ok=True)

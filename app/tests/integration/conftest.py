@@ -113,7 +113,7 @@ serverurl=unix://{self.socket}
 [program:{service.name}]
 command={service.command}
 process_name=%(program_name)s{'_%(process_num)d' if service.numprocs>1 else ''}
-directory={here()}/app
+directory={self.mercure_base}
 autostart=false
 autorestart=false
 redirect_stderr=true

@@ -7,7 +7,7 @@ from pathlib import Path
 import common.config as config
 import pytest
 from common.constants import mercure_names
-from process.processor import backup_input_images
+from process.process_series import backup_input_images
 
 from app import common
 from app.common.event_types import FailStage

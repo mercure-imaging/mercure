@@ -27,8 +27,8 @@ import graphyte
 import hupper
 from common.constants import mercure_defs, mercure_events, mercure_names
 from common.types import Task, TaskProcessing
-from process.process_series import (handle_processor_output, move_results, process_series, push_input_images, push_input_task,
-                                    trigger_notification)
+from process.process_series import (handle_processor_output, move_results, process_series, push_input_images,
+                                    push_input_task, trigger_notification)
 from process.status import is_ready_for_processing
 
 import nomad
@@ -46,25 +46,6 @@ try:
     logger.info("Connected to Nomad")
 except Exception:
     nomad_connection = None
-
-
-def backup_input_images(task_folder: Path) -> None:
-    """
-    Creates a backup of input DICOM files in an 'as_received' subfolder within the task folder.
-
-    Args:
-        task_folder: Path to the task folder
-    """
-    input_folder = task_folder
-    backup_folder = task_folder / "as_received"
-    backup_folder.mkdir(exist_ok=True)
-
-    # Copy all DICOM files from input folder to backup folder
-    for file in input_folder.glob('*'):
-        if file.is_file():
-            shutil.copy2(file, backup_folder)
-
-    logger.info(f"Backed up input files for task folder {task_folder.name} to {backup_folder}")
 
 
 async def search_folder(counter) -> bool:
@@ -206,17 +187,18 @@ async def search_folder(counter) -> bool:
         # Return if no task of valid priority is found
         if selected_task_folder is None:
             return False
+    except FileNotFoundError:
+        # Another processor may have claimed the task and moved task.json while this
+        # processor was evaluating the stale directory snapshot.
+        return False
     except Exception as e:
-        logger.error("Error while prioritizing tasks- ignoring priority")
+        logger.error("Error while prioritizing tasks")
         logger.error(e)
-        selected_task_folder = Path(sorted_tasks[0])
+        return False
 
     task_folder = selected_task_folder
 
     try:
-        # Backup input images before processing
-        backup_input_images(task_folder)
-
         await process_series(task_folder)
         # Return true, so that the parent function will trigger another search of the folder
         return True

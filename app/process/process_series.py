@@ -402,6 +402,16 @@ async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_p
     return processing_success
 
 
+def backup_input_images(task_folder: Path) -> None:
+    """Back up a task's loose input files before moving them into ``in``."""
+    backup_folder = task_folder / "as_received"
+    backup_folder.mkdir(exist_ok=True)
+    for file in task_folder.glob("*"):
+        if file.is_file():
+            shutil.copy2(file, backup_folder)
+    logger.info(f"Backed up input files for task folder {task_folder.name} to {backup_folder}")
+
+
 @log_helpers.clear_task_decorator_async
 async def process_series(folder: Path) -> None:
     logger.info("----------------------------------------------------------------------------------")
@@ -414,8 +424,10 @@ async def process_series(folder: Path) -> None:
     task: Optional[Task] = None
     taskfile_path = folder / mercure_names.TASKFILE
     outputs = []
+    owned = False
 
     try:
+        # Claim before touching any task contents. This is the single ownership boundary.
         try:
             lock_file.touch(exist_ok=False)
             # lock = helper.FileLock(lock_file)
@@ -423,9 +435,7 @@ async def process_series(folder: Path) -> None:
             # Return if the case has already been locked by another instance in the meantime
             return
         except Exception as e:
-            # Can't create lock file, so something must be seriously wrong
-            # Not sure what should happen here- trying to copy the case out probably won't work,
-            # but if we do nothing we'll just loop forever
+            # Can't create the lock file; this process does not own the task.
             logger.error(f"Unable to create lock file {lock_file}")
             monitor.send_event(
                 monitor.m_events.PROCESSING,
@@ -434,6 +444,8 @@ async def process_series(folder: Path) -> None:
             )
             raise e
 
+        owned = True
+        backup_input_images(folder)
         if not taskfile_path.exists():
             logger.error(f"Task file {taskfile_path} does not exist")
             raise Exception(f"Task file {taskfile_path} does not exist")
@@ -541,6 +553,9 @@ async def process_series(folder: Path) -> None:
             task_id = task.id
         else:
             task_id = "Unknown"
+        # If claiming failed or the claim disappeared, do not move or delete this task.
+        if not owned:
+            return
         if helper.get_runner() in ("docker", "systemd") and config.mercure.process_runner != "nomad":
             logger.info("Docker processing complete")
             # Copy the task to the output folder (in case the module didn't move it)
