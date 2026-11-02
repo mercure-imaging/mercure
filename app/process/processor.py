@@ -189,9 +189,13 @@ async def search_folder(counter) -> bool:
             return False
     except FileNotFoundError:
         # Another processor may have claimed the task and moved task.json while this
-        # processor was evaluating the stale directory snapshot.
+        # processor was evaluating the stale directory snapshot. prioritize_tasks() skips
+        # this per candidate; this handler covers a failure outside that loop. Retrying on
+        # the next tick is cheap (dispatcher_scan_interval) and works off a fresh listing.
         return False
     except Exception as e:
+        # Never fall back to an arbitrary folder from the stale snapshot: it may already be
+        # claimed by another processor, which would corrupt that processor's task.
         logger.error("Error while prioritizing tasks")
         logger.error(e)
         return False
@@ -217,14 +221,29 @@ async def search_folder(counter) -> bool:
 
 
 def prioritize_tasks(sorted_tasks: list, counter: int) -> Optional[Path]:
-    """Returns the prioritized task based on the priority in the task file."""
+    """Returns the prioritized task based on the priority in the task file.
+
+    Candidates are evaluated independently: a task that vanished or cannot be read is
+    skipped here instead of aborting the whole pass, so one bad task file cannot stall
+    every other task waiting in the processing folder.
+    """
     is_offpeak = helper._is_offpeak(config.mercure.offpeak_start, config.mercure.offpeak_end, datetime.now().time())
     normal_task, urgent_task = None, None
     for task in sorted_tasks:
         task_folder = Path(task)
         taskfile_path = task_folder / mercure_names.TASKFILE
-        with open(taskfile_path, "r") as f:
-            task_instance = Task(**json.load(f))
+        try:
+            with open(taskfile_path, "r") as f:
+                task_instance = Task(**json.load(f))
+        except FileNotFoundError:
+            # Another processor claimed this task and moved task.json mid-scan; skip it.
+            continue
+        except Exception as e:
+            # Malformed, incompatible or unreadable task file. Report it by path (the task
+            # id is unknown) and move on rather than blocking the queue indefinitely.
+            logger.error(f"Unable to read task file {taskfile_path}", None)  # handle_error
+            logger.error(e)
+            continue
         applied_rule = config.mercure.rules.get(task_instance.info.get("applied_rule"))
         if applied_rule is None:
             continue

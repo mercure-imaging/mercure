@@ -8,6 +8,7 @@ import os
 import shutil
 import socket
 import threading
+import time
 import unittest
 import uuid
 from itertools import permutations
@@ -592,6 +593,53 @@ async def test_processing_cleanup_does_not_touch_a_disappeared_task(
     move_results.assert_not_called()
     # No cleanup is valid because the task folder is already absent/disappeared.
     remove_tree.assert_not_called()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("poison_is_oldest", ((True,), (False,)))
+async def test_unreadable_task_file_does_not_block_other_tasks(
+    fs, mercure_config: Callable[[Dict], Config], mocked: MockerFixture, poison_is_oldest: bool
+):
+    """One unparsable task file must not stall the whole processing folder.
+
+    Guards the head-of-line stall that ``prioritize_tasks`` creates when it reads every
+    candidate in a single pass: a ``task.json`` that fails to parse (truncated write,
+    schema drift, unreadable permissions) must be skipped so the remaining tasks are
+    still processed. Only a vanished task file means "someone else took it".
+    """
+    # Route a real task so the healthy candidate carries a genuine task.json whose
+    # applied_rule resolves against the configuration below.
+    config = mercure_config(
+        {"process_runner": "docker", **config_partial},
+    )
+    task_id = str(uuid.uuid1())
+    create_and_route(fs, mocked, task_id, config)
+
+    # The one legitimately processable task in the folder.
+    healthy_folder = next(Path("/var/processing").iterdir())
+
+    # A poisoned neighbour: present and ready, but its task file cannot be parsed.
+    poison_folder = Path("/var/processing/poison-task")
+    poison_folder.mkdir()
+    # A DICOM file makes is_ready_for_processing() report this folder as ready, so the
+    # scan really does hand it to prioritize_tasks().
+    (poison_folder / "input.dcm").touch()
+    (poison_folder / "task.json").write_text("{ this is not json")
+
+    # Candidates are ordered by modification time, so control which one is examined first.
+    old_timestamp = time.time() - 3600
+    os.utime(poison_folder if poison_is_oldest else healthy_folder, (old_timestamp, old_timestamp))
+
+    # Stand in for the claim + Docker run; this test is about candidate selection only.
+    process_series_mock = mocked.patch.object(processor, "process_series", new=AsyncMock())
+
+    # One scan over a folder holding one healthy and one unreadable task.
+    result = await processor.search_folder(0)
+
+    # The scan must report progress rather than giving up on the whole tick.
+    assert result is True
+    # The healthy task must be the one handed to process_series(); the poison is skipped.
+    process_series_mock.assert_awaited_once_with(healthy_folder)
 
 
 @pytest.mark.asyncio
