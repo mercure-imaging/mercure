@@ -14,16 +14,42 @@ jobs:
 
     runs-on: ubuntu-latest
 
+    env:
+      # Single source of truth for the apt packages. The cache key below is a hash of this
+      # string, so editing the list automatically gets a fresh cache key; nothing to bump by hand.
+      APT_PACKAGES: build-essential dcmtk inetutils-ping libqt5core5a redis
+
     steps:
     - uses: actions/checkout@v7
     - name: Set up Python 3.10
       uses: actions/setup-python@v7
       with:
         python-version: 3.10.13
+        # Reuses the pip wheel cache between runs. Only pays off when the requirements
+        # files are unchanged (the usual case for code-only PRs); the key below falls back
+        # to a partial restore when they do change.
+        cache: pip
+        cache-dependency-path: |
+          app/requirements.txt
+          app/dev-requirements.txt
+    # Caches the downloaded .debs, not the installed packages: apt-get install still runs
+    # every time (a fresh runner has nothing installed), but fetches them from cache instead
+    # of Docker Hub/Ubuntu mirrors. The key is the hash of APT_PACKAGES, so changing the list
+    # starts a new cache automatically. A stale partial restore is harmless anyway: apt
+    # verifies each .deb against the index checksums and re-downloads on mismatch.
+    - name: Hash apt package list
+      id: apt-pkgs
+      run: echo "key=$(printf '%s' "${APT_PACKAGES// /-}" | sha256sum | cut -c1-16)" >> "$GITHUB_OUTPUT"
+    - name: Cache apt packages
+      uses: actions/cache@v4
+      with:
+        path: /var/cache/apt
+        key: apt-${{ runner.os }}-${{ steps.apt-pkgs.outputs.key }}
+        restore-keys: apt-${{ runner.os }}-
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y build-essential dcmtk inetutils-ping libqt5core5a redis
+        sudo apt-get install -y $APT_PACKAGES
         python -m pip install --upgrade pip setuptools wheel
         pip install pip-tools 
         pip install flake8 pytest pytest-asyncio 
