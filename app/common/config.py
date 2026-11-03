@@ -15,6 +15,7 @@ import common.helper as helper
 import common.monitor as monitor
 import common.tagslist as tagslist
 from common.constants import mercure_names
+from common.json_io import write_json_atomic
 from common.log_helpers import get_logger
 from common.types import Config
 from typing_extensions import Literal
@@ -162,8 +163,9 @@ def save_config() -> None:
     except Exception:
         raise ResourceWarning(f"Unable to lock configuration file: {lock_file}")
 
-    with open(configuration_file, "w") as json_file:
-        json.dump(mercure.dict(), json_file, indent=4)
+    # Atomic replacement: every service re-reads this file on its next tick, and a service
+    # that cannot read it at all exits instead of starting.
+    write_json_atomic(configuration_file, mercure.dict(), indent=4)
 
     try:
         stat = os.stat(configuration_file)
@@ -198,8 +200,9 @@ def write_configfile(json_content) -> None:
     except Exception:
         raise ResourceWarning(f"Unable to lock configuration file: {lock_file}")
 
-    with open(configuration_file, "w") as json_file:
-        json.dump(json_content, json_file, indent=4)
+    # The raw config editor writes operator-supplied JSON; a torn file here would take the
+    # whole appliance down on the next service restart, so replace it atomically.
+    write_json_atomic(configuration_file, json_content, indent=4)
 
     monitor.send_event(monitor.m_events.CONFIG_UPDATE, monitor.severity.INFO, "Wrote configuration file.")
     logger.info(f"Wrote configuration into: {configuration_file}")

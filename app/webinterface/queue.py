@@ -20,6 +20,7 @@ import routing.generate_taskfile as generate_taskfile
 from common.constants import mercure_actions, mercure_names
 # App-specific includes
 from common.event_types import FailStage
+from common.json_io import is_write_temp_file, write_json_atomic
 # App-specific includes
 from common.helper import FileLock
 from common.types import EmptyDict, Task
@@ -585,7 +586,7 @@ def restart_processing_task(task_id: str, source_folder: Path, is_error: bool = 
 
         # Copy the as_received files to the input folder
         for file_path in as_received_folder.glob("*"):
-            if file_path.is_file():
+            if file_path.is_file() and not is_write_temp_file(file_path.name):
                 shutil.copy2(file_path, processing_folder / file_path.name)
 
         # Copy and update the task.json file
@@ -694,8 +695,7 @@ def restart_dispatch(taskfile_folder: Path, outgoing_folder: Path) -> dict:
         if "info" in loaded_task and "fail_stage" in loaded_task["info"]:
             loaded_task["info"]["fail_stage"] = None
 
-        with open(taskfile_path, "w") as json_file:
-            json.dump(loaded_task, json_file)
+        write_json_atomic(taskfile_path, loaded_task)
         # Dispatcher will skip the completed targets we just need to copy the case to the outgoing folder
         shutil.move(str(taskfile_folder), str(outgoing_folder))
         (Path(outgoing_folder) / task_id / mercure_names.LOCK).unlink()

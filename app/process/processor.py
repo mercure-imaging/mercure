@@ -26,6 +26,7 @@ import common.notification as notification
 import graphyte
 import hupper
 from common.constants import mercure_defs, mercure_events, mercure_names
+from common.json_io import write_json_atomic
 from common.types import Task, TaskProcessing
 from process.process_series import (handle_processor_output, move_results, process_series, push_input_images,
                                     push_input_task, trigger_notification)
@@ -121,9 +122,8 @@ async def search_folder(counter) -> bool:
         task_path = out_folder / mercure_names.TASKFILE
         task = Task(**json.loads(task_path.read_text()))
 
-        with task_path.open("w") as f:
-            task.nomad_info = job_info
-            json.dump(task.dict(), f)
+        task.nomad_info = job_info
+        write_json_atomic(task_path, task.dict())
 
         # Copy input images if configured in rule
         task_processing = (task.process[0] if isinstance(task.process, list) else task.process)

@@ -21,6 +21,7 @@ import dispatch.target_types as target_types
 from common.constants import mercure_events, mercure_names
 from common.event_types import FailStage
 from common.helper import get_now_str
+from common.json_io import write_json_atomic
 from common.monitor import m_events, severity, task_event
 from common.types import Task, TaskDispatch, TaskDispatchStatus
 from dispatch.retry import increase_retry, update_dispatch_status
@@ -325,8 +326,7 @@ def update_fail_stage(source_folder: Path, fail_stage: FailStage) -> bool:
         task_info = task.info
         task_info.fail_stage = str(fail_stage)  # type: ignore
 
-        with open(target_json_path, "w") as file:
-            json.dump(task.dict(), file)
+        write_json_atomic(target_json_path, task.dict())
     except Exception:
         return False
 

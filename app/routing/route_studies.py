@@ -21,6 +21,7 @@ import common.monitor as monitor
 import common.notification as notification
 import common.rule_evaluation as rule_evaluation
 from common.constants import mercure_actions, mercure_events, mercure_names, mercure_rule
+from common.json_io import write_json_atomic
 from common.types import StudyTriggerCondition, Task, TaskHasStudy, TaskInfo
 
 # Create local logger instance
@@ -97,8 +98,7 @@ def is_study_complete(folder: str, pending_series: Dict[str, float]) -> bool:
             return True
         if (Path(folder) / mercure_names.FORCE_COMPLETE).exists():
             task.study.complete_force = True
-            with open(Path(folder) / mercure_names.TASKFILE, "w") as json_file:
-                json.dump(task.dict(), json_file)
+            write_json_atomic(Path(folder) / mercure_names.TASKFILE, task.dict())
             return True
 
         study = task.study

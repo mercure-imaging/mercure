@@ -26,6 +26,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 from webinterface.common import templates
 from webinterface.dashboards.common import invoke_getdcmtags
+from common.json_io import is_write_temp_file
 
 from .common import router
 
@@ -189,7 +190,8 @@ async def dataset_operation(request: Request):
 
         with tempfile.TemporaryDirectory(prefix="dataset-tmp") as dir:
             for p in Path(folder).glob('*'):
-                shutil.copy(str(p), dir)
+                if not is_write_temp_file(p.name):
+                    shutil.copy(str(p), dir)
 
             for p in Path(dir).glob('*'):
                 invoke_getdcmtags(p, None, force_rule)
@@ -265,7 +267,7 @@ async def stow_rs(request: Request) -> Response:
             logger.info("---- invoke getdcmtags ----")
             for p in list(Path(route_dir).glob('*')):
                 logger.info(p)
-                if not p.is_dir():
+                if not p.is_dir() and not is_write_temp_file(p.name):
                     invoke_getdcmtags(p, None, force_rule)
             logger.info("---- moving ---")
             for p in list(Path(route_dir).iterdir()):

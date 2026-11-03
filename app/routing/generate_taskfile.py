@@ -6,7 +6,6 @@ which describe the job to be done and maintain a journal of the executed actions
 """
 
 # Standard python includes
-import json
 import pprint
 import socket
 from datetime import datetime
@@ -18,6 +17,7 @@ import common.config as config
 import common.monitor as monitor
 from common.constants import mercure_actions, mercure_defs, mercure_names, mercure_options, mercure_rule
 from common.helper import get_now_str
+from common.json_io import write_json_atomic
 from common.types import EmptyDict, Rule, Task, TaskDispatch, TaskDispatchStatus, TaskInfo, TaskProcessing, TaskStudy
 from typing_extensions import Literal
 
@@ -264,8 +264,8 @@ def create_series_task(
 
     task_filename = folder_name / mercure_names.TASKFILE
     try:
-        with open(task_filename, "w") as task_file:
-            json.dump(task.dict(), task_file)
+        # Atomic: the processor must never observe a partially written task file.
+        write_json_atomic(task_filename, task.dict())
     except Exception:
         logger.error(
             f"Unable to create series task file {task_filename} with contents {task.dict()}", task.id

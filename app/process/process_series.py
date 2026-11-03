@@ -23,6 +23,7 @@ import common.notification as notification
 from common.constants import mercure_events, mercure_names
 from common.event_types import FailStage
 from common.helper import get_now_str
+from common.json_io import is_write_temp_file, write_json_atomic
 from common.types import Module, Task, TaskDispatch, TaskDispatchStatus, TaskProcessing
 from common.version import mercure_version
 from dispatch.send import update_fail_stage
@@ -407,7 +408,8 @@ def backup_input_images(task_folder: Path) -> None:
     backup_folder = task_folder / "as_received"
     backup_folder.mkdir(exist_ok=True)
     for file in task_folder.glob("*"):
-        if file.is_file():
+        # A scratch file from an interrupted atomic write is not task input.
+        if file.is_file() and not is_write_temp_file(file.name):
             shutil.copy2(file, backup_folder)
     logger.info(f"Backed up input files for task folder {task_folder.name} to {backup_folder}")
 
@@ -461,7 +463,9 @@ async def process_series(folder: Path) -> None:
 
         (folder / "in").mkdir()
         for child in folder.iterdir():
-            if child.is_file() and child.name != ".processing":
+            # Skip the claim marker and any scratch file left by an interrupted atomic write:
+            # neither belongs inside the container's input folder.
+            if child.is_file() and child.name != ".processing" and not is_write_temp_file(child.name):
                 # logger.info(f"Moving {child}")
                 child.rename(folder / "in" / child.name)
         (folder / "out").mkdir()
@@ -500,8 +504,7 @@ async def process_series(folder: Path) -> None:
                     # so we copy this one's information into a copy of the task file and hand that to the container.
                     copied_task.process = task_processing
 
-                    with open(folder / "in" / mercure_names.TASKFILE, "w") as task_file:
-                        json.dump(copied_task.dict(), task_file)
+                    write_json_atomic(folder / "in" / mercure_names.TASKFILE, copied_task.dict())
 
                     processing_success = await docker_runtime(task, folder, file_count_begin, task_processing)
                     if not processing_success:
@@ -518,13 +521,10 @@ async def process_series(folder: Path) -> None:
                 if task.process[0].retain_input_images:
                     (folder / "input_files").rename(folder / "in")
                 if outputs:
-                    with open(folder / "out" / "result.json", "w") as fp:
-                        json.dump(outputs, fp, indent=4)
+                    write_json_atomic(folder / "out" / "result.json", outputs, indent=4)
 
             finally:
-                with open(folder / "out" / mercure_names.TASKFILE, "w") as task_file:
-                    #  logger.warning(f"DUMPING to {folder / 'out' / mercure_names.TASKFILE} TASK {task=}")
-                    json.dump(task.dict(), task_file, indent=4)
+                write_json_atomic(folder / "out" / mercure_names.TASKFILE, task.dict(), indent=4)
         elif isinstance(task.process, list):
             raise Exception("Multiple processing steps are only supported on the Docker runtime.")
         else:
@@ -533,9 +533,7 @@ async def process_series(folder: Path) -> None:
             if processing_success:
                 output = handle_processor_output(task, task_process, 0, folder)
                 task.process.output = output  # type: ignore
-                with open(folder / "out" / mercure_names.TASKFILE, "w") as fp:
-                    # logger.warning(f"DUMPING to {folder / 'out' / mercure_names.TASKFILE} TASK {task=}")
-                    json.dump(task.dict(), fp, indent=4)
+                write_json_atomic(folder / "out" / mercure_names.TASKFILE, task.dict(), indent=4)
                 outputs.append((task_process.module_name, output))
     except Exception:
         processing_success = False
@@ -742,8 +740,7 @@ def _rewrite_task_file(task: Task, folder: Path) -> None:
     """Rewrite the task file in the output folder with updated dispatch info."""
     taskfile_path = folder / "out" / mercure_names.TASKFILE
     try:
-        with open(taskfile_path, "w") as f:
-            json.dump(task.dict(), f, indent=4)
+        write_json_atomic(taskfile_path, task.dict(), indent=4)
     except Exception:
         logger.error(f"Failed to rewrite task file at {taskfile_path}", task.id)
 

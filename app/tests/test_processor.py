@@ -171,7 +171,9 @@ async def test_process_series_nomad(fs, mercure_config: Callable[[Dict], Config]
     # processor.run_processor()
 
     assert (Path("/var/success") / processor_path.name).exists(), f"{processor_path.name} missing from success dir"
-    assert files == [k.name for k in (Path("/var/success") / processor_path.name).glob("*") if k.is_file()]
+    # Directory entry order is not meaningful (and atomic rewrites give a file a new inode,
+    # moving it to the end of readdir order), so compare as sets.
+    assert set(files) == {k.name for k in (Path("/var/success") / processor_path.name).glob("*") if k.is_file()}
     with open(Path("/var/success") / processor_path.name / "task.json") as t:
         task = json.load(t)
     assert task == {
@@ -220,9 +222,11 @@ async def test_process_series_nomad(fs, mercure_config: Callable[[Dict], Config]
     await processor.run_processor()
 
     assert (Path("/var/error") / processor_path.name).exists()
-    assert ["task.json", "FAILEDFAILED#bar.dcm", "FAILEDFAILED#bar.tags"] == [
+    # Compare as sets: readdir order is not meaningful (an atomic rewrite moves the
+    # directory entry to the end of readdir order).
+    assert {"task.json", "FAILEDFAILED#bar.dcm", "FAILEDFAILED#bar.tags"} == {
         k.name for k in (Path("/var/error") / processor_path.name / "in").rglob("*") if k.is_file()
-    ]
+    }
     assert ["task.json"] == [
         k.name for k in (Path("/var/error") / processor_path.name / "out").rglob("*") if k.is_file()
     ]
@@ -296,7 +300,8 @@ async def test_process_series(fs, mercure_config: Callable[[Dict], Config], mock
     )
     print("FAKE RUN RESULT FILES", list((Path("/var/success")).glob("**/*")))
     assert [] == [k.name for k in Path("/var/processing").glob("**/*")]
-    assert files + ["result.json"] == [k.name for k in (Path("/var/success")).glob("**/*") if k.is_file()]
+    # Compare as sets: readdir order is not meaningful across filesystems.
+    assert set(files + ["result.json"]) == {k.name for k in Path("/var/success").glob("**/*") if k.is_file()}
 
     common.monitor.send_task_event.assert_has_calls(  # type: ignore
         [
@@ -397,7 +402,8 @@ async def test_multi_process_series(fs, mercure_config: Callable[[Dict], Config]
         )
 
     assert [] == [k.name for k in Path("/var/processing").glob("**/*")]
-    assert [*files, 'result.json'] == [k.name for k in (Path("/var/success") / processor_path.name).glob("*") if k.is_file()]
+    # Compare as sets: readdir order is not meaningful across filesystems.
+    assert {*files, 'result.json'} == {k.name for k in (Path("/var/success") / processor_path.name).glob("*") if k.is_file()}
 
     with open(Path("/var/success") / processor_path.name / "task.json") as t:
         task = json.load(t)
