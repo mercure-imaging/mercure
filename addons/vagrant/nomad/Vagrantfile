@@ -61,7 +61,7 @@ Vagrant.configure(2) do |config|
   if orthanc == "yes" then
     config.vm.network "forwarded_port", guest: 8008, host: 8008, auto_correct: true, host_ip: "127.0.0.1"
     config.vm.network "forwarded_port", guest: 8042, host: 8042, auto_correct: true, host_ip: "127.0.0.1"
-    config.vm.network "forwarded_port", guest: 4242, host: 4242, auto_correct: true, host_ip: "127.0.0.1"	
+    config.vm.network "forwarded_port", guest: 4242, host: 4242, auto_correct: true, host_ip: "127.0.0.1"
     config.vm.provision "shell", inline: $script_orthanc, privileged: false
   else
     config.vm.provision "shell", inline: $script, privileged: false

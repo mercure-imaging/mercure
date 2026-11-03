@@ -120,7 +120,7 @@
                             </p>
                         </details>
                         {% endif %}
-                    </div>             
+                    </div>
                     <div class="field" style="margin-top: 30px;">
                         <input id="gpu_support" name="gpu_support" type="checkbox"
                             class="switch is-rounded is-dark">
@@ -134,7 +134,7 @@
                         {% if support_root_modules != True %}
                         <div class="notification is-warning" id="warningroot" style="margin-top: 16px;">
                             <i class="fas fa-info-circle"></i>&nbsp;&nbsp;&quot;Support Root Modules&quot; must be enabled on the <a href="/configuration">Configuration</a> page before this option can be used.
-                        </div>                
+                        </div>
                         {% endif %}
                     </div>
                     <div class="field" style="">
@@ -190,13 +190,13 @@
                                 data-json
                                 placeholder="Global module settings">{{settings}}</textarea>
                         </div>
-                    </div>                   
+                    </div>
                 </div>
                 <div class="panel" data-content="nomad">
                     {% if runtime != "nomad" %}
                     <div class="notification is-info" id="warningnomad">
                         <i class="fas fa-info-circle"></i>&nbsp;&nbsp;Settings are only relevant when using Nomad as process runner. This mercure installation is not using Nomad.
-                    </div>                    
+                    </div>
                     {% endif %}
                     <div class="field">
                         <label class="label" for="constraints">Execution Constraints (HCL) <sup><a class="greenlink" href="https://www.nomadproject.io/docs/job-specification/constraint" target="_blank"><i class="fas fa-question-circle"></i></a></sup></label>
@@ -205,7 +205,7 @@
                                 autocomplete='off' rows="5"
                                 placeholder='constraint {  attribute = "${attr.os.name}" value = "ubuntu" }&#10;&#10;See https://www.nomadproject.io/docs/job-specification/constraint for examples'>{{module.constraints}}</textarea>
                         </div>
-                    </div>   
+                    </div>
                     <div class="field">
                         <label class="label" for="resources">Resource Requirements (HCL) <sup><a class="greenlink" href="https://www.nomadproject.io/docs/job-specification/resources" target="_blank"><i class="fas fa-question-circle"></i></a></sup></label>
                         <div class="control">
@@ -213,7 +213,7 @@
                                 autocomplete='off' rows="5"
                                 placeholder='resources { cpu = 100 memory = 256 }&#10;&#10;See https://www.nomadproject.io/docs/job-specification/resources for examples'>{{module.resources}}</textarea>
                         </div>
-                    </div>   
+                    </div>
                 </div>
                 <div class="panel" data-content="information">
                     <div class="field"">
@@ -223,7 +223,7 @@
                                 autocomplete='off' rows="5"
                                 placeholder="Module description">{{module['comment']}}</textarea>
                         </div>
-                    </div>            
+                    </div>
                     <div class="field">
                         <label class="label">Contact</label>
                         <div class="control">
@@ -277,29 +277,29 @@
     }
     $('#requires_root').click((evt) => toggleRequiresRoot(evt.target));
 
-    function toggleGPUSupport(cb) {        
+    function toggleGPUSupport(cb) {
         try {
             text_value = $( "#docker_arguments" ).val();
             if (text_value == "") {
                 text_value = "{}";
             }
             json_value = JSON.parse(text_value);
-            if (cb.checked) {           
-                json_value["runtime"] = "nvidia";                
+            if (cb.checked) {
+                json_value["runtime"] = "nvidia";
             } else {
                 if ('runtime' in json_value) {
                     delete json_value.runtime;
                 }
-            }   
+            }
             text_value = JSON.stringify(json_value);
             if (text_value == "{}") {
                 text_value = "";
             }
             $("#docker_arguments").val(text_value);
         } catch (e) {
-        }      
+        }
     }
-    
+
     $('#gpu_support').click((evt)=> toggleGPUSupport(evt.target))
 
     function toggleRequiresPersistenceStorage(cb) {
@@ -312,7 +312,7 @@
     $('#requires_persistence').click((evt) => toggleRequiresPersistenceStorage(evt.target));
 
     function updateDockerArguments() {
-        try {        
+        try {
             text_value = $( "#docker_arguments" ).val();
             if (text_value == "") {
                 text_value = "{}";
@@ -329,7 +329,7 @@
             }
         } catch (e) {
             console.error(e);
-        }         
+        }
     }
     $('#docker_arguments').on({
         "keypress": updateDockerArguments,
@@ -338,7 +338,7 @@
         "input": updateDockerArguments
     })
 
-    function updateSavePersistenceButton() {  
+    function updateSavePersistenceButton() {
         $("#save_persistence").addClass("is-success");
         $('#persistence_save_success').hide();
         $('#persistence_save_fail').hide();
@@ -348,7 +348,7 @@
         "keydown": updateSavePersistenceButton,
         "change": updateSavePersistenceButton,
         "input": updateSavePersistenceButton
-    })    
+    })
 
     function validate() {
         var field = "";
@@ -379,14 +379,14 @@
             if (field_value == "") {
                 field_value="{}";
             }
-            JSON.parse(field_value);            
+            JSON.parse(field_value);
 
             field = "Environment Variables";
             field_value=$('#environment').val();
             if (field_value == "") {
                 field_value="{}";
             }
-            JSON.parse(field_value);             
+            JSON.parse(field_value);
         } catch (e) {
             $('#erroralert').html('<i class="fas fa-bug"></i>&nbsp;&nbsp;Invalid content in field "' + field + '". Please check for correct syntax.');
             $('#erroralert').show();
