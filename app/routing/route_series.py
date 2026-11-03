@@ -289,13 +289,20 @@ def push_series_studylevel(
             study_UID = tags_list["StudyInstanceUID"]
             target_folder = Path(config.mercure.studies_folder) / (study_UID + mercure_defs.SEPARATOR + current_rule)
 
-            if not target_folder.exists():
-                try:
-                    target_folder.mkdir()
-                    first_series = True
-                except Exception:
-                    logger.error(f"Unable to create study folder {target_folder}", task_id)  # handle_error
-                    continue
+            # Several router instances run against the same studies folder, so "does the study
+            # folder already exist?" cannot be answered by a lookup: the answer may change before
+            # mkdir() runs. Claim the folder with mkdir() itself (exclusive) and treat
+            # FileExistsError as "another router got here first, this is not the first series".
+            # Bailing out instead would drop this series, and route_series()'s trailing rmtree()
+            # would then delete the only copies from the incoming folder.
+            try:
+                target_folder.mkdir()
+                first_series = True
+            except FileExistsError:
+                first_series = False
+            except Exception:
+                logger.error(f"Unable to create study folder {target_folder}", task_id)  # handle_error
+                continue
 
             lock_file = target_folder / mercure_names.LOCK
             try:

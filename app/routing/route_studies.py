@@ -97,8 +97,21 @@ def is_study_complete(folder: str, pending_series: Dict[str, float]) -> bool:
         if task.study.complete_force is True:
             return True
         if (Path(folder) / mercure_names.FORCE_COMPLETE).exists():
-            task.study.complete_force = True
-            write_json_atomic(Path(folder) / mercure_names.TASKFILE, task.dict())
+            # This is a read-modify-write of a file that series-level routers update under the same
+            # lock (update_study_task). Rewriting it here without the lock would silently revert a
+            # concurrently recorded series (or lose the operator's force-complete). The completeness
+            # scan runs unlocked, so take the lock just for the write and skip this pass if a
+            # series-level router holds it - the marker stays in place and the next tick retries.
+            try:
+                force_lock = helper.FileLock(Path(folder) / mercure_names.LOCK)
+            except Exception:
+                logger.info(f"Study {folder} busy, deferring force completion flag update")
+                return False
+            try:
+                task.study.complete_force = True
+                write_json_atomic(Path(folder) / mercure_names.TASKFILE, task.dict())
+            finally:
+                force_lock.free()
             return True
 
         study = task.study
@@ -238,12 +251,17 @@ def route_study(study) -> bool:
         # If the study folder has been locked in the meantime, then skip and proceed with the next one
         return True
 
-    # Create lock file in the study folder and prevent other instances from working on this study
-    lock_file = Path(study_folder + "/" + study + mercure_names.LOCK)
-    if lock_file.exists():
-        return True
+    # Claim the study for this instance. The marker must be the one every other component looks at
+    # (is_study_locked(), push_series_studylevel(), check_force_study_timeout()): a claim under a
+    # different name is no claim at all, and the series that another router buffers into the study
+    # mid-flight is deleted by remove_study_folder()'s rmtree().
+    lock_file = Path(study_folder) / mercure_names.LOCK
     try:
         lock = helper.FileLock(lock_file)
+    except FileExistsError:
+        # Another instance claimed the study between the scan and now - nothing to do here.
+        logger.debug(f"Study {study_folder} is locked by another instance, skipping")
+        return True
     except Exception:
         # Can't create lock file, so something must be seriously wrong
         try:
@@ -329,13 +347,15 @@ def push_studylevel_error(study: str) -> None:
     Pushes the study folder to the error folder after unsuccessful routing
     """
     study_folder = config.mercure.studies_folder + "/" + study
-    lock_file = Path(study_folder + "/" + study + mercure_names.LOCK)
-    if lock_file.exists():
+    # Same claim as route_study() and the series-level router, so a study that is being routed or
+    # filled is never moved out from under its owner here.
+    lock_file = Path(study_folder) / mercure_names.LOCK
+    try:
+        lock = helper.FileLock(lock_file)
+    except FileExistsError:
         # Study normally shouldn't be locked at this point, but since it is, just exit and wait.
         # Might require manual intervention if a former process terminated without removing the lock file
         return
-    try:
-        lock = helper.FileLock(lock_file)
     except Exception:
         # Can't create lock file, so something must be seriously wrong
         logger.error(f"Unable to lock study for removal {lock_file}")  # handle_error

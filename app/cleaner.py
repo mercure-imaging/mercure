@@ -27,7 +27,7 @@ import common.monitor as monitor
 import common.notification as notification
 import graphyte
 import hupper
-from common.constants import mercure_defs
+from common.constants import mercure_defs, mercure_names
 from common.monitor import task_event
 
 # Setup daiquiri logger
@@ -117,6 +117,21 @@ def clean() -> None:
         clean_dir(discard_folder, retention)
 
 
+def is_folder_claimed(path: Path) -> bool:
+    """
+    Whether another service is working in the given folder right now.
+
+    Writers (router, processor, dispatcher, web UI) place a ``.lock`` - or keep the ``.processing``
+    marker - in a folder while filling or moving it, precisely so that this module leaves it alone:
+    see ``route_series.push_series_complete()`` and ``route_studies.move_study_folder()``, which
+    create those markers "to prevent the cleaner module to work on the folder". Deleting a folder
+    underneath a running writer loses data that is still inside its retention period, so a claimed
+    folder is never a cleaning candidate - not even during emergency cleaning, which uses a
+    retention of zero and would otherwise sweep away folders created seconds ago.
+    """
+    return (path / mercure_names.LOCK).exists() or (path / mercure_names.PROCESSING).exists()
+
+
 def clean_dir(folder, retention) -> None:
     """
     Cleans items from the given folder that have exceeded the retention time, starting with the oldest items
@@ -124,7 +139,9 @@ def clean_dir(folder, retention) -> None:
     candidates = [
         (f, f.stat().st_mtime)
         for f in Path(folder).iterdir()
-        if f.is_dir() and retention < timedelta(seconds=(time.time() - f.stat().st_mtime))
+        if f.is_dir()
+        and retention < timedelta(seconds=(time.time() - f.stat().st_mtime))
+        and not is_folder_claimed(f)
     ]
 
     for entry in candidates:
@@ -134,6 +151,12 @@ def clean_dir(folder, retention) -> None:
 def delete_folder(entry) -> None:
     """Deletes given folder."""
     delete_path = entry[0]
+    # Re-check immediately before deleting: the candidate list may have been computed a while ago,
+    # and a folder that has been claimed in the meantime belongs to another service right now.
+    if is_folder_claimed(Path(delete_path)):
+        logger.info(f"Skipping folder {delete_path}: claimed by another service")
+        return
+
     series_uid = find_series_uid(delete_path)
     try:
         rmtree(delete_path)

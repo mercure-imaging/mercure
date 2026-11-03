@@ -18,6 +18,9 @@ class mercure_defs:
 class mercure_names:
     LOCK = ".lock"
     PROCESSING = ".processing"
+    # Claim on a task whose Nomad job has finished but whose results have not been collected yet.
+    # Written exclusively by exactly one processor instance (see processor.claim_completed_task()).
+    COMPLETING = ".completing"
     RUNNING = ".running"
     ERROR = ".error"
     TAGS = ".tags"

@@ -49,6 +49,87 @@ except Exception:
     nomad_connection = None
 
 
+def claim_completed_task(p_folder: Path) -> Optional[Path]:
+    """Atomically claim a finished Nomad job folder. Returns the claim marker, or None.
+
+    Collecting a job's results is the most destructive sequence in the processor: it rewrites the
+    task file, moves ``out/`` to the success/error folder, deletes ``in/``, removes the markers and
+    finally removes the task folder itself. Several processor instances scan the same folder, so
+    this must be an exclusive claim, exactly like the ``.processing`` marker that
+    ``process_series()`` takes before touching a task's contents.
+    """
+    claim = p_folder / mercure_names.COMPLETING
+    try:
+        claim.touch(exist_ok=False)
+        return claim
+    except FileExistsError:
+        # Owned by another processor instance.
+        return None
+    except FileNotFoundError:
+        # The folder disappeared between the scan and the claim.
+        return None
+    except Exception:
+        logger.exception(f"Unable to claim completed task {p_folder}")
+        return None
+
+
+def collect_nomad_results(p_folder: Path) -> None:
+    """Collect the results of a finished Nomad job. The caller must hold the claim on ``p_folder``."""
+    in_folder = p_folder / "in"
+    out_folder = p_folder / "out"
+
+    logger.debug(f"Complete task: {p_folder.name}")
+
+    job_info = json.loads((p_folder / "nomad_job.json").read_text())
+
+    # Move task.json over to the output directory if it wasn't moved by the processing module
+    push_input_task(in_folder, out_folder)
+
+    # Patch the nomad info into the task file.
+    task_path = out_folder / mercure_names.TASKFILE
+    task = Task(**json.loads(task_path.read_text()))
+
+    task.nomad_info = job_info
+    write_json_atomic(task_path, task.dict())
+
+    # Copy input images if configured in rule
+    task_processing = (task.process[0] if isinstance(task.process, list) else task.process)
+    if not task_processing:
+        return
+    if task_processing.retain_input_images is True:
+        push_input_images(task.id, in_folder, out_folder)
+
+    # Remember the number of DCM files in the output folder (for logging purpose)
+    file_count_complete = len(list(Path(out_folder).glob(mercure_names.DCMFILTER)))
+    handle_processor_output(task, task_processing, 0, p_folder)
+
+    # If the only file is task.json, the processing failed
+    if [p.name for p in out_folder.rglob("*")] == [mercure_names.TASKFILE]:
+        logger.error("Processing failed", task.id)
+        move_results(task.id, p_folder, None, False, False)
+        trigger_notification(task, mercure_events.ERROR)
+        return
+
+    needs_dispatching = True if task.get("dispatch") else False
+    move_results(task.id, p_folder, None, True, needs_dispatching)
+    shutil.rmtree(in_folder)
+    (p_folder / "nomad_job.json").unlink()
+    (p_folder / ".processing").unlink()
+    shutil.rmtree(p_folder / "as_received", ignore_errors=True)
+
+    # Release the claim before removing the folder (the marker is inside it); the caller's cleanup
+    # is a no-op in that case and still covers the error paths.
+    (p_folder / mercure_names.COMPLETING).unlink(missing_ok=True)
+    p_folder.rmdir()
+    monitor.send_task_event(
+        monitor.task_event.PROCESS_COMPLETE, task.id, file_count_complete, "", "Processing complete"
+    )
+    # If dispatching not needed, then trigger the completion notification (for Nomad)
+    if not needs_dispatching:
+        trigger_notification(task, mercure_events.COMPLETED)
+        monitor.send_task_event(monitor.task_event.COMPLETE, task.id, 0, "", "Task complete")
+
+
 async def search_folder(counter) -> bool:
     global processor_lockfile
     global processor_is_locked
@@ -107,57 +188,19 @@ async def search_folder(counter) -> bool:
 
     # Move complete tasks
     for c in complete:
-        p_folder = c["path"]
-        in_folder = p_folder / "in"
-        out_folder = p_folder / "out"
-
-        logger.debug(f"Complete task: {p_folder.name}")
-
-        job_info = json.loads((p_folder / "nomad_job.json").read_text())
-
-        # Move task.json over to the output directory if it wasn't moved by the processing module
-        push_input_task(in_folder, out_folder)
-
-        # Patch the nomad info into the task file.
-        task_path = out_folder / mercure_names.TASKFILE
-        task = Task(**json.loads(task_path.read_text()))
-
-        task.nomad_info = job_info
-        write_json_atomic(task_path, task.dict())
-
-        # Copy input images if configured in rule
-        task_processing = (task.process[0] if isinstance(task.process, list) else task.process)
-        if not task_processing:
+        claim = claim_completed_task(c["path"])
+        if claim is None:
+            # Another processor instance got to this job first (or removed the folder while this
+            # scan was looking at it). Doing anything else would corrupt that processor's task.
+            logger.debug(f"{c['path'].name} already claimed by another processor")
             continue
-        if task_processing.retain_input_images is True:
-            push_input_images(task.id, in_folder, out_folder)
-
-        # Remember the number of DCM files in the output folder (for logging purpose)
-        file_count_complete = len(list(Path(out_folder).glob(mercure_names.DCMFILTER)))
-        handle_processor_output(task, task_processing, 0, p_folder)
-
-        # If the only file is task.json, the processing failed
-        if [p.name for p in out_folder.rglob("*")] == [mercure_names.TASKFILE]:
-            logger.error("Processing failed", task.id)
-            move_results(task.id, p_folder, None, False, False)
-            trigger_notification(task, mercure_events.ERROR)
-            continue
-
-        needs_dispatching = True if task.get("dispatch") else False
-        move_results(task.id, p_folder, None, True, needs_dispatching)
-        shutil.rmtree(in_folder)
-        (p_folder / "nomad_job.json").unlink()
-        (p_folder / ".processing").unlink()
-        shutil.rmtree(p_folder / "as_received", ignore_errors=True)
-
-        p_folder.rmdir()
-        monitor.send_task_event(
-            monitor.task_event.PROCESS_COMPLETE, task.id, file_count_complete, "", "Processing complete"
-        )
-        # If dispatching not needed, then trigger the completion notification (for Nomad)
-        if not needs_dispatching:
-            trigger_notification(task, mercure_events.COMPLETED)
-            monitor.send_task_event(monitor.task_event.COMPLETE, task.id, 0, "", "Task complete")
+        try:
+            collect_nomad_results(c["path"])
+        except Exception:
+            # One broken task must not take the processor service down.
+            logger.exception(f"Error while collecting results for {c['path'].name}")
+        finally:
+            claim.unlink(missing_ok=True)
 
     # Check if processing has been suspended via the UI
     if processor_lockfile and processor_lockfile.exists():
