@@ -20,6 +20,7 @@ import routing.generate_taskfile as generate_taskfile
 from common.constants import mercure_actions, mercure_names
 # App-specific includes
 from common.event_types import FailStage
+from common.folder_io import move_into_folder
 from common.json_io import is_write_temp_file, write_json_atomic
 # App-specific includes
 from common.helper import FileLock
@@ -685,8 +686,26 @@ def restart_dispatch(taskfile_folder: Path, outgoing_folder: Path) -> dict:
         return {"error": "Job not suitable for dispatching.", "error_code": RestartTaskErrors.WRONG_JOB_TYPE}
 
     task_id = taskfile_folder.name
-    if "dispatch" in loaded_task and "status" in loaded_task["dispatch"]:
-        (taskfile_folder / mercure_names.LOCK).touch()
+    if not ("dispatch" in loaded_task and "status" in loaded_task["dispatch"]):
+        return {"error": "Could not check dispatch status of task file.", "error_code": RestartTaskErrors.NO_DISPATCH_STATUS}
+
+    # Claim the task before touching it. ``Path.touch()`` never fails on an existing file, so two
+    # restarts of the same job - two operators, or one impatient double-click - both passed the
+    # readiness check above and both moved the folder: the second one either buried the task inside
+    # the folder the first one had just created (shutil.move into an existing directory) or died
+    # with FileNotFoundError inside the request. A lock created exclusively means exactly one
+    # restart wins and the other is told the task is not ready.
+    lock_file = taskfile_folder / mercure_names.LOCK
+    try:
+        lock_file.touch(exist_ok=False)
+    except FileExistsError:
+        logger.info(f"Task {task_id} is already claimed, refusing to restart it")
+        return {"error": "Task is already claimed by another process.", "error_code": RestartTaskErrors.TASK_NOT_READY}
+    except Exception:
+        logger.exception(f"Could not claim task folder {taskfile_folder} for restart")
+        return {"error": "Could not claim task folder.", "error_code": RestartTaskErrors.TASK_NOT_READY}
+
+    try:
         dispatch = loaded_task["dispatch"]
         dispatch["retries"] = None
         dispatch["next_retry_at"] = None
@@ -697,11 +716,18 @@ def restart_dispatch(taskfile_folder: Path, outgoing_folder: Path) -> dict:
 
         write_json_atomic(taskfile_path, loaded_task)
         # Dispatcher will skip the completed targets we just need to copy the case to the outgoing folder
-        shutil.move(str(taskfile_folder), str(outgoing_folder))
-        (Path(outgoing_folder) / task_id / mercure_names.LOCK).unlink()
-
-    else:
-        return {"error": "Could not check dispatch status of task file.", "error_code": RestartTaskErrors.NO_DISPATCH_STATUS}
+        target_folder = move_into_folder(taskfile_folder, outgoing_folder)
+        (target_folder / mercure_names.LOCK).unlink(missing_ok=True)
+    except Exception as exc:
+        logger.exception(f"Failed to restart dispatching of task {task_id}")
+        # Never leave a claim on a folder nobody is working on - the task could then never be
+        # restarted again.
+        try:
+            if taskfile_folder.exists():
+                lock_file.unlink(missing_ok=True)
+        except Exception:
+            logger.exception(f"Could not release the claim on {taskfile_folder}")
+        return {"error": f"Failed to restart task: {exc}", "error_code": RestartTaskErrors.TASK_NOT_READY}
 
     return {"success": "task restarted"}
 

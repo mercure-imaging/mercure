@@ -26,6 +26,7 @@ from starlette.responses import JSONResponse, PlainTextResponse, RedirectRespons
 import common.config as config
 import common.helper as helper
 from common.constants import mercure_names
+from common.json_io import write_json_atomic
 from common.types import Module
 import webinterface.common as wc
 from webinterface.common import strip_untrusted, templates
@@ -489,8 +490,11 @@ async def save_persistence_file(request):
                             "message": "The persistence file has changed on disk since it was last loaded, so changes cannot be saved. Please reload the persistence file and make your update again. If this happens repeatedly, suspend processing before manually updating the persistence file.",
                         }
                     )
-            with open(Path(module_mount_source) / "persistence.json", "w") as f:
-                json.dump(data.get("persistence_file", "{}"), f, indent=4)
+            # Atomic, for the same reason as the task files: the webinterface runs in more than one
+            # replica against a shared folder, and a module that reads a persistence.json caught
+            # mid-write gets a truncated file and starts with default settings.
+            write_json_atomic(Path(module_mount_source) / "persistence.json",
+                              data.get("persistence_file", "{}"), indent=4)
         except Exception:
             logger.error(f"Unable to write persistence.json at {module_mount_source}.")
             return JSONResponse(

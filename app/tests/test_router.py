@@ -210,9 +210,12 @@ def test_route_study(fs: FakeFilesystem, mercure_config, mocked, fake_process):
     out_path = Path(f"/var/outgoing/{task_id}")
 
     try:
-        assert ["task.json", f"{series_uid}#baz.dcm", f"{series_uid}#baz.tags"] == [
+        # The files are listed in creation order, which is the router's business: a series is pushed
+        # into the study folder before the study task file records it, so the task file is not the
+        # first file in there.
+        assert sorted(["task.json", f"{series_uid}#baz.dcm", f"{series_uid}#baz.tags"]) == sorted(
             k.name for k in out_path.glob("*") if k.is_file()
-        ]
+        )
     except AssertionError as k:
         message = f"Expected results are missing: {k.args[0]}"
         k.args = (message,)  # wrap it up in new tuple

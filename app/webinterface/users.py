@@ -15,6 +15,7 @@ import common.config as config
 import common.monitor as monitor
 # App-specific includes
 from common.constants import mercure_names
+from common.json_io import write_json_atomic
 from decoRouter import Router as decoRouter
 from mypy_extensions import TypedDict
 from passlib.context import CryptContext
@@ -114,8 +115,11 @@ def save_users() -> None:
     if lock_file.exists():
         raise ResourceWarning(f"Users file locked: {lock_file}")
 
-    with open(users_file, "w") as json_file:
-        json.dump(users_list, json_file, indent=4)
+    # Written atomically: the webinterface runs in several replicas against a shared folder, and
+    # two admins saving at the same time used to truncate and interleave the file - which locks
+    # everybody out, because a torn users.json means no valid credentials at all. A claim on the
+    # lock file is advisory (the check above is not a lock), so it cannot be relied on here.
+    write_json_atomic(users_file, users_list, indent=4)
 
     try:
         stat = os.stat(users_filename)

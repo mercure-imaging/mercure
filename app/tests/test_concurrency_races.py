@@ -30,6 +30,7 @@ from common.constants import mercure_names
 from common.types import Rule, Task
 from pyfakefs.fake_filesystem import FakeFilesystem
 from routing import route_series, route_studies
+from .testing_common import stale_looks_absent
 
 # One study-level routing rule: every series joins the study buffer, the study completes on
 # timeout (the test configuration sets study_complete_trigger to the past, so a buffered study
@@ -74,28 +75,6 @@ def buffer_series_in_study(config, series_uid: str, study_uid: str, description:
     stem, tags = receive_series(config, series_uid, study_uid, description)
     route_series.push_series_studylevel(task_id, {"study_route": True}, [stem], series_uid, tags)
     return Path(config.studies_folder) / f"{study_uid}#study_route"
-
-
-def stale_looks_absent(mocked, target: Path, lookups: int = 1) -> None:
-    """Make ``target`` report "does not exist" for its next ``lookups`` ``Path.exists()`` calls.
-
-    This models a *stale directory snapshot*: the component listing a folder does so before a
-    competing process creates the entry, and then acts on that snapshot. Patched narrowly enough
-    that every other path (and every other lookup) keeps behaving normally.
-    """
-    # Patch the class the code under test actually instantiates (pyfakefs swaps pathlib.Path for
-    # its own FakePath, so the class imported at module import time is not necessarily it).
-    path_class = type(target)
-    real_exists = path_class.exists
-    remaining = [lookups]
-
-    def exists(self) -> bool:  # type: ignore[no-redef]
-        if self == target and remaining[0] > 0:
-            remaining[0] -= 1
-            return False
-        return real_exists(self)
-
-    mocked.patch.object(path_class, "exists", exists)
 
 
 def files_named(root: str, name: str) -> List[Path]:

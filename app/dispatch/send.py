@@ -20,6 +20,7 @@ import common.notification as notification
 import dispatch.target_types as target_types
 from common.constants import mercure_events, mercure_names
 from common.event_types import FailStage
+from common.folder_io import move_into_folder
 from common.helper import get_now_str
 from common.json_io import write_json_atomic
 from common.monitor import m_events, severity, task_event
@@ -147,11 +148,13 @@ def execute(
             _trigger_notification(task_content, mercure_events.ERROR)
             return
 
-    # Create a .processing file to indicate that this folder is being sent,
-    # otherwise another dispatcher instance would pick it up again
-    lock_file = Path(source_folder) / mercure_names.PROCESSING
+    # Claim the folder so that no other dispatcher instance picks it up. From here on, every exit
+    # path must release the claim (see release_sending_claim): a claim that survives an error makes
+    # the task invisible to is_ready_for_sending() forever, which turns one transient failure into a
+    # permanently stuck exam that only the shell can rescue.
+    claim_file = Path(source_folder) / mercure_names.PROCESSING
     try:
-        lock_file.touch(exist_ok=False)
+        claim_file.touch(exist_ok=False)
     except FileExistsError:
         # Return if the case has already been locked by another instance in the meantime
         return
@@ -164,6 +167,29 @@ def execute(
         )
         return
 
+    try:
+        return _dispatch_claimed(
+            source_folder, success_folder, error_folder, retry_max, retry_delay, task_content, dispatch_info, uid
+        )
+    finally:
+        release_sending_claim(source_folder)
+
+
+def _dispatch_claimed(
+    source_folder: Path,
+    success_folder: Path,
+    error_folder: Path,
+    retry_max,
+    retry_delay,
+    task_content: Task,
+    dispatch_info: TaskDispatch,
+    uid: str,
+):
+    """Dispatch a folder for which the caller holds the ``.processing`` claim.
+
+    Split out of ``execute()`` so that ``execute()`` can guarantee the claim is released no matter
+    how this function leaves - including an unexpected exception out of a malformed task file.
+    """
     logger.info("---------")
     logger.info(f"Folder {source_folder} is ready for sending")
 
@@ -251,7 +277,7 @@ def execute(
         # Error during dispatching of job
         retry_increased = increase_retry(source_folder, retry_max, retry_delay)
         if retry_increased:
-            lock_file.unlink()
+            (source_folder / mercure_names.PROCESSING).unlink(missing_ok=True)
         else:
             logger.info(f"Max retries reached, moving to {error_folder}")
             monitor.send_task_event(task_event.SUSPEND, task_content.id, 0,
@@ -265,28 +291,43 @@ def execute(
             logger.info(f"Dispatching folder {source_folder} not successful")
 
 
-def _move_sent_directory(task_id, source_folder, destination_folder, fail_stage=None) -> None:
-    """
-    This check is needed if there is already a folder with the same name
-    in the success folder. If so a new directory is create with a timestamp
-    as suffix.
+def release_sending_claim(source_folder: Path) -> None:
+    """Drop this dispatcher's ``.processing`` claim unless the folder is no longer there.
+
+    After a successful dispatch the folder (and with it the claim) has been moved away, so there is
+    nothing to do. If the folder is still in the outgoing folder, keeping the claim would lock every
+    dispatcher instance - including this one on its next tick - out of a task that is merely waiting
+    for its next retry.
     """
     try:
-        if (destination_folder / source_folder.name).exists():
-            target_folder = destination_folder / (source_folder.name + "_" + datetime.now().isoformat())
-            logger.debug(f"Moving {source_folder} to {target_folder}")
-            shutil.move(source_folder, target_folder, copy_function=shutil.copy2)
-            if fail_stage and not update_fail_stage(target_folder, fail_stage):
-                logger.error(f"Error updating fail stage for task {task_id}")
-            (Path(target_folder) / mercure_names.PROCESSING).unlink()
-        else:
-            logger.debug(f"Moving {source_folder} to {destination_folder / source_folder.name}")
-            shutil.move(source_folder, destination_folder / source_folder.name)
-            if fail_stage and not update_fail_stage(destination_folder / source_folder.name, fail_stage):
-                logger.error(f"Error updating fail stage for task {task_id}")
-            (destination_folder / source_folder.name / mercure_names.PROCESSING).unlink()
+        if not source_folder.exists():
+            return
+        (source_folder / mercure_names.PROCESSING).unlink(missing_ok=True)
+    except Exception:
+        logger.error(f"Unable to release the dispatching claim on {source_folder}", None)  # handle_error
+
+
+
+
+def _move_sent_directory(task_id, source_folder, destination_folder, fail_stage=None) -> bool:
+    """Move a dispatched task into the success or error folder. True if it moved.
+
+    The destination is named after the task id, and five dispatcher instances work on one outgoing
+    folder - so the name has to be claimed by the move itself. Asking "does it exist?" first and
+    then calling ``shutil.move`` does not work: when the destination exists as a directory,
+    ``shutil.move`` moves the source *inside* it instead of failing, which buries ``task.json`` one
+    level down and leaves the queue UI, the bookkeeper and the cleaner looking at an empty folder.
+    """
+    try:
+        target_folder = move_into_folder(source_folder, destination_folder)
+        logger.debug(f"Moved {source_folder} to {target_folder}")
+        if fail_stage and not update_fail_stage(target_folder, fail_stage):
+            logger.error(f"Error updating fail stage for task {task_id}")
+        (target_folder / mercure_names.PROCESSING).unlink(missing_ok=True)
     except Exception:
         logger.error(f"Error moving folder {source_folder} to {destination_folder}", task_id)  # handle_error
+        return False
+    return True
 
 
 def _trigger_notification(task: Task, event: mercure_events) -> None:

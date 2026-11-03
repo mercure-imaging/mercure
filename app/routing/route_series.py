@@ -129,21 +129,32 @@ def route_series(task_id: str, series_UID: str, files: typing.List[Path] = []) -
         # If no routing rule has triggered or discarding has been enforced, discard the series
         push_series_complete(task_id, fileList, series_UID, "DISCARD", discard_series, False,
                              tagsList_encoding_error=tagsList_encoding_error)
+        hand_off_ok = True
     else:
         # File handling strategy: If only one triggered rule, move files (faster than copying). If multiple rules, copy files
-        push_series_studylevel(task_id, triggered_rules, fileList, series_UID, tagsList)
-        push_series_serieslevel(task_id, triggered_rules, fileList, series_UID, tagsList)
+        studylevel_ok = push_series_studylevel(task_id, triggered_rules, fileList, series_UID, tagsList)
+        serieslevel_ok = push_series_serieslevel(task_id, triggered_rules, fileList, series_UID, tagsList)
+        hand_off_ok = studylevel_ok and serieslevel_ok
 
         # If more than one rule has triggered, the series files need to be removed
         # TODO: This can probably be avoided since the files are now contained in a separate folder
         #       for each series, so that files will be removed automatically by the rmtree call
-        if len(triggered_rules) > 1:
+        if len(triggered_rules) > 1 and hand_off_ok:
             remove_series(task_id, fileList, series_UID)
 
     try:
         lock.free()
     except Exception:
         logger.error(f"Unable to remove lock file {lock_file}", task_id)  # handle_error
+        return
+    if not hand_off_ok:
+        # A hand-off that stopped half-way through was rolled back into the incoming folder (see
+        # restore_incoming()). Deleting it here is how a temporary I/O error used to destroy the only
+        # copy of a study, so the series stays put and the next router pass tries again.
+        logger.error(
+            f"Series {series_UID} was not handed over completely and is left in {base_dir} for another attempt",
+            task_id,
+        )
         return
     shutil.rmtree(base_dir)
 
@@ -276,10 +287,13 @@ def push_series_studylevel(
     file_list: List[str],
     series_UID: str,
     tags_list: Dict[str, str],
-) -> None:
+) -> bool:
     """
     Prepares study-level routing for the current series.
+
+    :return: False when at least one study folder could not be filled completely.
     """
+    overall_ok = True
     # Move series into individual study-level folder for every rule
     for current_rule in triggered_rules:
         if config.mercure.rules[current_rule].get("action_trigger", "series") == mercure_options.STUDY:
@@ -302,6 +316,7 @@ def push_series_studylevel(
                 first_series = False
             except Exception:
                 logger.error(f"Unable to create study folder {target_folder}", task_id)  # handle_error
+                overall_ok = False
                 continue
 
             lock_file = target_folder / mercure_names.LOCK
@@ -310,6 +325,28 @@ def push_series_studylevel(
             except Exception:
                 # Can't create lock file, so something must be seriously wrong
                 logger.error(f"Unable to create lock file {lock_file}", task_id)  # handle_error
+                overall_ok = False
+                continue
+
+            # Push the files first. The study task file below is what makes a study *complete* (the
+            # "all expected series received" criterion reads its series list), so recording a series
+            # whose images are only partly buffered tells route_studies to dispatch a study with
+            # missing images - and the untouched copies in the incoming folder are deleted afterwards.
+            moved_files = len(triggered_rules) <= 1
+            if not push_files(task_id, series_UID, file_list, target_folder, not moved_files):
+                logger.error(f"Unable to push files into study folder {target_folder}", task_id)  # handle_error
+                restore_incoming(Path(config.mercure.incoming_folder) / series_UID, target_folder, file_list,
+                                 moved_files)
+                if first_series:
+                    # The folder was created for this series alone, so nothing else is lost with it.
+                    discard_hand_off_folder(target_folder, lock)
+                else:
+                    # Other series are buffered here; only this series' files (and its lock) go away.
+                    try:
+                        lock.free()
+                    except Exception:
+                        logger.error(f"Unable to remove lock file {lock_file}", task_id)  # handle_error
+                overall_ok = False
                 continue
 
             if first_series:
@@ -336,10 +373,80 @@ def push_series_studylevel(
 
             if not result:
                 logger.error("Problem assigning series to study", task_id)
+                overall_ok = False
 
-            # Copy (or move) the files into the study folder
-            push_files(task_id, series_UID, file_list, target_folder, (len(triggered_rules) > 1))
             lock.free()
+    return overall_ok
+
+
+def restore_incoming(base_dir: Path, target_folder: Path, file_list: List[str], moved: bool) -> None:
+    """
+    Undo a hand-off that stopped half-way through, so that neither the incoming folder nor the
+    destination folder is left in a state the next service cannot trust.
+
+    Filling a folder for the processor, the dispatcher or the study buffer can fail on any single
+    file: a disk filling up, a failing mount, a file that vanished. When that happened, the caller
+    either ignored the failure or raised, and two bad states were left behind:
+
+    * the destination folder held *part* of a series, and the ``FileLock`` protecting it was a local
+      variable that disappeared as the stack unwound - which is exactly what
+      :func:`dispatch.status.is_ready_for_sending` and :func:`process.status.is_ready_for_processing`
+      look for: a folder with *some* DICOM files and no marker. A truncated series is dispatched or
+      processed and reported as a success, so nothing ever reveals that images are missing; and
+    * the incoming folder, still holding the slices that never made it across, was deleted with the
+      rest of the series.
+
+    Putting the files back turns the hand-off into a retry: nothing is lost, nothing partial is
+    offered to the next service, and the router tries again on the next pass.
+
+    :param base_dir: The incoming folder the files came from.
+    :param target_folder: The half-filled hand-off folder.
+    :param file_list: Series stems of the files that were supposed to be handed over.
+    :param moved: True when the hand-off moved (instead of copied) the files, so the only copy of
+                  what did arrive is in ``target_folder``.
+    """
+    for entry in file_list:
+        for suffix in (mercure_names.DCM, mercure_names.TAGS):
+            pushed_file = target_folder / (entry + suffix)
+            if not pushed_file.exists():
+                continue
+            try:
+                if moved:
+                    shutil.move(str(pushed_file), str(base_dir / (entry + suffix)))
+                else:
+                    pushed_file.unlink()
+            except Exception:
+                # Whatever cannot be put back stays where it is; the folder keeps its lock in that
+                # case, and the caller's error tells the operator that the series needs attention.
+                logger.error(
+                    f"Unable to restore {pushed_file} to {base_dir} after a failed hand-off", ""
+                )
+
+
+def discard_hand_off_folder(target_folder: Path, lock: typing.Optional[helper.FileLock]) -> None:
+    """
+    Remove a rolled-back hand-off folder, unless something is still in it.
+
+    After :func:`restore_incoming` such a folder holds nothing but its task file, and leaving it in
+    the outgoing or processing folder would look like a stalled task to the operator and to the
+    bookkeeper. Anything that could not be put back is kept, together with the lock: a folder the
+    next service cannot trust must not be unlocked.
+    """
+    if not target_folder.exists():
+        return
+    remaining = list(target_folder.glob("*" + mercure_names.DCM))
+    if remaining:
+        logger.error(
+            f"Keeping {target_folder} locked: {len(remaining)} DICOM file(s) could not be restored to the "
+            f"incoming folder"
+        )
+        return
+    if lock is not None:
+        try:
+            lock.free()
+        except Exception:
+            logger.error(f"Unable to remove lock file in {target_folder}", "")  # handle_error
+    shutil.rmtree(str(target_folder), ignore_errors=True)
 
 
 def push_series_serieslevel(
@@ -348,13 +455,16 @@ def push_series_serieslevel(
     file_list: List[str],
     series_UID: str,
     tags_list: Dict[str, str],
-) -> None:
+) -> bool:
     """
     Prepares all series-level routings for the current series.
+
+    :return: False when at least one hand-off could not be completed.
     """
-    push_serieslevel_routing(task_id, triggered_rules, file_list, series_UID, tags_list)
-    push_serieslevel_processing(task_id, triggered_rules, file_list, series_UID, tags_list)
-    push_serieslevel_notification(task_id, triggered_rules, file_list, series_UID, tags_list)
+    routing_ok = push_serieslevel_routing(task_id, triggered_rules, file_list, series_UID, tags_list)
+    processing_ok = push_serieslevel_processing(task_id, triggered_rules, file_list, series_UID, tags_list)
+    notification_ok = push_serieslevel_notification(task_id, triggered_rules, file_list, series_UID, tags_list)
+    return routing_ok and processing_ok and notification_ok
 
 
 def push_serieslevel_routing(
@@ -363,7 +473,7 @@ def push_serieslevel_routing(
     file_list: List[str],
     series_UID: str,
     tags_list: Dict[str, str],
-) -> None:
+) -> bool:
     selected_targets: Dict[str, List[str]] = {}
     # Collect the dispatch-only targets to avoid that a series is sent twice to the
     # same target due to multiple targets triggered (note: this only makes sense for routing-only
@@ -391,7 +501,7 @@ def push_serieslevel_routing(
                     selected_targets[target].append(current_rule)
             trigger_serieslevel_notification(current_rule, tags_list, mercure_events.RECEIVED, task_id)
 
-    push_serieslevel_outgoing(task_id, triggered_rules, file_list, series_UID, tags_list, selected_targets)
+    return push_serieslevel_outgoing(task_id, triggered_rules, file_list, series_UID, tags_list, selected_targets)
 
 
 def push_serieslevel_processing(
@@ -447,12 +557,19 @@ def push_serieslevel_processing(
                 ):
                     monitor.send_register_task(new_task_id, series_UID, task_id)
                 else:
+                    discard_hand_off_folder(target_folder, lock)
                     return False
 
                 if not push_files(task_id, series_UID, file_list, target_folder, copy_files):
                     logger.error(
                         f"Unable to push files into processing folder {target_folder}", task_id
                     )  # handle_error
+                    # Put back what did make it across and take the folder out of reach: a folder with
+                    # part of a series must never be offered to a processor as if it were complete.
+                    restore_incoming(
+                        Path(config.mercure.incoming_folder) / series_UID, target_folder, file_list, not copy_files
+                    )
+                    discard_hand_off_folder(target_folder, lock)
                     return False
 
                 try:
@@ -501,10 +618,14 @@ def push_serieslevel_outgoing(
     series_UID: str,
     tags_list: Dict[str, str],
     selected_targets: Dict[str, List[str]],
-) -> None:
+) -> bool:
     """
     Move the DICOM files of the series to a separate subfolder for each target in the outgoing folder.
+
+    :return: False when a target folder could not be filled completely; the partial folder is rolled
+             back so the dispatcher can never pick up a truncated series.
     """
+    overall_ok = True
     source_folder = Path(config.mercure.incoming_folder) / series_UID
 
     # Determine if the files should be copied or moved. If only one rule triggered, files can
@@ -528,17 +649,20 @@ def push_serieslevel_outgoing(
             os.mkdir(folder_name)
         except Exception:
             logger.error(f"Unable to create outgoing folder {folder_name}", task_id)  # handle_error
-            return
+            overall_ok = False
+            continue
 
         if not Path(folder_name).exists():
             logger.error(f"Creating folder not possible {folder_name}", task_id)  # handle_error
-            return
+            overall_ok = False
+            continue
         lock_file = Path(folder_name) / mercure_names.LOCK
         try:
             lock = helper.FileLock(lock_file)
         except Exception:
             logger.error(f"Unable to create lock file {lock_file}", task_id)  # handle_error
-            return
+            overall_ok = False
+            continue
 
         # Collect the rules that triggered the dispatching to the current target
         target_rules: Dict[str, Literal[True]] = {}
@@ -549,6 +673,8 @@ def push_serieslevel_outgoing(
         if create_series_task(new_task_id, target_folder, target_rules, "", series_UID, tags_list, target):
             monitor.send_register_task(new_task_id, series_UID, task_id)
         else:
+            discard_hand_off_folder(target_folder, lock)
+            overall_ok = False
             continue
 
         monitor.send_task_event(monitor.task_event.DELEGATE, task_id, len(file_list),
@@ -577,19 +703,28 @@ def push_serieslevel_outgoing(
                      f"Source folder {source_folder}\nTarget folder {target_folder}"),
                     task_id,
                 )
-                raise
-
-        if is_operation_move:
-            monitor.send_task_event(monitor.task_event.MOVE, task_id, len(file_list), str(target_folder), "Moved files")
+                # Putting the files back is what stops the dispatcher from sending a truncated exam:
+                # the folder is only handed over once it is completely filled.
+                restore_incoming(source_folder, target_folder, file_list, is_operation_move)
+                discard_hand_off_folder(target_folder, lock)
+                overall_ok = False
+                break
         else:
-            monitor.send_task_event(monitor.task_event.COPY, task_id, len(file_list), str(target_folder), "Copied files")
+            if is_operation_move:
+                monitor.send_task_event(
+                    monitor.task_event.MOVE, task_id, len(file_list), str(target_folder), "Moved files")
+            else:
+                monitor.send_task_event(
+                    monitor.task_event.COPY, task_id, len(file_list), str(target_folder), "Copied files")
 
-        try:
-            lock.free()
-        except Exception:
-            # Can't delete lock file, so something must be seriously wrong
-            logger.error(f"Unable to remove lock file {lock_file}", task_id)  # handle_error
-            return
+            try:
+                lock.free()
+            except Exception:
+                # Can't delete lock file, so something must be seriously wrong. The folder stays
+                # locked, so the series is kept in the incoming folder for another attempt.
+                logger.error(f"Unable to remove lock file {lock_file}", task_id)  # handle_error
+                overall_ok = False
+    return overall_ok
 
 
 def push_files(task_id: str, series_uid: str, file_list: List[str], target_folder: Path, copy_files: bool) -> bool:

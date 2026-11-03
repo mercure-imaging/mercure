@@ -218,3 +218,133 @@ def fake_check_output(command, encoding="utf-8", stderr=None, **opts) -> str:
         print(f"Error writing to {result_file}: {e}")
         raise
     return "Success"
+
+def stale_looks_absent(mocked, target, lookups: int = 1) -> None:
+    """Make ``target`` report "does not exist" for its next ``lookups`` ``Path.exists()`` calls.
+
+    Models a *stale directory snapshot*: a component lists a folder before a competing process
+    creates (or removes) an entry, and then acts on that snapshot. Patched narrowly enough that
+    every other path - and every other lookup - keeps behaving normally.
+    """
+    # Patch the class the code under test actually instantiates (pyfakefs swaps pathlib.Path for
+    # its own FakePath, so the class imported at module import time is not necessarily it).
+    path_class = type(target)
+    real_exists = path_class.exists
+    remaining = [lookups]
+
+    def exists(self) -> bool:  # type: ignore[no-redef]
+        if self == target and remaining[0] > 0:
+            remaining[0] -= 1
+            return False
+        return real_exists(self)
+
+    mocked.patch.object(path_class, "exists", exists)
+
+
+def make_operation_fail(mocked, target, method_name: str, error: OSError) -> None:
+    """Raise ``error`` whenever ``method_name`` is called on exactly ``target``.
+
+    Stands in for a transient I/O failure at one specific point (read-only mount, full disk,
+    another process holding the path), without having to fake the surrounding state.
+    """
+    path_class = type(target)
+    real_method = getattr(path_class, method_name)
+
+    def wrapper(self, *args, **kwargs):
+        if self == target:
+            raise error
+        return real_method(self, *args, **kwargs)
+
+    mocked.patch.object(path_class, method_name, wrapper)
+
+
+def make_move_fail(mocked, destination, error: OSError = None) -> None:
+    """Make every attempt to move/copy anything onto ``destination`` fail.
+
+    Stands in for a full disk, a failing mount or a network filesystem hiccup at the moment a
+    service hands a folder over to the next one. Both the ``os.rename`` fast path and shutil's
+    copy-and-delete fallbacks are covered, because which one a given caller takes is an
+    implementation detail - the contract being tested is what happens when the hand-off *fails*.
+    """
+    def fail() -> OSError:
+        # A fresh exception per call: re-using one instance keeps its traceback alive, and a
+        # traceback keeps every frame it walked - including the FileLock objects living in them -
+        # alive, which hides exactly the lock-release-on-unwinding behaviour under test.
+        return error if error is not None else OSError(5, "Input/output error", str(destination))
+
+    wanted = str(destination)
+
+    def hit(candidate) -> bool:
+        return str(candidate) == wanted or str(candidate).startswith(wanted + os.sep)
+
+    real_rename = os.rename
+    real_copytree = shutil.copytree
+    real_copy2 = shutil.copy2
+    real_copy = shutil.copy
+    real_copyfile = shutil.copyfile
+
+    def rename(src, dst, *args, **kwargs):
+        if hit(dst):
+            raise fail()
+        return real_rename(src, dst, *args, **kwargs)
+
+    def copytree(src, dst, *args, **kwargs):
+        if hit(dst):
+            raise fail()
+        return real_copytree(src, dst, *args, **kwargs)
+
+    def copy2(src, dst, *args, **kwargs):
+        if hit(dst):
+            raise fail()
+        return real_copy2(src, dst, *args, **kwargs)
+
+    def copy(src, dst, *args, **kwargs):
+        if hit(dst):
+            raise fail()
+        return real_copy(src, dst, *args, **kwargs)
+
+    def copyfile(src, dst, *args, **kwargs):
+        if hit(dst):
+            raise fail()
+        return real_copyfile(src, dst, *args, **kwargs)
+
+    mocked.patch("os.rename", side_effect=rename)
+    mocked.patch("shutil.copytree", side_effect=copytree)
+    mocked.patch("shutil.copy2", side_effect=copy2)
+    mocked.patch("shutil.copy", side_effect=copy)
+    mocked.patch("shutil.copyfile", side_effect=copyfile)
+
+
+def make_second_file_fail(mocked, file_name: str, error: OSError = None) -> None:
+    """Fail every move/copy whose *source* is ``file_name``.
+
+    Used to break a multi-file hand-off part-way through, which is what leaves a service with a
+    half-filled folder for the next service to pick up.
+    """
+    def fail() -> OSError:
+        return error if error is not None else OSError(5, "Input/output error", str(file_name))
+
+    wanted = str(file_name)
+
+    real_move = shutil.move
+    real_copy = shutil.copy
+    real_copy2 = shutil.copy2
+
+    def move(src, dst, *args, **kwargs):
+        if str(src).endswith(wanted):
+            raise fail()
+        return real_move(src, dst, *args, **kwargs)
+
+    def copy(src, dst, *args, **kwargs):
+        if str(src).endswith(wanted):
+            raise fail()
+        return real_copy(src, dst, *args, **kwargs)
+
+    def copy2(src, dst, *args, **kwargs):
+        if str(src).endswith(wanted):
+            raise fail()
+        return real_copy2(src, dst, *args, **kwargs)
+
+    mocked.patch("shutil.move", side_effect=move)
+    mocked.patch("shutil.copy", side_effect=copy)
+    mocked.patch("shutil.copy2", side_effect=copy2)

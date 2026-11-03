@@ -22,6 +22,7 @@ import common.monitor as monitor
 import common.notification as notification
 from common.constants import mercure_events, mercure_names
 from common.event_types import FailStage
+from common.folder_io import move_into_folder
 from common.helper import get_now_str
 from common.json_io import is_write_temp_file, write_json_atomic
 from common.types import Module, Task, TaskDispatch, TaskDispatchStatus, TaskProcessing
@@ -575,8 +576,14 @@ async def process_series(folder: Path) -> None:
                     needs_dispatching = False
 
             # Push the results either to the success or error folder
-            move_results(task_id, folder, lock, processing_success, needs_dispatching)
-            shutil.rmtree(folder, ignore_errors=True)
+            moved = move_results(task_id, folder, lock, processing_success, needs_dispatching)
+            if moved:
+                shutil.rmtree(folder, ignore_errors=True)
+            else:
+                # The results are still here. Deleting the folder would turn a transient I/O error
+                # into data loss, so keep it (locked by move_results) for a later retry.
+                logger.error(f"Results of task {task_id} could not be moved. Keeping {folder} "
+                             "for recovery", task_id)  # handle_error
 
             if processing_success:
                 monitor.send_task_event(
@@ -746,60 +753,69 @@ def _rewrite_task_file(task: Task, folder: Path) -> None:
 
 
 def move_results(
-    task_id: str, folder: Path, lock: Optional[helper.FileLock], processing_success: bool, needs_dispatching: bool
-) -> None:
+    task_id: str, folder: Path, lock: Optional[helper.FileLock], processing_success: bool,
+    needs_dispatching: bool,
+) -> bool:
+    """Move a finished task out of the processing folder. Returns True if it actually moved.
+
+    A caller must only delete its own copy when this returns True: a failed move leaves the task as
+    the only copy of the results, and deleting it destroys the exam over a transient I/O error.
+    """
     # Create a new lock file to ensure that no other process picks up the folder while copying
     logger.debug(f"Moving results folder {folder} {'with' if needs_dispatching else 'without'} dispatching")
     lock_file = folder / mercure_names.LOCK
     if lock_file.exists():
         logger.error(f"Folder already contains lockfile {folder}/" + mercure_names.LOCK)
-        return
+        return False
     try:
         lock_file.touch(exist_ok=False)
     except Exception:
         logger.error(f"Error locking folder to be moved {folder}", task_id)  # handle_error
-        return
+        return False
 
     if lock is not None:
         lock.free()
     if not processing_success:
         logger.debug(f"Failing: {folder}")
-        move_out_folder(task_id, folder, Path(config.mercure.error_folder), move_all=True, fail_stage=FailStage.PROCESSING)
-    else:
-        if needs_dispatching:
-            logger.debug(f"Dispatching: {folder}")
-            move_out_folder(task_id, folder, Path(config.mercure.outgoing_folder))
-        else:
-            logger.debug(f"Success: {folder}")
-            move_out_folder(task_id, folder, Path(config.mercure.success_folder))
+        return move_out_folder(task_id, folder, Path(config.mercure.error_folder),
+                               move_all=True, fail_stage=FailStage.PROCESSING)
+    if needs_dispatching:
+        logger.debug(f"Dispatching: {folder}")
+        return move_out_folder(task_id, folder, Path(config.mercure.outgoing_folder))
+    logger.debug(f"Success: {folder}")
+    return move_out_folder(task_id, folder, Path(config.mercure.success_folder))
 
 
-def move_out_folder(task_id: str, source_folder: Path, destination_folder: Path, move_all=False, fail_stage=None) -> None:
-    # source_folder = Path(source_folder_str)
-    # destination_folder = Path(destination_folder_str)
+def move_out_folder(task_id: str, source_folder: Path, destination_folder: Path, move_all=False,
+                    fail_stage=None) -> bool:
+    """Move a task (or only its ``out`` folder) into a destination folder. True if it moved.
 
-    target_folder = destination_folder / source_folder.name
-    if target_folder.exists():
-        new_name = source_folder.name.split("_")[0] + "_" + datetime.now().isoformat()
-        target_folder = destination_folder / new_name
-
-    logger.debug(f"Moving {source_folder} to {target_folder}, move_all: {move_all}")
+    The destination name is claimed by the move itself (``common.folder_io.move_into_folder``).
+    ``shutil.move`` neither overwrites nor fails when the destination exists as a directory - it
+    moves the source *inside* it, which buries ``task.json`` one level down where the queue UI, the
+    bookkeeper and the cleaner no longer look for it.
+    """
+    logger.debug(f"Moving {source_folder} into {destination_folder}, move_all: {move_all}")
     logger.debug("--- source contents ---")
     for k in source_folder.glob("**/*"):
         logger.debug("{:>25}".format(str(k.relative_to(source_folder))))
     logger.debug("--------------")
     try:
         if move_all:
-            shutil.move(str(source_folder), target_folder)
+            target_folder = move_into_folder(source_folder, destination_folder)
             if fail_stage and not update_fail_stage(target_folder, FailStage.PROCESSING):
                 logger.error(f"Error updating fail stage for task {task_id}")
         else:
-            shutil.move(str(source_folder / "out"), target_folder)
+            # Only the results go to the destination, but the destination keeps the task folder's
+            # name (not "out"), so that the task id stays the identifier across all service folders.
+            move_into_folder(source_folder / "out", destination_folder, name=source_folder.name)
             lockfile = source_folder / mercure_names.LOCK
-            lockfile.unlink()
+            lockfile.unlink(missing_ok=True)
 
     except Exception:
         logger.error(f"Error moving folder {source_folder} to {destination_folder}", task_id)  # handle_error
+        return False
+    return True
 
 
 def trigger_notification(task: Task, event: mercure_events, details: str = "", send_always=False) -> None:

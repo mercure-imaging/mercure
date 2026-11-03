@@ -111,7 +111,12 @@ def collect_nomad_results(p_folder: Path) -> None:
         return
 
     needs_dispatching = True if task.get("dispatch") else False
-    move_results(task.id, p_folder, None, True, needs_dispatching)
+    if not move_results(task.id, p_folder, None, True, needs_dispatching):
+        # The results are still in the task folder. Deleting them here would turn a transient I/O
+        # error into data loss, so keep the folder (and its markers) for recovery.
+        logger.error(f"Results of task {task.id} could not be moved. Keeping {p_folder} "
+                     "for recovery", task.id)  # handle_error
+        return
     shutil.rmtree(in_folder)
     (p_folder / "nomad_job.json").unlink()
     (p_folder / ".processing").unlink()
