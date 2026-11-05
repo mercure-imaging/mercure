@@ -379,3 +379,50 @@ def test_failing_announcement_does_not_cause_a_resend(fs, mercure_config, mocked
     route_series.route_series("task-2", series_uid)
     assert len(list(Path(config.outgoing_folder).iterdir())) == 2
     assert not list(Path(config.outgoing_folder).glob("*/" + mercure_names.LOCK))
+
+
+# ---------------------------------------------------------------------------------------------
+# A rolled-back hand-off must not report its tasks to the bookkeeper: send_update_task() used to
+# fire while the task file was being written, before the transaction committed, leaving phantom
+# task records (and a study record that lists a series the study does not hold).
+# ---------------------------------------------------------------------------------------------
+def test_rolled_back_hand_off_reports_no_tasks_to_the_bookkeeper(fs, mercure_config, mocked):
+    from common import monitor
+    from common.types import Rule
+    from .test_partial_state_races import module_config
+    config = mercure_config({
+        **module_config,
+        "rules": {
+            "proc": Rule(rule="True", action="process", action_trigger="series",
+                         processing_module="test_module").dict(),
+            "study": Rule(rule="True", action="route", target="test_target", action_trigger="study",
+                          study_trigger_condition="timeout").dict(),
+            "route": Rule(rule="True", action="route", target="test_target", action_trigger="series").dict(),
+        },
+    })
+    study_uid = str(uuid.uuid4())
+    first = str(uuid.uuid4())
+    deliver_series(config, first, study_uid, "series 0")
+    route_series.route_series("task-0", first)
+    for p in [*Path(config.outgoing_folder).iterdir(), *Path(config.processing_folder).iterdir()]:
+        shutil.rmtree(p)
+
+    series_uid = str(uuid.uuid4())
+    deliver_series(config, series_uid, study_uid, "series A")
+    disk_full = _fail_outgoing_once(mocked, config)
+    monitor.send_update_task.reset_mock()  # type: ignore
+    route_series.route_series("task-pass-1", series_uid)
+    assert monitor.send_update_task.call_count == 0, (  # type: ignore
+        "rolled-back hand-off reported tasks: "
+        f"{[c.args[0].id for c in monitor.send_update_task.call_args_list]}"  # type: ignore
+    )
+
+    disk_full[0] = False
+    route_series.route_series("task-pass-2", series_uid)
+    reported = [c.args[0] for c in monitor.send_update_task.call_args_list]  # type: ignore
+    on_disk = {json.loads((f / mercure_names.TASKFILE).read_text())["id"]
+               for root in (config.outgoing_folder, config.processing_folder)
+               for f in Path(root).iterdir()}
+    assert {t.id for t in reported if t.info.uid_type == "series"} == on_disk
+    study = [t for t in reported if t.info.uid_type == "study"]
+    assert len(study) == 1 and study[0].study.received_series == ["series 0", "series A"]

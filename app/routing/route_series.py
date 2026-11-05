@@ -519,12 +519,13 @@ def _push_series_into_study(
         # Create task file with information on complete criteria
         new_task_id = generate_task_id()
         result = create_study_task(new_task_id, target_folder, triggered_rules,
-                                   current_rule, study_UID, tags_list)
+                                   current_rule, study_UID, tags_list, announce=transaction.announce)
         first_event = "Created study task"
     else:
         # Add data from latest series to task file
         result, new_task_id = update_study_task(task_id, target_folder, triggered_rules,
-                                                current_rule, study_UID, tags_list)
+                                                current_rule, study_UID, tags_list,
+                                                announce=transaction.announce)
         first_event = "Added to study task"
 
     if not result:
@@ -727,7 +728,8 @@ def push_serieslevel_processing(
 
             # Generate task file with processing information
             if not create_series_task(
-                new_task_id, target_folder, triggered_rules, current_rule, series_UID, tags_list, ""
+                new_task_id, target_folder, triggered_rules, current_rule, series_UID, tags_list, "",
+                announce=transaction.announce,
             ):
                 return False
 
@@ -825,7 +827,8 @@ def push_serieslevel_outgoing(
             target_rules: Dict[str, Literal[True]] = {rule: True for rule in selected_targets[target]}
 
             # Generate task file with dispatch information
-            if not create_series_task(new_task_id, target_folder, target_rules, "", series_UID, tags_list, target):
+            if not create_series_task(new_task_id, target_folder, target_rules, "", series_UID, tags_list, target,
+                                      announce=transaction.announce):
                 return False
 
             if not push_files(task_id, series_UID, file_list, target_folder, not is_operation_move):
