@@ -107,11 +107,9 @@ def is_study_complete(folder: str, pending_series: Dict[str, float]) -> bool:
             except Exception:
                 logger.info(f"Study {folder} busy, deferring force completion flag update")
                 return False
-            try:
+            with force_lock:
                 task.study.complete_force = True
                 write_json_atomic(Path(folder) / mercure_names.TASKFILE, task.dict())
-            finally:
-                force_lock.free()
             return True
 
         study = task.study
@@ -211,12 +209,13 @@ def check_force_study_timeout(folder: Path) -> bool:
                 except Exception:
                     logger.error(f"Unable to lock study for removal {lock_file}")  # handle_error
                     return False
-                if not move_study_folder(task.id, folder.name, "DISCARD"):
-                    logger.error(f"Error during moving study to discard folder {study}", task.id)  # handle_error
-                    return False
-                if not remove_study_folder(None, folder.name, lock):
-                    logger.error(f"Unable to delete study folder {lock_file}")  # handle_error
-                    return False
+                with lock:
+                    if not move_study_folder(task.id, folder.name, "DISCARD"):
+                        logger.error(f"Error during moving study to discard folder {study}", task.id)  # handle_error
+                        return False
+                    if not remove_study_folder(None, folder.name, lock):
+                        logger.error(f"Unable to delete study folder {lock_file}")  # handle_error
+                        return False
         else:
             logger.debug("Force timeout not met.")
         return True
@@ -271,6 +270,12 @@ def route_study(study) -> bool:
             logger.error(f"Unable to create study lock file {lock_file}", None)  # handle_error
         return False
 
+    # Released on every path; remove_study_folder() frees it early on success.
+    with lock:
+        return _route_locked_study(study, study_folder, lock)
+
+
+def _route_locked_study(study: str, study_folder: str, lock: helper.FileLock) -> bool:
     try:
         # Read stored task file to determine completeness criteria
         task = Task.from_file(Path(study_folder) / mercure_names.TASKFILE)
@@ -338,8 +343,8 @@ def push_studylevel_notification(study: str, task: Task) -> bool:
     """
     trigger_studylevel_notification(study, task, mercure_events.RECEIVED)
     trigger_studylevel_notification(study, task, mercure_events.COMPLETED)
-    move_study_folder(task.id, study, "SUCCESS")
-    return True
+    # The caller deletes the study folder when this returns True, so a failed move must say so.
+    return move_study_folder(task.id, study, "SUCCESS")
 
 
 def push_studylevel_error(study: str) -> None:
@@ -360,13 +365,14 @@ def push_studylevel_error(study: str) -> None:
         # Can't create lock file, so something must be seriously wrong
         logger.error(f"Unable to lock study for removal {lock_file}")  # handle_error
         return
-    if not move_study_folder(None, study, "ERROR"):
-        # At this point, we can only wait for manual intervention
-        logger.error(f"Unable to move study to ERROR folder {lock_file}")  # handle_error
-        return
-    if not remove_study_folder(None, study, lock):
-        logger.error(f"Unable to delete study folder {lock_file}")  # handle_error
-        return
+    with lock:
+        if not move_study_folder(None, study, "ERROR"):
+            # At this point, we can only wait for manual intervention
+            logger.error(f"Unable to move study to ERROR folder {lock_file}")  # handle_error
+            return
+        if not remove_study_folder(None, study, lock):
+            logger.error(f"Unable to delete study folder {lock_file}")  # handle_error
+            return
 
 
 def move_study_folder(task_id: Union[str, None], study: str, destination: str) -> bool:
@@ -412,7 +418,9 @@ def move_study_folder(task_id: Union[str, None], study: str, destination: str) -
     # the source folder has already been locked in the parent function.
     lock_file = Path(destination_folder) / mercure_names.LOCK
     try:
-        lock = helper.FileLock(lock_file)
+        # keep_on_error: a destination that holds only part of the study stays locked, so it is never
+        # picked up.
+        lock = helper.FileLock(lock_file, keep_on_error=True)
     except Exception:
         # Can't create lock file, so something must be seriously wrong
         logger.error(f"Unable to create lock file {destination_folder}/{mercure_names.LOCK}", task_id)  # handle_error
@@ -421,25 +429,18 @@ def move_study_folder(task_id: Union[str, None], study: str, destination: str) -
     # Move all files except the lock file
     # FIXME: if we don't use a list instead of an iterator, in testing we get an error
     # from pyfakefs about the iterator changing during the iteration
-    for entry in list(os.scandir(source_folder)):
-        # Move all files but exclude the lock file in the source folder
-        if not entry.name.endswith(mercure_names.LOCK):
-            try:
-                shutil.move(source_folder + "/" + entry.name, destination_folder + "/" + entry.name)
-            except Exception:
-                logger.error(  # handle_error
-                    f"Problem while pushing file {entry} from {source_folder} to {destination_folder}", task_id
-                )
-
-    # Remove the lock file in the target folder. Would happen automatically when leaving the function,
-    # but better to do explicitly with error handling
     try:
-        lock.free()
+        with lock:
+            for entry in list(os.scandir(source_folder)):
+                # Move all files but exclude the lock file in the source folder
+                if not entry.name.endswith(mercure_names.LOCK):
+                    shutil.move(source_folder + "/" + entry.name, destination_folder + "/" + entry.name)
     except Exception:
-        # Can't delete lock file, so something must be seriously wrong
-        logger.error(f"Unable to remove lock file {lock_file}", task_id)  # handle_error
+        # The caller keeps the source folder; the destination keeps its lock.
+        logger.error(  # handle_error
+            f"Problem while moving study from {source_folder} to {destination_folder}", task_id
+        )
         return False
-
     return True
 
 

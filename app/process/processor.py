@@ -15,7 +15,7 @@ import sys
 import threading
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, List, Optional, Tuple
 
 import common.config as config
 # App-specific includes
@@ -26,10 +26,11 @@ import common.notification as notification
 import graphyte
 import hupper
 from common.constants import mercure_defs, mercure_events, mercure_names
+from common.folder_io import move_into_folder
 from common.json_io import write_json_atomic
 from common.types import Task, TaskProcessing
-from process.process_series import (handle_processor_output, move_results, process_series, push_input_images,
-                                    push_input_task, trigger_notification)
+from process.process_series import (backup_input_images, handle_processor_output, move_results, process_series,
+                                    push_input_images, push_input_task, trigger_notification)
 from process.status import is_ready_for_processing
 
 import nomad
@@ -231,7 +232,10 @@ async def search_folder(counter) -> bool:
     # another instance might have processed the other entries already. So the folder
     # needs to be refreshed each time
     try:
-        selected_task_folder = prioritize_tasks(sorted_tasks, counter)
+        to_quarantine: List[Tuple[Path, str]] = []
+        selected_task_folder = prioritize_tasks(sorted_tasks, counter, to_quarantine)
+        for folder, reason in to_quarantine:
+            quarantine_task(folder, reason)
         # Return if no task of valid priority is found
         if selected_task_folder is None:
             return False
@@ -268,12 +272,17 @@ async def search_folder(counter) -> bool:
         return False
 
 
-def prioritize_tasks(sorted_tasks: list, counter: int) -> Optional[Path]:
+def prioritize_tasks(sorted_tasks: list, counter: int,
+                     quarantine: Optional[List[Tuple[Path, str]]] = None) -> Optional[Path]:
     """Returns the prioritized task based on the priority in the task file.
 
     Candidates are evaluated independently: a task that vanished or cannot be read is
     skipped here instead of aborting the whole pass, so one bad task file cannot stall
     every other task waiting in the processing folder.
+
+    Tasks that can never be processed (malformed task file, rule no longer configured) are
+    appended to ``quarantine`` as ``(folder, reason)``; the caller moves them to the error
+    folder. This function itself does not touch the file system.
     """
     is_offpeak = helper._is_offpeak(config.mercure.offpeak_start, config.mercure.offpeak_end, datetime.now().time())
     normal_task, urgent_task = None, None
@@ -286,14 +295,26 @@ def prioritize_tasks(sorted_tasks: list, counter: int) -> Optional[Path]:
         except FileNotFoundError:
             # Another processor claimed this task and moved task.json mid-scan; skip it.
             continue
+        except ValueError as e:
+            # Malformed JSON or a task file that does not match the schema (pydantic's
+            # ValidationError is a ValueError). Task files are written atomically into locked
+            # folders, so this will not fix itself: quarantine it instead of skipping it forever.
+            if quarantine is not None:
+                quarantine.append((task_folder, f"Unreadable task file: {e}"))
+            continue
         except Exception as e:
-            # Malformed, incompatible or unreadable task file. Report it by path (the task
-            # id is unknown) and move on rather than blocking the queue indefinitely.
+            # Unreadable for another reason (permissions, a failing mount): possibly transient,
+            # so skip it for this pass and try again on the next one.
             logger.error(f"Unable to read task file {taskfile_path}", None)  # handle_error
             logger.error(e)
             continue
-        applied_rule = config.mercure.rules.get(task_instance.info.get("applied_rule"))
+        rule_name = task_instance.info.get("applied_rule")
+        applied_rule = config.mercure.rules.get(rule_name)
         if applied_rule is None:
+            # The rule was renamed or deleted while the task was queued. The task stays invisible in
+            # the processing folder unless it is moved where the operator looks for stuck work.
+            if quarantine is not None:
+                quarantine.append((task_folder, f"Rule '{rule_name}' is not configured"))
             continue
         priority = applied_rule.get('priority')
         if priority == "urgent" and urgent_task is None:
@@ -306,6 +327,58 @@ def prioritize_tasks(sorted_tasks: list, counter: int) -> Optional[Path]:
     if (counter % 3) < 2:
         return urgent_task or normal_task
     return normal_task or urgent_task
+
+
+def _quarantine_reason(folder: Path) -> Optional[str]:
+    """Re-check under the claim why ``folder`` cannot be processed. None if it now can be."""
+    try:
+        task = Task.from_file(folder / mercure_names.TASKFILE)
+    except FileNotFoundError:
+        return None
+    except ValueError as e:
+        return f"Unreadable task file: {e}"
+    rule_name = task.info.get("applied_rule")
+    if rule_name not in config.mercure.rules:
+        return f"Rule '{rule_name}' is not configured"
+    return None
+
+
+def quarantine_task(folder: Path, reason: str) -> bool:
+    """Move a task that can never be processed to the error folder. True if it was moved.
+
+    The folder is claimed with ``.processing`` first, exactly like ``process_series()`` does, so
+    that a task another processor instance is working on is never moved, and the reason is
+    re-checked under the claim (the scan's view may be stale). The input files are backed up into
+    ``as_received/`` beforehand, which is what the web UI's restart needs once the task file or the
+    rule has been fixed.
+    """
+    claim = folder / mercure_names.PROCESSING
+    try:
+        claim.touch(exist_ok=False)
+    except (FileExistsError, FileNotFoundError):
+        return False  # claimed or removed by another processor in the meantime
+    except Exception:
+        logger.exception(f"Unable to claim {folder} for quarantine")
+        return False
+
+    moved = False
+    try:
+        current_reason = _quarantine_reason(folder)
+        if current_reason is None:
+            return False
+        backup_input_images(folder)
+        target = move_into_folder(folder, config.mercure.error_folder)
+        moved = True
+        (target / mercure_names.PROCESSING).unlink(missing_ok=True)
+        message = f"Moved task {folder.name} to the error folder: {current_reason}"
+        logger.error(message, None)  # handle_error (also reports the event to the bookkeeper)
+        return True
+    except Exception:
+        logger.exception(f"Unable to move {folder} to the error folder")
+        return moved
+    finally:
+        if not moved:
+            claim.unlink(missing_ok=True)
 
 
 async def run_processor() -> None:

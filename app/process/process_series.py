@@ -409,8 +409,10 @@ def backup_input_images(task_folder: Path) -> None:
     backup_folder = task_folder / "as_received"
     backup_folder.mkdir(exist_ok=True)
     for file in task_folder.glob("*"):
-        # A scratch file from an interrupted atomic write is not task input.
-        if file.is_file() and not is_write_temp_file(file.name):
+        # A scratch file from an interrupted atomic write is not task input. Ownership markers
+        # (.processing etc.) are not input either: the backup is what a UI restart copies back,
+        # and a restored .processing claim makes the restarted task invisible to every processor.
+        if file.is_file() and not is_write_temp_file(file.name) and file.name not in mercure_names.CLAIM_MARKERS:
             shutil.copy2(file, backup_folder)
     logger.info(f"Backed up input files for task folder {task_folder.name} to {backup_folder}")
 

@@ -120,10 +120,9 @@ class ClassBasedRQTask():
             dest_folder: Path = Path(destination) / job_id
             dest_folder.mkdir(exist_ok=True)
             logger.info(f"moving {path} to {dest_folder}")
-            lock = helper.FileLock(dest_folder / ".mercure-sending")
-            shutil.move(path, dest_folder)
-            (dest_folder / ".complete").touch()
-            lock.free()
+            with helper.FileLock(dest_folder / ".mercure-sending"):
+                shutil.move(path, dest_folder)
+                (dest_folder / ".complete").touch()
             return
 
         config.read_config()

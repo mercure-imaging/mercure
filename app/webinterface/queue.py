@@ -579,69 +579,80 @@ def restart_processing_task(task_id: str, source_folder: Path, is_error: bool = 
         return {"error": "Could not create processing folder", "error_code": RestartTaskErrors.TASK_NOT_READY}
 
     try:
-        try:
-            lock = FileLock(processing_folder / mercure_names.LOCK)
-        except:
-            logger.exception(f"Could not create lock file for processing folder {processing_folder}")
-            return {"error": "Could not create lock file for processing folder", "error_code": RestartTaskErrors.TASK_NOT_READY}
-
-        # Copy the as_received files to the input folder
-        for file_path in as_received_folder.glob("*"):
-            if file_path.is_file() and not is_write_temp_file(file_path.name):
-                shutil.copy2(file_path, processing_folder / file_path.name)
-
-        # Copy and update the task.json file
-        task = Task.from_file(task_file)
-        if not task.info.applied_rule:
-            logger.error(f"Task {task.id} does not have an applied rule")
-            return {"error": "Task does not have an applied rule", "error_code": RestartTaskErrors.NO_RULE_APPLIED}
-        # Clear the fail_stage
-        task.info.fail_stage = None
-        if task.info.applied_rule is None:
-            return {"error": "No rule provided"}
-        if task.info.applied_rule not in config.mercure.rules.keys():
-            return {"error": f"Rule '{task.info.applied_rule}' not found in {config.mercure.rules.keys()}"}
-        if config.mercure.rules[task.info.applied_rule].action not in ("both", "process"):
-            return {"error": "Invalid rule action: this rule currently does not perform processing."}
-        try:
-            task.process = generate_taskfile.add_processing(task.info.applied_rule) or (cast(EmptyDict, {}))
-            # task.dispatching = generate_taskfile.add_dispatching(task_id, uid, task.info.applied_rule, target) or cast(EmptyDict, {}),
-        except Exception as e:
-            logger.exception("Failed to generate task file")
-            return {"error": "Failed to generate task file"}
-
-        if task.process is None:
-            return {"error": f"Failed to generate task file: error in rule"}
-        # Write the updated task file
-
-        task.to_file(processing_folder / mercure_names.TASKFILE)
-        logger.info(task.json())
-
-        # Log the restart action
-        source_type = "error" if is_error else "success"
-        logger.info(f"Processing job {task_id} moved from {source_type} folder to processing folder")
-        monitor.send_task_event(
-            monitor.task_event.PROCESS_RESTART, task_id, 0, "", f"Processing job restarted from {source_type} folder"
-        )
-        try:
-            shutil.rmtree(source_folder)
-        except:
-            logger.exception("Failed to remove source folder")
-        lock.free()
-        return {
-            "success": True,
-            "message": f"Processing job {task_id} has been moved from {source_type} folder to processing folder"
-        }
+        lock = FileLock(processing_folder / mercure_names.LOCK)
     except:
-        logger.exception("Failed to restart processing job")
+        logger.exception(f"Could not create lock file for processing folder {processing_folder}")
+        shutil.rmtree(processing_folder, ignore_errors=True)
+        return {"error": "Could not create lock file for processing folder", "error_code": RestartTaskErrors.TASK_NOT_READY}
 
-        lock.free()
+    # The lock stays in place while the folder is prepared. Only a fully prepared folder is unlocked;
+    # on any failure the half-prepared folder is removed while still locked, so the processor never
+    # sees it.
+    with lock:
         try:
-            shutil.rmtree(processing_folder)
+            result = _prepare_restarted_processing_task(task_id, source_folder, is_error, task_file,
+                                                        as_received_folder, processing_folder)
         except:
-            logger.error(f"Failed to remove processing folder {processing_folder}")
+            logger.exception("Failed to restart processing job")
+            result = {"error": "Failed to restart task"}
+        if "error" in result:
+            shutil.rmtree(processing_folder, ignore_errors=True)
+            return result
 
-        return {"error": "Failed to restart task"}
+    try:
+        shutil.rmtree(source_folder)
+    except:
+        logger.exception("Failed to remove source folder")
+    return result
+
+
+def _prepare_restarted_processing_task(task_id: str, source_folder: Path, is_error: bool, task_file: Path,
+                                       as_received_folder: Path, processing_folder: Path) -> Dict:
+    # Copy the as_received files to the input folder
+    for file_path in as_received_folder.glob("*"):
+        # Skip ownership markers: backups made by earlier versions contain the processor's
+        # .processing claim, which would make the restarted task invisible to the processor.
+        if (
+            file_path.is_file()
+            and not is_write_temp_file(file_path.name)
+            and file_path.name not in mercure_names.CLAIM_MARKERS
+        ):
+            shutil.copy2(file_path, processing_folder / file_path.name)
+
+    # Copy and update the task.json file
+    task = Task.from_file(task_file)
+    if not task.info.applied_rule:
+        logger.error(f"Task {task.id} does not have an applied rule")
+        return {"error": "Task does not have an applied rule", "error_code": RestartTaskErrors.NO_RULE_APPLIED}
+    # Clear the fail_stage
+    task.info.fail_stage = None
+    if task.info.applied_rule not in config.mercure.rules.keys():
+        return {"error": f"Rule '{task.info.applied_rule}' not found in {config.mercure.rules.keys()}"}
+    if config.mercure.rules[task.info.applied_rule].action not in ("both", "process"):
+        return {"error": "Invalid rule action: this rule currently does not perform processing."}
+    try:
+        task.process = generate_taskfile.add_processing(task.info.applied_rule) or (cast(EmptyDict, {}))
+    except Exception:
+        logger.exception("Failed to generate task file")
+        return {"error": "Failed to generate task file"}
+
+    if task.process is None:
+        return {"error": "Failed to generate task file: error in rule"}
+
+    # Write the updated task file
+    task.to_file(processing_folder / mercure_names.TASKFILE)
+    logger.info(task.json())
+
+    # Log the restart action
+    source_type = "error" if is_error else "success"
+    logger.info(f"Processing job {task_id} moved from {source_type} folder to processing folder")
+    monitor.send_task_event(
+        monitor.task_event.PROCESS_RESTART, task_id, 0, "", f"Processing job restarted from {source_type} folder"
+    )
+    return {
+        "success": True,
+        "message": f"Processing job {task_id} has been moved from {source_type} folder to processing folder"
+    }
 
 
 def is_dispatch_failure(taskfile_folder: Path) -> bool:

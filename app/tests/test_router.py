@@ -267,13 +267,15 @@ def test_route_series_success(fs: FakeFilesystem, mercure_config, mocked, fake_p
     common.monitor.send_register_task.assert_any_call(task_id, series_uid)  # type: ignore
     router.route_series.assert_called_once_with(task_id, series_uid)  # type: ignore
     routing.route_series.push_series_serieslevel.assert_called_once_with(  # type: ignore
-        task_id, {"route_series": True}, [f"{series_uid}#bar"], series_uid, unittest.mock.ANY)
+        task_id, {"route_series": True}, [f"{series_uid}#bar"], series_uid, unittest.mock.ANY,
+        hand_offs=unittest.mock.ANY)
     routing.route_series.push_serieslevel_outgoing \
         .assert_called_once_with(task_id, {"route_series": True},   # type: ignore
                                  [f"{series_uid}#bar"],
                                  series_uid,
                                  unittest.mock.ANY,
-                                 {"test_target": ["route_series"]})
+                                 {"test_target": ["route_series"]},
+                                 hand_offs=unittest.mock.ANY)
 
     common.monitor.send_task_event.assert_has_calls(  # type: ignore
         [
@@ -331,11 +333,13 @@ def test_route_series_new_rule(fs: FakeFilesystem, mercure_config, mocked, fake_
     router.route_series.assert_called_once_with(task_id, series_uid)  # type: ignore
     routing.route_series.push_series_serieslevel \
         .assert_called_once_with(task_id, {"route_series_new_rule": True},  # type: ignore
-                                 [f"{series_uid}#bar"], series_uid, unittest.mock.ANY)
+                                 [f"{series_uid}#bar"], series_uid, unittest.mock.ANY,
+        hand_offs=unittest.mock.ANY)
     routing.route_series.push_serieslevel_outgoing \
         .assert_called_once_with(task_id, {"route_series_new_rule": True},   # type: ignore
                                  [f"{series_uid}#bar"], series_uid, unittest.mock.ANY,
-                                 {"test_target": ["route_series_new_rule"]})
+                                 {"test_target": ["route_series_new_rule"]},
+                                 hand_offs=unittest.mock.ANY)
 
     common.monitor.send_task_event.assert_has_calls(  # type: ignore
         [
@@ -375,14 +379,16 @@ def test_route_series_with_bad_tags(fs: FakeFilesystem, mercure_config, mocked, 
     common.monitor.send_register_task.assert_any_call(task_id, series_uid)  # type: ignore
     router.route_series.assert_called_once_with(task_id, series_uid)  # type: ignore
     routing.route_series.push_series_serieslevel.assert_called_once_with(  # type: ignore
-        task_id, {"route_series_bad_tag": True}, [f"{series_uid}#bar"], series_uid, parsed_tags)
+        task_id, {"route_series_bad_tag": True}, [f"{series_uid}#bar"], series_uid, parsed_tags,
+        hand_offs=unittest.mock.ANY)
     routing.route_series.push_serieslevel_outgoing \
         .assert_called_once_with(task_id,  # type: ignore
                                  {"route_series_bad_tag": True},
                                  [f"{series_uid}#bar"],
                                  series_uid,
                                  parsed_tags,
-                                 {"test_target": ["route_series_bad_tag"]}
+                                 {"test_target": ["route_series_bad_tag"]},
+                                 hand_offs=unittest.mock.ANY
                                  )
 
     out_path = next(Path("/var/outgoing").iterdir())

@@ -194,9 +194,9 @@ def create_and_route(fs, mocked, task_id, config, uid="TESTFAKEUID") -> Tuple[Li
 
     router.route_series.assert_called_once_with(task_id, uid)  # type: ignore
     routing.route_series.push_series_serieslevel.assert_called_once_with(  # type: ignore
-        task_id, {"catchall": True}, [f"{uid}#bar"], uid, unittest.mock.ANY)
+        task_id, {"catchall": True}, [f"{uid}#bar"], uid, unittest.mock.ANY, hand_offs=unittest.mock.ANY)
     routing.route_series.push_serieslevel_outgoing.assert_called_once_with(  # type: ignore
-        task_id, {"catchall": True}, [f"{uid}#bar"], uid, unittest.mock.ANY, {})
+        task_id, {"catchall": True}, [f"{uid}#bar"], uid, unittest.mock.ANY, {}, hand_offs=unittest.mock.ANY)
 
     assert ["task.json", f"{uid}#bar.dcm", f"{uid}#bar.tags"] == [
         k.name for k in Path("/var/processing").glob("**/*") if k.is_file()

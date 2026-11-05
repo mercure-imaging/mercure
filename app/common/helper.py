@@ -253,20 +253,29 @@ def drain_pending_tasks(loop: asyncio.AbstractEventLoop,
 
 
 class FileLock:
-    """Helper class that implements a file lock. The lock file will be removed also from the destructor so that
-    no spurious lock files remain if exceptions are raised."""
+    """A lock file that marks a folder as "being worked on".
+
+    The lock is released only by an explicit :meth:`free` (or by leaving a ``with`` block). There is
+    deliberately no destructor: a lock that disappears when the owning frame is garbage collected
+    unlocks half-written folders on any unexpected exception, which hands them to the next service.
+    Use it as a context manager. By default the lock is released when the block is left, also
+    on an exception. Pass ``keep_on_error=True`` for a lock that guards a folder being *filled*:
+    if the block raises, the lock stays so that a half-written folder is never handed over.
+    """
     lockCreated = False
 
-    def __init__(self, path_for_lockfile: Path):
+    def __init__(self, path_for_lockfile: Path, keep_on_error: bool = False):
         self.lockfile = path_for_lockfile
-        # TODO: Handle case if lock file cannot be created
+        self.keep_on_error = keep_on_error
         self.lockfile.touch(exist_ok=False)
         self.lockCreated = True
 
-    # Destructor to ensure that the lock file gets deleted
-    # if the calling function is left somewhere as result
-    # of an unhandled exception
-    def __del__(self) -> None:
+    def __enter__(self) -> "FileLock":
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        if exc_type is not None and self.keep_on_error:
+            return
         self.free()
 
     def free(self) -> None:

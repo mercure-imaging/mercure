@@ -102,9 +102,8 @@ def test_save_config_failure_leaves_previous_config_intact(fs, mocked, mercure_c
 def test_save_config_failure_does_not_leave_a_lock_file(fs, mocked, mercure_config):
     """Contract guard: a failed config save must not wedge the config writer.
 
-    This passes today, but only as a side effect of ``helper.FileLock.__del__`` releasing
-    the lock during garbage collection rather than from explicit cleanup in
-    ``save_config``. The atomic rewrite must not lose that property, otherwise every later
+    ``FileLock`` no longer releases locks from a destructor, so ``save_config`` has to release
+    it explicitly (it uses ``with lock:``) when the write fails. Otherwise every later
     ``save_config()`` raises "Configuration file locked" until an operator deletes
     ``mercure.lock`` by hand.
     """
