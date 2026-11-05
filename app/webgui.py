@@ -174,6 +174,9 @@ def startup(app: Starlette):
 async def shutdown() -> None:
     monitor.send_event(monitor.m_events.SHUTDOWN, monitor.severity.INFO, "")
     await delete_old_tests()
+    # Release the reporting queue and its connection pools within a deadline, so a bookkeeper that is
+    # not answering cannot hold the webinterface open past the supervisor's patience.
+    await monitor.shutdown(5.0)
 
 
 async def delete_old_tests() -> Response:

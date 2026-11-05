@@ -19,7 +19,3 @@ requires-python = ">=3.10,<3.13"
 # app/requirements.txt - the file that actually ships - untouched. CI stayed green on those PRs
 # because CI installs the requirements files, so the checks proved nothing. The mirror had also
 # drifted on its own (it claimed pytest-asyncio>=1.0.0 while dev-requirements.txt pinned 0.24.0).
-
-[tool.mypy]
-plugins = ["sqlmypy"]
-ignore_missing_imports = true

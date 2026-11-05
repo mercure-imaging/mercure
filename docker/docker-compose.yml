@@ -54,6 +54,7 @@ services:
       <<: *build
       dockerfile: docker/ui/Dockerfile
     restart: always
+    stop_grace_period: 2m  # the shutdown drain needs up to ~80 s; see common/helper.py
     ports:
       - "8000:8000"
     volumes:
@@ -108,6 +109,7 @@ services:
       <<: *build
       dockerfile: docker/cleaner/Dockerfile
     restart: always
+    stop_grace_period: 2m  # the shutdown drain needs up to ~80 s; see common/helper.py
     depends_on:
       bookkeeper:
         condition: service_healthy
@@ -124,6 +126,7 @@ services:
       <<: *build
       dockerfile: docker/dispatcher/Dockerfile
     restart: always
+    stop_grace_period: 2m  # the shutdown drain needs up to ~80 s; see common/helper.py
     depends_on:
       bookkeeper:
         condition: service_healthy
@@ -141,6 +144,7 @@ services:
       <<: *build
       dockerfile: docker/processor/Dockerfile
     restart: always
+    stop_grace_period: 2m  # the shutdown drain needs up to ~80 s; see common/helper.py
     depends_on:
       bookkeeper:
         condition: service_healthy
@@ -160,6 +164,7 @@ services:
       <<: *build
       dockerfile: docker/router/Dockerfile
     restart: always
+    stop_grace_period: 2m  # the shutdown drain needs up to ~80 s; see common/helper.py
     depends_on:
       bookkeeper:
         condition: service_healthy

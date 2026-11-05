@@ -420,8 +420,7 @@ def main(args=sys.argv[1:]) -> None:
         monitor.send_event(monitor.m_events.SHUTDOWN, monitor.severity.INFO)
     except Exception as e:
         monitor.send_event(monitor.m_events.SHUTDOWN, monitor.severity.ERROR, str(e))
-    finally:  # Finish all asyncio tasks that might be still pending
-        remaining_tasks = helper.asyncio.all_tasks(helper.loop)  # type: ignore[attr-defined]
-        if remaining_tasks:
-            helper.loop.run_until_complete(helper.asyncio.gather(*remaining_tasks))
+    finally:
+        # Bounded shutdown; see helper.drain_pending_tasks().
+        helper.drain_pending_tasks(helper.loop)
         logger.info("Going down now")

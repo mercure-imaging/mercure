@@ -7,11 +7,12 @@ Helper functions and definitions for monitoring mercure's operations via the boo
 # Standard python includes
 import asyncio
 import asyncio.exceptions
+import contextlib
 import datetime
 import os
 import time
 from json import JSONDecodeError
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 import aiohttp
 import daiquiri
@@ -26,6 +27,163 @@ api_key: Optional[str] = None
 sender_name = ""
 bookkeeper_address = ""
 loop: Optional[asyncio.AbstractEventLoop] = None
+
+# ---------------------------------------------------------------------------------------------
+# Reporting pipeline
+# ---------------------------------------------------------------------------------------------
+#
+# post() hands events to one bounded queue per process, drained by a single consumer task:
+#
+# * submitting is a put_nowait, so no service path ever waits for the bookkeeper;
+# * overflow is dropped and logged (rate-limited) - missing telemetry is survivable, a stalled study is not;
+# * delivery is serial, so events from one process arrive in the order they were produced (ordering
+#   across processes is not provided);
+# * reports use their own small connection pool with a configured deadline, so a backlog cannot starve
+#   the queue UI's reads (get()), which keep aiohttp's default timeouts.
+#
+# The pipeline is bound to the process's event loop and created on first use; shutdown() drains it
+# within a deadline and closes the pools.
+
+#: Overall deadline for one report, in seconds.
+DEFAULT_TIMEOUT = 15.0
+#: Events that may wait in the queue before new ones are dropped.
+DEFAULT_QUEUE_SIZE = 1000
+#: Connections per pool. Delivery is serial, so the reporting pool stays small.
+REPORTING_POOL_LIMIT = 2
+QUERY_POOL_LIMIT = 10
+#: Log one line per this many drops, so an outage does not flood the log.
+DROP_LOG_EVERY = 100
+#: Name of the consumer task, so the shutdown drain can tell it apart from application work.
+CONSUMER_TASK_NAME = "bookkeeper-reporting"
+
+
+class _Pipeline:
+    """The event queue, its consumer, and the connection pools."""
+
+    def __init__(self, loop: Optional[asyncio.AbstractEventLoop], queue_size: int) -> None:
+        self.loop = loop
+        self.queue: "asyncio.Queue[Tuple[str, Dict[str, Any]]]" = asyncio.Queue(maxsize=queue_size)
+        self.consumer: Optional["asyncio.Task[None]"] = None
+        self.sessions: Dict[bool, aiohttp.ClientSession] = {}
+        self.dropped = 0
+        self.closed = False
+
+    def submit(self, endpoint: str, kwargs: Dict[str, Any]) -> None:
+        """Queue one event. Never performs I/O and never blocks."""
+        if self.closed:
+            self._drop(f"Dropping {endpoint}: bookkeeper reporting has been shut down")
+            return
+        try:
+            self.queue.put_nowait((endpoint, kwargs))
+        except asyncio.QueueFull:
+            self._drop(f"Bookkeeper reporting backlog is full ({self.queue.maxsize} events); dropping {endpoint}. "
+                       "The bookkeeper is not keeping up or is unreachable.")
+            return
+        self._ensure_consumer()
+
+    def _drop(self, message: str) -> None:
+        self.dropped += 1
+        if self.dropped % DROP_LOG_EVERY == 1:
+            logger.error(f"{message} ({self.dropped} dropped so far)")
+
+    def _ensure_consumer(self) -> None:
+        if self.loop is not None and (self.consumer is None or self.consumer.done()):
+            self.consumer = self.loop.create_task(self._run(), name=CONSUMER_TASK_NAME)
+
+    async def _run(self) -> None:
+        while True:
+            endpoint, kwargs = await self.queue.get()
+            try:
+                await do_post(endpoint, kwargs, catch_errors=True, reporting=True)
+            except Exception as e:  # one bad event must not stop the ones queued behind it
+                logger.error(f"Failed to report {endpoint} to the bookkeeper: {e}")
+            finally:
+                self.queue.task_done()
+
+    def session(self, reporting: bool = False) -> aiohttp.ClientSession:
+        """The shared pool for reports (``reporting=True``) or for interactive requests."""
+        http = self.sessions.get(reporting)
+        if http is None or http.closed:
+            limit = REPORTING_POOL_LIMIT if reporting else QUERY_POOL_LIMIT
+            options: Dict[str, Any] = {"timeout": aiohttp.ClientTimeout(total=_timeout())} if reporting else {}
+            http = aiohttp.ClientSession(
+                headers={"Authorization": f"Token {api_key}"} if api_key else {},
+                connector=aiohttp.TCPConnector(limit=limit, limit_per_host=limit),
+                **options,
+            )
+            self.sessions[reporting] = http
+        return http
+
+    async def aclose(self, timeout: float) -> bool:
+        """Drain for up to ``timeout`` seconds, then stop the consumer and close the pools."""
+        self.closed = True  # nothing submitted from now on could be delivered
+        self._ensure_consumer()
+        try:
+            await asyncio.wait_for(self.queue.join(), timeout)
+            drained = True
+        except asyncio.TimeoutError:
+            drained = False
+            logger.error(f"Bookkeeper reporting did not drain within {timeout}s; "
+                         f"{self.queue.qsize()} queued event(s) are dropped")
+
+        if self.consumer is not None:
+            self.consumer.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await self.consumer
+        for http in self.sessions.values():
+            await http.close()
+        self.sessions.clear()
+        return drained
+
+
+_pipeline: Optional[_Pipeline] = None
+
+
+def _config_number(name: str, default: float) -> float:
+    """A positive numeric setting from the mercure config; unusable values fall back to ``default``."""
+    try:
+        from common import config as app_config  # imported here: common.config imports this module
+
+        value = getattr(app_config.mercure, name, None)
+        if value is None:
+            return float(default)
+        number = float(value)
+    except Exception as e:
+        logger.error(f"Cannot read {name} ({e}); using {default}")
+        return float(default)
+    if number <= 0:
+        logger.error(f"{name} must be greater than zero, got {value}; using {default}")
+        return float(default)
+    return number
+
+
+def _timeout() -> float:
+    return _config_number("bookkeeper_timeout", DEFAULT_TIMEOUT)
+
+
+def _get_pipeline() -> _Pipeline:
+    """This process's pipeline, bound to the running loop, or the one configure() captured."""
+    global _pipeline
+    try:
+        live_loop: Optional[asyncio.AbstractEventLoop] = asyncio.get_running_loop()
+    except RuntimeError:
+        live_loop = loop
+    if _pipeline is None:
+        _pipeline = _Pipeline(live_loop, int(_config_number("bookkeeper_queue_size", DEFAULT_QUEUE_SIZE)))
+    elif _pipeline.loop is None:
+        _pipeline.loop = live_loop
+    return _pipeline
+
+
+async def shutdown(timeout: float = 10.0) -> bool:
+    """Drain reporting within ``timeout``, then stop the consumer and close the pools.
+
+    Bounded, so a stopping service stays inside its supervisor's stop timeout. Events submitted
+    afterwards are dropped. Returns True when everything queued was delivered in time.
+    """
+    if _pipeline is None or _pipeline.closed:
+        return True
+    return await _get_pipeline().aclose(timeout)  # binds a pipeline created before the loop started
 
 
 class MonitorHTTPError(Exception):
@@ -50,77 +208,64 @@ def set_api_key() -> None:
             return
 
 
-async def do_post(endpoint, kwargs, catch_errors=False) -> None:
+async def do_post(endpoint, kwargs, catch_errors=False, reporting: bool = False) -> bool:
+    """Send one request to the bookkeeper. True only when it answered with 200.
+
+    ``reporting`` selects the reporting pool (used by the queue consumer); direct callers such as the
+    webinterface use the interactive pool.
+    """
     if api_key is None:
-        return
+        return False
     logger.debug(f"Posting to {endpoint}: {kwargs}")
     try:
-        async with aiohttp.ClientSession(headers={"Authorization": f"Token {api_key}"},
-                                         timeout=aiohttp.ClientTimeout(total=None, connect=120,
-                                                                       sock_connect=120, sock_read=120)
-                                         ) as session:
-            async with session.post(bookkeeper_address + "/" + endpoint, **kwargs) as resp:
-                logger.debug(f"Response from {endpoint}: {resp.status}")
-                if resp.status != 200:
-                    logger.warning(
-                        f"Failed POST request {kwargs} to bookkeeper endpoint {endpoint}: status: {resp.status}"
-                    )
+        async with _get_pipeline().session(reporting).post(bookkeeper_address + "/" + endpoint, **kwargs) as resp:
+            logger.debug(f"Response from {endpoint}: {resp.status}")
+            if resp.status != 200:
+                logger.warning(
+                    f"Failed POST request {kwargs} to bookkeeper endpoint {endpoint}: status: {resp.status}"
+                )
+                return False
+            return True
     except aiohttp.client.ClientError as e:
         logger.error(f"Failed POST request to {bookkeeper_address}/{endpoint}: {e}")
         if not catch_errors:
             raise
+        return False
     except asyncio.TimeoutError as e:
         logger.error(f"Failed POST request to {bookkeeper_address}/{endpoint} with timeout: {e}")
         if not catch_errors:
             raise
+        return False
 
 
 def post(endpoint: str, **kwargs) -> None:
-    if api_key is None:
-        return None
-
-    if not bookkeeper_address:
-        return None
-
-    # create_task requires a running event loop; during boot there might not be one running yet.
-    asyncio.ensure_future(do_post(endpoint, kwargs, True), loop=loop)
-
-
-async def async_post(endpoint: str, **kwargs):
-    if api_key is None:
-        return None
-
-    if not bookkeeper_address:
-        return None
-
-    return await do_post(
-        endpoint,
-        kwargs,
-        True,
-    )
+    """Queue an event for the bookkeeper. Never performs I/O and never blocks."""
+    if api_key is None or not bookkeeper_address:
+        return
+    _get_pipeline().submit(endpoint, kwargs)
 
 
 async def get(endpoint: str, payload: Any = {}) -> Any:
     if api_key is None:
         return
 
-    async with aiohttp.ClientSession(headers={"Authorization": f"Token {api_key}"}) as session:
-        async with session.get(bookkeeper_address + "/" + endpoint, params=payload) as resp:
-            if resp.status != 200:
-                logger.error(f"Failed GET request to bookkeeper endpoint {endpoint}: status: {resp.status}")
-                if resp.content_type == "application/json":
-                    try:
-                        err_json = await resp.json()
-                    except JSONDecodeError:
-                        raise MonitorHTTPError(resp.status, await resp.text())
-                else:
-                    raise MonitorHTTPError(resp.status, await resp.text())
+    # The interactive pool, with aiohttp's default timeouts: reads must not line up behind reports.
+    async with _get_pipeline().session().get(bookkeeper_address + "/" + endpoint, params=payload) as resp:
+        if resp.status != 200:
+            logger.error(f"Failed GET request to bookkeeper endpoint {endpoint}: status: {resp.status}")
+            if resp.content_type == "application/json":
                 try:
-                    raise MonitorHTTPError(resp.status, str(err_json["error"]))
-                except KeyError:
-                    raise MonitorHTTPError(resp.status, "Unknown error")
+                    err_json = await resp.json()
+                except JSONDecodeError:
+                    raise MonitorHTTPError(resp.status, await resp.text())
+            else:
+                raise MonitorHTTPError(resp.status, await resp.text())
+            try:
+                raise MonitorHTTPError(resp.status, str(err_json["error"]))
+            except KeyError:
+                raise MonitorHTTPError(resp.status, "Unknown error")
 
-            return await resp.json()
+        return await resp.json()
 
 
 def configure(module, instance, address) -> None:
@@ -225,12 +370,6 @@ def send_task_event(event: task_event, task_id: str, file_count: int, target: st
     logger.debug(f"Monitor (task-event): event={event} task_id={task_id} info={info}")
 
     post("task-event", data=task_event_payload(event, task_id, file_count, target, info))
-
-
-async def async_send_task_event(event: task_event, task_id: str, file_count: int, target: str, info: str):
-    logger.debug(f"Monitor (task-event): event={event} task_id={task_id} info={info}")
-
-    return await async_post("task-event", data=task_event_payload(event, task_id, file_count, target, info))
 
 
 def send_process_logs(task_id: str, module_name: str, logs: str) -> None:

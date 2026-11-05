@@ -331,6 +331,11 @@ class Config(BaseModel, Compat):
     influxdb_org: str
     influxdb_bucket: str
     bookkeeper: str
+    #: Overall deadline for one bookkeeper report (and for the queue UI's own reads), in seconds.
+    #: Without it a stalled request is covered by no timeout at all.
+    bookkeeper_timeout: float = 15.0
+    #: Events that may wait in the reporting queue before new ones are dropped and counted.
+    bookkeeper_queue_size: int = 1000
     offpeak_start: str
     offpeak_end: str
     targets: Dict[str, Target]

@@ -233,7 +233,7 @@ async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_p
         # nomad job dispatch -meta IMAGE_ID=alpine:3.11 -meta PATH=test  mercure-processor
         # nomad_connection.job.dispatch_job('mercure-processor', meta={"IMAGE_ID":"alpine:3.11", "PATH": "test"})
 
-        await monitor.async_send_task_event(
+        monitor.send_task_event(
             monitor.task_event.PROCESS_MODULE_BEGIN,
             task.id,
             file_count_begin,
@@ -367,7 +367,7 @@ async def docker_runtime(task: Task, folder: Path, file_count_begin: int, task_p
         except Exception as e:
             logger.exception("Unable to set permissions on output files, manually verify to avoid issues. " + str(e))
 
-        await monitor.async_send_task_event(
+        monitor.send_task_event(
             monitor.task_event.PROCESS_MODULE_COMPLETE,
             task.id,
             file_count_begin,
@@ -484,7 +484,7 @@ async def process_series(folder: Path) -> None:
             raise Exception("Unable to determine valid runtime for processing")
 
         if runtime == docker_runtime:  # docker runtime might run several processing steps, need to put this event here
-            await monitor.async_send_task_event(
+            monitor.send_task_event(
                 monitor.task_event.PROCESS_BEGIN,
                 task.id,
                 file_count_begin,

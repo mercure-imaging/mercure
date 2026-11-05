@@ -68,6 +68,8 @@ mercure_defaults = {
     "influxdb_token": "",
     "influxdb_bucket": "",
     "bookkeeper": "0.0.0.0:8080",
+    "bookkeeper_timeout": 15.0,
+    "bookkeeper_queue_size": 1000,
     "offpeak_start": "22:00",
     "offpeak_end": "06:00",
     "process_runner": "docker",
