@@ -267,7 +267,7 @@ def make_move_fail(mocked, destination, error: OSError = None) -> None:
     implementation detail - the contract being tested is what happens when the hand-off *fails*.
     """
     def fail() -> OSError:
-        # A fresh exception per call: re-using one instance keeps its traceback alive, and a
+        # A fresh exception per call: reusing one instance keeps its traceback alive, and a
         # traceback keeps every frame it walked - including the FileLock objects living in them -
         # alive, which hides exactly the lock-release-on-unwinding behaviour under test.
         return error if error is not None else OSError(5, "Input/output error", str(destination))
