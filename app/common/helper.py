@@ -233,9 +233,14 @@ def drain_pending_tasks(loop: asyncio.AbstractEventLoop,
     if loop.is_running():
         raise RuntimeError("drain_pending_tasks() must be called after the event loop has stopped")
 
+    # Snapshot the outstanding work *before* the drain starts. Collecting it from inside _drain() also
+    # picks up the drain's own wrapper: on Python < 3.12, asyncio.wait_for() runs _drain() in a separate
+    # task, so current_task() is not the task run_until_complete() is waiting on. The drain then waited
+    # for itself, timed out and cancelled itself (CancelledError).
+    remaining = {task for task in asyncio.all_tasks(loop)
+                 if not task.done() and task.get_name() != monitor.CONSUMER_TASK_NAME}
+
     async def _drain() -> None:
-        remaining = {task for task in asyncio.all_tasks()
-                     if task is not asyncio.current_task() and task.get_name() != monitor.CONSUMER_TASK_NAME}
         if remaining:
             _, pending = await asyncio.wait(remaining, timeout=task_timeout)
             if pending:
