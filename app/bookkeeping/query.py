@@ -17,6 +17,7 @@ import pydicom
 import sqlalchemy
 from bookkeeping.helper import CustomJSONResponse, json
 from common import config
+from common.constants import mercure_options
 from decoRouter import Router as decoRouter
 from pydicom.datadict import keyword_for_tag
 from sqlalchemy import select
@@ -206,15 +207,37 @@ async def find_task(request) -> JSONResponse:
     search_term = request.query_params.get("search[value]", "")  # Global search value
     study_filter = request.query_params.get("study_filter", "false")
 
+    # A series keeps its FIRST-seen tags in dicom_series (register_series()
+    # ignores the unique violation on a re-send), so the tags of that row must
+    # not be used for search or display as soon as a per-send value exists.
+    # The value a job was actually dispatched with is snapshotted in
+    # data->'info', but not where it looks from the Archive:
+    #   - a study-level job is listed itself and carries its own info;
+    #   - a series-level job is listed as the router's parent task row, which
+    #     never gets info - the snapshot is on the child tasks it hands off to.
+    # All children of one parent come from the same send, so MAX() simply
+    # picks that send's value. dicom_series is the last-resort fallback for
+    # tasks with neither (registered but never updated, or the "MISSING"
+    # placeholder).
+    def task_tag_or_series(json_key: str, series_column: str) -> str:
+        own = f"NULLIF(NULLIF(parent_tasks.data->'info'->>'{json_key}', ''), 'MISSING')"
+        child = f"MAX(NULLIF(NULLIF(child_tasks.data->'info'->>'{json_key}', ''), 'MISSING'))"
+        return f"COALESCE({own}, {child}, dicom_series.{series_column})"
+
+    acc_sql = task_tag_or_series("acc", "tag_accessionnumber")
+    mrn_sql = task_tag_or_series("mrn", "tag_patientid")
+    name_sql = task_tag_or_series("patient_name", "tag_patientname")
+
     # Extract ordering information
     order_column_index = request.query_params.get("order[0][column]", "4")  # Default to time column (index 4)
     order_direction_raw = request.query_params.get("order[0][dir]", "desc")  # Default to descending
     order_direction = "ASC" if order_direction_raw.upper() == "ASC" else "DESC"
 
-    # Map datatable column index to database column
+    # Map datatable column index to database column ("acc"/"mrn" are the
+    # snapshot-aware output aliases of the main query below)
     column_mapping = {
-        "0": "tag_accessionnumber",  # ACC
-        "1": "tag_patientid",        # MRN
+        "0": "acc",                  # ACC
+        "1": "mrn",                  # MRN
         "2": "parent_tasks.data->'info'->>'uid_type'",  # Scope
         "3": "7",    # Rule
         "4": "parent_tasks.time"     # Default fallback
@@ -224,9 +247,9 @@ async def find_task(request) -> JSONResponse:
     order_sql = order_column + " " + order_direction + ", parent_tasks.id " + order_direction
 
     having_term = (f"""HAVING (
-                    (tag_accessionnumber ilike :search_term || '%') 
-                    or (tag_patientid ilike :search_term || '%')
-                    or (tag_patientname ilike '%' || :search_term || '%')
+                    ({acc_sql} ilike :search_term || '%') 
+                    or ({mrn_sql} ilike :search_term || '%')
+                    or ({name_sql} ilike '%' || :search_term || '%')
                     or bool_or(child_tasks.data->'info'->>'applied_rule'::text ilike '%' || :search_term || '%') 
                     or bool_or(
                         array(
@@ -246,14 +269,16 @@ async def find_task(request) -> JSONResponse:
     count_query_string = f"""
     with base as (
        SELECT
-        parent_tasks.id AS task_id,
-        tag_accessionnumber, tag_patientid, tag_patientname
+        parent_tasks.id AS task_id
        FROM
         tasks as parent_tasks
         LEFT JOIN dicom_series ON dicom_series.series_uid = parent_tasks.series_uid
         LEFT JOIN tasks as child_tasks ON (child_tasks.parent_id = parent_tasks.id)
        WHERE parent_tasks.parent_id is null {study_filter_term}
-       GROUP BY 1,2,3,4
+       -- the dicom_series tag columns are per-series constants, so grouping on
+       -- them costs nothing (PG cannot derive them from a LEFT JOINed unique key)
+       GROUP BY parent_tasks.id, dicom_series.tag_accessionnumber,
+                dicom_series.tag_patientid, dicom_series.tag_patientname
        {having_term} 
     )
     SELECT 
@@ -264,13 +289,17 @@ async def find_task(request) -> JSONResponse:
     # Main data query with pagination
     query_string = f"""
     SELECT
-        tag_accessionnumber AS acc,
-        tag_patientid AS mrn,
-        tag_patientname AS name,
+        {acc_sql} AS acc,
+        {mrn_sql} AS mrn,
+        {name_sql} AS name,
         parent_tasks.id AS task_id,
         parent_tasks.data->'info'->>'uid_type' AS scope,
         parent_tasks.time::timestamp AS time,
-        STRING_AGG(case when coalesce(child_tasks.data->'info'->>'applied_rule','') != '' then  array[child_tasks.data->'info'->>'applied_rule']::text else array(select jsonb_object_keys((child_tasks.data->'info'->'triggered_rules')))::text end, ', ' ORDER BY child_tasks.id)
+        STRING_AGG(case when coalesce(child_tasks.data->'info'->>'applied_rule','') != '' 
+                        then array[child_tasks.data->'info'->>'applied_rule']::text 
+                        else array(select jsonb_object_keys((child_tasks.data->'info'->'triggered_rules')))::text 
+                    end, 
+                    ', ' ORDER BY child_tasks.id)
         AS rule
     FROM 
         tasks as parent_tasks
@@ -278,7 +307,8 @@ async def find_task(request) -> JSONResponse:
         LEFT JOIN tasks as child_tasks ON (child_tasks.parent_id = parent_tasks.id)
     WHERE parent_tasks.parent_id is null {study_filter_term}
     GROUP BY 
-        tag_accessionnumber, tag_patientid, tag_patientname, parent_tasks.id, scope, parent_tasks.time
+        parent_tasks.id, dicom_series.tag_accessionnumber,
+        dicom_series.tag_patientid, dicom_series.tag_patientname
     {having_term}
     ORDER BY 
         {order_sql}
@@ -456,13 +486,50 @@ async def get_task_info(request) -> JSONResponse:
             for x in result_dict.keys() if x not in ('id', 'time', 'data')
         }
         try:
-            if 'data' in result_dict and isinstance(result_dict['data'], str):
-                data = json.loads(result_dict.get('data', '{}'))
-                if data is not None:
-                    tags = dict(data).get("tags", None)
-                    if tags is not None:
-                        ds = pydicom.Dataset.from_json(tags)
-                        response["sample_tags_received"] = dicom_to_readable_json(ds)
+            def snapshot_updates(data_obj) -> dict:
+                """Tag values this job was dispatched with, from a task snapshot.
+
+                dicom_series only ever holds the first-seen tags of the series,
+                so a corrected Accession Number is only visible here.
+                """
+                updates = {}
+                info = data_obj.get("info") if isinstance(data_obj, dict) else None
+                if isinstance(info, dict):
+                    for info_key, info_name in (
+                        ("acc", "AccessionNumber"),
+                        ("mrn", "PatientID"),
+                        ("patient_name", "PatientName"),
+                    ):
+                        value = info.get(info_key)
+                        if value and value != mercure_options.MISSING:
+                            updates[info_name] = value
+                return updates
+
+            raw_data = result_dict.get("data")
+            if isinstance(raw_data, str):
+                raw_data = json.loads(raw_data)
+            updates = snapshot_updates(raw_data if isinstance(raw_data, dict) else {})
+            if len(updates) < 3:
+                # Series-level jobs: the listed row is the router's parent task,
+                # which never carries info; the send's snapshot is on its
+                # children (same assumption as find_task: one send per parent).
+                child_rows = await db.database.fetch_all(
+                    select(db.tasks_table.c.data).where(db.tasks_table.c.parent_id == task_id)
+                )
+                for child_row in child_rows:
+                    child_data = child_row["data"]
+                    if isinstance(child_data, str):
+                        child_data = json.loads(child_data)
+                    for name, value in snapshot_updates(
+                        child_data if isinstance(child_data, dict) else {}
+                    ).items():
+                        updates.setdefault(name, value)
+            response["information"].update(updates)
+            if isinstance(raw_data, dict):
+                tags = raw_data.get("tags", None)
+                if tags is not None:
+                    ds = pydicom.Dataset.from_json(tags)
+                    response["sample_tags_received"] = dicom_to_readable_json(ds)
         except:
             logger.exception("Error parsing data")
 

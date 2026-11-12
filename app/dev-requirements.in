@@ -9,3 +9,5 @@ pytest-asyncio
 # (app/tests/integration stays serial: it shares one Redis with fixed queue names)
 pytest-xdist
 requests-toolbelt
+# embedded real PostgreSQL for tests that need Postgres-only SQL (bookkeeper find_task)
+pg0-embedded
