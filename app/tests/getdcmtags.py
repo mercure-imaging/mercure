@@ -7,6 +7,7 @@ from typing import List, Optional, Tuple
 
 import pydicom
 import requests
+from common.json_io import write_json_atomic
 
 VERSION = "1.0"
 
@@ -112,8 +113,8 @@ def write_tags_file(dcm_file, original_file, dataset, main_tags, additional_tags
     tags_data["Filename"] = str(original_file)
 
     try:
-        with tags_file.open('w') as f:
-            json.dump(tags_data, f, indent=2)
+        # Publish atomically, like the C++ receiver does (getdcmtags/atomic_file.h)
+        write_json_atomic(tags_file, tags_data, indent=2, fsync=False)
         return True
     except IOError as e:
         print(f"ERROR: Unable to write tag file {tags_file}: {e}")

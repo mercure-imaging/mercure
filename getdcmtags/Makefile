@@ -2,7 +2,7 @@ DCMTK_REF := 969c4b6
 IMAGE     := mercure-getdcmtags-build
 BINDIR    := ../app/bin
 DCMTKDIR  := $(BINDIR)/dcmtk
-SOURCES   := Dockerfile CMakeLists.txt main.cpp tags_list.h test.py
+SOURCES   := Dockerfile CMakeLists.txt main.cpp tags_list.h atomic_file.h test_atomic_file.cpp test.py
 
 DCMTK_APPS := storescp storescu echoscu dcmsend
 BINARIES   := $(BINDIR)/getdcmtags $(addprefix $(DCMTKDIR)/,$(DCMTK_APPS) dicom.dic)

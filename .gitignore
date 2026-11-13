@@ -10,6 +10,10 @@ __pycache__/
 .Python
 env/
 build/
+build-debug/
+build-asan/
+getdcmtags/.scratch/
+
 develop-eggs/
 dist/
 downloads/

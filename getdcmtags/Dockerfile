@@ -74,7 +74,7 @@ RUN mkdir -p /build \
 FROM dcmtk-builder AS getdcmtags-builder
 
 WORKDIR /app
-COPY CMakeLists.txt main.cpp tags_list.h ./
+COPY CMakeLists.txt main.cpp tags_list.h atomic_file.h test_atomic_file.cpp ./
 RUN mkdir -p /app/build && cmake -S /app -B /app/build \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_PREFIX_PATH=/deps/dcmtk-install \
@@ -87,7 +87,8 @@ RUN mkdir -p /app/build && cmake -S /app -B /app/build \
 COPY test.py test_dcm ./
 # Create bin/dcmtk/ layout so the compiled-in default dict path resolves from CWD
 RUN mkdir -p bin && ln -s /build bin/dcmtk
-CMD ["sh", "-c", "python3 test.py /app/build/getdcmtags /build && echo '=== All checks passed ==='"]
+# test_atomic_file needs no DICOM data, only the CWD must be writable for its temp dirs
+CMD ["sh", "-c", "/app/build/test_atomic_file && python3 test.py /app/build/getdcmtags /build && echo '=== All checks passed ==='"]
 
 # ── Alternate debug build: glibc, for Valgrind ──────────────────────────────
 # Debug builds use glibc so Valgrind can track allocations inside DCMTK/oficonv:
@@ -131,7 +132,7 @@ RUN cmake -S /deps/dcmtk-src -B /deps/dcmtk-build \
     && rm -rf /deps/dcmtk-build /deps/dcmtk-src
 
 WORKDIR /app
-COPY CMakeLists.txt main.cpp tags_list.h ./
+COPY CMakeLists.txt main.cpp tags_list.h atomic_file.h test_atomic_file.cpp ./
 RUN cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug \
     -DCMAKE_PREFIX_PATH=/deps/dcmtk-install \
     -DCMAKE_EXE_LINKER_FLAGS="-L/deps/dcmtk-install/lib" \
@@ -182,7 +183,7 @@ RUN cmake -S /deps/dcmtk-src -B /deps/dcmtk-build \
     && rm -rf /deps/dcmtk-build /deps/dcmtk-src
 
 WORKDIR /app
-COPY CMakeLists.txt main.cpp tags_list.h ./
+COPY CMakeLists.txt main.cpp tags_list.h atomic_file.h test_atomic_file.cpp ./
 RUN cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug \
     -DCMAKE_PREFIX_PATH=/deps/dcmtk-install \
     -DCMAKE_CXX_FLAGS="-O1 -g -fno-omit-frame-pointer -fsanitize=${SANITIZE}" \
@@ -201,7 +202,8 @@ RUN apk add --no-cache python3
 
 WORKDIR /app
 COPY --from=getdcmtags-builder /build/getdcmtags bin/getdcmtags
+COPY --from=getdcmtags-builder /app/build/test_atomic_file bin/test_atomic_file
 COPY --from=getdcmtags-builder /build/storescp /build/storescu /build/echoscu /build/dcmsend /build/dicom.dic bin/dcmtk/
 COPY test.py test_dcm ./
 
-CMD ["sh", "-c", "python3 test.py bin/getdcmtags bin/dcmtk && echo '=== Standalone test passed ==='"]
+CMD ["sh", "-c", "./bin/test_atomic_file && python3 test.py bin/getdcmtags bin/dcmtk && echo '=== Standalone test passed ==='"]

@@ -26,9 +26,10 @@
 #include "dcmtk/dcmdata/dcspchrs.h"
 #include "dcmtk/dcmdata/dctypes.h"
 
+#include "atomic_file.h"
 #include "tags_list.h"
 
-#define VERSION "getdcmtags Version 0.77"
+#define VERSION "getdcmtags Version 0.78"
 
 
 struct Config {
@@ -199,7 +200,7 @@ void writeErrorInformation(OFString dcmFile, OFString errorString)
 }
 
 
-static void insertTag(FILE* fp, const char* name, const OFString& value, const OFString& dcmFile, const DicomResult& result, DcmSpecificCharacterSet& charsetConverter)
+static void insertTag(std::ostream& out, const char* name, const OFString& value, const OFString& dcmFile, const DicomResult& result, DcmSpecificCharacterSet& charsetConverter)
 {
     OFString converted;
     if (result.conversionNeeded)
@@ -215,7 +216,7 @@ static void insertTag(FILE* fp, const char* name, const OFString& value, const O
     {
         converted = value;
     }
-    fprintf(fp, "\"%s\": \"%s\",\n", name, escapeJSONValue(converted).c_str());
+    out << "\"" << name << "\": \"" << escapeJSONValue(converted) << "\",\n";
 }
 
 
@@ -321,68 +322,69 @@ bool readExtraTags(DcmDataset* dataset, OFString path_info, DicomResult& result)
 }
 
 
-void writeTagsList(std::vector<std::pair<DcmTagKey, OFString>>& tags, FILE* fp, const OFString& dcmFile, const DicomResult& result, DcmSpecificCharacterSet& charsetConverter) {
+void writeTagsList(std::vector<std::pair<DcmTagKey, OFString>>& tags, std::ostream& out, const OFString& dcmFile, const DicomResult& result, DcmSpecificCharacterSet& charsetConverter) {
 
     const DcmDataDictionary &globalDataDict = dcmDataDict.rdlock();
     for (const auto& pair : tags)
     {
         const DcmDictEntry *dicent = globalDataDict.findEntry(pair.first, NULL);
         if (dicent == NULL) {
-            insertTag(fp, pair.first.toString().c_str(), pair.second, dcmFile, result, charsetConverter);
+            insertTag(out, pair.first.toString().c_str(), pair.second, dcmFile, result, charsetConverter);
         } else {
-            insertTag(fp, dicent->getTagName(), pair.second, dcmFile, result, charsetConverter);
+            insertTag(out, dicent->getTagName(), pair.second, dcmFile, result, charsetConverter);
         }
     }
     dcmDataDict.rdunlock();
 }
 
 
-bool writeForceTagsList(const std::vector<std::pair<OFString, OFString>>& tags, FILE* fp) {
+bool writeForceTagsList(const std::vector<std::pair<OFString, OFString>>& tags, std::ostream& out) {
     for (const auto& pair : tags)
     {
-        fprintf(fp, "\"%s\": \"%s\",\n", escapeJSONValue(pair.first).c_str(), escapeJSONValue(pair.second).c_str());
+        out << "\"" << escapeJSONValue(pair.first) << "\": \"" << escapeJSONValue(pair.second) << "\",\n";
     }
     return true;
 }
 
 
+// Publishes the tags file for one DICOM image. The router reads "*.tags" as soon as the series
+// folder looks quiescent, so the payload is built in memory and published under its final name in
+// one rename() (see atomic_file.h): the name the router parses appears complete or not at all.
 bool writeTagsFile(OFString dcmFile, OFString originalFile, const Config& cfg, DicomResult& result, DcmSpecificCharacterSet& charsetConverter)
 {
-    OFString filename = dcmFile + ".tags";
-    FILE *fp = fopen(filename.c_str(), "w+");
+    // Nothing touches the filesystem before the payload is complete: a charset conversion that
+    // throws halfway leaves no file behind at all.
+    std::ostringstream out;
+    try {
+        out << "{\n";
+        insertTag(out, "SpecificCharacterSet", result.specificCharacterSet, dcmFile, result, charsetConverter);
+        insertTag(out, "SeriesInstanceUID", result.seriesInstanceUID, dcmFile, result, charsetConverter);
+        insertTag(out, "SOPInstanceUID", result.sopInstanceUID, dcmFile, result, charsetConverter);
 
-    if (fp == nullptr)
+        insertTag(out, "SenderAddress", cfg.senderAddress, dcmFile, result, charsetConverter);
+        insertTag(out, "SenderAET", cfg.senderAET, dcmFile, result, charsetConverter);
+        insertTag(out, "ReceiverAET", cfg.receiverAET, dcmFile, result, charsetConverter);
+
+        writeTagsList(result.mainTags, out, dcmFile, result, charsetConverter);
+        writeTagsList(result.additionalTags, out, dcmFile, result, charsetConverter);
+
+        writeForceTagsList(cfg.forceTags, out);
+
+        out << "\"Filename\": \"" << escapeJSONValue(originalFile) << "\"\n";
+        out << "}\n";
+    } catch (const std::runtime_error&) {
+        return false;
+    }
+
+    OFString filename = dcmFile + ".tags";
+    if (!publishFile(filename.c_str(), out.str()))
     {
         std::cout << "ERROR: Unable to write tag file " << filename << std::endl;
         return false;
     }
-
-    try {
-        fprintf(fp, "{\n");
-        insertTag(fp, "SpecificCharacterSet", result.specificCharacterSet, dcmFile, result, charsetConverter);
-        insertTag(fp, "SeriesInstanceUID", result.seriesInstanceUID, dcmFile, result, charsetConverter);
-        insertTag(fp, "SOPInstanceUID", result.sopInstanceUID, dcmFile, result, charsetConverter);
-
-        insertTag(fp, "SenderAddress", cfg.senderAddress, dcmFile, result, charsetConverter);
-        insertTag(fp, "SenderAET", cfg.senderAET, dcmFile, result, charsetConverter);
-        insertTag(fp, "ReceiverAET", cfg.receiverAET, dcmFile, result, charsetConverter);
-
-        writeTagsList(result.mainTags, fp, dcmFile, result, charsetConverter);
-        writeTagsList(result.additionalTags, fp, dcmFile, result, charsetConverter);
-
-        writeForceTagsList(cfg.forceTags, fp);
-
-        fprintf(fp, "\"Filename\": \"%s\"\n", escapeJSONValue(originalFile).c_str());
-        fprintf(fp, "}\n");
-
-        fclose(fp);
-        return true;
-    } catch (const std::runtime_error&) {
-        fclose(fp);
-        remove(filename.c_str());
-        return false;
-    }
+    return true;
 }
+
 
 bool createSeriesFolder(const OFString& path, const OFString& seriesUID) {
     OFString effectivePath = path.empty() ? OFString("./") : path;

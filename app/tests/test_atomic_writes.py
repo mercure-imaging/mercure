@@ -12,13 +12,16 @@ These tests pin the required contract: a reader must only ever observe the compl
 previous file or the complete new one, and a failed write must not damage surrounding
 state (the previous content, and the config lock file).
 """
+import json
 import os
 import uuid
 from pathlib import Path
 
 import pytest
 from common import config
+from common import monitor
 from common.constants import mercure_names
+from common.json_io import TMP_SUFFIX
 from common.types import Task, TaskInfo
 from docker.models.containers import ContainerCollection
 from docker.models.images import ImageCollection
@@ -218,3 +221,83 @@ def test_task_file_rewrite_preserves_existing_mode(fs, mocked, mercure_config):
     task.to_file(taskfile)
 
     assert oct(taskfile.stat().st_mode & 0o777) == "0o666"
+
+
+# ── the receiver's side of the hand-over ────────────────────────────────────
+# getdcmtags (C++, see getdcmtags/atomic_file.h) drops a *.dcm and a *.tags into a series folder
+# in the incoming tree and the router starts reading that folder as soon as it looks quiescent.
+# tests/getdcmtags.py is the Python stand-in the suite uses for that receiver, so it has to
+# publish the same way the binary does.
+
+
+def test_receiver_publishes_the_tags_file_atomically(fs, mocked, mercure_config):
+    """A tags write that dies halfway must leave no *.tags at all, not a truncated one.
+
+    The router parses the tags file of the first slice to decide where the series goes; a partial
+    file there means routing on a half-read tag list. Same contract as the task files above, on
+    the file the receiver hands over.
+    """
+    mercure_config({"process_runner": "docker", **config_partial})
+    from tests.getdcmtags import write_tags_file
+
+    series_dir = Path("/var/incoming/1.2.3.4")
+    series_dir.mkdir(parents=True)
+    dcm_file = series_dir / "1.2.3.4#img_001.dcm"
+    dcm_file.write_bytes(b"\x00" * 128 + b"DICM")
+    tags_file = series_dir / "1.2.3.4#img_001.tags"
+
+    mocked.patch("json.dump", new=crashy_json_dump)
+    with pytest.raises(RuntimeError):
+        write_tags_file(dcm_file, "img_001.dcm", {}, [], [], "10.0.0.1", "SENDER", "RECEIVER")
+
+    assert not tags_file.exists(), "a truncated tags file was published under the name the router reads"
+    assert [p.name for p in series_dir.iterdir()] == [dcm_file.name], "scratch file left behind"
+
+
+def test_receiver_publishes_a_readable_tags_file(fs, mocked, mercure_config):
+    """A published tags file is complete and readable by the processing container uid."""
+    mercure_config({"process_runner": "docker", **config_partial})
+    from tests.getdcmtags import write_tags_file
+
+    series_dir = Path("/var/incoming/1.2.3.4")
+    series_dir.mkdir(parents=True)
+    dcm_file = series_dir / "1.2.3.4#img_001.dcm"
+    dcm_file.write_bytes(b"\x00" * 128 + b"DICM")
+    tags_file = series_dir / "1.2.3.4#img_001.tags"
+
+    dataset = {"SeriesInstanceUID": "1.2.3.4", "Modality": "MR"}
+    assert write_tags_file(dcm_file, "img_001.dcm", dataset, [], [], "10.0.0.1", "SENDER", "RECEIVER")
+    published = json.loads(tags_file.read_text())
+    assert published["SeriesInstanceUID"] == "1.2.3.4"
+    assert published["Filename"] == "img_001.dcm"
+    assert oct(tags_file.stat().st_mode & 0o777) == "0o644"
+    assert [p.name for p in series_dir.iterdir()] == sorted([dcm_file.name, tags_file.name])
+
+
+def test_router_ignores_a_scratch_file_left_behind_by_the_receiver(fs, mocked, mercure_config):
+    """An interrupted receiver must not be able to hand the router a file it would parse.
+
+    The receiver's scratch name is hidden and carries the shared ``.json.tmp`` suffix, so it is
+    neither a tags file nor a DICOM file. Pinned here because a router that globbed a series
+    folder with a looser pattern would silently start routing on truncated tags.
+    """
+    from routing import router
+
+    from .test_router import create_series, rules
+
+    config = mercure_config(rules)
+    task_id, series_uid = create_series(mocked, fs, config, {"SeriesDescription": "foo"})
+
+    series_dir = Path(config.incoming_folder) / series_uid
+    stem = next(p.name[: -len(mercure_names.TAGS)] for p in series_dir.glob("*" + mercure_names.TAGS))
+    stray = series_dir / f".{stem}-7c1a0f{TMP_SUFFIX}"
+    stray.write_text('{"SeriesInstanceUID": "1.2.3", "PatientNa')
+
+    monitor.configure("router", "test", config.bookkeeper)
+    router.run_router()
+
+    delivered = sorted(p.name for p in Path(config.outgoing_folder, task_id).glob("*") if p.is_file())
+    assert delivered == sorted(["task.json", f"{stem}.dcm", f"{stem}.tags"]), (
+        "the series was not handed over exactly once with its real tags file"
+    )
+    assert not series_dir.exists(), "the incoming series folder was not cleaned up"
