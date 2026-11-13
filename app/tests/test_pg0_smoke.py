@@ -85,7 +85,7 @@ async def test_ilike_string_agg_bool_or(db_conn):
         "FROM smoke_c WHERE id ILIKE :p || '%'",
         {"p": "a"},
     )
-    assert rows[0]["ids"] == "hello, goodbye"
+    assert rows[0]["ids"] == "Abc, abc"
     assert rows[0]["any_flag"] is True
 
 
