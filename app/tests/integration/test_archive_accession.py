@@ -10,12 +10,11 @@ AccessionNumber B. Both sends must be dispatched, and the Archive tab
 actually sent with.
 
 Unlike test_archive_accession_search.py, nothing here is seeded: real receiver,
-real router, real dispatcher, real bookkeeper over a real PostgreSQL
-(pg0-embedded; the SQLite default cannot run find_task()'s Postgres SQL).
+real router, real dispatcher, real bookkeeper over a real PostgreSQL (the shared
+bookkeeper_database fixture; SQLite cannot run find_task()'s Postgres SQL).
 """
 
 import tempfile
-import uuid
 from pathlib import Path
 
 import pydicom
@@ -33,22 +32,6 @@ ACC_B = "ACCB99999"
 AUTH = {"Authorization": "Token test"}
 
 pytestmark = pytest.mark.skipif("os.getenv('TEST_FAST', False)")
-
-
-@pytest.fixture(scope="module")
-def pg_uri():
-    """One embedded PostgreSQL for the module; the bookkeeper runs against it."""
-    from pg0 import Pg0
-
-    pg = Pg0(name=f"mercure-integration-{uuid.uuid4().hex[:8]}")
-    try:
-        info = pg.start()
-    except Exception as exc:  # infra problem, not a product bug: skip, don't fail red
-        pytest.skip(f"pg0 could not be started in this environment: {exc}")
-    try:
-        yield info.uri
-    finally:
-        pg.drop()
 
 
 def find_task(bookkeeper_port: int, search: str):
@@ -98,7 +81,7 @@ def dump_bookkeeper_state(pg_uri, *queries, path=None):
 
 
 def test_corrected_accession_findable_in_archive(mercure, mercure_config, mercure_base,
-                                                 receiver_port, bookkeeper_port, pg_uri):
+                                                 receiver_port, bookkeeper_port, bookkeeper_database):
     config = {
         "rules": {
             "to_archive": Rule(
@@ -107,11 +90,7 @@ def test_corrected_accession_findable_in_archive(mercure, mercure_config, mercur
         },
         "targets": {"archive": FolderTarget(folder=str(mercure_base / "target")).dict()},
     }
-    mercure_config(config)
-    # The bookkeeper fixture configures SQLite, which cannot run find_task()'s SQL.
-    (mercure_base / "config" / "bookkeeper.env").write_text(
-        f"PORT={bookkeeper_port}\nHOST=0.0.0.0\nDATABASE_URL={pg_uri}\nDEBUG=True\n"
-    )
+    mercure_config(config)  # bookkeeper.env now points at the pg0 database by default
     (mercure_base / "target").mkdir(parents=True, exist_ok=True)
     mercure(["bookkeeper", "receiver", "router:*", "dispatcher:*"])
 
@@ -172,7 +151,7 @@ def test_corrected_accession_findable_in_archive(mercure, mercure_config, mercur
         wait_for(archive_shows_b, timeout=30, msg=f"corrected accession {ACC_B} not findable in Archive")
         archive_shows_a()
     except Exception:
-        dump_bookkeeper_state(pg_uri,
+        dump_bookkeeper_state(bookkeeper_database,
                               find_task(bookkeeper_port, ""),
                               find_task(bookkeeper_port, ACC_A),
                               find_task(bookkeeper_port, ACC_B))

@@ -8,6 +8,7 @@ import sys
 import tempfile
 import threading
 import time
+import uuid
 import xmlrpc.client
 from pathlib import Path
 from typing import Any, Callable, Generator, Optional
@@ -322,8 +323,57 @@ def mercure(supervisord: Callable[[Any], SupervisorManager], python_bin, bookkee
     print("=============")
 
 
+@pytest.fixture(scope="session")
+def pg0_instance():
+    """One throwaway embedded PostgreSQL (pg0-embedded) for the whole integration session.
+
+    The bookkeeper's Archive queries are Postgres-first (ILIKE, STRING_AGG, JSONB), so
+    the tests must run against a real PostgreSQL, not the SQLite fallback. pg0 needs no
+    docker and starts in ~1s; tests are skipped (not failed) if it cannot run here.
+    """
+    try:
+        from pg0 import Pg0
+    except ImportError:
+        pytest.skip("pg0-embedded is not installed (see app/dev-requirements.txt)")
+    pg = Pg0(name=f"mercure-it-{uuid.uuid4().hex[:8]}")
+    try:
+        info = pg.start()
+    except Exception as exc:  # infra problem, not a product bug
+        pytest.skip(f"pg0 could not be started in this environment: {exc}")
+    try:
+        yield info
+    finally:
+        pg.drop()
+
+
 @pytest.fixture(scope="function")
-def mercure_config(mercure_base, receiver_port, bookkeeper_port):
+def bookkeeper_database(pg0_instance):
+    """A fresh empty database per test, inside the session-long pg0 instance.
+
+    Create-and-drop-database is milliseconds; restarting pg0 itself (~1s+) per test is
+    the expensive part we avoid. The database is dropped at *setup* time rather than
+    teardown so that no DROP can race the still-running bookkeeper's connections; any
+    leftover dies with the pg0 instance and its data directory.
+    """
+    import asyncio
+
+    import asyncpg
+
+    name = f"mercure_{uuid.uuid4().hex[:10]}"
+
+    async def _recreate():
+        con = await asyncpg.connect(pg0_instance.uri)
+        # a same-name leftover is impossible (uuid4), but be trivially idempotent
+        await con.execute(f'DROP DATABASE IF EXISTS "{name}" WITH (FORCE)')
+        await con.execute(f'CREATE DATABASE "{name}"')
+        await con.close()
+
+    asyncio.run(_recreate())
+    yield pg0_instance.uri.rsplit("/", 1)[0] + f"/{name}"
+
+
+@pytest.fixture(scope="function")
+def mercure_config(mercure_base, receiver_port, bookkeeper_port, bookkeeper_database):
     mercure_config = {k: v for k, v in mercure_defaults.items()}
     for folder in (mercure_base / 'data').iterdir():
         mercure_config[f"{folder.name}_folder"] = str(folder)
@@ -336,10 +386,12 @@ def mercure_config(mercure_base, receiver_port, bookkeeper_port):
     with (mercure_base / 'config' / 'mercure.json').open('w') as fp:
         json.dump(mercure_config, fp)
 
+    # the bookkeeper runs alembic upgrade head itself at startup (bookkeeper.py
+    # migrate_database), so the freshly created pg0 database needs no extra step here
     bookkeeper_config = f"""
 PORT={bookkeeper_port}
 HOST=0.0.0.0
-DATABASE_URL=sqlite:///{mercure_base}/data/bookkeeper.sqlite3
+DATABASE_URL={bookkeeper_database}
 DEBUG=True
 """
     with (mercure_base / 'config' / 'bookkeeper.env').open('w') as fp:
