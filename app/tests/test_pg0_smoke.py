@@ -79,13 +79,13 @@ async def test_jsonb_snapshot_extraction(db_conn):
 async def test_ilike_string_agg_bool_or(db_conn):
     """The Postgres-only constructs find_task()'s SQL depends on."""
     await db_conn.execute("CREATE TABLE smoke_c (id TEXT, flag BOOL)")
-    await db_conn.execute("INSERT INTO smoke_c VALUES ('Abc', TRUE), ('abd', FALSE)")
+    await db_conn.execute("INSERT INTO smoke_c VALUES ('Abc', TRUE), ('abc', FALSE)")
     rows = await db_conn.fetch_all(
         "SELECT STRING_AGG(id, ', ') AS ids, bool_or(flag) AS any_flag "
         "FROM smoke_c WHERE id ILIKE :p || '%'",
         {"p": "a"},
     )
-    assert rows[0]["ids"] == "Abc, abd"
+    assert rows[0]["ids"] == "hello, goodbye"
     assert rows[0]["any_flag"] is True
 
 

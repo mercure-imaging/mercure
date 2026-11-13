@@ -12,7 +12,8 @@ on:
 jobs:
   build:
 
-    runs-on: ubuntu-latest
+    # Pinned to the Ubuntu release this workflow was developed/tested against. 
+    runs-on: ubuntu-24.04
 
     env:
       # Single source of truth for the apt packages. The cache key below is a hash of this
@@ -24,7 +25,8 @@ jobs:
     - name: Set up Python 3.10
       uses: actions/setup-python@v7
       with:
-        python-version: 3.10.13
+        # Do not pin the patch level
+        python-version: "3.10"
         # Reuses the pip wheel cache between runs. Only pays off when the requirements
         # files are unchanged (the usual case for code-only PRs); the key below falls back
         # to a partial restore when they do change.
