@@ -393,6 +393,52 @@ async def test_study_level_job_information_shows_sent_accession(bookkeeper_db):
     assert (await job_information(first.job_id))["information"]["AccessionNumber"] == ACC_A
 
 
+# ----------------------------------------------------------------------------- rule column
+
+
+def rule_by_task(payload: Dict[str, Any]) -> Dict[str, str]:
+    return {row["task_id"]: row["Rule"] for row in payload["data"]}
+
+
+async def test_rule_shown_for_jobs_without_hand_off_children(bookkeeper_db):
+    """Only series-level hand-off children carry rules: a study task shows its own rule and
+    the series row it came from (and a series no rule triggered for) uses its REGISTER event."""
+    import bookkeeping.bookkeeper as bk
+
+    series = await route_series_level(bookkeeper_db, "1.2.3.1", "1.2.3", ACC_A)
+    study = await route_study_level(bookkeeper_db, "1.2.4.1", "1.2.4", ACC_A)
+    await call(bk.register_task, path="/register-task", json_body={"id": "job-no-rule", "series_uid": "1.2.8.1"})
+    await register_event("job-no-rule", "")
+
+    assert rule_by_task(await archive_search("")) == {
+        series.parent_id: "route_series",
+        study.parent_id: "route_study",
+        study.job_id: "route_study",
+        "job-no-rule": "",
+    }
+
+
+async def test_rule_search_and_sort_use_shown_rule(bookkeeper_db):
+    series = await route_series_level(bookkeeper_db, "1.2.3.1", "1.2.3", ACC_A)
+    study = await route_study_level(bookkeeper_db, "1.2.4.1", "1.2.4", ACC_A)
+
+    assert rule_by_task(await archive_search("route_study")) == {
+        study.parent_id: "route_study", study.job_id: "route_study"}
+
+    payload = await archive_search("", order_column="3", order_dir="asc")
+    assert [row["task_id"] for row in payload["data"]][0] == series.parent_id
+
+
+async def test_rule_ignores_non_object_triggered_rules(bookkeeper_db):
+    """TaskInfo allows triggered_rules to be a string; one such row must not break the Archive."""
+    import bookkeeping.bookkeeper as bk
+
+    await call(bk.update_task, path="/update-task", json_body={
+        "id": "job-str-rules", "info": {"uid_type": "series", "uid": "1.2.8.1", "triggered_rules": "legacy"}})
+
+    assert rule_by_task(await archive_search("")) == {"job-str-rules": ""}
+
+
 # -------------------------------------------------------------------------------- guards
 
 

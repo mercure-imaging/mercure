@@ -228,6 +228,22 @@ async def find_task(request) -> JSONResponse:
     mrn_sql = task_tag_or_series("mrn", "tag_patientid")
     name_sql = task_tag_or_series("patient_name", "tag_patientname")
 
+    # Rules come from the hand-off children of a series-level job. A study task has
+    # no children but carries its own info, and series that never got a child
+    # (handed to a study, or failed before any hand-off) only have the rules the
+    # router logged in their REGISTER event.
+    def task_rules(alias: str) -> str:
+        rules = f"{alias}.data->'info'->'triggered_rules'"
+        return (f"COALESCE(NULLIF({alias}.data->'info'->>'applied_rule', ''), (SELECT STRING_AGG(rule, ', ') FROM "
+                f"jsonb_object_keys(CASE WHEN jsonb_typeof({rules}) = 'object' THEN {rules} END) AS rule))")
+
+    rule_sql = f"""COALESCE(
+        STRING_AGG({task_rules('child_tasks')}, ', ' ORDER BY child_tasks.id),
+        {task_rules('parent_tasks')},
+        (SELECT NULLIF(task_events.target, '') FROM task_events
+         WHERE task_events.task_id = parent_tasks.id AND task_events.event = 'REGISTER'
+         ORDER BY task_events.id LIMIT 1))"""
+
     # Extract ordering information
     order_column_index = request.query_params.get("order[0][column]", "4")  # Default to time column (index 4)
     order_direction_raw = request.query_params.get("order[0][dir]", "desc")  # Default to descending
@@ -250,14 +266,7 @@ async def find_task(request) -> JSONResponse:
                     ({acc_sql} ilike :search_term || '%') 
                     or ({mrn_sql} ilike :search_term || '%')
                     or ({name_sql} ilike '%' || :search_term || '%')
-                    or bool_or(child_tasks.data->'info'->>'applied_rule'::text ilike '%' || :search_term || '%') 
-                    or bool_or(
-                        array(
-                            select jsonb_object_keys(   
-                                                    child_tasks.data->'info'->'triggered_rules'
-                                                    )
-                        )::text ilike '%' || :search_term || '%'
-                        )
+                    or ({rule_sql} ilike '%' || :search_term || '%')
                    )
                    """) if search_term else ""
 
@@ -295,12 +304,7 @@ async def find_task(request) -> JSONResponse:
         parent_tasks.id AS task_id,
         parent_tasks.data->'info'->>'uid_type' AS scope,
         parent_tasks.time::timestamp AS time,
-        STRING_AGG(case when coalesce(child_tasks.data->'info'->>'applied_rule','') != '' 
-                        then array[child_tasks.data->'info'->>'applied_rule']::text 
-                        else array(select jsonb_object_keys((child_tasks.data->'info'->'triggered_rules')))::text 
-                    end, 
-                    ', ' ORDER BY child_tasks.id)
-        AS rule
+        {rule_sql} AS rule
     FROM 
         tasks as parent_tasks
         LEFT JOIN dicom_series ON dicom_series.series_uid = parent_tasks.series_uid
@@ -336,24 +340,6 @@ async def find_task(request) -> JSONResponse:
 
         job_scope = "STUDY" if item.get("scope") == "study" else "SERIES"
 
-        # if item.get("rule"):
-        #     item["rule"] = item["rule"].strip()
-        #     if item["rule"] == ",":
-        #         item["rule"] = ""
-
-        # rule_information = ""
-        # if item.get("rule"):
-        #     rule_information = item["rule"]
-        # else:
-        #     if item.get("triggered_rules"):
-        #         try:
-        #             json_data = json.loads("[" + item["triggered_rules"] + "]")
-        #             for entry in json_data:
-        #                 rule_information += ", ".join(list(entry.keys())) + ", "
-        #             if rule_information:
-        #                 rule_information = rule_information[:-2]
-        #         except json.JSONDecodeError:
-        #             rule_information = "ERROR"
         # Format row as an array for DataTables
         data.append({
             "DT_RowId": f"task_{task_id}",  # Add DataTables row identifier
@@ -361,7 +347,7 @@ async def find_task(request) -> JSONResponse:
             "MRN": mrn,
             "Scope": job_scope,
             "Time": time.isoformat(timespec='seconds') if isinstance(time, datetime.datetime) else str(time),
-            "Rule": item.get("rule", "").replace("{", "").replace("}", ""),
+            "Rule": item["rule"] or "",
             "task_id": task_id  # Include task_id for actions/links
         })
 
