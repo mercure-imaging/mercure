@@ -106,9 +106,9 @@ async def bookkeeper_db(pg0_url, monkeypatch, mercure_config):
 
     dialect = sqlalchemy.dialects.postgresql.dialect()
     # Fresh tables per test: each test seeds the same ids.
-    for name in ("tasks", "dicom_series"):
+    for name in ("tasks", "dicom_series", "task_events"):
         await database.execute(f"DROP TABLE IF EXISTS {name} CASCADE")
-    for table in (db.tasks_table, db.dicom_series):
+    for table in (db.tasks_table, db.dicom_series, db.task_events):
         await database.execute(str(sqlalchemy.schema.CreateTable(table).compile(dialect=dialect)))
     try:
         yield database
@@ -185,12 +185,22 @@ def _sample_tags(acc: str) -> Dict[str, Any]:
     return ds.to_json_dict()
 
 
+async def register_event(task_id: str, rules: str) -> None:
+    """The REGISTER task event route_series() logs with the triggered rules."""
+    from bookkeeping.bookkeeper import post_task_event
+    from common import monitor
+
+    await call(post_task_event, path="/task-event", form=monitor.task_event_payload(
+        monitor.task_event.REGISTER, task_id, 1, rules, "Registered series"))
+
+
 async def route_series_level(bookkeeper_db, series_uid: str, study_uid: str, acc: Optional[str],
                              sample_tags: bool = False) -> Send:
     """The bookkeeper calls route_series() + push_serieslevel_outgoing() makes:
 
     register-task (parent, no data) [ -> update-task {"id","tags"} if
-    store_sample_dicom_tags] -> register-series -> update-task (full Task for the
+    store_sample_dicom_tags] -> register-series -> task-event REGISTER (triggered
+    rules) -> update-task (full Task for the
     hand-off child, carrying info.acc of THIS send) -> register-task (child,
     parent_id=parent).
     """
@@ -206,6 +216,7 @@ async def route_series_level(bookkeeper_db, series_uid: str, study_uid: str, acc
         await call(update_task, path="/update-task",
                    json_body={"id": parent, "tags": _sample_tags(acc)})
     await call(register_series, path="/register-series", form=tags)            # route_series:117
+    await register_event(parent, "route_series")                               # route_series:126
     task = compose_task(child, series_uid, "series", {"route_series": True}, "", tags, "test_target")
     await call(update_task, path="/update-task", json_body=task.dict())       # create_series_task
     await call(register_task, path="/register-task",
@@ -231,6 +242,7 @@ async def route_study_level(bookkeeper_db, series_uid: str, study_uid: str,
     await call(register_task, path="/register-task",
                json_body={"id": parent, "series_uid": series_uid})            # route_series:41
     await call(register_series, path="/register-series", form=tags)            # route_series:117
+    await register_event(parent, "route_study")                                # route_series:126
     task = compose_task(study_task, study_uid, "study", {"route_study": True}, "route_study", tags, "")
     await call(update_task, path="/update-task", json_body=task.dict())       # create_study_task
     return Send(parent, study_task)
