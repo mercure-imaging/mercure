@@ -43,7 +43,7 @@ jobs:
       id: apt-pkgs
       run: echo "key=$(printf '%s' "${APT_PACKAGES// /-}" | sha256sum | cut -c1-16)" >> "$GITHUB_OUTPUT"
     - name: Cache apt packages
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: /var/cache/apt
         key: apt-${{ runner.os }}-${{ steps.apt-pkgs.outputs.key }}
