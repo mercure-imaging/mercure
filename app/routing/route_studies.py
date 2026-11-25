@@ -21,6 +21,7 @@ import common.monitor as monitor
 import common.notification as notification
 import common.rule_evaluation as rule_evaluation
 from common.constants import mercure_actions, mercure_events, mercure_names, mercure_rule
+from common.event_types import FailStage
 from common.json_io import write_json_atomic
 from common.types import StudyTriggerCondition, Task, TaskHasStudy, TaskInfo
 
@@ -352,26 +353,47 @@ def push_studylevel_error(study: str) -> None:
     Pushes the study folder to the error folder after unsuccessful routing
     """
     study_folder = config.mercure.studies_folder + "/" + study
+    try:
+        # Raw read, so that the job can still be identified if the task file fails validation
+        with open(Path(study_folder) / mercure_names.TASKFILE, "r") as json_file:
+            task_id: Optional[str] = json.load(json_file)["id"]
+    except Exception:
+        task_id = None
     # Same claim as route_study() and the series-level router, so a study that is being routed or
     # filled is never moved out from under its owner here.
     lock_file = Path(study_folder) / mercure_names.LOCK
     try:
         lock = helper.FileLock(lock_file)
     except FileExistsError:
-        # Study normally shouldn't be locked at this point, but since it is, just exit and wait.
-        # Might require manual intervention if a former process terminated without removing the lock file
+        # Study normally shouldn't be locked at this point. Might require manual intervention if a former
+        # process terminated without removing the lock file
+        logger.warning(f"Study {study} is locked, unable to move it to the error folder", task_id)
         return
     except Exception:
         # Can't create lock file, so something must be seriously wrong
-        logger.error(f"Unable to lock study for removal {lock_file}")  # handle_error
+        logger.error(f"Unable to lock study for removal {lock_file}", task_id)  # handle_error
         return
     with lock:
-        if not move_study_folder(None, study, "ERROR"):
+        # Name the folder by the task ID so the failed job matches the archive. Fall back to a unique name if
+        # an earlier, partial move already claimed it, so the study doesn't fail again on every routing pass.
+        folder_name = task_id
+        if task_id and (Path(config.mercure.error_folder) / task_id).exists():
+            folder_name = None
+        if not move_study_folder(folder_name, study, "ERROR"):
             # At this point, we can only wait for manual intervention
-            logger.error(f"Unable to move study to ERROR folder {lock_file}")  # handle_error
+            logger.error(f"Unable to move study to ERROR folder {lock_file}", task_id)  # handle_error
             return
-        if not remove_study_folder(None, study, lock):
-            logger.error(f"Unable to delete study folder {lock_file}")  # handle_error
+        if folder_name:
+            error_folder = Path(config.mercure.error_folder) / folder_name
+            try:
+                task = Task.from_file(error_folder / mercure_names.TASKFILE)
+                task.info.fail_stage = str(FailStage.ROUTING)  # type: ignore
+                task.to_file(error_folder / mercure_names.TASKFILE)
+            except Exception:
+                logger.error(f"Unable to set fail stage for {error_folder}", task_id)  # handle_error
+            monitor.send_task_event(monitor.task_event.MOVE, folder_name, 0, str(error_folder), "Moved to error folder")
+        if not remove_study_folder(task_id, study, lock):
+            logger.error(f"Unable to delete study folder {lock_file}", task_id)  # handle_error
             return
 
 

@@ -6,16 +6,18 @@ from datetime import timedelta
 from pathlib import Path
 from typing import Tuple
 
+import common.monitor
 import pytest
 from common import notification
 from common.constants import mercure_events, mercure_names
-from common.types import Module, Rule
+from common.event_types import FailStage, task_event
+from common.types import Module, Rule, Task
 from freezegun import freeze_time
 from nomad.api.job import Job
 from nomad.api.jobs import Jobs
 from process import processor
 from pyfakefs.fake_filesystem import FakeFilesystem
-from routing import router
+from routing import route_studies, router
 
 from .testing_common import mock_incoming_uid
 
@@ -167,9 +169,30 @@ def test_route_study_error(fs: FakeFilesystem, mercure_config, mocked):
         # mocked.patch.object(helper.FileLock, "__init__" new=lambda x: raise Exception("oops"))
         # TODO: simulate an exception in  route_study
         mocked.patch("routing.route_studies.route_study", side_effect=lambda x: False)
+        study_task_id = Task.from_file(next(Path(config.studies_folder).glob(f"*/{mercure_names.TASKFILE}"))).id
         frozen_time.tick(delta=timedelta(seconds=31))
         router.run_router()
-        assert list(Path(config.error_folder).glob("**/*")) != []
+        # The failed job keeps its archive ID and is marked as failed during routing
+        error_folder = Path(config.error_folder) / study_task_id
+        assert Task.from_file(error_folder / mercure_names.TASKFILE).info.fail_stage == FailStage.ROUTING
+        common.monitor.send_task_event.assert_any_call(  # type: ignore
+            task_event.MOVE, study_task_id, 0, str(error_folder), "Moved to error folder"
+        )
+        assert list(Path(config.studies_folder).iterdir()) == []
+
+
+def test_route_study_error_locked(fs: FakeFilesystem, mercure_config, mocked):
+    """
+    Test that a locked study which fails routing is reported instead of being skipped silently.
+    """
+    config = mercure_config()
+    study_folder = Path(config.studies_folder) / "study"
+    fs.create_file(study_folder / mercure_names.TASKFILE, contents='{"id": "task-id"}')
+    fs.create_file(study_folder / mercure_names.LOCK)
+    warning = mocked.patch("routing.route_studies.logger.warning")
+    route_studies.push_studylevel_error("study")
+    warning.assert_called_once_with("Study study is locked, unable to move it to the error folder", "task-id")
+    assert list(Path(config.error_folder).iterdir()) == []
 
 
 @pytest.mark.parametrize("do_error", [True, False])
