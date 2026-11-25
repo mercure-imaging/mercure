@@ -439,6 +439,23 @@ async def test_rule_ignores_non_object_triggered_rules(bookkeeper_db):
     assert rule_by_task(await archive_search("")) == {"job-str-rules": ""}
 
 
+async def test_rule_lists_each_rule_once_across_target_children(bookkeeper_db):
+    """One child per target, each with every rule sending to it: A -> T1, T2 and B -> T2.
+    A series without children shows its REGISTER rules in the same order."""
+    import bookkeeping.bookkeeper as bk
+
+    await call(bk.register_task, path="/register-task", json_body={"id": "job-multi", "series_uid": "1.2.9.1"})
+    for child, rules in (("job-multi-t1", {"A": True}), ("job-multi-t2", {"A": True, "B": True})):
+        await call(bk.update_task, path="/update-task", json_body={
+            "id": child, "info": {"uid_type": "series", "uid": "1.2.9.1", "triggered_rules": rules}})
+        await call(bk.register_task, path="/register-task",
+                   json_body={"id": child, "series_uid": "1.2.9.1", "parent_id": "job-multi"})
+    await call(bk.register_task, path="/register-task", json_body={"id": "job-studies", "series_uid": "1.2.9.2"})
+    await register_event("job-studies", "B, A")
+
+    assert rule_by_task(await archive_search("")) == {"job-multi": "A, B", "job-studies": "A, B"}
+
+
 # -------------------------------------------------------------------------------- guards
 
 

@@ -237,12 +237,14 @@ async def find_task(request) -> JSONResponse:
         return (f"COALESCE(NULLIF({alias}.data->'info'->>'applied_rule', ''), (SELECT STRING_AGG(rule, ', ') FROM "
                 f"jsonb_object_keys(CASE WHEN jsonb_typeof({rules}) = 'object' THEN {rules} END) AS rule))")
 
-    rule_sql = f"""COALESCE(
-        STRING_AGG({task_rules('child_tasks')}, ', ' ORDER BY child_tasks.id),
+    # Children are per target and each lists every rule sending to it, so show each
+    # rule once, in a stable order (rule names cannot contain ", ").
+    rule_sql = f"""(SELECT STRING_AGG(DISTINCT rule, ', ') FROM unnest(string_to_array(COALESCE(
+        STRING_AGG({task_rules('child_tasks')}, ', '),
         {task_rules('parent_tasks')},
         (SELECT NULLIF(task_events.target, '') FROM task_events
          WHERE task_events.task_id = parent_tasks.id AND task_events.event = 'REGISTER'
-         ORDER BY task_events.id LIMIT 1))"""
+         ORDER BY task_events.id LIMIT 1)), ', ')) AS rule)"""
 
     # Extract ordering information
     order_column_index = request.query_params.get("order[0][column]", "4")  # Default to time column (index 4)
